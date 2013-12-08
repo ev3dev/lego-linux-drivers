@@ -1,0 +1,23 @@
+#PWM drivers
+
+menuconfig SND_PWM
+	bool "PWM sound devices"
+	depends on GENERIC_PWM
+	default y
+	help
+	  Support for sound devices driven by PWM devices.
+
+if SND_PWM
+
+config SND_LEGOEV3
+	tristate "LEGO Mindstorms EV3 speaker driver"
+	depends on MACH_DAVINCI_LEGOEV3 && DAVINCI_EHRPWM
+	select SND_PCM
+	help
+	  Say Y here if you want to use the LEGO Mindstorms EV3 speaker.
+
+	  To compile this driver as a module, choose M here: the module will be
+	  called snd-lego-ev3.
+
+endif	# SND_PWM
+
