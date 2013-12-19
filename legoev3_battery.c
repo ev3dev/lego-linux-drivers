@@ -11,6 +11,7 @@
 
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/err.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/power/legoev3_battery.h>
@@ -116,10 +117,10 @@ static int __devinit legoev3_battery_probe(struct platform_device *pdev)
 	}
 
 	dev = bus_find_device_by_name(&spi_bus_type, NULL, pdata->spi_dev_name);
-	if (!dev) {
+	if (IS_ERR(dev)) {
 		dev_err(&pdev->dev, "could not find spi device \"%s\"!\n",
 							pdata->spi_dev_name);
-		ret = -ENODEV;
+		ret = PTR_ERR(dev);
 		goto err1;
 	}
 	spi = to_spi_device(dev);
