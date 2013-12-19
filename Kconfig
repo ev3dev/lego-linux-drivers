@@ -1,0 +1,27 @@
+# LEGO Mindstroms EV3 device drivers
+
+menuconfig LEGOEV3_DRIVERS
+	tristate "LEGO Mindstroms EV3 support"
+	depends on MACH_DAVINCI_LEGOEV3
+	help
+	  This enables platform specific drivers for the LEGO Mindstorms EV3
+	  hardware.
+
+if LEGOEV3_DRIVERS
+
+config LEGOEV3_ADC
+	tristate "Analog/digital converter"
+	depends on SPI
+	default y
+	help
+	  Driver for the TI ADS7957 analog digital converter.
+
+config LEGOEV3_DCM
+	tristate "Device Connection Manager"
+	depends on LEGOEV3_ADC
+	default y
+	help
+	  Provide framework for devices that plug into the input and output
+	  ports of the EV3.
+
+endif #LEGOEV3_DRIVERS
