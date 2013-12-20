@@ -53,7 +53,7 @@
 #include <linux/delay.h>
 #include <linux/hrtimer.h>
 #include <linux/platform_device.h>
-#include <linux/legoev3/ads7957.h>
+#include <linux/legoev3/legoev3_ads7957.h>
 
 #include <mach/legoev3.h>
 
@@ -66,7 +66,7 @@ enum nxt_color_read_state {
 };
 
 /**
- * struct ads7957_device - TI ADS7957 analog/digital converter
+ * struct legoev3_ads7957_device - TI ADS7957 analog/digital converter
  * @spi: SPI device that communicates the the ADC chip.
  * @dcm: Device connection manager platform device.
  * @pdata: Platform data that defines channel assignments.
@@ -98,10 +98,10 @@ enum nxt_color_read_state {
  *	for the current port.
  * @nxt_color_raw_data: Buffer to hold the raw data ready from NXT color sensors.
  */
-struct ads7957_device {
+struct legoev3_ads7957_device {
 	struct spi_device *spi;
 	struct platform_device *pdev;
-	struct ads7957_platform_data *pdata;
+	struct legoev3_ads7957_platform_data *pdata;
 	struct hrtimer timer;
 	spinlock_t lock;
 	u64 next_update_ns;
@@ -123,9 +123,9 @@ struct ads7957_device {
 	u16 nxt_color_raw_data[LEGOEV3_NUM_PORT_IN][NUM_NXT_COLOR_READ_STATE];
 };
 
-static void ads7957_read_one_msg_complete(void* context)
+static void legoev3_ads7957_read_one_msg_complete(void* context)
 {
-	struct ads7957_device *ads = context;
+	struct legoev3_ads7957_device *ads = context;
 	u16 val;
 
 	if (ads->read_one_msg.status) {
@@ -150,9 +150,9 @@ static void ads7957_read_one_msg_complete(void* context)
 	ads->msg_busy = false;
 }
 
-static void ads7957_read_all_msg_complete(void* context)
+static void legoev3_ads7957_read_all_msg_complete(void* context)
 {
-	struct ads7957_device *ads = context;
+	struct legoev3_ads7957_device *ads = context;
 	int i = ADS7957_NUM_CHANNELS;
 	bool read_color = ads->read_nxt_color[ads->current_nxt_color_port];
 	u16 val, channel;
@@ -180,9 +180,9 @@ static void ads7957_read_all_msg_complete(void* context)
 	ads->msg_busy = false;
 }
 
-static enum hrtimer_restart ads7957_timer_callback(struct hrtimer *pTimer)
+static enum hrtimer_restart legoev3_ads7957_timer_callback(struct hrtimer *pTimer)
 {
-	struct ads7957_device *ads = container_of(pTimer, struct ads7957_device,
+	struct legoev3_ads7957_device *ads = container_of(pTimer, struct legoev3_ads7957_device,
 						  timer);
 	struct spi_device *spi = ads->spi;
 	bool read_all = ads->current_command == ADS7957_COMMAND_AUTO;
@@ -222,7 +222,7 @@ static enum hrtimer_restart ads7957_timer_callback(struct hrtimer *pTimer)
 	return HRTIMER_RESTART;
 }
 
-u16 ads7957_get_data_for_ch(struct ads7957_device *ads, u8 channel)
+u16 legoev3_ads7957_get_value_for_ch(struct legoev3_ads7957_device *ads, u8 channel)
 {
 	struct spi_device *spi = ads->spi;
 	int ret = -EINVAL;
@@ -240,21 +240,57 @@ u16 ads7957_get_data_for_ch(struct ads7957_device *ads, u8 channel)
 	ret = val * ADS7957_LSB_UV / 1000;
 	return ret;
 }
-EXPORT_SYMBOL_GPL(ads7957_get_data_for_ch);
+EXPORT_SYMBOL_GPL(legoev3_ads7957_get_value_for_ch);
 
-static ssize_t ads7957_show_name(struct device *dev,
+u16 legoev3_ads7957_get_value_for_in_pin1(struct legoev3_ads7957_device *ads,
+				  enum legoev3_input_port port)
+{
+	if (port >= LEGOEV3_NUM_PORT_IN) {
+		dev_crit(&ads->spi->dev, "%s: port %d >= availible ports (%d)\n",
+			 __func__, port, LEGOEV3_NUM_PORT_IN);
+		return -EINVAL;
+	}
+	return legoev3_ads7957_get_value_for_ch(ads, ads->pdata->in_pin1_ch[port]);
+}
+EXPORT_SYMBOL_GPL(legoev3_ads7957_get_value_for_in_pin1);
+
+u16 legoev3_ads7957_get_value_for_in_pin6(struct legoev3_ads7957_device *ads,
+				  enum legoev3_input_port port)
+{
+	if (port >= LEGOEV3_NUM_PORT_IN) {
+		dev_crit(&ads->spi->dev, "%s: port %d >= availible ports (%d)\n",
+			 __func__, port, LEGOEV3_NUM_PORT_IN);
+		return -EINVAL;
+	}
+	return legoev3_ads7957_get_value_for_ch(ads, ads->pdata->in_pin6_ch[port]);
+}
+EXPORT_SYMBOL_GPL(legoev3_ads7957_get_value_for_in_pin6);
+
+u16 legoev3_ads7957_get_value_for_out_pin5(struct legoev3_ads7957_device *ads,
+				   enum legoev3_output_port port)
+{
+	if (port >= LEGOEV3_NUM_PORT_OUT) {
+		dev_crit(&ads->spi->dev, "%s: port %d >= availible ports (%d)\n",
+			 __func__, port, LEGOEV3_NUM_PORT_OUT);
+		return -EINVAL;
+	}
+	return legoev3_ads7957_get_value_for_ch(ads, ads->pdata->out_pin5_ch[port]);
+}
+EXPORT_SYMBOL_GPL(legoev3_ads7957_get_value_for_out_pin5);
+
+static ssize_t legoev3_ads7957_show_name(struct device *dev,
 				 struct device_attribute *devattr, char *buf)
 {
 	return sprintf(buf, "%s\n", to_spi_device(dev)->modalias);
 }
 
-static ssize_t ads7957_raw_data_read(struct file *file, struct kobject *kobj,
+static ssize_t legoev3_ads7957_raw_data_read(struct file *file, struct kobject *kobj,
 				     struct bin_attribute *attr,
 				     char *buf, loff_t off, size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct platform_device *pdev = to_platform_device(dev);
-	struct ads7957_device *ads = platform_get_drvdata(pdev);
+	struct legoev3_ads7957_device *ads = platform_get_drvdata(pdev);
 	size_t size = sizeof(ads->raw_data);
 
 	if (off >= size || !count)
@@ -267,7 +303,7 @@ static ssize_t ads7957_raw_data_read(struct file *file, struct kobject *kobj,
 	return size;
 }
 
-static ssize_t ads7957_raw_nxt_color_data_read(struct file *file,
+static ssize_t legoev3_ads7957_raw_nxt_color_data_read(struct file *file,
 					       struct kobject *kobj,
 					       struct bin_attribute *attr,
 					       char *buf, loff_t off,
@@ -275,7 +311,7 @@ static ssize_t ads7957_raw_nxt_color_data_read(struct file *file,
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct platform_device *pdev = to_platform_device(dev);
-	struct ads7957_device *ads = platform_get_drvdata(pdev);
+	struct legoev3_ads7957_device *ads = platform_get_drvdata(pdev);
 	size_t size = sizeof(ads->nxt_color_raw_data);
 
 	if (off >= size || !count)
@@ -288,7 +324,7 @@ static ssize_t ads7957_raw_nxt_color_data_read(struct file *file,
 	return size;
 }
 
-static DEVICE_ATTR(name, S_IRUGO, ads7957_show_name, NULL);
+static DEVICE_ATTR(name, S_IRUGO, legoev3_ads7957_show_name, NULL);
 
 static struct bin_attribute raw_data_attr = {
 	.attr = {
@@ -296,7 +332,7 @@ static struct bin_attribute raw_data_attr = {
 		.mode = S_IRUGO,
 	},
 	.size = ADS7957_NUM_CHANNELS * 2,
-	.read = ads7957_raw_data_read,
+	.read = legoev3_ads7957_raw_data_read,
 };
 
 static struct bin_attribute raw_nxt_color_data_attr = {
@@ -305,29 +341,29 @@ static struct bin_attribute raw_nxt_color_data_attr = {
 		.mode = S_IRUGO,
 	},
 	.size = LEGOEV3_NUM_PORT_IN * NUM_NXT_COLOR_READ_STATE * 2,
-	.read = ads7957_raw_nxt_color_data_read,
+	.read = legoev3_ads7957_raw_nxt_color_data_read,
 };
 
-static struct attribute *ads7957_attrs[] = {
+static struct attribute *legoev3_ads7957_attrs[] = {
 	&dev_attr_name.attr,
 	NULL
 };
 
-static struct attribute_group ads7957_attr_grp = {
-	.attrs = ads7957_attrs,
+static struct attribute_group legoev3_ads7957_attr_grp = {
+	.attrs = legoev3_ads7957_attrs,
 };
 
-static int __devinit ads7957_probe(struct spi_device *spi)
+static int __devinit legoev3_ads7957_probe(struct spi_device *spi)
 {
 	int err, i;
-	struct ads7957_device *ads;
+	struct legoev3_ads7957_device *ads;
 
 	/* Configure the SPI bus */
 	spi->mode = SPI_MODE_0;
 	spi->bits_per_word = 16;
 	spi_setup(spi);
 
-	ads = devm_kzalloc(&spi->dev, sizeof(struct ads7957_device),
+	ads = devm_kzalloc(&spi->dev, sizeof(struct legoev3_ads7957_device),
 								GFP_KERNEL);
 	if (!ads)
 		return -ENOMEM;
@@ -342,7 +378,7 @@ static int __devinit ads7957_probe(struct spi_device *spi)
 
 	ads->spi = spi;
 	hrtimer_init(&ads->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	ads->timer.function = ads7957_timer_callback;
+	ads->timer.function = legoev3_ads7957_timer_callback;
 
 	spi_message_init(&ads->read_one_msg);
 	ads->read_one_txf.tx_buf = &ads->read_one_tx_buf;
@@ -350,7 +386,7 @@ static int __devinit ads7957_probe(struct spi_device *spi)
 	ads->read_one_txf.len = 2;
 	spi_message_add_tail(&ads->read_one_txf, &ads->read_one_msg);
 
-	ads->read_one_msg.complete = ads7957_read_one_msg_complete;
+	ads->read_one_msg.complete = legoev3_ads7957_read_one_msg_complete;
 	ads->read_one_msg.context = ads;
 
 	spi_message_init(&ads->read_all_msg);
@@ -366,7 +402,7 @@ static int __devinit ads7957_probe(struct spi_device *spi)
 			ads->read_all_txf[i].cs_change = 1;
 		spi_message_add_tail(&ads->read_all_txf[i], &ads->read_all_msg);
 	}
-	ads->read_all_msg.complete = ads7957_read_all_msg_complete;
+	ads->read_all_msg.complete = legoev3_ads7957_read_all_msg_complete;
 	ads->read_all_msg.context = ads;
 
 	ads->pdev = platform_device_register_simple("legoev3-analog", -1, NULL, 0);
@@ -376,7 +412,7 @@ static int __devinit ads7957_probe(struct spi_device *spi)
 	}
 	platform_set_drvdata(ads->pdev, ads);
 
-	err = sysfs_create_group(&ads->pdev->dev.kobj, &ads7957_attr_grp);
+	err = sysfs_create_group(&ads->pdev->dev.kobj, &legoev3_ads7957_attr_grp);
 	if (err < 0)
 		goto err3;
 	err = sysfs_create_bin_file(&ads->pdev->dev.kobj, &raw_data_attr);
@@ -394,7 +430,7 @@ static int __devinit ads7957_probe(struct spi_device *spi)
 err5:
 	sysfs_remove_bin_file(&spi->dev.kobj, &raw_data_attr);
 err4:
-	sysfs_remove_group(&ads->pdev->dev.kobj, &ads7957_attr_grp);
+	sysfs_remove_group(&ads->pdev->dev.kobj, &legoev3_ads7957_attr_grp);
 err3:
 	platform_set_drvdata(ads->pdev, NULL);
 err2:
@@ -404,12 +440,12 @@ err1:
 	return err;
 }
 
-static int __devexit ads7957_remove(struct spi_device *spi)
+static int __devexit legoev3_ads7957_remove(struct spi_device *spi)
 {
-	struct ads7957_device *ads = spi_get_drvdata(spi);
+	struct legoev3_ads7957_device *ads = spi_get_drvdata(spi);
 
 	hrtimer_cancel(&ads->timer);
-	sysfs_remove_group(&ads->pdev->dev.kobj, &ads7957_attr_grp);
+	sysfs_remove_group(&ads->pdev->dev.kobj, &legoev3_ads7957_attr_grp);
 	sysfs_remove_bin_file(&ads->pdev->dev.kobj, &raw_data_attr);
 	platform_device_unregister(ads->pdev);
 	platform_set_drvdata(ads->pdev, NULL);
@@ -419,17 +455,17 @@ static int __devexit ads7957_remove(struct spi_device *spi)
 	return 0;
 }
 
-static struct spi_driver ads7957_driver = {
+static struct spi_driver legoev3_ads7957_driver = {
 	.driver = {
 		.name = DRVNAME,
 		.owner = THIS_MODULE,
 	},
-	.probe = ads7957_probe,
-	.remove = __devexit_p(ads7957_remove),
+	.probe = legoev3_ads7957_probe,
+	.remove = __devexit_p(legoev3_ads7957_remove),
 };
-module_spi_driver(ads7957_driver);
+module_spi_driver(legoev3_ads7957_driver);
 
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_DESCRIPTION("TI ADS7957 A/D driver");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS(DRVNAME);
+MODULE_ALIAS("spi:legoev3-ads7957");
