@@ -152,12 +152,12 @@ static int __devinit legoev3_battery_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto gpio_get_value_fail;
 	else if (ret) {
+		bat->v_max = 7500000;
+		bat->v_min = 6200000;
+	} else {
 		bat->technology = POWER_SUPPLY_TECHNOLOGY_LION;
 		bat->v_max = 7500000;
 		bat->v_min = 7100000;
-	} else {
-		bat->v_max = 7500000;
-		bat->v_min = 6200000;	
 	}
 	
 	ret = power_supply_register(&pdev->dev, &bat->psy);
