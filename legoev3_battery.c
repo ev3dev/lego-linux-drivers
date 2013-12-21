@@ -15,23 +15,20 @@
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/power/legoev3_battery.h>
-#include <linux/hwmon/ads79xx.h>
+#include <linux/legoev3/legoev3_analog.h>
 #include <linux/delay.h>
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
 #include <linux/gpio.h>
-#include <linux/spi/spi.h>
 
 #include <mach/legoev3.h>
 
 struct legoev3_battery {	
 	struct power_supply psy;
-	struct ads79xx_device *ads;
+	struct legoev3_analog_device *alg;
 	int status;
 	int technology;
 	int batt_type_gpio;
-	int adc_volt_ch;
-	int adc_curr_ch;
 	int v_max;
 	int v_min;
 };
@@ -61,16 +58,15 @@ static int legoev3_battery_get_property(struct power_supply *psy,
 		val->intval = bat->v_min;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		ret = ads79xx_get_data_for_ch(bat->ads, bat->adc_volt_ch) * 2000
-			+ ads79xx_get_data_for_ch(bat->ads, bat->adc_curr_ch) 
-			* 1000 / 15 + 50000;
+		ret = bat->alg->ops->get_batt_volt_value(bat->alg) * 2000
+			+ bat->alg->ops->get_batt_curr_value(bat->alg) * 1000 / 15
+			+ 50000;
 		if (ret < 0)
 			break;
 		val->intval = ret;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		ret = ads79xx_get_data_for_ch(bat->ads, bat->adc_curr_ch) *
-			20000 / 15;
+		ret = bat->alg->ops->get_batt_curr_value(bat->alg) * 20000 / 15;
 		if (ret < 0)
 			break;
 		val->intval = ret;
@@ -96,12 +92,16 @@ static enum power_supply_property legoev3_battery_props[] = {
 	POWER_SUPPLY_PROP_SCOPE,
 };
 
+static int legoev3_battery_match_name(struct device *dev, void *name)
+{
+        return !strcmp(name, dev_name(dev));
+}
+
 static int __devinit legoev3_battery_probe(struct platform_device *pdev)
 {
 	struct legoev3_battery *bat;
 	struct legoev3_battery_platform_data *pdata;
 	struct device *dev;
-	struct spi_device *spi;
 	int ret;
 
 	bat = devm_kzalloc(&pdev->dev, sizeof(struct legoev3_battery),
@@ -112,19 +112,26 @@ static int __devinit legoev3_battery_probe(struct platform_device *pdev)
 	pdata = pdev->dev.platform_data;
 	if (!pdata) {
 		dev_err(&pdev->dev, "Platform data is required!\n");
-		ret = -ENODEV;
-		goto err1;
+		ret = -EINVAL;
+		goto no_platform_data;
 	}
 
-	dev = bus_find_device_by_name(&spi_bus_type, NULL, pdata->spi_dev_name);
-	if (IS_ERR(dev)) {
-		dev_err(&pdev->dev, "could not find spi device \"%s\"!\n",
-							pdata->spi_dev_name);
-		ret = PTR_ERR(dev);
-		goto err1;
+	dev = class_find_device(legoev3_analog_class, NULL,
+				(char *)pdata->analog_dev_name,
+				legoev3_battery_match_name);
+	if (!dev) {
+		dev_err(&pdev->dev, "could not find analog device \"%s\"!\n",
+							pdata->analog_dev_name);
+		ret = -EINVAL;
+		goto analog_device_not_found;
 	}
-	spi = to_spi_device(dev);
-	bat->ads = spi_get_drvdata(spi);
+	if (IS_ERR(dev)) {
+		dev_err(&pdev->dev, "could not find analog device \"%s\"!\n",
+							pdata->analog_dev_name);
+		ret = PTR_ERR(dev);
+		goto analog_device_not_found;
+	}
+	bat->alg = dev_get_drvdata(dev);
 
 	bat->status = POWER_SUPPLY_STATUS_DISCHARGING;
 	bat->psy.name = "legoev3-battery";
@@ -135,17 +142,15 @@ static int __devinit legoev3_battery_probe(struct platform_device *pdev)
 	bat->psy.use_for_apm = 1;
 
 	bat->batt_type_gpio = pdata->batt_type_gpio;
-	bat->adc_volt_ch = pdata->adc_volt_ch;
-	bat->adc_curr_ch = pdata->adc_curr_ch;
 
 	ret = gpio_request_one(bat->batt_type_gpio, GPIOF_IN,
 						"EV3 battery type indicator");
 	if (ret < 0)
-		goto err1;
+		goto gpio_request_one_fail;
 
 	ret = gpio_get_value(bat->batt_type_gpio);
 	if (ret < 0)
-		goto err1;
+		goto gpio_get_value_fail;
 	else if (ret) {
 		bat->technology = POWER_SUPPLY_TECHNOLOGY_LION;
 		bat->v_max = 7500000;
@@ -157,15 +162,18 @@ static int __devinit legoev3_battery_probe(struct platform_device *pdev)
 	
 	ret = power_supply_register(&pdev->dev, &bat->psy);
 	if (ret)
-		goto err2;
+		goto power_supply_register_fail;
 
 	platform_set_drvdata(pdev, bat);	
 	
 	return 0;
 
-err2:
+power_supply_register_fail:
+gpio_get_value_fail:
 	gpio_free(bat->batt_type_gpio);
-err1:
+gpio_request_one_fail:
+analog_device_not_found:
+no_platform_data:
 	devm_kfree(&pdev->dev, bat);
 	return ret;
 }
