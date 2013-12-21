@@ -52,7 +52,7 @@
 #include <linux/err.h>
 #include <linux/delay.h>
 #include <linux/hrtimer.h>
-#include <linux/platform_device.h>
+#include <linux/legoev3/legoev3_analog.h>
 #include <linux/legoev3/legoev3_ads7957.h>
 
 #include <mach/legoev3.h>
@@ -68,7 +68,7 @@ enum nxt_color_read_state {
 /**
  * struct legoev3_ads7957_device - TI ADS7957 analog/digital converter
  * @spi: SPI device that communicates the the ADC chip.
- * @dcm: Device connection manager platform device.
+ * @alg: Analog device interface that is registered by this driver.
  * @pdata: Platform data that defines channel assignments.
  * @timer: Timer used to poll the ADC.
  * @lock: Spin lock.
@@ -100,7 +100,7 @@ enum nxt_color_read_state {
  */
 struct legoev3_ads7957_device {
 	struct spi_device *spi;
-	struct platform_device *pdev;
+	struct legoev3_analog_device alg;
 	struct legoev3_ads7957_platform_data *pdata;
 	struct hrtimer timer;
 	spinlock_t lock;
@@ -182,8 +182,8 @@ static void legoev3_ads7957_read_all_msg_complete(void* context)
 
 static enum hrtimer_restart legoev3_ads7957_timer_callback(struct hrtimer *pTimer)
 {
-	struct legoev3_ads7957_device *ads = container_of(pTimer, struct legoev3_ads7957_device,
-						  timer);
+	struct legoev3_ads7957_device *ads =
+		container_of(pTimer, struct legoev3_ads7957_device, timer);
 	struct spi_device *spi = ads->spi;
 	bool read_all = ads->current_command == ADS7957_COMMAND_AUTO;
 	bool read_color = ads->read_nxt_color[ads->current_nxt_color_port];
@@ -240,11 +240,13 @@ u16 legoev3_ads7957_get_value_for_ch(struct legoev3_ads7957_device *ads, u8 chan
 	ret = val * ADS7957_LSB_UV / 1000;
 	return ret;
 }
-EXPORT_SYMBOL_GPL(legoev3_ads7957_get_value_for_ch);
 
-u16 legoev3_ads7957_get_value_for_in_pin1(struct legoev3_ads7957_device *ads,
-				  enum legoev3_input_port port)
+static u16 legoev3_ads7957_in_pin1_value(struct legoev3_analog_device *alg,
+					 enum legoev3_input_port port)
 {
+	struct spi_device *spi = to_spi_device(alg->dev->parent);
+	struct legoev3_ads7957_device *ads = spi_get_drvdata(spi);
+
 	if (port >= LEGOEV3_NUM_PORT_IN) {
 		dev_crit(&ads->spi->dev, "%s: port %d >= availible ports (%d)\n",
 			 __func__, port, LEGOEV3_NUM_PORT_IN);
@@ -252,11 +254,13 @@ u16 legoev3_ads7957_get_value_for_in_pin1(struct legoev3_ads7957_device *ads,
 	}
 	return legoev3_ads7957_get_value_for_ch(ads, ads->pdata->in_pin1_ch[port]);
 }
-EXPORT_SYMBOL_GPL(legoev3_ads7957_get_value_for_in_pin1);
 
-u16 legoev3_ads7957_get_value_for_in_pin6(struct legoev3_ads7957_device *ads,
-				  enum legoev3_input_port port)
+static u16 legoev3_ads7957_in_pin6_value(struct legoev3_analog_device *alg,
+					 enum legoev3_input_port port)
 {
+	struct spi_device *spi = to_spi_device(alg->dev->parent);
+	struct legoev3_ads7957_device *ads = spi_get_drvdata(spi);
+
 	if (port >= LEGOEV3_NUM_PORT_IN) {
 		dev_crit(&ads->spi->dev, "%s: port %d >= availible ports (%d)\n",
 			 __func__, port, LEGOEV3_NUM_PORT_IN);
@@ -264,11 +268,13 @@ u16 legoev3_ads7957_get_value_for_in_pin6(struct legoev3_ads7957_device *ads,
 	}
 	return legoev3_ads7957_get_value_for_ch(ads, ads->pdata->in_pin6_ch[port]);
 }
-EXPORT_SYMBOL_GPL(legoev3_ads7957_get_value_for_in_pin6);
 
-u16 legoev3_ads7957_get_value_for_out_pin5(struct legoev3_ads7957_device *ads,
-				   enum legoev3_output_port port)
+static u16 legoev3_ads7957_out_pin5_value(struct legoev3_analog_device *alg,
+					  enum legoev3_output_port port)
 {
+	struct spi_device *spi = to_spi_device(alg->dev->parent);
+	struct legoev3_ads7957_device *ads = spi_get_drvdata(spi);
+
 	if (port >= LEGOEV3_NUM_PORT_OUT) {
 		dev_crit(&ads->spi->dev, "%s: port %d >= availible ports (%d)\n",
 			 __func__, port, LEGOEV3_NUM_PORT_OUT);
@@ -276,7 +282,22 @@ u16 legoev3_ads7957_get_value_for_out_pin5(struct legoev3_ads7957_device *ads,
 	}
 	return legoev3_ads7957_get_value_for_ch(ads, ads->pdata->out_pin5_ch[port]);
 }
-EXPORT_SYMBOL_GPL(legoev3_ads7957_get_value_for_out_pin5);
+
+static u16 legoev3_ads7957_batt_volt_value(struct legoev3_analog_device *alg)
+{
+	struct spi_device *spi = to_spi_device(alg->dev->parent);
+	struct legoev3_ads7957_device *ads = spi_get_drvdata(spi);
+
+	return legoev3_ads7957_get_value_for_ch(ads, ads->pdata->batt_volt_ch);
+}
+
+static u16 legoev3_ads7957_batt_curr_value(struct legoev3_analog_device *alg)
+{
+	struct spi_device *spi = to_spi_device(alg->dev->parent);
+	struct legoev3_ads7957_device *ads = spi_get_drvdata(spi);
+
+	return legoev3_ads7957_get_value_for_ch(ads, ads->pdata->batt_curr_ch);
+}
 
 static ssize_t legoev3_ads7957_show_name(struct device *dev,
 				 struct device_attribute *devattr, char *buf)
@@ -289,8 +310,7 @@ static ssize_t legoev3_ads7957_raw_data_read(struct file *file, struct kobject *
 				     char *buf, loff_t off, size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
-	struct platform_device *pdev = to_platform_device(dev);
-	struct legoev3_ads7957_device *ads = platform_get_drvdata(pdev);
+	struct legoev3_ads7957_device *ads = dev_get_drvdata(dev);
 	size_t size = sizeof(ads->raw_data);
 
 	if (off >= size || !count)
@@ -310,8 +330,7 @@ static ssize_t legoev3_ads7957_raw_nxt_color_data_read(struct file *file,
 					       size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
-	struct platform_device *pdev = to_platform_device(dev);
-	struct legoev3_ads7957_device *ads = platform_get_drvdata(pdev);
+	struct legoev3_ads7957_device *ads = dev_get_drvdata(dev);
 	size_t size = sizeof(ads->nxt_color_raw_data);
 
 	if (off >= size || !count)
@@ -353,6 +372,14 @@ static struct attribute_group legoev3_ads7957_attr_grp = {
 	.attrs = legoev3_ads7957_attrs,
 };
 
+static struct legoev3_analog_ops legoev3_ads7957_analog_ops = {
+	.get_in_pin1_value = legoev3_ads7957_in_pin1_value,
+	.get_in_pin6_value = legoev3_ads7957_in_pin6_value,
+	.get_out_pin5_value = legoev3_ads7957_out_pin5_value,
+	.get_batt_volt_value = legoev3_ads7957_batt_volt_value,
+	.get_batt_curr_value = legoev3_ads7957_batt_curr_value,
+};
+
 static int __devinit legoev3_ads7957_probe(struct spi_device *spi)
 {
 	int err, i;
@@ -372,7 +399,7 @@ static int __devinit legoev3_ads7957_probe(struct spi_device *spi)
 		dev_err(&spi->dev, "%s: Platform data is required!\n",
 			 __func__);
 		err = -EINVAL;
-		goto err1;
+		goto no_platform_data;
 	}
 	ads->pdata = spi->dev.platform_data;
 
@@ -405,37 +432,19 @@ static int __devinit legoev3_ads7957_probe(struct spi_device *spi)
 	ads->read_all_msg.complete = legoev3_ads7957_read_all_msg_complete;
 	ads->read_all_msg.context = ads;
 
-	ads->pdev = platform_device_register_simple("legoev3-analog", -1, NULL, 0);
-	if (IS_ERR(ads->pdev)) {
-		err = PTR_ERR(ads->pdev);
-		goto err2;
-	}
-	platform_set_drvdata(ads->pdev, ads);
-
-	err = sysfs_create_group(&ads->pdev->dev.kobj, &legoev3_ads7957_attr_grp);
+	ads->alg.name = spi->modalias;
+	ads->alg.ops = &legoev3_ads7957_analog_ops;
+	err = legoev3_analog_device_register(&spi->dev, &ads->alg);
 	if (err < 0)
-		goto err3;
-	err = sysfs_create_bin_file(&ads->pdev->dev.kobj, &raw_data_attr);
-	if (err < 0)
-		goto err4;
-	err = sysfs_create_bin_file(&ads->pdev->dev.kobj, &raw_nxt_color_data_attr);
-	if (err < 0)
-		goto err5;
+		goto legoev3_analog_device_register_fail;
 
 	spi_set_drvdata(spi, ads);
 	hrtimer_start(&ads->timer, ktime_set(0, UPDATE_SLOW_NS), HRTIMER_MODE_REL);
 
 	return 0;
 
-err5:
-	sysfs_remove_bin_file(&spi->dev.kobj, &raw_data_attr);
-err4:
-	sysfs_remove_group(&ads->pdev->dev.kobj, &legoev3_ads7957_attr_grp);
-err3:
-	platform_set_drvdata(ads->pdev, NULL);
-err2:
-	platform_device_unregister(ads->pdev);
-err1:
+legoev3_analog_device_register_fail:
+no_platform_data:
 	devm_kfree(&spi->dev, ads);
 	return err;
 }
@@ -445,10 +454,7 @@ static int __devexit legoev3_ads7957_remove(struct spi_device *spi)
 	struct legoev3_ads7957_device *ads = spi_get_drvdata(spi);
 
 	hrtimer_cancel(&ads->timer);
-	sysfs_remove_group(&ads->pdev->dev.kobj, &legoev3_ads7957_attr_grp);
-	sysfs_remove_bin_file(&ads->pdev->dev.kobj, &raw_data_attr);
-	platform_device_unregister(ads->pdev);
-	platform_set_drvdata(ads->pdev, NULL);
+	legoev3_analog_device_unregister(&ads->alg);
 	devm_kfree(&spi->dev, ads);
 	spi_set_drvdata(spi, NULL);
 
