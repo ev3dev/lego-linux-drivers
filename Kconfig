@@ -13,11 +13,8 @@ config LEGOEV3_ANALOG
 	tristate "Analog device support"
 	default y
 	help
-	  Support for the EV3's built-in ADC.
+	  Select Y to enable the EV3's built-in analog/digital converter.
 
-config LEGOEV3_ADC
-	tristate "Analog/digital converter"
-	depends on SPI && LEGOEV3_ANALOG
 	default y
 	help
 	  Driver for the TI ADS7957 analog digital converter.
@@ -25,8 +22,6 @@ config LEGOEV3_ADC
 config LEGOEV3_DCM
 	tristate "Device Connection Manager"
 	depends on LEGOEV3_ADC
-	default y
-	help
 	  Provide framework for devices that plug into the input and output
 	  ports of the EV3.
 
