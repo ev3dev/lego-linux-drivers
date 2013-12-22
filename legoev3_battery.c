@@ -39,7 +39,7 @@ static int legoev3_battery_get_property(struct power_supply *psy,
 {
 	int ret = 0;
 	struct legoev3_battery *bat = container_of(psy, struct legoev3_battery,
-									psy);
+						   psy);
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_STATUS:
@@ -58,15 +58,15 @@ static int legoev3_battery_get_property(struct power_supply *psy,
 		val->intval = bat->v_min;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		ret = bat->alg->ops->get_batt_volt_value(bat->alg) * 2000
-			+ bat->alg->ops->get_batt_curr_value(bat->alg) * 1000 / 15
-			+ 50000;
+		ret = legoev3_analog_batt_volt_value(bat->alg) * 2000
+		      + legoev3_analog_batt_curr_value(bat->alg) * 1000 / 15
+		      + 50000;
 		if (ret < 0)
 			break;
 		val->intval = ret;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		ret = bat->alg->ops->get_batt_curr_value(bat->alg) * 20000 / 15;
+		ret = legoev3_analog_batt_curr_value(bat->alg) * 20000 / 15;
 		if (ret < 0)
 			break;
 		val->intval = ret;
@@ -116,18 +116,18 @@ static int __devinit legoev3_battery_probe(struct platform_device *pdev)
 		goto no_platform_data;
 	}
 
-	dev = class_find_device(legoev3_analog_class, NULL,
-				(char *)pdata->analog_dev_name,
-				legoev3_battery_match_name);
+	dev = driver_find_device(&legoev3_analog_driver.driver, NULL,
+				 (char *)pdata->spi_analog_dev_name,
+				 legoev3_battery_match_name);
 	if (!dev) {
 		dev_err(&pdev->dev, "could not find analog device \"%s\"!\n",
-							pdata->analog_dev_name);
+			pdata->spi_analog_dev_name);
 		ret = -EINVAL;
 		goto analog_device_not_found;
 	}
 	if (IS_ERR(dev)) {
 		dev_err(&pdev->dev, "could not find analog device \"%s\"!\n",
-							pdata->analog_dev_name);
+			pdata->spi_analog_dev_name);
 		ret = PTR_ERR(dev);
 		goto analog_device_not_found;
 	}
