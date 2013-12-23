@@ -211,10 +211,10 @@ static void legoev3_analog_read_all_msg_complete(void* context)
 	alg->msg_busy = false;
 }
 
-static enum hrtimer_restart legoev3_analog_timer_callback(struct hrtimer *pTimer)
+static enum hrtimer_restart legoev3_analog_timer_callback(struct hrtimer *timer)
 {
 	struct legoev3_analog_device *alg =
-		container_of(pTimer, struct legoev3_analog_device, timer);
+		container_of(timer, struct legoev3_analog_device, timer);
 	struct spi_device *spi = alg->spi;
 	bool read_all = alg->current_command == ADS7957_COMMAND_AUTO;
 	bool read_color = alg->read_nxt_color[alg->current_nxt_color_port];
@@ -228,7 +228,7 @@ static enum hrtimer_restart legoev3_analog_timer_callback(struct hrtimer *pTimer
 		alg->next_update_ns = UPDATE_COLOR_NS;
 	else
 		alg->next_update_ns = UPDATE_FAST_NS;
-	hrtimer_forward_now(pTimer, ktime_set(0, alg->next_update_ns));
+	hrtimer_forward_now(timer, ktime_set(0, alg->next_update_ns));
 
 	if (alg->msg_busy)
 		return HRTIMER_RESTART;
@@ -404,7 +404,11 @@ static struct device_type legoev3_analog_device_type = {
 
 static void legoev3_analog_device_release(struct device *dev)
 {
-	kfree(dev);
+	struct legoev3_analog_device *alg = to_legoev3_analog_device(dev);
+
+	hrtimer_cancel(&alg->timer);
+	spi_set_drvdata(alg->spi, NULL);
+	alg->spi = NULL;
 }
 
 int legoev3_analog_device_register(struct device *parent,
@@ -446,20 +450,39 @@ add_device_failed:
 	return err;
 }
 
+struct legoev3_analog_device legoev3_analog = {
+	.name	= "legoev3-analog",
+};
+
+/**
+ * request_legoev3_analog - request the legoev3-analog device
+ *
+ * This will return a pointer to the legoev3-analog device if it has been
+ * initalized. Otherwise, it returns -ENODEV.
+ */
+struct legoev3_analog_device *request_legoev3_analog(void)
+{
+	if (legoev3_analog.spi)
+		return &legoev3_analog;
+	return ERR_PTR(-ENODEV);
+}
+EXPORT_SYMBOL_GPL(request_legoev3_analog);
+
 static int __devinit legoev3_analog_probe(struct spi_device *spi)
 {
+	struct legoev3_analog_device *alg = &legoev3_analog;
 	int err, i;
-	struct legoev3_analog_device *alg;
 
 	/* Configure the SPI bus */
 	spi->mode = SPI_MODE_0;
 	spi->bits_per_word = 16;
 	spi_setup(spi);
 
-	alg = devm_kzalloc(&spi->dev, sizeof(struct legoev3_analog_device),
-			   GFP_KERNEL);
-	if (!alg)
-		return -ENOMEM;
+	if (alg->spi) {
+		dev_err(&spi->dev, "%s: Device has already been registered!\n",
+			 __func__);
+		return -EINVAL;
+	}
 
 	if (!spi->dev.platform_data) {
 		dev_err(&spi->dev, "%s: Platform data is required!\n",
@@ -469,7 +492,6 @@ static int __devinit legoev3_analog_probe(struct spi_device *spi)
 	}
 	alg->pdata = spi->dev.platform_data;
 
-	alg->spi = spi;
 	hrtimer_init(&alg->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	alg->timer.function = legoev3_analog_timer_callback;
 
@@ -498,12 +520,12 @@ static int __devinit legoev3_analog_probe(struct spi_device *spi)
 	alg->read_all_msg.complete = legoev3_analog_read_all_msg_complete;
 	alg->read_all_msg.context = alg;
 
-	alg->name = spi->modalias;
 	err = legoev3_analog_device_register(&spi->dev, alg);
 	if (err < 0)
 		goto legoev3_analog_device_register_fail;
 
 	spi_set_drvdata(spi, alg);
+	alg->spi = spi;
 	hrtimer_start(&alg->timer, ktime_set(0, UPDATE_SLOW_NS), HRTIMER_MODE_REL);
 
 	return 0;
@@ -518,10 +540,7 @@ static int __devexit legoev3_analog_remove(struct spi_device *spi)
 {
 	struct legoev3_analog_device *alg = spi_get_drvdata(spi);
 
-	hrtimer_cancel(&alg->timer);
 	device_unregister(&alg->dev);
-	devm_kfree(&spi->dev, alg);
-	spi_set_drvdata(spi, NULL);
 
 	return 0;
 }
