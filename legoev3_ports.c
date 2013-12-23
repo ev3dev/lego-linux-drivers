@@ -29,6 +29,7 @@
 
 #include <linux/module.h>
 #include <linux/string.h>
+#include <linux/slab.h>
 #include <linux/legoev3/legoev3_ports.h>
 
 struct device_type legoev3_input_port_device_type = {
@@ -36,36 +37,79 @@ struct device_type legoev3_input_port_device_type = {
 };
 EXPORT_SYMBOL_GPL(legoev3_input_port_device_type);
 
-int legoev3_register_input_port(struct legoev3_input_port_device *ip)
+static void legoev3_device_release (struct device *dev)
 {
-	if (!ip)
-		return -EINVAL;
-	if (ip->id >= LEGOEV3_NUM_PORT_IN)
-		return -EINVAL;
-
-	device_initialize(&ip->dev);
-	ip->dev.parent = &legoev3_port.dev;
-	ip->dev.bus = &legoev3_bus_type;
-	ip->dev.type = &legoev3_input_port_device_type;
-	dev_set_name(&ip->dev, "in%c", '1' + ip->id);
-
-	return device_add(&ip->dev);
+	kfree(dev);
 }
 
-void legoev3_unregister_input_port(struct legoev3_input_port_device *ip)
+int legoev3_register_input_port(struct legoev3_input_port_platform_data *data)
 {
-	put_device(&ip->dev);
+	struct device *dev;
+	int err;
+
+	if (!data)
+		return -EINVAL;
+	if (data->id >= LEGOEV3_NUM_PORT_IN)
+		return -EINVAL;
+
+	dev = kzalloc(sizeof(struct device), GFP_KERNEL);
+	if (!dev)
+		return -ENOMEM;
+
+	dev->parent = &legoev3_port.dev;
+	err = dev_set_name(dev, "in%c", '1' + data->id);
+	if (err < 0)
+		goto dev_set_name_fail;
+	dev->type = &legoev3_input_port_device_type;
+	dev->bus = &legoev3_bus_type;
+	dev->platform_data = data;
+	dev->release = legoev3_device_release;
+
+	err = device_register(dev);
+	if (err)
+		goto device_register_fail;
+
+	return 0;
+
+device_register_fail:
+	put_device(dev);
+	return err;
+dev_set_name_fail:
+	kfree(dev);
+	return err;
+}
+
+static int legoev3_match_input_port_id(struct device *dev, void *data)
+{
+	enum legoev3_input_port_id *id = data;
+	struct legoev3_input_port_platform_data *pdata;
+
+	if (dev->type == &legoev3_input_port_device_type) {
+		pdata = dev-> platform_data;
+		return pdata->id == *id;
+	}
+
+	return 0;
+}
+
+void legoev3_unregister_input_port(enum legoev3_input_port_id id)
+{
+	struct device *dev = bus_find_device(&legoev3_bus_type, NULL, &id,
+					     legoev3_match_input_port_id);
+
+	if (dev)
+		put_device(dev);
 }
 EXPORT_SYMBOL_GPL(legoev3_unregister_input_port);
 
-int legoev3_register_input_ports(struct legoev3_input_port_device *ip,
+int legoev3_register_input_ports(struct legoev3_input_port_platform_data *data,
 				 unsigned len)
 {
 	int err, i;
 
 	i = 0;
 	do {
-		err = legoev3_register_input_port(&ip[i]);
+		err = legoev3_register_input_port(&data[i]);
 		if (err)
 			goto legoev3_register_input_port_fail;
 	} while (++i < len);
@@ -74,19 +118,19 @@ int legoev3_register_input_ports(struct legoev3_input_port_device *ip,
 
 legoev3_register_input_port_fail:
 	while (i--)
-		legoev3_unregister_input_port(&ip[i]);
+		legoev3_unregister_input_port(data[i].id);
 
 	return err;
 }
 EXPORT_SYMBOL_GPL(legoev3_register_input_ports);
 
-void legoev3_unregister_input_ports(struct legoev3_input_port_device *ip,
+void legoev3_unregister_input_ports(enum legoev3_input_port_id *id,
 				    unsigned len)
 {
 	int i = len;
 
 	while (i--)
-		legoev3_unregister_input_port(&ip[i]);
+		legoev3_unregister_input_port(id[i]);
 }
 EXPORT_SYMBOL_GPL(legoev3_unregister_input_ports);
 

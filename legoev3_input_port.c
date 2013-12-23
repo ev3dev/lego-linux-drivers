@@ -20,23 +20,32 @@
 
 #define INPUT_PORT_POLL_NS	10000000	/* 10 msec */
 
-/*
- * Inital state for gpios: Pin 1 current generator is off, pins 2, 5 and 6 are
- * set to input and buffer is disabled. Not sure how the i2c clock pin works
- * yet, so setting it as input to be safe.
- */
-#define pin1_INIT	GPIOF_OUT_INIT_LOW
-#define pin2_INIT	GPIOF_IN
-#define pin5_INIT	GPIOF_IN
-#define pin6_INIT	GPIOF_IN
-#define buf_ena_INIT	GPIOF_OUT_INIT_HIGH
+enum gpio_index {
+	GPIO_PIN1,
+	GPIO_PIN2,
+	GPIO_PIN5,
+	GPIO_PIN6,
+	GPIO_BUF_ENA,
+	GPIO_I2C_CLK,
+	NUM_GPIO
+};
 
-#define GPIO_INIT(gpio_name)			\
-	{					\
-		.gpio	= ip->gpio_name##_gpio,	\
-		.flags	= gpio_name##_INIT,	\
-		.label	= "gpio_name",		\
-	},
+enum pin5_mux_mode {
+	PIN5_MUX_MODE_I2C,
+	PIN5_MUX_MODE_UART,
+	NUM_PIN5_MUX_MODE
+};
+
+struct legoev3_input_port_device {
+	enum legoev3_input_port_id id;
+	struct device *dev;
+	struct legoev3_analog_device *analog;
+	struct gpio gpio[NUM_GPIO];
+	unsigned pin5_mux[NUM_PIN5_MUX_MODE];
+	struct i2c_gpio_platform_data i2c_data;
+	struct platform_device i2c_device;
+	struct hrtimer timer;
+};
 
 static enum hrtimer_restart legoev3_input_port_timer_callback(struct hrtimer *timer)
 {
@@ -44,12 +53,12 @@ static enum hrtimer_restart legoev3_input_port_timer_callback(struct hrtimer *ti
 		container_of(timer, struct legoev3_input_port_device, timer);
 
 	hrtimer_forward_now(timer, ktime_set(1, INPUT_PORT_POLL_NS));
-printk("scanning port %s\n", dev_name(&ip->dev));
+printk("scanning port %s\n", dev_name(ip->dev));
 printk("pin1 analog: %d\n", legoev3_analog_in_pin1_value(ip->analog, ip->id));
-printk("pin1 gpio: %d\n", gpio_get_value(ip->pin1_gpio));
-printk("pin2 gpio: %d\n", gpio_get_value(ip->pin2_gpio));
-printk("pin5 gpio: %d\n", gpio_get_value(ip->pin5_gpio));
-printk("pin6 gpio: %d\n", gpio_get_value(ip->pin6_gpio));
+printk("pin1 gpio: %d\n", !!gpio_get_value(ip->gpio[GPIO_PIN1].gpio));
+printk("pin2 gpio: %d\n", !!gpio_get_value(ip->gpio[GPIO_PIN2].gpio));
+printk("pin5 gpio: %d\n", !!gpio_get_value(ip->gpio[GPIO_PIN5].gpio));
+printk("pin6 gpio: %d\n", !!gpio_get_value(ip->gpio[GPIO_PIN6].gpio));
 printk("pin6 analog: %d\n", legoev3_analog_in_pin6_value(ip->analog, ip->id));
 printk("\n");
 	return HRTIMER_RESTART;
@@ -58,60 +67,85 @@ printk("\n");
 static int __devinit
 legoev3_input_port_probe(struct device *dev)
 {
-	struct legoev3_input_port_device *ip = to_legoev3_input_port_device(dev);
-	struct gpio gpio_data[] = {
-		GPIO_INIT(pin1)
-		GPIO_INIT(pin2)
-		GPIO_INIT(pin5)
-		GPIO_INIT(pin6)
-		GPIO_INIT(buf_ena)
-	};
+	struct legoev3_input_port_device *ip;
+	struct legoev3_input_port_platform_data *pdata = dev->platform_data;
 	int err;
-printk("probing input port %s\n", dev_name(dev));
+
 	/* TODO: make a kernel option to disable port 1 when using serial port */
 	/* or find a way to auto-detect */
-	if (ip->id == LEGOEV3_PORT_IN1)
+	if (pdata->id == LEGOEV3_PORT_IN1)
 		return -EINVAL;
+
+printk("probing input port %s\n", dev_name(dev));
+	ip = kzalloc(sizeof(struct legoev3_input_port_device), GFP_KERNEL);
 	if (!ip)
-		return -EINVAL;
-printk("have a pointer\n");
+		return -ENOMEM;
+
+	ip->id = pdata->id;
+	ip->dev = dev;
 	ip->analog = request_legoev3_analog();
 	if (IS_ERR(ip->analog)) {
-		dev_err(&ip->dev, "Could not get legoev3-analog device.\n");
-		return PTR_ERR(ip->analog);
+		dev_err(dev, "Could not get legoev3-analog device.\n");
+		err = PTR_ERR(ip->analog);
+		goto request_legoev3_analog_fail;
 	}
-printk("got analog, requesting gpios %d, %d, %d, %d, %d, %d (%d)",
-	ip->pin1_gpio, ip->pin2_gpio, ip->pin5_gpio, ip->pin6_gpio,
-	ip->buf_ena_gpio, ip->i2c_clk_gpio, ARRAY_SIZE(gpio_data));
-	err = gpio_request_array(gpio_data, ARRAY_SIZE(gpio_data));
+
+	ip->gpio[GPIO_PIN1].gpio	= pdata->pin1_gpio;
+	ip->gpio[GPIO_PIN1].flags	= GPIOF_OUT_INIT_LOW;
+	ip->gpio[GPIO_PIN2].gpio	= pdata->pin2_gpio;
+	ip->gpio[GPIO_PIN2].flags	= GPIOF_IN;
+	ip->gpio[GPIO_PIN5].gpio	= pdata->pin5_gpio;
+	ip->gpio[GPIO_PIN5].flags	= GPIOF_IN;
+	ip->gpio[GPIO_PIN6].gpio	= pdata->pin6_gpio;
+	ip->gpio[GPIO_PIN6].flags	= GPIOF_IN;
+	ip->gpio[GPIO_BUF_ENA].gpio	= pdata->buf_ena_gpio;
+	ip->gpio[GPIO_BUF_ENA].flags	= GPIOF_OUT_INIT_HIGH;
+	ip->gpio[GPIO_I2C_CLK].gpio	= pdata->i2c_clk_gpio;
+	ip->gpio[GPIO_I2C_CLK].flags	= GPIOF_IN;
+
+	err = gpio_request_array(ip->gpio, ARRAY_SIZE(ip->gpio));
 	if (err) {
-		dev_err(&ip->dev, "Requesting GPIOs failed.\n");
-		return err;
+		dev_err(dev, "Requesting GPIOs failed.\n");
+		goto gpio_request_array_fail;
 	}
-printk("got gpios\n");
+
+	ip->pin5_mux[PIN5_MUX_MODE_I2C] = pdata->i2c_pin_mux;
+	ip->pin5_mux[PIN5_MUX_MODE_UART] = pdata->uart_pin_mux;
+
+	ip->i2c_data.sda_pin	= pdata->pin6_gpio;
+	ip->i2c_data.scl_pin	= pdata->i2c_clk_gpio;
+	ip->i2c_data.udelay	= 52;	/* ~9.6kHz */
+	ip->i2c_device.name			= "legoev3-input-port-i2c";
+	ip->i2c_device.id			= pdata->id;
+	ip->i2c_device.dev.parent		= dev;
+	ip->i2c_device.dev.platform_data	= &ip->i2c_data;
+
 	hrtimer_init(&ip->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	ip->timer.function = legoev3_input_port_timer_callback;
 	hrtimer_start(&ip->timer, ktime_set(1, INPUT_PORT_POLL_NS),
 		      HRTIMER_MODE_REL);
-printk("done\n");
+
+	dev_set_drvdata(dev, ip);
+
 	return 0;
+
+gpio_request_array_fail:
+request_legoev3_analog_fail:
+	kfree(ip);
+
+	return err;
 }
 
 static int __devexit
 legoev3_input_port_remove(struct device *dev)
 {
-	struct legoev3_input_port_device *ip = to_legoev3_input_port_device(dev);
-	struct gpio gpio_data[] = {
-		GPIO_INIT(pin1)
-		GPIO_INIT(pin2)
-		GPIO_INIT(pin5)
-		GPIO_INIT(pin6)
-		GPIO_INIT(buf_ena)
-	};
+	struct legoev3_input_port_device *ip = dev_get_drvdata(dev);
 printk("removing device %s\n", dev_name(dev));
 	hrtimer_cancel(&ip->timer);
-	gpio_free_array(gpio_data, ARRAY_SIZE(gpio_data));
-	dev_set_drvdata(&ip->dev, NULL);
+	/* TODO: check if i2c or uart device is registered and unregister it too */
+	gpio_free_array(ip->gpio, ARRAY_SIZE(ip->gpio));
+	dev_set_drvdata(dev, NULL);
+	kfree(ip);
 
 	return 0;
 }

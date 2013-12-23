@@ -148,7 +148,7 @@ struct legoev3_analog_device {
 	u16 raw_data[ADS7957_NUM_CHANNELS];
 	u8 num_connected;
 	bool read_nxt_color[LEGOEV3_NUM_PORT_IN];
-	enum legoev3_input_port current_nxt_color_port;
+	enum legoev3_input_port_id current_nxt_color_port;
 	enum nxt_color_read_state current_nxt_color_read_state;
 	u16 nxt_color_raw_data[LEGOEV3_NUM_PORT_IN][NUM_NXT_COLOR_READ_STATE];
 };
@@ -272,38 +272,38 @@ u16 legoev3_analog_get_value_for_ch(struct legoev3_analog_device *alg, u8 channe
 }
 
 u16 legoev3_analog_in_pin1_value(struct legoev3_analog_device *alg,
-				 enum legoev3_input_port port)
+				 enum legoev3_input_port_id id)
 {
-	if (port >= LEGOEV3_NUM_PORT_IN) {
-		dev_crit(&alg->dev, "%s: port %d >= availible ports (%d)\n",
-			 __func__, port, LEGOEV3_NUM_PORT_IN);
+	if (id >= LEGOEV3_NUM_PORT_IN) {
+		dev_crit(&alg->dev, "%s: id %d >= availible ports (%d)\n",
+			 __func__, id, LEGOEV3_NUM_PORT_IN);
 		return -EINVAL;
 	}
-	return legoev3_analog_get_value_for_ch(alg, alg->pdata->in_pin1_ch[port]);
+	return legoev3_analog_get_value_for_ch(alg, alg->pdata->in_pin1_ch[id]);
 }
 EXPORT_SYMBOL_GPL(legoev3_analog_in_pin1_value);
 
 u16 legoev3_analog_in_pin6_value(struct legoev3_analog_device *alg,
-				 enum legoev3_input_port port)
+				 enum legoev3_input_port_id id)
 {
-	if (port >= LEGOEV3_NUM_PORT_IN) {
-		dev_crit(&alg->dev, "%s: port %d >= availible ports (%d)\n",
-			 __func__, port, LEGOEV3_NUM_PORT_IN);
+	if (id >= LEGOEV3_NUM_PORT_IN) {
+		dev_crit(&alg->dev, "%s: id %d >= availible ports (%d)\n",
+			 __func__, id, LEGOEV3_NUM_PORT_IN);
 		return -EINVAL;
 	}
-	return legoev3_analog_get_value_for_ch(alg, alg->pdata->in_pin6_ch[port]);
+	return legoev3_analog_get_value_for_ch(alg, alg->pdata->in_pin6_ch[id]);
 }
 EXPORT_SYMBOL_GPL(legoev3_analog_in_pin6_value);
 
 u16 legoev3_analog_out_pin5_value(struct legoev3_analog_device *alg,
-				  enum legoev3_output_port port)
+				  enum legoev3_output_port_id id)
 {
-	if (port >= LEGOEV3_NUM_PORT_OUT) {
-		dev_crit(&alg->dev, "%s: port %d >= availible ports (%d)\n",
-			 __func__, port, LEGOEV3_NUM_PORT_OUT);
+	if (id >= LEGOEV3_NUM_PORT_OUT) {
+		dev_crit(&alg->dev, "%s: id %d >= availible ports (%d)\n",
+			 __func__, id, LEGOEV3_NUM_PORT_OUT);
 		return -EINVAL;
 	}
-	return legoev3_analog_get_value_for_ch(alg, alg->pdata->out_pin5_ch[port]);
+	return legoev3_analog_get_value_for_ch(alg, alg->pdata->out_pin5_ch[id]);
 }
 EXPORT_SYMBOL_GPL(legoev3_analog_out_pin5_value);
 
