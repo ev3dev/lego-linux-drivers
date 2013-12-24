@@ -32,8 +32,32 @@
 #include <linux/slab.h>
 #include <linux/legoev3/legoev3_ports.h>
 
+static ssize_t legoev3_show_device_type(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	return sprintf(buf, "%s\n", dev->type->name);
+}
+
+DEVICE_ATTR(device_type, S_IRUGO, legoev3_show_device_type, NULL);
+
+static struct attribute *legoev3_device_type_attrs[] = {
+	&dev_attr_device_type.attr,
+	NULL
+};
+
+struct attribute_group legoev3_device_type_attr_grp = {
+	.attrs	= legoev3_device_type_attrs,
+};
+EXPORT_SYMBOL_GPL(legoev3_device_type_attr_grp);
+
+const struct attribute_group *legoev3_input_port_device_type_attr_groups[] = {
+	&legoev3_device_type_attr_grp,
+	NULL
+};
+
 struct device_type legoev3_input_port_device_type = {
 	.name	= "legoev3-input-port",
+	.groups	= legoev3_input_port_device_type_attr_groups,
 };
 EXPORT_SYMBOL_GPL(legoev3_input_port_device_type);
 
@@ -57,7 +81,7 @@ int legoev3_register_input_port(struct legoev3_input_port_platform_data *data)
 		return -ENOMEM;
 
 	dev->parent = &legoev3_port.dev;
-	err = dev_set_name(dev, "in%c", '1' + data->id);
+	err = dev_set_name(dev, "input-port%c", '1' + data->id);
 	if (err < 0)
 		goto dev_set_name_fail;
 	dev->type = &legoev3_input_port_device_type;
@@ -98,7 +122,7 @@ void legoev3_unregister_input_port(enum legoev3_input_port_id id)
 					     legoev3_match_input_port_id);
 
 	if (dev)
-		put_device(dev);
+		device_unregister(dev);
 }
 EXPORT_SYMBOL_GPL(legoev3_unregister_input_port);
 
@@ -135,7 +159,7 @@ void legoev3_unregister_input_ports(enum legoev3_input_port_id *id,
 EXPORT_SYMBOL_GPL(legoev3_unregister_input_ports);
 
 struct platform_device legoev3_port = {
-	.name	= "legoev3-port",
+	.name	= "legoev3-ports",
 	.id	= -1,
 };
 
