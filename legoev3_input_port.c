@@ -18,6 +18,7 @@
 #include <linux/workqueue.h>
 #include <linux/legoev3/legoev3_analog.h>
 #include <linux/legoev3/legoev3_ports.h>
+#include <linux/legoev3/legoev3_input_port.h>
 
 #define INPUT_PORT_POLL_NS	10000000	/* 10 msec */
 #define SETTLE_CNT		2		/* 20 msec */
@@ -124,10 +125,6 @@ struct device_type legoev3_sensor_device_types[] = {
 	},
 };
 
-struct legoev3_input_port_device {
-	struct device dev;
-};
-
 /**
  * struct legoev3_input_port_controller - An input port on the EV3 brick
  * @id: Unique identifier for the port.
@@ -169,6 +166,14 @@ struct legoev3_input_port_controller {
 	struct legoev3_input_port_device *sensor;
 };
 
+static int legoev3_input_port_device_pin1_mv(struct legoev3_input_port_device *ipd)
+{
+	struct legoev3_input_port_controller *ipc =
+					dev_get_drvdata(ipd->dev.parent);
+
+	return legoev3_analog_in_pin1_value(ipc->analog, ipc->id);
+}
+
 void legoev3_input_port_float(struct legoev3_input_port_controller *ipc)
 {
 	/* TODO: ensure i2c and uart devices are unregisted */
@@ -183,7 +188,7 @@ static void legoev3_input_port_device_release (struct device *dev)
 {
 	struct legoev3_input_port_device *ipd =
 		container_of(dev, struct legoev3_input_port_device, dev);
-printk("%s: device released\n", dev_name(dev));
+
 	kfree(ipd);
 }
 
@@ -217,6 +222,7 @@ void legoev3_input_port_register_sensor(struct work_struct *work)
 	ipd->dev.type = &legoev3_sensor_device_types[ipc->sensor_type];
 	ipd->dev.bus = &legoev3_bus_type;
 	ipd->dev.release = legoev3_input_port_device_release;
+	ipd->pin1_mv = legoev3_input_port_device_pin1_mv;
 	err = device_register(&ipd->dev);
 	if (err) {
 		dev_err(ipc->dev, "Could not set name of sensor attached to %s.\n",
@@ -383,7 +389,6 @@ static int __devinit legoev3_input_port_probe(struct device *dev)
 	if (pdata->id == LEGOEV3_PORT_IN1)
 		return -EINVAL;
 
-printk("probing input port %s\n", dev_name(dev));
 	ipc = kzalloc(sizeof(struct legoev3_input_port_controller), GFP_KERNEL);
 	if (!ipc)
 		return -ENOMEM;
@@ -427,6 +432,10 @@ printk("probing input port %s\n", dev_name(dev));
 	ipc->i2c_device.dev.parent		= dev;
 	ipc->i2c_device.dev.platform_data	= &ipc->i2c_data;
 
+	err = dev_set_drvdata(dev, ipc);
+	if (err)
+		goto dev_set_drvdata_fail;
+
 	INIT_WORK(&ipc->work, NULL);
 
 	ipc->con_state = CON_STATE_INIT;
@@ -435,10 +444,10 @@ printk("probing input port %s\n", dev_name(dev));
 	hrtimer_start(&ipc->timer, ktime_set(0, INPUT_PORT_POLL_NS),
 		      HRTIMER_MODE_REL);
 
-	dev_set_drvdata(dev, ipc);
-
 	return 0;
 
+dev_set_drvdata_fail:
+	gpio_free_array(ipc->gpio, ARRAY_SIZE(ipc->gpio));
 gpio_request_array_fail:
 	put_legoev3_analog(ipc->analog);
 request_legoev3_analog_fail:
@@ -450,7 +459,7 @@ request_legoev3_analog_fail:
 static int __devexit legoev3_input_port_remove(struct device *dev)
 {
 	struct legoev3_input_port_controller *ipc = dev_get_drvdata(dev);
-printk("removing device %s\n", dev_name(dev));
+
 	hrtimer_cancel(&ipc->timer);
 	cancel_work_sync(&ipc->work);
 	if (ipc->sensor)
