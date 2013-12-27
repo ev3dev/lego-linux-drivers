@@ -390,7 +390,7 @@ printk("probing input port %s\n", dev_name(dev));
 
 	ipc->id = pdata->id;
 	ipc->dev = dev;
-	ipc->analog = request_legoev3_analog();
+	ipc->analog = get_legoev3_analog();
 	if (IS_ERR(ipc->analog)) {
 		dev_err(dev, "Could not get legoev3-analog device.\n");
 		err = PTR_ERR(ipc->analog);
@@ -440,6 +440,7 @@ printk("probing input port %s\n", dev_name(dev));
 	return 0;
 
 gpio_request_array_fail:
+	put_legoev3_analog(ipc->analog);
 request_legoev3_analog_fail:
 	kfree(ipc);
 
@@ -457,6 +458,7 @@ printk("removing device %s\n", dev_name(dev));
 	legoev3_input_port_float(ipc); /* this unregisters i2c and uart if needed */
 	gpio_free_array(ipc->gpio, ARRAY_SIZE(ipc->gpio));
 	dev_set_drvdata(dev, NULL);
+	put_legoev3_analog(ipc->analog);
 	kfree(ipc);
 
 	return 0;

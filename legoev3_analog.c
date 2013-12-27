@@ -455,18 +455,28 @@ struct legoev3_analog_device legoev3_analog = {
 };
 
 /**
- * request_legoev3_analog - request the legoev3-analog device
+ * get_legoev3_analog - get the legoev3-analog device
  *
  * This will return a pointer to the legoev3-analog device if it has been
- * initalized. Otherwise, it returns -ENODEV.
+ * initalized. Otherwise, it returns -ENODEV. If get_legoev3_analog succeeds,
+ * the calling code needs to release the analog device when it is no longer
+ * required using the put_legoev3_analog function.
  */
-struct legoev3_analog_device *request_legoev3_analog(void)
+struct legoev3_analog_device *get_legoev3_analog(void)
 {
-	if (legoev3_analog.spi)
-		return &legoev3_analog;
-	return ERR_PTR(-ENODEV);
+	if (!legoev3_analog.spi)
+		return ERR_PTR(-ENODEV);
+	get_device(&legoev3_analog.spi->dev);
+	return &legoev3_analog;
 }
-EXPORT_SYMBOL_GPL(request_legoev3_analog);
+EXPORT_SYMBOL_GPL(get_legoev3_analog);
+
+void put_legoev3_analog(struct legoev3_analog_device *alg)
+{
+	if (alg && alg->spi)
+		put_device(&alg->spi->dev);
+}
+EXPORT_SYMBOL_GPL(put_legoev3_analog);
 
 static int __devinit legoev3_analog_probe(struct spi_device *spi)
 {
