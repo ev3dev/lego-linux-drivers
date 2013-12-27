@@ -33,6 +33,71 @@
 #define PIN1_NEAR_GND		100		/* 0.1V */
 #define PIN6_NEAR_GND		150		/* 0.15V */
 
+#define PIN1_ID_01		206
+#define PIN1_ID_02		417	/* EV3 touch sensor */
+#define PIN1_ID_03		575
+#define PIN1_ID_04		833
+#define PIN1_ID_05		1063
+#define PIN1_ID_06		1241
+#define PIN1_ID_07		1403
+#define PIN1_ID_08		1599
+#define PIN1_ID_09		1795
+#define PIN1_ID_10		2024
+#define PIN1_ID_11		2204
+#define PIN1_ID_12		2382
+#define PIN1_ID_13		2619
+#define PIN1_ID_14		2826	/* 3rd part */
+#define PIN1_ID_VAR		50	/* IDs can be +/- 50mV */
+
+static int ev3_in_dev_id_max[NUM_EV3_IN_DEV_ID] = {
+	[EV3_IN_DEV_ID_01] = PIN1_ID_01 + PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_02] = PIN1_ID_02 + PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_03] = PIN1_ID_03 + PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_04] = PIN1_ID_04 + PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_05] = PIN1_ID_05 + PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_06] = PIN1_ID_06 + PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_07] = PIN1_ID_07 + PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_08] = PIN1_ID_08 + PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_09] = PIN1_ID_09 + PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_10] = PIN1_ID_11 + PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_11] = PIN1_ID_11 + PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_12] = PIN1_ID_12 + PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_13] = PIN1_ID_13 + PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_14] = PIN1_ID_14 + PIN1_ID_VAR,
+};
+
+static int ev3_in_dev_id_min[NUM_EV3_IN_DEV_ID] = {
+	[EV3_IN_DEV_ID_01] = PIN1_ID_01 - PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_02] = PIN1_ID_02 - PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_03] = PIN1_ID_03 - PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_04] = PIN1_ID_04 - PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_05] = PIN1_ID_05 - PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_06] = PIN1_ID_06 - PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_07] = PIN1_ID_07 - PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_08] = PIN1_ID_08 - PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_09] = PIN1_ID_09 - PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_10] = PIN1_ID_11 - PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_11] = PIN1_ID_11 - PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_12] = PIN1_ID_12 - PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_13] = PIN1_ID_13 - PIN1_ID_VAR,
+	[EV3_IN_DEV_ID_14] = PIN1_ID_14 - PIN1_ID_VAR,
+};
+
+/**
+ * to_ev3_in_dev_id - converts id resistor mV value to an enum
+ * @mv: The value to convert.
+ */
+enum ev3_in_dev_id to_ev3_in_dev_id(int mv)
+{
+	enum ev3_in_dev_id id = NUM_EV3_IN_DEV_ID;
+
+	while (id--) {
+		if (mv >= ev3_in_dev_id_min[id] && mv <= ev3_in_dev_id_max[id])
+			return id;
+	}
+
+	return EV3_IN_DEV_ID_ERR;
+}
 
 enum gpio_index {
 	GPIO_PIN1,
@@ -83,7 +148,20 @@ enum sensor_type {
 	SENSOR_NXT_COLOR,
 	SENSOR_NXT_DUMB,
 	SENSOR_NXT_I2C,
-	SENSOR_EV3_DUMB,
+	SENSOR_EV3_ID_01,
+	SENSOR_EV3_ID_02,
+	SENSOR_EV3_ID_03,
+	SENSOR_EV3_ID_04,
+	SENSOR_EV3_ID_05,
+	SENSOR_EV3_ID_06,
+	SENSOR_EV3_ID_07,
+	SENSOR_EV3_ID_08,
+	SENSOR_EV3_ID_09,
+	SENSOR_EV3_ID_10,
+	SENSOR_EV3_ID_11,
+	SENSOR_EV3_ID_12,
+	SENSOR_EV3_ID_13,
+	SENSOR_EV3_ID_14,
 	SENSOR_EV3_UART,
 	SENSOR_ERR,
 	NUM_SENSOR
@@ -115,8 +193,60 @@ struct device_type legoev3_sensor_device_types[] = {
 		.name	= "legoev3-nxt-i2c-sensor",
 		.groups	= legoev3_common_sensor_device_type_attr_groups,
 	},
-	[SENSOR_EV3_DUMB] = {
-		.name	= "legoev3-ev3-dumb-sensor",
+	[SENSOR_EV3_ID_01] = {
+		.name	= "legoev3-ev3-sensor-01",
+		.groups	= legoev3_common_sensor_device_type_attr_groups,
+	},
+	[SENSOR_EV3_ID_02] = {
+		.name	= "legoev3-ev3-sensor-02",
+		.groups	= legoev3_common_sensor_device_type_attr_groups,
+	},
+	[SENSOR_EV3_ID_03] = {
+		.name	= "legoev3-ev3-sensor-03",
+		.groups	= legoev3_common_sensor_device_type_attr_groups,
+	},
+	[SENSOR_EV3_ID_04] = {
+		.name	= "legoev3-ev3-sensor-04",
+		.groups	= legoev3_common_sensor_device_type_attr_groups,
+	},
+	[SENSOR_EV3_ID_05] = {
+		.name	= "legoev3-ev3-sensor-05",
+		.groups	= legoev3_common_sensor_device_type_attr_groups,
+	},
+	[SENSOR_EV3_ID_06] = {
+		.name	= "legoev3-ev3-sensor-06",
+		.groups	= legoev3_common_sensor_device_type_attr_groups,
+	},
+	[SENSOR_EV3_ID_07] = {
+		.name	= "legoev3-ev3-sensor-07",
+		.groups	= legoev3_common_sensor_device_type_attr_groups,
+	},
+	[SENSOR_EV3_ID_08] = {
+		.name	= "legoev3-ev3-sensor-08",
+		.groups	= legoev3_common_sensor_device_type_attr_groups,
+	},
+	[SENSOR_EV3_ID_09] = {
+		.name	= "legoev3-ev3-sensor-09",
+		.groups	= legoev3_common_sensor_device_type_attr_groups,
+	},
+	[SENSOR_EV3_ID_10] = {
+		.name	= "legoev3-ev3-sensor-10",
+		.groups	= legoev3_common_sensor_device_type_attr_groups,
+	},
+	[SENSOR_EV3_ID_11] = {
+		.name	= "legoev3-ev3-sensor-11",
+		.groups	= legoev3_common_sensor_device_type_attr_groups,
+	},
+	[SENSOR_EV3_ID_12] = {
+		.name	= "legoev3-ev3-sensor-12",
+		.groups	= legoev3_common_sensor_device_type_attr_groups,
+	},
+	[SENSOR_EV3_ID_13] = {
+		.name	= "legoev3-ev3-sensor-13",
+		.groups	= legoev3_common_sensor_device_type_attr_groups,
+	},
+	[SENSOR_EV3_ID_14] = {
+		.name	= "legoev3-ev3-sensor-14",
 		.groups	= legoev3_common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_UART] = {
@@ -174,6 +304,14 @@ static int legoev3_input_port_device_pin1_mv(struct legoev3_input_port_device *i
 	return legoev3_analog_in_pin1_value(ipc->analog, ipc->id);
 }
 
+static int legoev3_input_port_device_pin6_mv(struct legoev3_input_port_device *ipd)
+{
+	struct legoev3_input_port_controller *ipc =
+					dev_get_drvdata(ipd->dev.parent);
+
+	return legoev3_analog_in_pin6_value(ipc->analog, ipc->id);
+}
+
 void legoev3_input_port_float(struct legoev3_input_port_controller *ipc)
 {
 	/* TODO: ensure i2c and uart devices are unregisted */
@@ -223,6 +361,7 @@ void legoev3_input_port_register_sensor(struct work_struct *work)
 	ipd->dev.bus = &legoev3_bus_type;
 	ipd->dev.release = legoev3_input_port_device_release;
 	ipd->pin1_mv = legoev3_input_port_device_pin1_mv;
+	ipd->pin6_mv = legoev3_input_port_device_pin6_mv;
 	err = device_register(&ipd->dev);
 	if (err) {
 		dev_err(ipc->dev, "Could not set name of sensor attached to %s.\n",
@@ -262,7 +401,7 @@ static enum hrtimer_restart legoev3_input_port_timer_callback(struct hrtimer *ti
 
 	switch(ipc->con_state) {
 	case CON_STATE_INIT:
-		legoev3_input_port_float(ipc);printk("%s: init\n", dev_name(ipc->dev));
+		legoev3_input_port_float(ipc);
 		ipc->timer_loop_cnt = 0;
 		ipc->sensor_type = SENSOR_NONE;
 		ipc->con_state = CON_STATE_INIT_SETTLE;
@@ -317,9 +456,56 @@ static enum hrtimer_restart legoev3_input_port_timer_callback(struct hrtimer *ti
 				if (new_pin1_mv > PIN1_NEAR_PIN2)
 					ipc->sensor_type = SENSOR_ERR;
 				else if (new_pin1_mv < PIN1_NEAR_GND)
-					ipc->sensor_type = SENSOR_EV3_DUMB;
-				else
 					ipc->sensor_type = SENSOR_EV3_UART;
+				else {
+					switch(to_ev3_in_dev_id(new_pin1_mv)) {
+					case EV3_IN_DEV_ID_01:
+						ipc->sensor_type = SENSOR_EV3_ID_01;
+						break;
+					case EV3_IN_DEV_ID_02:
+						ipc->sensor_type = SENSOR_EV3_ID_02;
+						break;
+					case EV3_IN_DEV_ID_03:
+						ipc->sensor_type = SENSOR_EV3_ID_03;
+						break;
+					case EV3_IN_DEV_ID_04:
+						ipc->sensor_type = SENSOR_EV3_ID_04;
+						break;
+					case EV3_IN_DEV_ID_05:
+						ipc->sensor_type = SENSOR_EV3_ID_05;
+						break;
+					case EV3_IN_DEV_ID_06:
+						ipc->sensor_type = SENSOR_EV3_ID_06;
+						break;
+					case EV3_IN_DEV_ID_07:
+						ipc->sensor_type = SENSOR_EV3_ID_07;
+						break;
+					case EV3_IN_DEV_ID_08:
+						ipc->sensor_type = SENSOR_EV3_ID_08;
+						break;
+					case EV3_IN_DEV_ID_09:
+						ipc->sensor_type = SENSOR_EV3_ID_09;
+						break;
+					case EV3_IN_DEV_ID_10:
+						ipc->sensor_type = SENSOR_EV3_ID_10;
+						break;
+					case EV3_IN_DEV_ID_11:
+						ipc->sensor_type = SENSOR_EV3_ID_11;
+						break;
+					case EV3_IN_DEV_ID_12:
+						ipc->sensor_type = SENSOR_EV3_ID_12;
+						break;
+					case EV3_IN_DEV_ID_13:
+						ipc->sensor_type = SENSOR_EV3_ID_13;
+						break;
+					case EV3_IN_DEV_ID_14:
+						ipc->sensor_type = SENSOR_EV3_ID_14;
+						break;
+					default:
+						ipc->sensor_type = SENSOR_ERR;
+						break;
+					}
+				}
 			} else if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN6_HIGH)) {
 				ipc->con_state = CON_STATE_HAVE_I2C;
 				ipc->sensor_type = SENSOR_NXT_I2C;
