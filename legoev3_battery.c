@@ -92,16 +92,10 @@ static enum power_supply_property legoev3_battery_props[] = {
 	POWER_SUPPLY_PROP_SCOPE,
 };
 
-static int legoev3_battery_match_name(struct device *dev, void *name)
-{
-        return !strcmp(name, dev_name(dev));
-}
-
 static int __devinit legoev3_battery_probe(struct platform_device *pdev)
 {
 	struct legoev3_battery *bat;
 	struct legoev3_battery_platform_data *pdata;
-	struct device *dev;
 	int ret;
 
 	bat = devm_kzalloc(&pdev->dev, sizeof(struct legoev3_battery),
@@ -116,22 +110,12 @@ static int __devinit legoev3_battery_probe(struct platform_device *pdev)
 		goto no_platform_data;
 	}
 
-	dev = driver_find_device(&legoev3_analog_driver.driver, NULL,
-				 (char *)pdata->spi_analog_dev_name,
-				 legoev3_battery_match_name);
-	if (!dev) {
-		dev_err(&pdev->dev, "could not find analog device \"%s\"!\n",
-			pdata->spi_analog_dev_name);
-		ret = -EINVAL;
-		goto analog_device_not_found;
+	bat->alg = get_legoev3_analog();
+	if (IS_ERR(bat->alg)) {
+		dev_err(&pdev->dev, "could not get analog device!\n");
+		ret = PTR_ERR(bat->alg);
+		goto no_analog_device;
 	}
-	if (IS_ERR(dev)) {
-		dev_err(&pdev->dev, "could not find analog device \"%s\"!\n",
-			pdata->spi_analog_dev_name);
-		ret = PTR_ERR(dev);
-		goto analog_device_not_found;
-	}
-	bat->alg = dev_get_drvdata(dev);
 
 	bat->status = POWER_SUPPLY_STATUS_DISCHARGING;
 	bat->psy.name = "legoev3-battery";
@@ -172,7 +156,8 @@ power_supply_register_fail:
 gpio_get_value_fail:
 	gpio_free(bat->batt_type_gpio);
 gpio_request_one_fail:
-analog_device_not_found:
+	put_legoev3_analog(bat->alg);
+no_analog_device:
 no_platform_data:
 	devm_kfree(&pdev->dev, bat);
 	return ret;
@@ -185,6 +170,7 @@ static int __devexit legoev3_battery_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 	power_supply_unregister(&bat->psy);	
 	gpio_free(bat->batt_type_gpio);
+	put_legoev3_analog(bat->alg);
 	devm_kfree(&pdev->dev, bat);
 	return 0;
 }
