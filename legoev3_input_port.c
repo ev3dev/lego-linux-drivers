@@ -202,7 +202,7 @@ void legoev3_input_port_register_sensor(struct work_struct *work)
 	}
 
 	ipd->dev.parent = ipc->dev;
-	if (dev_set_name(&ipd->dev, "sensor")) {
+	if (dev_set_name(&ipd->dev, "%s:sensor", dev_name(ipc->dev))) {
 		dev_err(ipc->dev, "Could not set name of sensor attached to %s.\n",
 			dev_name(ipc->dev));
 		goto set_dev_name_fail;
@@ -452,6 +452,8 @@ static int __devexit legoev3_input_port_remove(struct device *dev)
 printk("removing device %s\n", dev_name(dev));
 	hrtimer_cancel(&ipc->timer);
 	cancel_work_sync(&ipc->work);
+	if (ipc->sensor)
+		device_unregister(&ipc->sensor->dev);
 	legoev3_input_port_float(ipc); /* this unregisters i2c and uart if needed */
 	gpio_free_array(ipc->gpio, ARRAY_SIZE(ipc->gpio));
 	dev_set_drvdata(dev, NULL);
