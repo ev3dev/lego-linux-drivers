@@ -23,7 +23,7 @@
 
 #include <mach/legoev3.h>
 
-struct legoev3_battery {	
+struct legoev3_battery {
 	struct power_supply psy;
 	struct legoev3_analog_device *alg;
 	int status;
@@ -143,13 +143,13 @@ static int __devinit legoev3_battery_probe(struct platform_device *pdev)
 		bat->v_max = 7500000;
 		bat->v_min = 7100000;
 	}
-	
+
 	ret = power_supply_register(&pdev->dev, &bat->psy);
 	if (ret)
 		goto power_supply_register_fail;
 
-	platform_set_drvdata(pdev, bat);	
-	
+	platform_set_drvdata(pdev, bat);
+
 	return 0;
 
 power_supply_register_fail:
@@ -166,9 +166,9 @@ no_platform_data:
 static int __devexit legoev3_battery_remove(struct platform_device *pdev)
 {
 	struct legoev3_battery *bat= platform_get_drvdata(pdev);
-	
+
 	platform_set_drvdata(pdev, NULL);
-	power_supply_unregister(&bat->psy);	
+	power_supply_unregister(&bat->psy);
 	gpio_free(bat->batt_type_gpio);
 	put_legoev3_analog(bat->alg);
 	devm_kfree(&pdev->dev, bat);
