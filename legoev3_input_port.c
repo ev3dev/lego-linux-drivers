@@ -16,6 +16,7 @@
 #include <linux/err.h>
 #include <linux/module.h>
 #include <linux/workqueue.h>
+#include <linux/i2c-legoev3.h>
 #include <linux/legoev3/legoev3_analog.h>
 #include <linux/legoev3/legoev3_ports.h>
 #include <linux/legoev3/legoev3_input_port.h>
@@ -107,6 +108,7 @@ enum gpio_index {
 	GPIO_PIN5,
 	GPIO_PIN6,
 	GPIO_BUF_ENA,
+	GPIO_I2C_CLK,
 	NUM_GPIO
 };
 
@@ -288,7 +290,7 @@ struct legoev3_input_port_controller {
 	struct legoev3_analog_device *analog;
 	struct gpio gpio[NUM_GPIO];
 	unsigned pin5_mux[NUM_PIN5_MUX_MODE];
-	struct i2c_gpio_platform_data i2c_data;
+	struct i2c_legoev3_platform_data i2c_data;
 	struct platform_device_info i2c_pdev_info;
 	struct platform_device *i2c_pdev;
 	struct work_struct work;
@@ -340,7 +342,6 @@ int legoev3_register_sensor_i2c(struct legoev3_input_port_controller *ipc,
 	struct platform_device *pdev;
 	int err;
 
-	gpio_free(ipc->i2c_data.sda_pin);
 	gpio_set_value(ipc->gpio[GPIO_BUF_ENA].gpio, 0); /* active low */
 	err = davinci_cfg_reg(ipc->pin5_mux[PIN5_MUX_MODE_I2C]);
 	if (err) {
@@ -361,21 +362,15 @@ int legoev3_register_sensor_i2c(struct legoev3_input_port_controller *ipc,
 platform_device_register_fail:
 davinci_cfg_reg_fail:
 	gpio_set_value(ipc->gpio[GPIO_BUF_ENA].gpio, 1); /* active low */
-	gpio_request_one(ipc->i2c_data.sda_pin, GPIOF_IN, "pin6");
 
 	return err;
 }
 
 void legoev3_unregister_sensor_i2c(struct legoev3_input_port_controller *ipc)
 {
-	int err;
-
 	platform_device_unregister(ipc->i2c_pdev);
 	ipc->i2c_pdev = NULL;
 	gpio_set_value(ipc->gpio[GPIO_BUF_ENA].gpio, 1); /* active low */
-	err = gpio_request_one(ipc->i2c_data.sda_pin, GPIOF_IN, NULL);
-	if (err)
-		dev_err(ipc->dev, "Could not request pin 6 gpio.\n");
 }
 
 void legoev3_input_port_register_sensor(struct work_struct *work)
@@ -443,7 +438,7 @@ void legoev3_input_port_unregister_sensor(struct work_struct *work)
 	struct legoev3_input_port_controller *ipc =
 		container_of(work, struct legoev3_input_port_controller, work);
 
-	if (ipc->sensor_type == SENSOR_NXT_I2C)
+	if (ipc->i2c_pdev)
 		legoev3_unregister_sensor_i2c(ipc);
 	device_unregister(&ipc->sensor->dev);
 	ipc->sensor = NULL;
@@ -665,6 +660,9 @@ static int __devinit legoev3_input_port_probe(struct device *dev)
 	ipc->gpio[GPIO_BUF_ENA].gpio	= pdata->buf_ena_gpio;
 	ipc->gpio[GPIO_BUF_ENA].flags	= GPIOF_OUT_INIT_HIGH;
 	ipc->gpio[GPIO_BUF_ENA].label	= "buf_ena";
+	ipc->gpio[GPIO_I2C_CLK].gpio	= pdata->i2c_clk_gpio;
+	ipc->gpio[GPIO_I2C_CLK].flags	= GPIOF_IN;
+	ipc->gpio[GPIO_I2C_CLK].label	= "i2c_clk";
 
 	err = gpio_request_array(ipc->gpio, ARRAY_SIZE(ipc->gpio));
 	if (err) {
@@ -677,8 +675,7 @@ static int __devinit legoev3_input_port_probe(struct device *dev)
 
 	ipc->i2c_data.sda_pin	= pdata->pin6_gpio;
 	ipc->i2c_data.scl_pin	= pdata->i2c_clk_gpio;
-	ipc->i2c_data.udelay	= 52;	/* ~9.6kHz */
-	ipc->i2c_pdev_info.name	= "i2c-gpio";
+	ipc->i2c_pdev_info.name	= "i2c-legoev3";
 	ipc->i2c_pdev_info.id	= pdata->i2c_dev_id;
 	ipc->i2c_pdev_info.data	= &ipc->i2c_data;
 	ipc->i2c_pdev_info.size_data = sizeof(ipc->i2c_data);

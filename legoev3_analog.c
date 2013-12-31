@@ -221,7 +221,7 @@ static enum hrtimer_restart legoev3_analog_timer_callback(struct hrtimer *timer)
 	bool last_color_read_state = alg->current_nxt_color_read_state ==
 						NUM_NXT_COLOR_READ_STATE - 1;
 	int ret;
-
+alg->num_connected = 1;
 	if (!alg->num_connected)
 		alg->next_update_ns = UPDATE_SLOW_NS;
 	else if (read_color)
