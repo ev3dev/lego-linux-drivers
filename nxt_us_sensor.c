@@ -16,6 +16,7 @@
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/slab.h>
+#include <linux/delay.h>
 #include <linux/i2c.h>
 //#include <linux/legoev3/classes/dist_sensor.h>
 #include <linux/legoev3/legoev3_input_port.h>
@@ -41,22 +42,24 @@ static int __devexit nxt_us_sensor_remove(struct i2c_client *client)
 static int nxt_us_sensor_detect(struct i2c_client *client,
 				struct i2c_board_info *info)
 {
-	char fw_ver[STR_LEN + 1] = { 0 };
 	char vend_id[STR_LEN + 1] = { 0 };
 	char dev_id[STR_LEN + 1] = { 0 };
 	int ret;
 
-	ret = i2c_smbus_read_i2c_block_data(client, FIRMWARE_REG, STR_LEN, fw_ver);
+	ret = i2c_smbus_read_i2c_block_data(client, VENDOR_ID_REG, STR_LEN,
+					    vend_id);
 	if (ret < 0)
 		return -ENODEV;
-	ret = i2c_smbus_read_i2c_block_data(client, VENDOR_ID_REG, STR_LEN, vend_id);
-	if (ret < 0)
-		return -ENODEV;
-	ret = i2c_smbus_read_i2c_block_data(client, DEVICE_ID_REG, STR_LEN, dev_id);
-	if (ret < 0)
-		return -ENODEV;
-printk("%s: fw:%s, vend:%s, dev:%s\n", __func__, fw_ver, vend_id, dev_id);
 	if (strcmp(vend_id, "LEGO"))
+		return -ENODEV;
+	/*
+	 * NXT Ultrasonic sensor requires a long delay between reads or else
+	 * we will get NAKed. msleep(1) tends to vary between 10 and 20msec.
+	 */
+	msleep(1);
+	ret = i2c_smbus_read_i2c_block_data(client, DEVICE_ID_REG, STR_LEN,
+					    dev_id);
+	if (ret < 0)
 		return -ENODEV;
 	if (strcmp(dev_id, "Sonar"))
 		return -ENODEV;

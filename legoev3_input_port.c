@@ -14,6 +14,7 @@
  */
 
 #include <linux/err.h>
+#include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/workqueue.h>
 #include <linux/i2c-legoev3.h>
@@ -413,6 +414,8 @@ void legoev3_input_port_register_sensor(struct work_struct *work)
 	}
 
 	if (ipc->sensor_type == SENSOR_NXT_I2C) {
+		/* Give the sensors time to boot */
+		msleep(1000);
 		err = legoev3_register_sensor_i2c(ipc, &ipd->dev);
 		if (err)
 			goto legoev3_register_sensor_i2c_fail;
