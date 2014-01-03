@@ -328,14 +328,6 @@ void legoev3_input_port_float(struct legoev3_input_port_controller *ipc)
 	gpio_direction_output(ipc->gpio[GPIO_BUF_ENA].gpio, 1); /* active low */
 }
 
-static void legoev3_input_port_device_release (struct device *dev)
-{
-	struct legoev3_input_port_device *ipd =
-		container_of(dev, struct legoev3_input_port_device, dev);
-
-	kfree(ipd);
-}
-
 int legoev3_register_sensor_i2c(struct legoev3_input_port_controller *ipc,
 				struct device *parent)
 {
@@ -373,6 +365,14 @@ void legoev3_unregister_sensor_i2c(struct legoev3_input_port_controller *ipc)
 	gpio_set_value(ipc->gpio[GPIO_BUF_ENA].gpio, 1); /* active low */
 }
 
+static void legoev3_input_port_device_release (struct device *dev)
+{
+	struct legoev3_input_port_device *ipd =
+		container_of(dev, struct legoev3_input_port_device, dev);
+
+	kfree(ipd);
+}
+
 void legoev3_input_port_register_sensor(struct work_struct *work)
 {
 	struct legoev3_input_port_controller *ipc =
@@ -403,15 +403,14 @@ void legoev3_input_port_register_sensor(struct work_struct *work)
 	ipd->dev.type = &legoev3_sensor_device_types[ipc->sensor_type];
 	ipd->dev.bus = &legoev3_bus_type;
 	ipd->dev.release = legoev3_input_port_device_release;
+	ipd->pin1_mv = legoev3_input_port_device_pin1_mv;
+	ipd->pin6_mv = legoev3_input_port_device_pin6_mv;
 	err = device_register(&ipd->dev);
 	if (err) {
 		dev_err(ipc->dev, "Could not set name of sensor attached to %s.\n",
 			dev_name(ipc->dev));
 		goto device_register_fail;
 	}
-
-	ipd->pin1_mv = legoev3_input_port_device_pin1_mv;
-	ipd->pin6_mv = legoev3_input_port_device_pin6_mv;
 
 	if (ipc->sensor_type == SENSOR_NXT_I2C) {
 		err = legoev3_register_sensor_i2c(ipc, &ipd->dev);
@@ -482,7 +481,7 @@ static enum hrtimer_restart legoev3_input_port_timer_callback(struct hrtimer *ti
 		if (new_pin_state_flags != ipc->pin_state_flags)
 			ipc->timer_loop_cnt = 0;
 		else if (new_pin_state_flags && ipc->timer_loop_cnt >= ADD_CNT
-			 && !work_pending(&ipc->work))
+			 && !work_busy(&ipc->work))
 		{
 			if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN2_LOW)) {
 				ipc->con_state = CON_STATE_HAVE_NXT;
@@ -610,7 +609,7 @@ static enum hrtimer_restart legoev3_input_port_timer_callback(struct hrtimer *ti
 		ipc->con_state = CON_STATE_INIT;
 		break;
 	}
-	if (ipc->sensor_type && ipc->timer_loop_cnt >= REMOVE_CNT && !work_pending(&ipc->work)) {
+	if (ipc->sensor_type && ipc->timer_loop_cnt >= REMOVE_CNT && !work_busy(&ipc->work)) {
 		if (ipc->sensor) {
 			PREPARE_WORK(&ipc->work, legoev3_input_port_unregister_sensor);
 			schedule_work(&ipc->work);
@@ -714,8 +713,8 @@ static int __devexit legoev3_input_port_remove(struct device *dev)
 		device_unregister(&ipc->sensor->dev);
 	legoev3_input_port_float(ipc); /* this unregisters i2c and uart if needed */
 	gpio_free_array(ipc->gpio, ARRAY_SIZE(ipc->gpio));
-	dev_set_drvdata(dev, NULL);
 	put_legoev3_analog(ipc->analog);
+	dev_set_drvdata(dev, NULL);
 	kfree(ipc);
 
 	return 0;

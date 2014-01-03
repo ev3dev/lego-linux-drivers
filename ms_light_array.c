@@ -73,13 +73,13 @@ static int ms_light_array_sensor_detect(struct i2c_client *client,
 	ret = i2c_smbus_read_i2c_block_data(client, DEVICE_ID_REG, STR_LEN, dev_id);
 	if (ret < 0)
 		return -ENODEV;
-printk("%s: fw:%s, vend:%s, dev:%s\n", __func__, fw_ver, vend_id, dev_id);
+
 	if (strcmp(vend_id, "mndsnsrs"))
 		return -ENODEV;
 	if (strcmp(dev_id, "LSArray"))
 		return -ENODEV;
 
-	sprintf(info->type, "ms-light-aray");
+	sprintf(info->type, "ms-light-array");
 	return 0;
 }
 
@@ -98,7 +98,7 @@ static struct i2c_driver ms_light_array_sensor_driver = {
 	.remove		= __devexit_p(ms_light_array_sensor_remove),
 	.class		= I2C_CLASS_LEGOEV3,
 	.detect		= ms_light_array_sensor_detect,
-	.address_list	= I2C_ADDRS(0x14),
+	.address_list	= I2C_ADDRS(0x0A),
 };
 module_i2c_driver(ms_light_array_sensor_driver);
 

@@ -55,7 +55,7 @@ static int nxt_us_sensor_detect(struct i2c_client *client,
 	ret = i2c_smbus_read_i2c_block_data(client, DEVICE_ID_REG, STR_LEN, dev_id);
 	if (ret < 0)
 		return -ENODEV;
-
+printk("%s: fw:%s, vend:%s, dev:%s\n", __func__, fw_ver, vend_id, dev_id);
 	if (strcmp(vend_id, "LEGO"))
 		return -ENODEV;
 	if (strcmp(dev_id, "Sonar"))
