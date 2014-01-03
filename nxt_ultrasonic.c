@@ -64,19 +64,19 @@ static int nxt_us_sensor_detect(struct i2c_client *client,
 	if (strcmp(dev_id, "Sonar"))
 		return -ENODEV;
 
-	sprintf(info->type, "nxt-us-sensor");
+	sprintf(info->type, "nxt-ultrasonic");
 	return 0;
 }
 
 static struct i2c_device_id nxt_us_sensor_idtable[] = {
-	{ "nxt-us-sensor", 0 },
+	{ "nxt-ultrasonic", 0 },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, nxt_us_sensor_idtable);
 
 static struct i2c_driver nxt_us_sensor_driver = {
 	.driver = {
-		.name	= "nxt-us-sensor",
+		.name	= "nxt-ultrasonic",
 	},
 	.id_table	= nxt_us_sensor_idtable,
 	.probe		= nxt_us_sensor_probe,

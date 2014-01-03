@@ -33,6 +33,9 @@
 
 #define STR_LEN	8	/* length of string registers */
 
+#define VENDOR_ID	"mndsnsrs"
+#define PRODUCT_ID	"LSArray"
+
 enum sensors {
 	SENSOR_0,
 	SENSOR_1,
@@ -66,13 +69,13 @@ static int ms_light_array_sensor_detect(struct i2c_client *client,
 	ret = i2c_smbus_read_i2c_block_data(client, VENDOR_ID_REG, STR_LEN, vend_id);
 	if (ret < 0)
 		return -ENODEV;
-	if (strcmp(vend_id, "mndsnsrs"))
+	if (strcmp(vend_id, VENDOR_ID))
 		return -ENODEV;
 
 	ret = i2c_smbus_read_i2c_block_data(client, DEVICE_ID_REG, STR_LEN, dev_id);
 	if (ret < 0)
 		return -ENODEV;
-	if (strcmp(dev_id, "LSArray"))
+	if (strcmp(dev_id, PRODUCT_ID))
 		return -ENODEV;
 
 	sprintf(info->type, "ms-light-array");

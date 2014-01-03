@@ -58,7 +58,7 @@ config LEGOEV3_I2C_SENSORS
 	help
 	  Select Y to enable support for I2C sensors.
 
-config LEGOEV3_NXT_US_SENSOR
+config LEGOEV3_NXT_ULTRASONIC
 	tristate "NXT Ultrasonic Distance Sensor"
 	default y
 	depends on LEGOEV3_I2C_SENSORS
