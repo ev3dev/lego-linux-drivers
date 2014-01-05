@@ -42,6 +42,7 @@
 #define TONE_MAX_HZ 10000
 #define SND_SAMPLE_RATE 22050
 #define SND_SAMPLE_RATE_SYMBOLIC SNDRV_PCM_RATE_22050
+#define SND_MAX_VOLUME 100
 
 struct snd_legoev3 {
 	struct pwm_device *pwm;
@@ -148,9 +149,9 @@ static int snd_legoev3_et_callback(struct ehrpwm_pwm *ehrpwm, void *data)
 	struct pwm_device *pwm = chip->pwm;
 	unsigned long duty_ticks;
 
-	duty_ticks = (*(short *)(runtime->dma_area + chip->playback_ptr)
-	              ^ 0x8000) * pwm->period_ticks / 0xffff *
-	              chip->global_volume / 0xffff;
+	duty_ticks = ((((*(short *)(runtime->dma_area + chip->playback_ptr)
+	                ^ 0x8000) * pwm->period_ticks) >> 8) *
+	               chip->global_volume / SND_MAX_VOLUME) >> 8;
 
 	pwm_set_duty_ticks(pwm, duty_ticks);
 
@@ -462,7 +463,7 @@ static int global_volume_control_info(struct snd_kcontrol *kcontrol,
 	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
 	uinfo->count = 1;
 	uinfo->value.integer.min = 0;
-	uinfo->value.integer.max = 0xffff;
+	uinfo->value.integer.max = SND_MAX_VOLUME;
 	return 0;
 }
 
@@ -479,7 +480,9 @@ static int global_volume_control_put(struct snd_kcontrol *kcontrol,
 {
 	struct snd_legoev3 *chip = snd_kcontrol_chip(kcontrol);
 	int changed = 0;
-	if (chip->global_volume != ucontrol->value.integer.value[0]) {
+	if ((ucontrol->value.integer.value[0] >= 0) &&
+	    (ucontrol->value.integer.value[0] <= SND_MAX_VOLUME) &&
+	    (chip->global_volume != ucontrol->value.integer.value[0])) {
 		chip->global_volume = ucontrol->value.integer.value[0];
 		changed = 1;
 	}
