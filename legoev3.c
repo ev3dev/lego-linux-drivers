@@ -40,6 +40,8 @@
 #define BUFFER_SIZE (64*1024)
 #define TONE_MIN_HZ 100
 #define TONE_MAX_HZ 10000
+#define SND_SAMPLE_RATE 22050
+#define SND_SAMPLE_RATE_SYMBOLIC SNDRV_PCM_RATE_22050
 
 struct snd_legoev3 {
 	struct pwm_device *pwm;
@@ -58,9 +60,9 @@ static struct snd_pcm_hardware snd_legoev3_playback_hw = {
 	         SNDRV_PCM_INFO_MMAP_VALID |
 	         SNDRV_PCM_INFO_INTERLEAVED),
 	.formats =          SNDRV_PCM_FMTBIT_S16_LE,
-	.rates =            SNDRV_PCM_RATE_8000_48000,
-	.rate_min =         8000,
-	.rate_max =         48000,
+	.rates =            SND_SAMPLE_RATE_SYMBOLIC,
+	.rate_min =         SND_SAMPLE_RATE,
+	.rate_max =         SND_SAMPLE_RATE,
 	.channels_min =     1,
 	.channels_max =     1,
 	.buffer_bytes_max = BUFFER_SIZE,
@@ -70,7 +72,7 @@ static struct snd_pcm_hardware snd_legoev3_playback_hw = {
 	.periods_max =      1024,
 };
 
-static unsigned int rates[] = { 48000 };
+static unsigned int rates[] = { SND_SAMPLE_RATE };
 static struct snd_pcm_hw_constraint_list constraints_rates = {
 	.count = ARRAY_SIZE(rates),
 	.list = rates,
@@ -341,7 +343,7 @@ static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 	if (err < 0)
 		return err;
 
-	err = pwm_set_frequency(chip->pwm, 48000);
+	err = pwm_set_frequency(chip->pwm, SND_SAMPLE_RATE);
 	if (err < 0)
 		return err;
 
