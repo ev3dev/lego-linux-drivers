@@ -15,13 +15,12 @@ config LEGOEV3_ANALOG
 	help
 	  Select Y to enable the EV3's built-in analog/digital converter.
 
-config LEGOEV3_BT_CLOCK
-	tristate "Bluetooth clock"
+config LEGOEV3_BLUETOOTH
+	tristate "On-board Bluetooth"
 	default y
-	depends on ECAP_PWM
+	depends on ECAP_PWM && GPIOLIB
 	help
-	  Select Y to enable the clock that drives the bluetooth chip on the
-	  LEGO Mindstorms EV3.
+	  Select Y to enable on-board bluetooth on the LEGO Mindstorms EV3.
 
 config LEGOEV3_DEV_PORTS
 	tristate "Support for devices connected to the EV3 ports"
