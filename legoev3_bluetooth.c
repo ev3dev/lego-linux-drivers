@@ -20,6 +20,8 @@
  *
  * The chip requires an external clock to function. This clock is generated
  * by one of the PWM devices on the AM1808 SoC.
+ *
+ * This also provides an interface simmilar to Device1 in d_bt.c from lms2012.
  * -----------------------------------------------------------------------------
  */
 
@@ -45,7 +47,64 @@ struct legoev3_bluetooth_device {
 	struct pwm_device *pwm;
 };
 
-/* TODO: add attributes to control device */
+static ssize_t legoev3_bluetooth_attr_show(struct device *dev,
+					   struct device_attribute *attr,
+					   char *buf)
+{
+	struct legoev3_bluetooth_device *btdev = dev_get_drvdata(dev);
+	int gpio = -1;
+
+	if (!strcmp(attr->attr.name, "enabled"))
+		gpio = btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].gpio;
+	else if (!strcmp(attr->attr.name, "reset"))
+		gpio = btdev->gpios[LEGOEV3_BT_GPIO_PIC_RST].gpio;
+	else if (!strcmp(attr->attr.name, "cts"))
+		gpio = btdev->gpios[LEGOEV3_BT_GPIO_PIC_CTS].gpio;
+	else
+		return -EINVAL;
+
+	return sprintf(buf, "%d\n", !!gpio_get_value(gpio));
+}
+
+static ssize_t legoev3_bluetooth_attr_store(struct device *dev,
+					    struct device_attribute *attr,
+					    const char *buf, size_t count)
+{
+	struct legoev3_bluetooth_device *btdev = dev_get_drvdata(dev);
+	int gpio = -1;
+	bool value;
+
+	if (!strcmp(attr->attr.name, "enabled"))
+		gpio = btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].gpio;
+	else if (!strcmp(attr->attr.name,"reset"))
+		gpio = btdev->gpios[LEGOEV3_BT_GPIO_PIC_RST].gpio;
+	else
+		return -EINVAL;
+
+	if (strtobool(buf, &value))
+		return -EINVAL;
+
+	gpio_set_value(gpio, value);
+
+	return 1;
+}
+
+static DEVICE_ATTR(enabled, S_IWUSR | S_IRUGO, legoev3_bluetooth_attr_show,
+		   legoev3_bluetooth_attr_store);
+static DEVICE_ATTR(reset, S_IWUSR | S_IRUGO, legoev3_bluetooth_attr_show,
+		   legoev3_bluetooth_attr_store);
+static DEVICE_ATTR(cts, S_IRUGO, legoev3_bluetooth_attr_show, NULL);
+
+static struct attribute *legoev3_bluetooth_attrs[] = {
+	&dev_attr_enabled.attr,
+	&dev_attr_reset.attr,
+	&dev_attr_cts.attr,
+	NULL
+};
+
+static struct attribute_group legoev3_bluetooth_attr_grp = {
+	.attrs = legoev3_bluetooth_attrs,
+};
 
 static int __devinit legoev3_bluetooth_probe(struct platform_device *pdev)
 {
@@ -97,13 +156,13 @@ static int __devinit legoev3_bluetooth_probe(struct platform_device *pdev)
 	if (err) {
 		dev_err(&pdev->dev, "%s: Failed to set pwm frequency! (%d)\n",
 			__func__, err);
-		goto err_pwm_set_period_ticks;
+		goto err_pwm_set_frequency;
 	}
 	err = pwm_set_duty_percent(pwm, 50);
 	if (err) {
 		dev_err(&pdev->dev, "%s: Failed to set pwm duty percent! (%d)\n",
 			__func__, err);
-		goto err_pwm_set_duty_ticks;
+		goto err_pwm_set_duty_percent;
 	}
 	err = pwm_start(pwm);
 	if (err) {
@@ -113,18 +172,26 @@ static int __devinit legoev3_bluetooth_probe(struct platform_device *pdev)
 	}
 	gpio_set_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio, 1); /* active low */
 
+	err = sysfs_create_group(&pdev->dev.kobj, &legoev3_bluetooth_attr_grp);
+	if (err)
+		goto err_sysfs_create_group;
+
+	btdev->pwm = pwm;
 	platform_set_drvdata(pdev, btdev);
 
 	return 0;
 
-err_pwm_set_duty_ticks:
-err_pwm_set_period_ticks:
+err_sysfs_create_group:
+	pwm_stop(pwm);
 err_pwm_start:
+err_pwm_set_duty_percent:
+err_pwm_set_frequency:
 	pwm_release(pwm);
 err_pwm_request_byname:
 	gpio_free_array(btdev->gpios, NUM_LEGOEV3_BT_GPIO);
 err_gpio_request_array:
 	kfree(btdev);
+
 	return err;
 }
 
@@ -132,8 +199,10 @@ static int __devexit legoev3_bluetooth_remove(struct platform_device *pdev)
 {
 	struct legoev3_bluetooth_device *btdev = platform_get_drvdata(pdev);
 
-	pwm_release(btdev->pwm);
 	/* TODO: set gpios to turn off device */
+	sysfs_remove_group(&pdev->dev.kobj, &legoev3_bluetooth_attr_grp);
+	pwm_stop(btdev->pwm);
+	pwm_release(btdev->pwm);
 	gpio_free_array(btdev->gpios, NUM_LEGOEV3_BT_GPIO);
 	platform_set_drvdata(pdev, NULL);
 	kfree(btdev);
@@ -142,11 +211,11 @@ static int __devexit legoev3_bluetooth_remove(struct platform_device *pdev)
 }
 
 struct platform_driver legoev3_bluetooth_driver = {
-	.probe = legoev3_bluetooth_probe,
-	.remove = __devexit_p(legoev3_bluetooth_remove),
-	.driver = {
-		.name = "legoev3-bluetooth",
-		.owner = THIS_MODULE,
+	.probe	= legoev3_bluetooth_probe,
+	.remove	= __devexit_p(legoev3_bluetooth_remove),
+	.driver	= {
+		.name	= "legoev3-bluetooth",
+		.owner	= THIS_MODULE,
 	},
 };
 module_platform_driver(legoev3_bluetooth_driver);
