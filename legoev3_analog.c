@@ -1,7 +1,7 @@
 /*
  * Analog framework for LEGO Mindstorms EV3
  *
- * Copyright (C) 2013 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -147,10 +147,10 @@ struct legoev3_analog_device {
 	u16 current_command;
 	u16 raw_data[ADS7957_NUM_CHANNELS];
 	u8 num_connected;
-	bool read_nxt_color[LEGOEV3_NUM_PORT_IN];
-	enum legoev3_input_port_id current_nxt_color_port;
+	bool read_nxt_color[NUM_EV3_PORT_IN];
+	enum ev3_input_port_id current_nxt_color_port;
 	enum nxt_color_read_state current_nxt_color_read_state;
-	u16 nxt_color_raw_data[LEGOEV3_NUM_PORT_IN][NUM_NXT_COLOR_READ_STATE];
+	u16 nxt_color_raw_data[NUM_EV3_PORT_IN][NUM_NXT_COLOR_READ_STATE];
 };
 
 static void legoev3_analog_read_one_msg_complete(void* context)
@@ -170,8 +170,8 @@ static void legoev3_analog_read_one_msg_complete(void* context)
 		if (alg->current_nxt_color_read_state >= NUM_NXT_COLOR_READ_STATE) {
 			alg->current_nxt_color_read_state = NXT_COLOR_READ_STATE_AMBIANT;
 			alg->current_nxt_color_port++;
-			if (alg->current_nxt_color_port >= LEGOEV3_NUM_PORT_IN)
-				alg->current_nxt_color_port = LEGOEV3_PORT_IN1;
+			if (alg->current_nxt_color_port >= NUM_EV3_PORT_IN)
+				alg->current_nxt_color_port = EV3_PORT_IN1;
 		}
 		if (alg->current_nxt_color_read_state) {
 			/* TODO: notify color sensor to update LED */
@@ -203,8 +203,8 @@ static void legoev3_analog_read_all_msg_complete(void* context)
 			/* TODO: turn on first LED */
 		} else {
 			alg->current_nxt_color_port++;
-			if (alg->current_nxt_color_port >= LEGOEV3_NUM_PORT_IN)
-				alg->current_nxt_color_port = LEGOEV3_PORT_IN1;
+			if (alg->current_nxt_color_port >= NUM_EV3_PORT_IN)
+				alg->current_nxt_color_port = EV3_PORT_IN1;
 			alg->current_nxt_color_read_state = NXT_COLOR_READ_STATE_AMBIANT;
 		}
 	}
@@ -272,11 +272,11 @@ u16 legoev3_analog_get_value_for_ch(struct legoev3_analog_device *alg, u8 channe
 }
 
 u16 legoev3_analog_in_pin1_value(struct legoev3_analog_device *alg,
-				 enum legoev3_input_port_id id)
+				 enum ev3_input_port_id id)
 {
-	if (id >= LEGOEV3_NUM_PORT_IN) {
+	if (id >= NUM_EV3_PORT_IN) {
 		dev_crit(&alg->dev, "%s: id %d >= availible ports (%d)\n",
-			 __func__, id, LEGOEV3_NUM_PORT_IN);
+			 __func__, id, NUM_EV3_PORT_IN);
 		return -EINVAL;
 	}
 	return legoev3_analog_get_value_for_ch(alg, alg->pdata->in_pin1_ch[id]);
@@ -284,11 +284,11 @@ u16 legoev3_analog_in_pin1_value(struct legoev3_analog_device *alg,
 EXPORT_SYMBOL_GPL(legoev3_analog_in_pin1_value);
 
 u16 legoev3_analog_in_pin6_value(struct legoev3_analog_device *alg,
-				 enum legoev3_input_port_id id)
+				 enum ev3_input_port_id id)
 {
-	if (id >= LEGOEV3_NUM_PORT_IN) {
+	if (id >= NUM_EV3_PORT_IN) {
 		dev_crit(&alg->dev, "%s: id %d >= availible ports (%d)\n",
-			 __func__, id, LEGOEV3_NUM_PORT_IN);
+			 __func__, id, NUM_EV3_PORT_IN);
 		return -EINVAL;
 	}
 	return legoev3_analog_get_value_for_ch(alg, alg->pdata->in_pin6_ch[id]);
@@ -296,11 +296,11 @@ u16 legoev3_analog_in_pin6_value(struct legoev3_analog_device *alg,
 EXPORT_SYMBOL_GPL(legoev3_analog_in_pin6_value);
 
 u16 legoev3_analog_out_pin5_value(struct legoev3_analog_device *alg,
-				  enum legoev3_output_port_id id)
+				  enum ev3_output_port_id id)
 {
-	if (id >= LEGOEV3_NUM_PORT_OUT) {
+	if (id >= NUM_EV3_PORT_OUT) {
 		dev_crit(&alg->dev, "%s: id %d >= availible ports (%d)\n",
-			 __func__, id, LEGOEV3_NUM_PORT_OUT);
+			 __func__, id, NUM_EV3_PORT_OUT);
 		return -EINVAL;
 	}
 	return legoev3_analog_get_value_for_ch(alg, alg->pdata->out_pin5_ch[id]);
@@ -380,7 +380,7 @@ static struct bin_attribute raw_nxt_color_data_attr = {
 		.name = "raw_nxt_color_data",
 		.mode = S_IRUGO,
 	},
-	.size = LEGOEV3_NUM_PORT_IN * NUM_NXT_COLOR_READ_STATE * 2,
+	.size = NUM_EV3_PORT_IN * NUM_NXT_COLOR_READ_STATE * 2,
 	.read = legoev3_analog_raw_nxt_color_data_read,
 };
 

@@ -1,7 +1,7 @@
 /*
  * Input port driver for LEGO Mindstorms EV3
  *
- * Copyright (C) 2013 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -17,10 +17,11 @@
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/workqueue.h>
+#include <linux/gpio.h>
 #include <linux/i2c-legoev3.h>
 #include <linux/legoev3/legoev3_analog.h>
 #include <linux/legoev3/legoev3_ports.h>
-#include <linux/legoev3/legoev3_input_port.h>
+#include <linux/legoev3/ev3_input_port.h>
 
 #include <mach/mux.h>
 
@@ -50,7 +51,7 @@
 #define PIN1_ID_11		2204
 #define PIN1_ID_12		2382
 #define PIN1_ID_13		2619
-#define PIN1_ID_14		2826	/* 3rd part */
+#define PIN1_ID_14		2826	/* 3rd party */
 #define PIN1_ID_VAR		50	/* IDs can be +/- 50mV */
 
 static int ev3_in_dev_id_max[NUM_EV3_IN_DEV_ID] = {
@@ -172,96 +173,96 @@ enum sensor_type {
 	NUM_SENSOR
 };
 
-const struct attribute_group *legoev3_common_sensor_device_type_attr_groups[] = {
+const struct attribute_group *common_sensor_device_type_attr_groups[] = {
 	&legoev3_device_type_attr_grp,
 	NULL
 };
 
-struct device_type legoev3_sensor_device_types[] = {
+struct device_type ev3_sensor_device_types[] = {
 	[SENSOR_NXT_TOUCH] = {
-		.name	= "legoev3-nxt-touch-sensor",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "nxt-touch-sensor",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_NXT_LIGHT] = {
-		.name	= "legoev3-nxt-light-sensor",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "nxt-light-sensor",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_NXT_COLOR] = {
-		.name	= "legoev3-nxt-color-sensor",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "nxt-color-sensor",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_NXT_DUMB] = {
-		.name	= "legoev3-nxt-dumb-sensor",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "nxt-generic-analog-sensor",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_NXT_I2C] = {
-		.name	= "legoev3-nxt-i2c-sensor",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "nxt-i2c-sensor",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_01] = {
-		.name	= "legoev3-ev3-sensor-01",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "ev3-sensor-01",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_02] = {
-		.name	= "legoev3-ev3-sensor-02",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "ev3-touch-sensor",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_03] = {
-		.name	= "legoev3-ev3-sensor-03",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "ev3-sensor-03",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_04] = {
-		.name	= "legoev3-ev3-sensor-04",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "ev3-sensor-04",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_05] = {
-		.name	= "legoev3-ev3-sensor-05",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "ev3-sensor-05",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_06] = {
-		.name	= "legoev3-ev3-sensor-06",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "ev3-sensor-06",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_07] = {
-		.name	= "legoev3-ev3-sensor-07",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "ev3-sensor-07",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_08] = {
-		.name	= "legoev3-ev3-sensor-08",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "ev3-sensor-08",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_09] = {
-		.name	= "legoev3-ev3-sensor-09",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "ev3-sensor-09",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_10] = {
-		.name	= "legoev3-ev3-sensor-10",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "ev3-sensor-10",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_11] = {
-		.name	= "legoev3-ev3-sensor-11",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "ev3-sensor-11",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_12] = {
-		.name	= "legoev3-ev3-sensor-12",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "ev3-sensor-12",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_13] = {
-		.name	= "legoev3-ev3-sensor-13",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "ev3-sensor-13",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_14] = {
-		.name	= "legoev3-ev3-sensor-14",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "ev3-sensor-14",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_UART] = {
-		.name	= "legoev3-ev3-uart-sensor",
-		.groups	= legoev3_common_sensor_device_type_attr_groups,
+		.name	= "ev3-uart-sensor",
+		.groups	= common_sensor_device_type_attr_groups,
 	},
 };
 
 /**
- * struct legoev3_input_port_controller - An input port on the EV3 brick
+ * struct ev3_input_port_data - Driver data for an input port on the EV3 brick
  * @id: Unique identifier for the port.
  * @dev: Pointer to the device object that this is bound to.
  * @analog: pointer to the legoev3-analog device for accessing data from the
@@ -285,8 +286,8 @@ struct device_type legoev3_sensor_device_types[] = {
  * @sensor_type: The type of sensor currently connected.
  * @sensor: Pointer to the sensor device that is connected to the input port.
  */
-struct legoev3_input_port_controller {
-	enum legoev3_input_port_id id;
+struct ev3_input_port_data {
+	enum ev3_input_port_id id;
 	struct device *dev;
 	struct legoev3_analog_device *analog;
 	struct gpio gpio[NUM_GPIO];
@@ -301,26 +302,24 @@ struct legoev3_input_port_controller {
 	unsigned pin_state_flags:NUM_PIN_STATE_FLAG;
 	unsigned pin1_mv;
 	enum sensor_type sensor_type;
-	struct legoev3_input_port_device *sensor;
+	struct ev3_input_port_device *sensor;
 };
 
-static int legoev3_input_port_device_pin1_mv(struct legoev3_input_port_device *ipd)
+static int ev3_input_port_device_pin1_mv(struct ev3_input_port_device *ipd)
 {
-	struct legoev3_input_port_controller *ipc =
-					dev_get_drvdata(ipd->dev.parent);
+	struct ev3_input_port_data *ipc = dev_get_drvdata(ipd->dev.parent);
 
 	return legoev3_analog_in_pin1_value(ipc->analog, ipc->id);
 }
 
-static int legoev3_input_port_device_pin6_mv(struct legoev3_input_port_device *ipd)
+static int ev3_input_port_device_pin6_mv(struct ev3_input_port_device *ipd)
 {
-	struct legoev3_input_port_controller *ipc =
-					dev_get_drvdata(ipd->dev.parent);
+	struct ev3_input_port_data *ipc = dev_get_drvdata(ipd->dev.parent);
 
 	return legoev3_analog_in_pin6_value(ipc->analog, ipc->id);
 }
 
-void legoev3_input_port_float(struct legoev3_input_port_controller *ipc)
+void ev3_input_port_float(struct ev3_input_port_data *ipc)
 {
 	gpio_direction_output(ipc->gpio[GPIO_PIN1].gpio, 0);
 	gpio_direction_input(ipc->gpio[GPIO_PIN2].gpio);
@@ -329,7 +328,7 @@ void legoev3_input_port_float(struct legoev3_input_port_controller *ipc)
 	gpio_direction_output(ipc->gpio[GPIO_BUF_ENA].gpio, 1); /* active low */
 }
 
-int legoev3_register_sensor_i2c(struct legoev3_input_port_controller *ipc,
+int legoev3_register_sensor_i2c(struct ev3_input_port_data *ipc,
 				struct device *parent)
 {
 	struct platform_device *pdev;
@@ -359,29 +358,29 @@ davinci_cfg_reg_fail:
 	return err;
 }
 
-void legoev3_unregister_sensor_i2c(struct legoev3_input_port_controller *ipc)
+void legoev3_unregister_sensor_i2c(struct ev3_input_port_data *ipc)
 {
 	platform_device_unregister(ipc->i2c_pdev);
 	ipc->i2c_pdev = NULL;
 	gpio_set_value(ipc->gpio[GPIO_BUF_ENA].gpio, 1); /* active low */
 }
 
-static void legoev3_input_port_device_release (struct device *dev)
+static void ev3_input_port_device_release (struct device *dev)
 {
-	struct legoev3_input_port_device *ipd =
-		container_of(dev, struct legoev3_input_port_device, dev);
+	struct ev3_input_port_device *ipd =
+		container_of(dev, struct ev3_input_port_device, dev);
 
 	kfree(ipd);
 }
 
-void legoev3_input_port_register_sensor(struct work_struct *work)
+void ev3_input_port_register_sensor(struct work_struct *work)
 {
-	struct legoev3_input_port_controller *ipc =
-		container_of(work, struct legoev3_input_port_controller, work);
-	struct legoev3_input_port_device *ipd;
+	struct ev3_input_port_data *ipc =
+			container_of(work, struct ev3_input_port_data, work);
+	struct ev3_input_port_device *ipd;
 	int err;
 
-	ipd = kzalloc(sizeof(struct legoev3_input_port_device), GFP_KERNEL);
+	ipd = kzalloc(sizeof(struct ev3_input_port_device), GFP_KERNEL);
 	if (!ipd) {
 		dev_err(ipc->dev, "Could not set name of sensor attached to %s.\n",
 			dev_name(ipc->dev));
@@ -401,11 +400,11 @@ void legoev3_input_port_register_sensor(struct work_struct *work)
 			dev_name(ipc->dev));
 		goto check_sensor_type_fail;
 	}
-	ipd->dev.type = &legoev3_sensor_device_types[ipc->sensor_type];
+	ipd->dev.type = &ev3_sensor_device_types[ipc->sensor_type];
 	ipd->dev.bus = &legoev3_bus_type;
-	ipd->dev.release = legoev3_input_port_device_release;
-	ipd->pin1_mv = legoev3_input_port_device_pin1_mv;
-	ipd->pin6_mv = legoev3_input_port_device_pin6_mv;
+	ipd->dev.release = ev3_input_port_device_release;
+	ipd->pin1_mv = ev3_input_port_device_pin1_mv;
+	ipd->pin6_mv = ev3_input_port_device_pin6_mv;
 	err = device_register(&ipd->dev);
 	if (err) {
 		dev_err(ipc->dev, "Could not set name of sensor attached to %s.\n",
@@ -435,10 +434,10 @@ set_dev_name_fail:
 	kfree(ipd);
 }
 
-void legoev3_input_port_unregister_sensor(struct work_struct *work)
+void ev3_input_port_unregister_sensor(struct work_struct *work)
 {
-	struct legoev3_input_port_controller *ipc =
-		container_of(work, struct legoev3_input_port_controller, work);
+	struct ev3_input_port_data *ipc =
+			container_of(work, struct ev3_input_port_data, work);
 
 	if (ipc->i2c_pdev)
 		legoev3_unregister_sensor_i2c(ipc);
@@ -446,10 +445,10 @@ void legoev3_input_port_unregister_sensor(struct work_struct *work)
 	ipc->sensor = NULL;
 }
 
-static enum hrtimer_restart legoev3_input_port_timer_callback(struct hrtimer *timer)
+static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 {
-	struct legoev3_input_port_controller *ipc =
-		container_of(timer, struct legoev3_input_port_controller, timer);
+	struct ev3_input_port_data *ipc =
+			container_of(timer, struct ev3_input_port_data, timer);
 	unsigned new_pin_state_flags = 0;
 	unsigned new_pin1_mv = 0;
 
@@ -459,7 +458,7 @@ static enum hrtimer_restart legoev3_input_port_timer_callback(struct hrtimer *ti
 	switch(ipc->con_state) {
 	case CON_STATE_INIT:
 		if (!ipc->sensor) {
-			legoev3_input_port_float(ipc);
+			ev3_input_port_float(ipc);
 			ipc->timer_loop_cnt = 0;
 			ipc->sensor_type = SENSOR_NONE;
 			ipc->con_state = CON_STATE_INIT_SETTLE;
@@ -574,7 +573,7 @@ static enum hrtimer_restart legoev3_input_port_timer_callback(struct hrtimer *ti
 			}
 			ipc->timer_loop_cnt = 0;
 			if (ipc->sensor_type != SENSOR_ERR) {
-				PREPARE_WORK(&ipc->work, legoev3_input_port_register_sensor);
+				PREPARE_WORK(&ipc->work, ev3_input_port_register_sensor);
 				schedule_work(&ipc->work);
 			}
 		}
@@ -612,9 +611,11 @@ static enum hrtimer_restart legoev3_input_port_timer_callback(struct hrtimer *ti
 		ipc->con_state = CON_STATE_INIT;
 		break;
 	}
-	if (ipc->sensor_type && ipc->timer_loop_cnt >= REMOVE_CNT && !work_busy(&ipc->work)) {
+	if (ipc->sensor_type
+	    && ipc->timer_loop_cnt >= REMOVE_CNT && !work_busy(&ipc->work))
+	{
 		if (ipc->sensor) {
-			PREPARE_WORK(&ipc->work, legoev3_input_port_unregister_sensor);
+			PREPARE_WORK(&ipc->work, ev3_input_port_unregister_sensor);
 			schedule_work(&ipc->work);
 		}
 		ipc->con_state = CON_STATE_INIT;
@@ -623,18 +624,18 @@ static enum hrtimer_restart legoev3_input_port_timer_callback(struct hrtimer *ti
 	return HRTIMER_RESTART;
 }
 
-static int __devinit legoev3_input_port_probe(struct device *dev)
+static int __devinit ev3_input_port_probe(struct device *dev)
 {
-	struct legoev3_input_port_controller *ipc;
-	struct legoev3_input_port_platform_data *pdata = dev->platform_data;
+	struct ev3_input_port_data *ipc;
+	struct ev3_input_port_platform_data *pdata = dev->platform_data;
 	int err;
 
 	/* TODO: make a kernel option to disable port 1 when using serial port */
 	/* or find a way to auto-detect */
-	if (pdata->id == LEGOEV3_PORT_IN1)
+	if (pdata->id == EV3_PORT_IN1)
 		return -EINVAL;
 
-	ipc = kzalloc(sizeof(struct legoev3_input_port_controller), GFP_KERNEL);
+	ipc = kzalloc(sizeof(struct ev3_input_port_data), GFP_KERNEL);
 	if (!ipc)
 		return -ENOMEM;
 
@@ -690,7 +691,7 @@ static int __devinit legoev3_input_port_probe(struct device *dev)
 
 	ipc->con_state = CON_STATE_INIT;
 	hrtimer_init(&ipc->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	ipc->timer.function = legoev3_input_port_timer_callback;
+	ipc->timer.function = ev3_input_port_timer_callback;
 	hrtimer_start(&ipc->timer, ktime_set(0, INPUT_PORT_POLL_NS),
 		      HRTIMER_MODE_REL);
 
@@ -706,15 +707,15 @@ request_legoev3_analog_fail:
 	return err;
 }
 
-static int __devexit legoev3_input_port_remove(struct device *dev)
+static int __devexit ev3_input_port_remove(struct device *dev)
 {
-	struct legoev3_input_port_controller *ipc = dev_get_drvdata(dev);
+	struct ev3_input_port_data *ipc = dev_get_drvdata(dev);
 
 	hrtimer_cancel(&ipc->timer);
 	cancel_work_sync(&ipc->work);
 	if (ipc->sensor)
 		device_unregister(&ipc->sensor->dev);
-	legoev3_input_port_float(ipc); /* this unregisters i2c and uart if needed */
+	ev3_input_port_float(ipc);
 	gpio_free_array(ipc->gpio, ARRAY_SIZE(ipc->gpio));
 	put_legoev3_analog(ipc->analog);
 	dev_set_drvdata(dev, NULL);
@@ -723,27 +724,27 @@ static int __devexit legoev3_input_port_remove(struct device *dev)
 	return 0;
 }
 
-static void legoev3_input_port_shutdown(struct device *dev)
+static void ev3_input_port_shutdown(struct device *dev)
 {
-	struct legoev3_input_port_controller *ipc = dev_get_drvdata(dev);
+	struct ev3_input_port_data *ipc = dev_get_drvdata(dev);
 
 	hrtimer_cancel(&ipc->timer);
 	cancel_work_sync(&ipc->work);
 }
 
-struct legoev3_port_driver legoev3_input_port_driver = {
+struct legoev3_port_driver ev3_input_port_driver = {
 	.driver = {
-		.name	= "legoev3-input-port",
+		.name	= "ev3-input-port",
 		.owner	= THIS_MODULE,
-		.probe	= legoev3_input_port_probe,
-		.remove	= __devexit_p(legoev3_input_port_remove),
-		.shutdown	=legoev3_input_port_shutdown,
+		.probe	= ev3_input_port_probe,
+		.remove	= __devexit_p(ev3_input_port_remove),
+		.shutdown	=ev3_input_port_shutdown,
 	},
 };
-EXPORT_SYMBOL_GPL(legoev3_input_port_driver);
-legoev3_port_driver(legoev3_input_port_driver);
+EXPORT_SYMBOL_GPL(ev3_input_port_driver);
+legoev3_port_driver(ev3_input_port_driver);
 
 MODULE_DESCRIPTION("Input port driver for LEGO Mindstorms EV3");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("legoev3:legoev3-input-port");
+MODULE_ALIAS("legoev3:ev3-input-port");

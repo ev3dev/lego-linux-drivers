@@ -1,7 +1,7 @@
 /*
  * NXT Ultrasonic sensor device driver for LEGO Mindstorms EV3
  *
- * Copyright (C) 2013 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,8 +18,8 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
-//#include <linux/legoev3/classes/dist_sensor.h>
-#include <linux/legoev3/legoev3_input_port.h>
+//#include <linux/legoev3/measurement_sensor.h>
+#include <linux/legoev3/ev3_input_port.h>
 #include <linux/legoev3/legoev3_ports.h>
 
 #define FIRMWARE_REG	0x00	/* Firmware version (8 registers) */
@@ -90,4 +90,4 @@ module_i2c_driver(nxt_us_sensor_driver);
 MODULE_DESCRIPTION("NXT ultrasonic sensor device driver for LEGO Mindstorms EV3");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("legoev3:legoev3-nxt-i2c-sensor");
+MODULE_ALIAS("legoev3:nxt-i2c-sensor");

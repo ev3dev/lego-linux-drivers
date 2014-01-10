@@ -1,7 +1,7 @@
 /*
  * Support for the input and output ports on the LEGO Mindstorms EV3
  *
- * Copyright (C) 2013 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -35,8 +35,9 @@
 #include <linux/slab.h>
 #include <linux/legoev3/legoev3_ports.h>
 
-static ssize_t legoev3_show_device_type(struct device *dev, struct device_attribute *attr,
-				char *buf)
+static ssize_t legoev3_show_device_type(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
 {
 	return sprintf(buf, "%s\n", dev->type->name);
 }
@@ -59,7 +60,7 @@ const struct attribute_group *legoev3_input_port_device_type_attr_groups[] = {
 };
 
 struct device_type legoev3_input_port_device_type = {
-	.name	= "legoev3-input-port",
+	.name	= "ev3-input-port",
 	.groups	= legoev3_input_port_device_type_attr_groups,
 };
 EXPORT_SYMBOL_GPL(legoev3_input_port_device_type);
@@ -69,7 +70,7 @@ static void legoev3_device_release (struct device *dev)
 	kfree(dev);
 }
 
-int legoev3_register_input_port(struct legoev3_input_port_platform_data *data,
+int legoev3_register_input_port(struct ev3_input_port_platform_data *data,
 				struct device *parent)
 {
 	struct device *dev;
@@ -77,7 +78,7 @@ int legoev3_register_input_port(struct legoev3_input_port_platform_data *data,
 
 	if (!data)
 		return -EINVAL;
-	if (data->id >= LEGOEV3_NUM_PORT_IN)
+	if (data->id >= NUM_EV3_PORT_IN)
 		return -EINVAL;
 
 	dev = kzalloc(sizeof(struct device), GFP_KERNEL);
@@ -109,8 +110,8 @@ dev_set_name_fail:
 
 static int legoev3_match_input_port_id(struct device *dev, void *data)
 {
-	enum legoev3_input_port_id *id = data;
-	struct legoev3_input_port_platform_data *pdata;
+	enum ev3_input_port_id *id = data;
+	struct ev3_input_port_platform_data *pdata;
 
 	if (dev->type == &legoev3_input_port_device_type) {
 		pdata = dev-> platform_data;
@@ -120,7 +121,7 @@ static int legoev3_match_input_port_id(struct device *dev, void *data)
 	return 0;
 }
 
-void legoev3_unregister_input_port(enum legoev3_input_port_id id)
+void legoev3_unregister_input_port(enum ev3_input_port_id id)
 {
 	struct device *dev = bus_find_device(&legoev3_bus_type, NULL, &id,
 					     legoev3_match_input_port_id);
@@ -129,7 +130,7 @@ void legoev3_unregister_input_port(enum legoev3_input_port_id id)
 		device_unregister(dev);
 }
 
-int legoev3_register_input_ports(struct legoev3_input_port_platform_data *data,
+int legoev3_register_input_ports(struct ev3_input_port_platform_data *data,
 				 unsigned len, struct device *parent)
 {
 	int err, i;
