@@ -1,7 +1,7 @@
 /*
  * On-board bluetooth support for LEGO Mindstorms EV3
  *
- * Copyright (C) 2013 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -36,6 +36,7 @@
 
 enum legoev3_bluetooth_gpios {
 	LEGOEV3_BT_GPIO_BT_ENA,
+	LEGOEV3_BT_GPIO_BT_ENA2,
 	LEGOEV3_BT_GPIO_PIC_ENA,
 	LEGOEV3_BT_GPIO_PIC_RST,
 	LEGOEV3_BT_GPIO_PIC_CTS,
@@ -86,7 +87,7 @@ static ssize_t legoev3_bluetooth_attr_store(struct device *dev,
 
 	gpio_set_value(gpio, value);
 
-	return 1;
+	return count;
 }
 
 static DEVICE_ATTR(enabled, S_IWUSR | S_IRUGO, legoev3_bluetooth_attr_show,
@@ -129,6 +130,9 @@ static int __devinit legoev3_bluetooth_probe(struct platform_device *pdev)
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio	= pdata->bt_ena_gpio;
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].flags	= GPIOF_OUT_INIT_LOW;
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].label	= "bluetooth enable";
+	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA2].gpio	= pdata->bt_ena2_gpio;
+	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA2].flags	= GPIOF_OUT_INIT_LOW;
+	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA2].label	= "bluetooth enable EP2";
 	btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].gpio	= pdata->pic_ena_gpio;
 	btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].flags	= GPIOF_OUT_INIT_LOW;
 	btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].label	= "bt pic enable";
@@ -152,6 +156,12 @@ static int __devinit legoev3_bluetooth_probe(struct platform_device *pdev)
 		err = PTR_ERR(pwm);
 		goto err_pwm_request_byname;
 	}
+	err = pwm_set_polarity(pwm, 0);
+	if (err) {
+		dev_err(&pdev->dev, "%s: Failed to set pwm polarity! (%d)\n",
+			__func__, err);
+		goto err_pwm_set_polarity;
+	}
 	err = pwm_set_frequency(pwm, 32768);
 	if (err) {
 		dev_err(&pdev->dev, "%s: Failed to set pwm frequency! (%d)\n",
@@ -170,7 +180,8 @@ static int __devinit legoev3_bluetooth_probe(struct platform_device *pdev)
 			__func__, err);
 		goto err_pwm_start;
 	}
-	gpio_set_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio, 1); /* active low */
+	gpio_set_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio, 1);
+	gpio_set_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA2].gpio, 1);
 
 	err = sysfs_create_group(&pdev->dev.kobj, &legoev3_bluetooth_attr_grp);
 	if (err)
@@ -186,6 +197,7 @@ err_sysfs_create_group:
 err_pwm_start:
 err_pwm_set_duty_percent:
 err_pwm_set_frequency:
+err_pwm_set_polarity:
 	pwm_release(pwm);
 err_pwm_request_byname:
 	gpio_free_array(btdev->gpios, NUM_LEGOEV3_BT_GPIO);
@@ -201,6 +213,8 @@ static int __devexit legoev3_bluetooth_remove(struct platform_device *pdev)
 
 	/* TODO: set gpios to turn off device */
 	sysfs_remove_group(&pdev->dev.kobj, &legoev3_bluetooth_attr_grp);
+	gpio_set_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio, 0);
+	gpio_set_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA2].gpio, 0);
 	pwm_stop(btdev->pwm);
 	pwm_release(btdev->pwm);
 	gpio_free_array(btdev->gpios, NUM_LEGOEV3_BT_GPIO);
