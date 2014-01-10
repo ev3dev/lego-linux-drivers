@@ -24,6 +24,7 @@
 #include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/input.h>
+#include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/pwm/ehrpwm.h>
@@ -40,9 +41,11 @@
 #define BUFFER_SIZE (64*1024)
 #define TONE_MIN_HZ 100
 #define TONE_MAX_HZ 10000
-#define SND_SAMPLE_RATE 22050
-#define SND_SAMPLE_RATE_SYMBOLIC SNDRV_PCM_RATE_22050
-#define SND_MAX_VOLUME 100
+#define SAMPLE_RATE 22050
+#define SAMPLE_RATE_SYMBOLIC SNDRV_PCM_RATE_22050
+#define PWM_FACTOR  1
+#define PWM_MASK    ((PWM_FACTOR>>1)-1)
+#define MAX_VOLUME  256
 
 struct snd_legoev3 {
 	struct pwm_device *pwm;
@@ -53,6 +56,7 @@ struct snd_legoev3 {
 	char tone_busy;
 	size_t playback_ptr;
 	unsigned long et_callback_count;
+	unsigned long et_pwm_cycle;
 	int global_volume;
 };
 
@@ -61,9 +65,9 @@ static struct snd_pcm_hardware snd_legoev3_playback_hw = {
 	         SNDRV_PCM_INFO_MMAP_VALID |
 	         SNDRV_PCM_INFO_INTERLEAVED),
 	.formats =          SNDRV_PCM_FMTBIT_S16_LE,
-	.rates =            SND_SAMPLE_RATE_SYMBOLIC,
-	.rate_min =         SND_SAMPLE_RATE,
-	.rate_max =         SND_SAMPLE_RATE,
+	.rates =            SAMPLE_RATE_SYMBOLIC,
+	.rate_min =         SAMPLE_RATE,
+	.rate_max =         SAMPLE_RATE,
 	.channels_min =     1,
 	.channels_max =     1,
 	.buffer_bytes_max = BUFFER_SIZE,
@@ -73,7 +77,7 @@ static struct snd_pcm_hardware snd_legoev3_playback_hw = {
 	.periods_max =      1024,
 };
 
-static unsigned int rates[] = { SND_SAMPLE_RATE };
+static unsigned int rates[] = { SAMPLE_RATE };
 static struct snd_pcm_hw_constraint_list constraints_rates = {
 	.count = ARRAY_SIZE(rates),
 	.list = rates,
@@ -147,22 +151,28 @@ static int snd_legoev3_et_callback(struct ehrpwm_pwm *ehrpwm, void *data)
 	struct snd_legoev3 *chip = snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct pwm_device *pwm = chip->pwm;
+	int sample;
 	unsigned long duty_ticks;
 
-	duty_ticks = ((((*(short *)(runtime->dma_area + chip->playback_ptr)
-	                ^ 0x8000) * pwm->period_ticks) >> 8) *
-	               chip->global_volume / SND_MAX_VOLUME) >> 8;
+#if (PWM_FACTOR>3)
+	if (++chip->et_pwm_cycle & PWM_MASK)
+		return 0;
+#endif
+	sample = *(short *)(runtime->dma_area + chip->playback_ptr);
+	sample = (sample * chip->global_volume) >> 8;
+	duty_ticks = ((sample + 0x7FFF) * pwm->period_ticks) >> 16;
 
 	pwm_set_duty_ticks(pwm, duty_ticks);
-
-	if (chip->et_callback_count++ >= runtime->period_size * 2) {
-		chip->et_callback_count %= runtime->period_size * 2;
-		snd_pcm_period_elapsed(substream);
-	}
 
 	chip->playback_ptr += frames_to_bytes(runtime, 1);
 	if (chip->playback_ptr >= runtime->dma_bytes)
 		chip->playback_ptr = 0;
+
+	if (++chip->et_callback_count >= runtime->period_size)
+	{
+		chip->et_callback_count = 0;
+		snd_pcm_period_elapsed(substream);
+	}	
 
 	return 0;
 }
@@ -208,7 +218,7 @@ static int __devinit snd_legoev3_init_ehrpwm(struct pwm_device *pwm)
 	err = ehrpwm_tb_config_sync(pwm, TB_DISABLE, TB_SYNC_DISABLE);
 	if (err < 0)
 		return err;
-	err = ehrpwm_tb_set_counter_mode(pwm, TB_FREEZE, TB_DOWN);
+	err = ehrpwm_tb_set_counter_mode(pwm, TB_UP, TB_DOWN);
 	if (err)
 		return err;
 	err = ehrpwm_tb_set_periodload(pwm, TB_SHADOW);
@@ -224,7 +234,8 @@ static int __devinit snd_legoev3_init_ehrpwm(struct pwm_device *pwm)
 	err = ehrpwm_pc_en_dis(pwm, PC_DISABLE);
 	if (err < 0)
 		return err;
-	err = ehrpwm_et_set_sel_evt(pwm, ET_CTR_PRD, ET_1ST);
+	err = ehrpwm_et_set_sel_evt(pwm, ET_CTR_PRD,
+		(PWM_FACTOR==1 ? ET_1ST : (PWM_FACTOR==3 ? ET_3RD : ET_2ND)));
 	if (err < 0)
 		return err;
 	err = ehrpwm_hr_config(pwm, HR_CTR_ZERO, HR_DUTY, HR_MEP_DISABLE);
@@ -344,9 +355,12 @@ static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 	if (err < 0)
 		return err;
 
-	err = pwm_set_frequency(chip->pwm, SND_SAMPLE_RATE);
+	err = pwm_set_frequency(chip->pwm, SAMPLE_RATE * PWM_FACTOR);
 	if (err < 0)
 		return err;
+
+        printk(KERN_INFO "pwm params f=%li scale=%d p_ticks=%i hz=%lu\n",
+		SAMPLE_RATE, PWM_FACTOR, chip->pwm->period_ticks, chip->pwm->tick_hz);
 
 	err = snd_pcm_hw_constraint_list(substream->runtime, 0,
 	                                 SNDRV_PCM_HW_PARAM_RATE,
@@ -387,6 +401,7 @@ static int snd_legoev3_pcm_prepare(struct snd_pcm_substream *substream)
 	struct snd_legoev3 *chip = snd_pcm_substream_chip(substream);
 
 	chip->playback_ptr = 0;
+	chip->et_pwm_cycle = 0;
 	chip->et_callback_count = 0;
 
 	return 0;
@@ -463,7 +478,7 @@ static int global_volume_control_info(struct snd_kcontrol *kcontrol,
 	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
 	uinfo->count = 1;
 	uinfo->value.integer.min = 0;
-	uinfo->value.integer.max = SND_MAX_VOLUME;
+	uinfo->value.integer.max = MAX_VOLUME;
 	return 0;
 }
 
@@ -479,10 +494,17 @@ static int global_volume_control_put(struct snd_kcontrol *kcontrol,
                                      struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_legoev3 *chip = snd_kcontrol_chip(kcontrol);
-	int changed = 0;
-	if ((ucontrol->value.integer.value[0] >= 0) &&
-	    (ucontrol->value.integer.value[0] <= SND_MAX_VOLUME) &&
-	    (chip->global_volume != ucontrol->value.integer.value[0])) {
+	int changed = 0, newValue = ucontrol->value.integer.value[0];
+	
+	if (newValue < 0) newValue = 0;
+	if (newValue > MAX_VOLUME) newValue = MAX_VOLUME;
+
+	if (chip->global_volume != newValue) {
+		chip->global_volume = newValue;
+		changed = 1;
+	}
+
+	if (chip->global_volume != ucontrol->value.integer.value[0]) {
 		chip->global_volume = ucontrol->value.integer.value[0];
 		changed = 1;
 	}
