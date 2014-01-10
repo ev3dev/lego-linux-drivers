@@ -1,6 +1,6 @@
 /*
  * I2C bus driver for LEGO Mindstorms EV3
- * Copyright (C) 2013 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
  * Based on i2c-gpio.c:
  * Copyright (C) 2007 Atmel Corporation
@@ -15,6 +15,7 @@
 
 #include <linux/i2c.h>
 #include <linux/i2c-legoev3.h>
+#include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/slab.h>
