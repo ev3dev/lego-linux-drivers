@@ -27,7 +27,6 @@
 struct i2c_legoev3_algo_data {
 	struct i2c_legoev3_platform_data *pdata;
 	struct completion done;
-	unsigned udelay;
 	int xfer_result;
 };
 
@@ -90,17 +89,15 @@ static int __devinit i2c_legoev3_probe(struct platform_device *pdev)
 	gpio_direction_output(pdata->sda_pin, 1);
 	gpio_direction_output(pdata->scl_pin, 1);
 
-	adata->udelay = 50;			/* 10 kHz */
-//	adata->udelay = 5;			/* 100 kHz */
-
 	adata->pdata = pdata;
 
 	adap->owner = THIS_MODULE;
 	adap->class = I2C_CLASS_LEGOEV3;
 	adap->algo = &i2c_legoev3_algo;
 	adap->algo_data = adata;
-	adap->timeout = HZ / 100;				/* 10 ms */
+	adap->timeout = HZ / 100; /* 10 ms - not implemented */
 	adap->dev.parent = &pdev->dev;
+	adap->dev.platform_data = pdata;
 	adap->nr = pdev->id;
 	snprintf(adap->name, sizeof(adap->name), "i2c-legoev3%d", pdev->id);
 
@@ -119,8 +116,7 @@ static int __devinit i2c_legoev3_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, adap);
 
-	dev_info(&pdev->dev, "using pins %u (SDA) and %u (SCL)\n",
-		 pdata->sda_pin, pdata->scl_pin);
+	dev_info(&pdev->dev, "registered on input port %d\n", pdata->port_id + 1);
 
 	return 0;
 
