@@ -17,31 +17,6 @@
 #include <linux/module.h>
 #include <linux/legoev3/measure_sensor_class.h>
 
-static void measure_sensor_release(struct device *dev)
-{
-}
-
-int register_measure_sensor(struct measure_sensor_device *ms,
-			    struct device *parent)
-{
-	if (!ms)
-		return -EINVAL;
-
-	ms->dev.release = measure_sensor_release;
-	ms->dev.parent = parent;
-	ms->dev.class = &measure_sensor_class;
-	dev_set_name(&ms->dev, "%s:measure", dev_name(parent));
-
-	return device_register(&ms->dev);
-}
-EXPORT_SYMBOL_GPL(register_measure_sensor);
-
-void unregister_measure_sensor(struct measure_sensor_device *ms)
-{
-	device_unregister(&ms->dev);
-}
-EXPORT_SYMBOL_GPL(unregister_measure_sensor);
-
 static ssize_t measure_sensor_show_raw_value(struct device *dev,
 					     struct device_attribute *attr,
 					     char *buf)
@@ -52,8 +27,121 @@ static ssize_t measure_sensor_show_raw_value(struct device *dev,
 	return sprintf(buf, "%d\n", ms->raw_value(ms));
 }
 
+static ssize_t measure_sensor_show_raw_min(struct device *dev,
+					   struct device_attribute *attr,
+					   char *buf)
+{
+	struct measure_sensor_device *ms =
+		container_of(dev, struct measure_sensor_device, dev);
+
+	return sprintf(buf, "%d\n", ms->raw_min);
+}
+
+static ssize_t measure_sensor_show_raw_max(struct device *dev,
+					   struct device_attribute *attr,
+					   char *buf)
+{
+	struct measure_sensor_device *ms =
+		container_of(dev, struct measure_sensor_device, dev);
+
+	return sprintf(buf, "%d\n", ms->raw_max);
+}
+
+static ssize_t measure_sensor_show_scaled_value(struct device *dev,
+						struct device_attribute *attr,
+						char *buf)
+{
+	struct measure_sensor_device *ms =
+		container_of(dev, struct measure_sensor_device, dev);
+	int value;
+
+	value = ms->raw_value(ms) * (ms->scale_info[ms->scale_idx].max
+		- ms->scale_info[ms->scale_idx].min)
+		/ (ms->raw_max - ms->raw_min);
+	return sprintf(buf, "%d\n",value);
+}
+
+static ssize_t measure_sensor_show_scaled_min(struct device *dev,
+					      struct device_attribute *attr,
+					      char *buf)
+{
+	struct measure_sensor_device *ms =
+		container_of(dev, struct measure_sensor_device, dev);
+
+	return sprintf(buf, "%d\n", ms->scale_info[ms->scale_idx].min);
+}
+
+static ssize_t measure_sensor_show_scaled_max(struct device *dev,
+					      struct device_attribute *attr,
+					      char *buf)
+{
+	struct measure_sensor_device *ms =
+		container_of(dev, struct measure_sensor_device, dev);
+
+	return sprintf(buf, "%d\n", ms->scale_info[ms->scale_idx].max);
+}
+
+static ssize_t measure_sensor_show_scaled_dp(struct device *dev,
+					     struct device_attribute *attr,
+					     char *buf)
+{
+	struct measure_sensor_device *ms =
+		container_of(dev, struct measure_sensor_device, dev);
+
+	return sprintf(buf, "%d\n", ms->scale_info[ms->scale_idx].dp);
+}
+
+static ssize_t measure_sensor_show_scaled_units(struct device *dev,
+						struct device_attribute *attr,
+						char *buf)
+{
+	struct measure_sensor_device *ms =
+		container_of(dev, struct measure_sensor_device, dev);
+	int idx = 0;
+	ssize_t count = 0;
+
+	while (ms->scale_info[idx].units) {
+		if (idx == ms->scale_idx)
+			count += sprintf(buf + count, "[");
+		count += sprintf(buf + count, "%s", ms->scale_info[idx].units);
+		if (idx == ms->scale_idx)
+			count += sprintf(buf + count, "]");
+		idx++;
+		count += sprintf(buf + count, "%c",
+				 ms->scale_info[idx].units ? ' ' : '\n');
+	}
+
+	return count;
+}
+
+static ssize_t measure_sensor_store_scaled_units(struct device *dev,
+						 struct device_attribute *attr,
+						 const char *buf, size_t count)
+{
+	struct measure_sensor_device *ms =
+		container_of(dev, struct measure_sensor_device, dev);
+	int idx = 0;
+
+	while (ms->scale_info[idx].units) {
+		if (sysfs_streq(buf, ms->scale_info[idx].units)) {
+			ms->scale_idx = idx;
+			return count;
+		}
+		idx++;
+	}
+	return -EINVAL;
+}
+
 static struct device_attribute measure_sensor_class_dev_attrs[] = {
 	__ATTR(raw_value, S_IRUGO, measure_sensor_show_raw_value, NULL),
+	__ATTR(raw_min, S_IRUGO, measure_sensor_show_raw_min, NULL),
+	__ATTR(raw_max, S_IRUGO, measure_sensor_show_raw_max, NULL),
+	__ATTR(scaled_value, S_IRUGO, measure_sensor_show_scaled_value, NULL),
+	__ATTR(scaled_min, S_IRUGO, measure_sensor_show_scaled_min, NULL),
+	__ATTR(scaled_max, S_IRUGO, measure_sensor_show_scaled_max, NULL),
+	__ATTR(scaled_dp, S_IRUGO, measure_sensor_show_scaled_dp, NULL),
+	__ATTR(scaled_units, S_IWUGO | S_IRUGO, measure_sensor_show_scaled_units,
+	       measure_sensor_store_scaled_units),
 	__ATTR_NULL
 };
 
@@ -69,6 +157,34 @@ struct class measure_sensor_class = {
 	.devnode	= measure_sensor_devnode,
 };
 EXPORT_SYMBOL_GPL(measure_sensor_class);
+
+static void measure_sensor_release(struct device *dev)
+{
+}
+
+int register_measure_sensor(struct measure_sensor_device *ms,
+			    struct device *parent)
+{
+	if (!ms)
+		return -EINVAL;
+
+	ms->dev.release = measure_sensor_release;
+	ms->dev.parent = parent;
+	ms->dev.class = &measure_sensor_class;
+	if (ms->id < 0)
+		dev_set_name(&ms->dev, "%s:%s", dev_name(parent), ms->name);
+	else
+		dev_set_name(&ms->dev, "%s:%s%d", dev_name(parent), ms->name, ms->id);
+
+	return device_register(&ms->dev);
+}
+EXPORT_SYMBOL_GPL(register_measure_sensor);
+
+void unregister_measure_sensor(struct measure_sensor_device *ms)
+{
+	device_unregister(&ms->dev);
+}
+EXPORT_SYMBOL_GPL(unregister_measure_sensor);
 
 static int __init measure_sensor_class_init(void)
 {

@@ -42,6 +42,22 @@ struct nxt_us_data {
 	char fw_ver[ID_STR_LEN + 1];
 };
 
+static struct measure_sensor_scale_info nxt_us_scale_info[] = {
+	{
+		.units	= "cm",
+		.min	= 0,
+		.max	= 255,
+		.dp	= 0,
+	},
+	{
+		.units	= "in",
+		.min	= 0,
+		.max	= 1000,
+		.dp	= 1,
+	},
+	END_SCALE_INFO
+};
+
 static int nxt_us_raw_value(struct measure_sensor_device *ms)
 {
 	struct nxt_us_data *nxt_us = container_of(ms, struct nxt_us_data, ms);
@@ -67,7 +83,12 @@ printk("%s\n", __func__);
 
 	nxt_us->client = client;
 	nxt_us->in_port = pdata->in_port;
+	nxt_us->ms.name = "distance";
+	nxt_us->ms.id = -1;
 	nxt_us->ms.raw_value = nxt_us_raw_value;
+	nxt_us->ms.raw_min = 0;
+	nxt_us->ms.raw_max = 255;
+	nxt_us->ms.scale_info = &nxt_us_scale_info;
 	nxt_i2c_read_string(client, FIRMWARE_REG, nxt_us->fw_ver, ID_STR_LEN);
 
 	err = register_measure_sensor(&nxt_us->ms, &client->dev);
