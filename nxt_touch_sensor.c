@@ -16,40 +16,48 @@
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/slab.h>
-#include <linux/legoev3/touch_sensor_class.h>
-#include <linux/legoev3/ev3_input_port.h>
 #include <linux/legoev3/legoev3_ports.h>
+#include <linux/legoev3/ev3_input_port.h>
+#include <linux/legoev3/touch_sensor_class.h>
+
+#include <asm/bug.h>
 
 #define PIN1_NEAR_5V		4800		/* 4.80V */
 
-struct nxt_touch_sensor {
+struct nxt_touch_sensor_data {
 	struct touch_sensor_device ts;
+	struct legoev3_port_device *in_port;
 };
 
 static bool nxt_touch_sensor_pressed(struct touch_sensor_device *ts)
 {
-	struct ev3_input_port_device *ipd =
-		container_of(ts->dev.parent, struct ev3_input_port_device, dev);
+	struct nxt_touch_sensor_data *nxt_ts =
+			container_of(ts, struct nxt_touch_sensor_data, ts);
 
-	return (ipd->pin1_mv(ipd) < PIN1_NEAR_5V);
+	return ev3_input_port_get_pin1_mv(nxt_ts->in_port) < PIN1_NEAR_5V;
 }
 
-static int __devinit nxt_touch_sensor_probe(struct device *dev)
+static int __devinit nxt_touch_sensor_probe(struct legoev3_port_device *sensor)
 {
-	struct nxt_touch_sensor *nxt_ts;
+	struct nxt_touch_sensor_data *nxt_ts;
+	struct ev3_sensor_platform_data *pdata = sensor->dev.platform_data;
 	int err;
 
-	nxt_ts = kzalloc(sizeof(struct nxt_touch_sensor), GFP_KERNEL);
+	if (WARN_ON(!pdata))
+		return -EINVAL;
+
+	nxt_ts = kzalloc(sizeof(struct nxt_touch_sensor_data), GFP_KERNEL);
 	if (!nxt_ts)
 		return -ENOMEM;
 
 	nxt_ts->ts.pressed = nxt_touch_sensor_pressed;
+	nxt_ts->in_port = pdata->in_port;
 
-	err = register_touch_sensor(&nxt_ts->ts, dev);
+	err = register_touch_sensor(&nxt_ts->ts, &sensor->dev);
 	if (err)
 		goto register_touch_sensor_fail;
 
-	err = dev_set_drvdata(dev, nxt_ts);
+	err = dev_set_drvdata(&sensor->dev, nxt_ts);
 	if (err)
 		goto dev_set_drvdata_fail;
 
@@ -63,22 +71,22 @@ register_touch_sensor_fail:
 	return err;
 }
 
-static int __devexit nxt_touch_sensor_remove(struct device *dev)
+static int __devexit nxt_touch_sensor_remove(struct legoev3_port_device *sensor)
 {
-	struct nxt_touch_sensor *nxt_ts = dev_get_drvdata(dev);
+	struct nxt_touch_sensor_data *nxt_ts = dev_get_drvdata(&sensor->dev);
 
 	unregister_touch_sensor(&nxt_ts->ts);
-	dev_set_drvdata(dev, NULL);
+	dev_set_drvdata(&sensor->dev, NULL);
 	kfree(nxt_ts);
 	return 0;
 }
 
 struct legoev3_port_driver nxt_touch_sensor_driver = {
+	.probe	= nxt_touch_sensor_probe,
+	.remove	= __devexit_p(nxt_touch_sensor_remove),
 	.driver = {
 		.name	= "nxt-touch-sensor",
 		.owner	= THIS_MODULE,
-		.probe	= nxt_touch_sensor_probe,
-		.remove	= __devexit_p(nxt_touch_sensor_remove),
 	},
 };
 EXPORT_SYMBOL_GPL(nxt_touch_sensor_driver);

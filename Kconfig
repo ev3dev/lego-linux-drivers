@@ -44,6 +44,15 @@ config LEGOEV3_TOUCH_SENSORS
 	  Select Y to enable support for touch sensors. Provides a common device
 	  class interface for both the NXT and EV3 touch sensors.
 
+config LEGOEV3_MEASURE_SENSORS
+	tristate "Measurement sensor support"
+	default y
+	depends on LEGOEV3_INPUT_PORT
+	help
+	  Select Y to enable support for measurement sensors. Provides a common
+	  device class interface for any type of sensor that measures one or
+	  more values.
+
 config LEGOEV3_EV3_TOUCH_SENSOR
 	tristate "EV3 touch sensor"
 	default y
@@ -68,14 +77,14 @@ config LEGOEV3_I2C_SENSORS
 config LEGOEV3_NXT_ULTRASONIC
 	tristate "NXT Ultrasonic Distance Sensor"
 	default y
-	depends on LEGOEV3_I2C_SENSORS
+	depends on LEGOEV3_I2C_SENSORS && LEGOEV3_MEASURE_SENSORS
 	help
 	  Select Y to enable the driver for the NXT ultrasonic distance sensor.
 
 config LEGOEV3_MS_LIGHT_ARRAY
 	tristate "Mindsensors Light Sensor Array"
 	default y
-	depends on LEGOEV3_I2C_SENSORS
+	depends on LEGOEV3_I2C_SENSORS && LEGOEV3_MEASURE_SENSORS
 	help
 	  Select Y to enable the driver for the Mindsensors Light Sensor Array.
 

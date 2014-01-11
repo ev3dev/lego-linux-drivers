@@ -17,12 +17,10 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/i2c.h>
-#include <linux/legoev3/ev3_input_port.h>
 #include <linux/legoev3/legoev3_ports.h>
+#include <linux/legoev3/ev3_input_port.h>
+#include <linux/legoev3/nxt_i2c_sensor.h>
 
-#define FIRMWARE_REG	0x00	/* Firmware version (8 registers) */
-#define	VENDOR_ID_REG	0x08	/* Vendor ID (8 registers) */
-#define DEVICE_ID_REG	0x10	/* Device ID (8 registers) */
 #define COMMAND_REG	0x41	/* Command */
 #define CAL_READ_REG	0x42	/* Calibrated sensor reading (8 registers) */
 #define WHITE_LIM_REG	0x4A	/* White reading limit (8 registers) */
@@ -62,20 +60,13 @@ static int __devexit ms_light_array_sensor_remove(struct i2c_client *client)
 static int ms_light_array_sensor_detect(struct i2c_client *client,
 					struct i2c_board_info *info)
 {
-	char vend_id[STR_LEN + 1] = { 0 };
-	char dev_id[STR_LEN + 1] = { 0 };
 	int ret;
 
-	ret = i2c_smbus_read_i2c_block_data(client, VENDOR_ID_REG, STR_LEN, vend_id);
-	if (ret < 0)
+	ret = nxt_i2c_test_id_string(client, VENDOR_ID_REG, VENDOR_ID);
+	if (ret)
 		return -ENODEV;
-	if (strcmp(vend_id, VENDOR_ID))
-		return -ENODEV;
-
-	ret = i2c_smbus_read_i2c_block_data(client, DEVICE_ID_REG, STR_LEN, dev_id);
-	if (ret < 0)
-		return -ENODEV;
-	if (strcmp(dev_id, PRODUCT_ID))
+	ret = nxt_i2c_test_id_string(client, DEVICE_ID_REG, PRODUCT_ID);
+	if (ret)
 		return -ENODEV;
 
 	sprintf(info->type, "ms-light-array");

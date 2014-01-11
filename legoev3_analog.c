@@ -40,7 +40,10 @@
 #include <linux/slab.h>
 #include <linux/device.h>
 #include <linux/err.h>
+#include <linux/hrtimer.h>
 #include <linux/legoev3/legoev3_analog.h>
+
+#include <mach/legoev3.h>
 
 #define DRVNAME "legoev3-analog"
 
@@ -73,17 +76,6 @@
 #define UPDATE_SLOW_NS		10000000		/*  10 msec */
 #define UPDATE_FAST_NS		(UPDATE_SLOW_NS / 10)	/*   1 msec */
 #define UPDATE_COLOR_NS		(UPDATE_FAST_NS / 5)	/* 200 usec */
-
-#include <linux/module.h>
-#include <linux/init.h>
-#include <linux/spi/spi.h>
-#include <linux/err.h>
-#include <linux/delay.h>
-#include <linux/hrtimer.h>
-#include <linux/legoev3/legoev3_analog.h>
-#include <linux/legoev3/legoev3_analog.h>
-
-#include <mach/legoev3.h>
 
 enum nxt_color_read_state {
 	NXT_COLOR_READ_STATE_AMBIANT,
