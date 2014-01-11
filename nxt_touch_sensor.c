@@ -61,6 +61,9 @@ static int __devinit nxt_touch_sensor_probe(struct legoev3_port_device *sensor)
 	if (err)
 		goto dev_set_drvdata_fail;
 
+	dev_info(&sensor->dev, "NXT Touch sensor connected to port %s\n",
+		 dev_name(&nxt_ts->in_port->dev));
+
 	return 0;
 
 dev_set_drvdata_fail:
@@ -75,6 +78,8 @@ static int __devexit nxt_touch_sensor_remove(struct legoev3_port_device *sensor)
 {
 	struct nxt_touch_sensor_data *nxt_ts = dev_get_drvdata(&sensor->dev);
 
+	dev_info(&sensor->dev, "NXT Touch sensor removed from port %s\n",
+		 dev_name(&nxt_ts->in_port->dev));
 	unregister_touch_sensor(&nxt_ts->ts);
 	dev_set_drvdata(&sensor->dev, NULL);
 	kfree(nxt_ts);
