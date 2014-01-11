@@ -16,10 +16,12 @@
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/slab.h>
-#include <linux/i2c.h>
+#include <linux/bug.h>
+#include <linux/i2c-legoev3.h>
 #include <linux/legoev3/legoev3_ports.h>
 #include <linux/legoev3/ev3_input_port.h>
 #include <linux/legoev3/nxt_i2c_sensor.h>
+#include <linux/legoev3/measure_sensor_class.h>
 
 #define COMMAND_REG	0x41	/* Command */
 #define CAL_READ_REG	0x42	/* Calibrated sensor reading (8 registers) */
@@ -46,14 +48,120 @@ enum sensors {
 	NUM_SENSOR
 };
 
+struct ms_light_array_data {
+	struct i2c_client *client;
+	struct legoev3_port_device *in_port;
+	struct measure_sensor_device ms[NUM_SENSOR];
+	char fw_ver[ID_STR_LEN + 1];
+};
+
+static struct measure_sensor_scale_info ms_light_array_scale_info[] = {
+	{
+		.units	= "%",
+		.min	= 0,
+		.max	= 100,
+		.dp	= 0,
+	},
+	END_SCALE_INFO
+};
+
+static int ms_light_array_raw_value(struct measure_sensor_device *ms)
+{
+	struct ms_light_array_data *la =
+		container_of(ms, struct ms_light_array_data, ms[ms->id]);
+
+	return nxt_i2c_read_word(la->client, CAL_READ_REG + ms->id);
+}
+
+static int ms_light_array_cal_value(struct measure_sensor_device *ms)
+{
+	struct ms_light_array_data *la =
+		container_of(ms, struct ms_light_array_data, ms[ms->id]);
+
+	return nxt_i2c_read_byte(la->client, UNCAL_REG + ms->id * 2);
+}
+
+int ms_light_array_register_measure_sensors(struct ms_light_array_data *la,
+					    struct device *parent)
+{
+	int err;
+	int i = 0;
+
+	do {
+		err = register_measure_sensor(&la->ms[i], parent);
+		if (err)
+			goto err_register_measure_sensor;
+	} while (++i < NUM_SENSOR);
+
+	return 0;
+
+err_register_measure_sensor:
+	while (i--)
+		unregister_measure_sensor(&la->ms[i]);
+
+	return err;
+}
+
 static int __devinit ms_light_array_sensor_probe(struct i2c_client *client,
 						 const struct i2c_device_id *id)
-{printk("%s\n", __func__);
+{
+	struct ms_light_array_data *la;
+	struct i2c_legoev3_platform_data *pdata =
+					client->adapter->dev.platform_data;
+	int err, i;
+
+	if (WARN_ON(!pdata))
+		return -EINVAL;
+	if (WARN_ON(!pdata->in_port))
+		return -EINVAL;
+	la = kzalloc(sizeof(struct ms_light_array_data), GFP_KERNEL);
+	if (!la)
+		return -ENOMEM;
+
+	la->client = client;
+	la->in_port = pdata->in_port;
+	for (i = 0; i < NUM_SENSOR; i++) {
+		la->ms[i].name = "reflected-light";
+		la->ms[i].id = i;
+		la->ms[i].raw_value = ms_light_array_raw_value;
+		la->ms[i].raw_min = 0;
+		la->ms[i].raw_max = 0xffff;
+		la->ms[i].cal_value = ms_light_array_cal_value;
+		la->ms[i].cal_min = 0;
+		la->ms[i].cal_max = 100;
+		la->ms[i].scale_info = ms_light_array_scale_info;
+	}
+	nxt_i2c_read_string(client, FIRMWARE_REG, la->fw_ver, ID_STR_LEN);
+
+	err = ms_light_array_register_measure_sensors(la, &client->dev);
+	if (err) {
+		dev_err(&client->dev, "could not register measurement sensor!\n");
+		goto err_register_measure_sensor;
+	}
+
+	i2c_set_clientdata(client, la);
+	dev_info(&client->dev, "Mindsensors Light Sensor Array registered as '%s'\n",
+		 dev_name(&client->dev));
+
 	return 0;
+
+err_register_measure_sensor:
+	kfree(la);
+
+	return err;
 }
 
 static int __devexit ms_light_array_sensor_remove(struct i2c_client *client)
-{printk("%s\n", __func__);
+{
+	struct ms_light_array_data *la = i2c_get_clientdata(client);
+	int i;
+
+	dev_info(&client->dev, "Mindsensors Light Sensor Array '%s' removed.\n",
+		 dev_name(&client->dev));
+	for (i = 0; i < NUM_SENSOR; i++)
+		unregister_measure_sensor(&la->ms[i]);
+	kfree(la);
+
 	return 0;
 }
 

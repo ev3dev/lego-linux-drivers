@@ -47,6 +47,36 @@ static ssize_t measure_sensor_show_raw_max(struct device *dev,
 	return sprintf(buf, "%d\n", ms->raw_max);
 }
 
+static ssize_t measure_sensor_show_cal_value(struct device *dev,
+					     struct device_attribute *attr,
+					     char *buf)
+{
+	struct measure_sensor_device *ms =
+		container_of(dev, struct measure_sensor_device, dev);
+
+	return sprintf(buf, "%d\n", ms->cal_value(ms));
+}
+
+static ssize_t measure_sensor_show_cal_min(struct device *dev,
+					   struct device_attribute *attr,
+					   char *buf)
+{
+	struct measure_sensor_device *ms =
+		container_of(dev, struct measure_sensor_device, dev);
+
+	return sprintf(buf, "%d\n", ms->cal_min);
+}
+
+static ssize_t measure_sensor_show_cal_max(struct device *dev,
+					   struct device_attribute *attr,
+					   char *buf)
+{
+	struct measure_sensor_device *ms =
+		container_of(dev, struct measure_sensor_device, dev);
+
+	return sprintf(buf, "%d\n", ms->cal_max);
+}
+
 static ssize_t measure_sensor_show_scaled_value(struct device *dev,
 						struct device_attribute *attr,
 						char *buf)
@@ -55,9 +85,9 @@ static ssize_t measure_sensor_show_scaled_value(struct device *dev,
 		container_of(dev, struct measure_sensor_device, dev);
 	int value;
 
-	value = ms->raw_value(ms) * (ms->scale_info[ms->scale_idx].max
+	value = ms->cal_value(ms) * (ms->scale_info[ms->scale_idx].max
 		- ms->scale_info[ms->scale_idx].min)
-		/ (ms->raw_max - ms->raw_min);
+		/ (ms->cal_max - ms->cal_min);
 	return sprintf(buf, "%d\n",value);
 }
 
@@ -136,6 +166,9 @@ static struct device_attribute measure_sensor_class_dev_attrs[] = {
 	__ATTR(raw_value, S_IRUGO, measure_sensor_show_raw_value, NULL),
 	__ATTR(raw_min, S_IRUGO, measure_sensor_show_raw_min, NULL),
 	__ATTR(raw_max, S_IRUGO, measure_sensor_show_raw_max, NULL),
+	__ATTR(cal_value, S_IRUGO, measure_sensor_show_cal_value, NULL),
+	__ATTR(cal_min, S_IRUGO, measure_sensor_show_cal_min, NULL),
+	__ATTR(cal_max, S_IRUGO, measure_sensor_show_cal_max, NULL),
 	__ATTR(scaled_value, S_IRUGO, measure_sensor_show_scaled_value, NULL),
 	__ATTR(scaled_min, S_IRUGO, measure_sensor_show_scaled_min, NULL),
 	__ATTR(scaled_max, S_IRUGO, measure_sensor_show_scaled_max, NULL),
@@ -144,19 +177,6 @@ static struct device_attribute measure_sensor_class_dev_attrs[] = {
 	       measure_sensor_store_scaled_units),
 	__ATTR_NULL
 };
-
-static char *measure_sensor_devnode(struct device *dev, umode_t *mode)
-{
-	return kasprintf(GFP_KERNEL, "measurement-sensor/%s", dev_name(dev->parent));
-}
-
-struct class measure_sensor_class = {
-	.name		= "measure-sensor",
-	.owner		= THIS_MODULE,
-	.dev_attrs	= measure_sensor_class_dev_attrs,
-	.devnode	= measure_sensor_devnode,
-};
-EXPORT_SYMBOL_GPL(measure_sensor_class);
 
 static void measure_sensor_release(struct device *dev)
 {
@@ -185,6 +205,19 @@ void unregister_measure_sensor(struct measure_sensor_device *ms)
 	device_unregister(&ms->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_measure_sensor);
+
+static char *measure_sensor_devnode(struct device *dev, umode_t *mode)
+{
+	return kasprintf(GFP_KERNEL, "measurement-sensor/%s", dev_name(dev->parent));
+}
+
+struct class measure_sensor_class = {
+	.name		= "measure-sensor",
+	.owner		= THIS_MODULE,
+	.dev_attrs	= measure_sensor_class_dev_attrs,
+	.devnode	= measure_sensor_devnode,
+};
+EXPORT_SYMBOL_GPL(measure_sensor_class);
 
 static int __init measure_sensor_class_init(void)
 {

@@ -58,7 +58,7 @@ static struct measure_sensor_scale_info nxt_us_scale_info[] = {
 	END_SCALE_INFO
 };
 
-static int nxt_us_raw_value(struct measure_sensor_device *ms)
+static int nxt_us_cal_value(struct measure_sensor_device *ms)
 {
 	struct nxt_us_data *nxt_us = container_of(ms, struct nxt_us_data, ms);
 
@@ -72,7 +72,7 @@ static int __devinit nxt_us_probe(struct i2c_client *client,
 	struct i2c_legoev3_platform_data *pdata =
 					client->adapter->dev.platform_data;
 	int err;
-printk("%s\n", __func__);
+
 	if (WARN_ON(!pdata))
 		return -EINVAL;
 	if (WARN_ON(!pdata->in_port))
@@ -85,10 +85,17 @@ printk("%s\n", __func__);
 	nxt_us->in_port = pdata->in_port;
 	nxt_us->ms.name = "distance";
 	nxt_us->ms.id = -1;
-	nxt_us->ms.raw_value = nxt_us_raw_value;
+	/*
+	 * NXT Ultrasonic does not provide uncalibrated raw value, so we
+	 * just use the calibrated value.
+	 */
+	nxt_us->ms.raw_value = nxt_us_cal_value;
 	nxt_us->ms.raw_min = 0;
 	nxt_us->ms.raw_max = 255;
-	nxt_us->ms.scale_info = &nxt_us_scale_info;
+	nxt_us->ms.cal_value = nxt_us_cal_value;
+	nxt_us->ms.cal_min = 0;
+	nxt_us->ms.cal_max = 255;
+	nxt_us->ms.scale_info = nxt_us_scale_info;
 	nxt_i2c_read_string(client, FIRMWARE_REG, nxt_us->fw_ver, ID_STR_LEN);
 
 	err = register_measure_sensor(&nxt_us->ms, &client->dev);
@@ -99,6 +106,8 @@ printk("%s\n", __func__);
 
 	ev3_input_port_set_pin1_out(nxt_us->in_port, 1);
 	i2c_set_clientdata(client, nxt_us);
+	dev_info(&client->dev, "NXT Ultrasonic sensor registered as '%s'\n",
+		 dev_name(&client->dev));
 
 	return 0;
 
@@ -111,7 +120,9 @@ err_register_measure_sensor:
 static int __devexit nxt_us_remove(struct i2c_client *client)
 {
 	struct nxt_us_data *nxt_us = i2c_get_clientdata(client);
-printk("%s\n", __func__);
+
+	dev_info(&client->dev, "NXT Ultrasonic sensor '%s' removed.\n",
+		 dev_name(&client->dev));
 	ev3_input_port_set_pin1_out(nxt_us->in_port, 0);
 	unregister_measure_sensor(&nxt_us->ms);
 	kfree(nxt_us);

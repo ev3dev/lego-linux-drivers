@@ -17,12 +17,26 @@
 #include <linux/module.h>
 #include <linux/legoev3/touch_sensor_class.h>
 
+static ssize_t touch_sensor_show_pressed(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
+{
+	struct touch_sensor_device *ts =
+		container_of(dev, struct touch_sensor_device, dev);
+
+	return sprintf(buf, "%d\n", ts->pressed(ts));
+}
+
+static struct device_attribute touch_sensor_class_dev_attrs[] = {
+	__ATTR(pressed, S_IRUGO, touch_sensor_show_pressed, NULL),
+	__ATTR_NULL
+};
+
 static void touch_sensor_release(struct device *dev)
 {
 }
 
-int register_touch_sensor(struct touch_sensor_device *ts,
-				  struct device *parent)
+int register_touch_sensor(struct touch_sensor_device *ts, struct device *parent)
 {
 	if (!ts)
 		return -EINVAL;
@@ -41,21 +55,6 @@ void unregister_touch_sensor(struct touch_sensor_device *ts)
 	device_unregister(&ts->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_touch_sensor);
-
-static ssize_t touch_sensor_show_pressed(struct device *dev,
-					 struct device_attribute *attr,
-					 char *buf)
-{
-	struct touch_sensor_device *ts =
-		container_of(dev, struct touch_sensor_device, dev);
-
-	return sprintf(buf, "%d\n", ts->pressed(ts));
-}
-
-static struct device_attribute touch_sensor_class_dev_attrs[] = {
-	__ATTR(pressed, S_IRUGO, touch_sensor_show_pressed, NULL),
-	__ATTR_NULL
-};
 
 static char *touch_sensor_devnode(struct device *dev, umode_t *mode)
 {
