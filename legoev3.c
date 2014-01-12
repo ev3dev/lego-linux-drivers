@@ -52,6 +52,7 @@ struct snd_legoev3 {
 	struct snd_card *card;
 	struct input_dev *input_dev;
 	struct snd_pcm *pcm;
+	struct tasklet_struct pcm_period_tasklet;
 	unsigned amp_gpio;
 	char tone_busy;
 	size_t playback_ptr;
@@ -145,6 +146,19 @@ static int snd_legoev3_beep_event(struct input_dev *dev, unsigned int type,
 	return 0;
 }
 
+/*
+ * Call snd_pcm_period_elapsed in a tasklet
+ * This avoids spinlock messes and long-running irq contexts
+ */
+static void snd_legoev3_call_pcm_elapsed(unsigned long data)
+{
+	if (data)
+	{
+		struct snd_pcm_substream *substream = (struct snd_pcm_substream *)data;
+		snd_pcm_period_elapsed(substream);
+	}
+}
+
 static int snd_legoev3_et_callback(struct ehrpwm_pwm *ehrpwm, void *data)
 {
 	struct snd_pcm_substream *substream = (struct snd_pcm_substream *)data;
@@ -171,7 +185,8 @@ static int snd_legoev3_et_callback(struct ehrpwm_pwm *ehrpwm, void *data)
 	if (++chip->et_callback_count >= runtime->period_size)
 	{
 		chip->et_callback_count = 0;
-		snd_pcm_period_elapsed(substream);
+		//snd_pcm_period_elapsed(substream);
+		tasklet_schedule(&(chip->pcm_period_tasklet));
 	}	
 
 	return 0;
@@ -359,7 +374,7 @@ static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 	if (err < 0)
 		return err;
 
-        printk(KERN_INFO "pwm params f=%li scale=%d p_ticks=%i hz=%lu\n",
+        printk(KERN_INFO "pwm params f=%d scale=%d p_ticks=%lu hz=%lu\n",
 		SAMPLE_RATE, PWM_FACTOR, chip->pwm->period_ticks, chip->pwm->tick_hz);
 
 	err = snd_pcm_hw_constraint_list(substream->runtime, 0,
@@ -367,6 +382,9 @@ static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 	                                 &constraints_rates);
 	if (err < 0)
 		return err;
+
+	tasklet_init(&chip->pcm_period_tasklet, snd_legoev3_call_pcm_elapsed,
+	             (unsigned long)substream);
 
 	runtime->hw = snd_legoev3_playback_hw;
 	err = ehrpwm_et_cb_register(chip->pwm, substream,
@@ -381,6 +399,13 @@ static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 
 static int snd_legoev3_pcm_playback_close(struct snd_pcm_substream *substream)
 {
+	struct snd_legoev3 *chip = snd_pcm_substream_chip(substream);
+	
+	if (chip)
+	{
+		tasklet_kill(&chip->pcm_period_tasklet);
+	}
+
 	return 0;
 }
 
