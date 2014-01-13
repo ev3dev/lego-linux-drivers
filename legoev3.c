@@ -22,6 +22,7 @@
  */
 
 #include <linux/gpio.h>
+#include <linux/hrtimer.h>
 #include <linux/init.h>
 #include <linux/input.h>
 #include <linux/interrupt.h>
@@ -48,17 +49,22 @@
 #define MAX_VOLUME  256
 
 struct snd_legoev3 {
-	struct pwm_device *pwm;
-	struct snd_card *card;
-	struct input_dev *input_dev;
-	struct snd_pcm *pcm;
-	struct tasklet_struct pcm_period_tasklet;
-	unsigned amp_gpio;
-	char tone_busy;
-	size_t playback_ptr;
+	struct pwm_device    *pwm;
+	struct snd_card      *card;
+	struct input_dev     *input_dev;
+	struct snd_pcm       *pcm;
+	struct tasklet_struct pcm_period_tasklet;	
+	unsigned              amp_gpio;
+	
+	unsigned long  tone_frequency;
+	unsigned long  tone_duration;
+	struct hrtimer tone_timer;
+	
+	size_t        playback_ptr;
 	unsigned long et_callback_count;
 	unsigned long et_pwm_cycle;
-	int global_volume;
+
+	int volume;
 };
 
 static struct snd_pcm_hardware snd_legoev3_playback_hw = {
@@ -85,7 +91,18 @@ static struct snd_pcm_hw_constraint_list constraints_rates = {
 	.mask = 0,
 };
 
-static struct snd_kcontrol_new global_volume_control;
+static struct snd_kcontrol_new volume_control;
+
+static int snd_legoev3_apply_tone_volume(struct snd_legoev3 *chip)
+{
+	int duty_percent;
+	
+	duty_percent = ((50/8) * chip->volume) >> 8; // use only 1/8th of volume range (taken from lego driver source code)
+	if ((duty_percent == 0) && (chip->volume > 0))
+		duty_percent = 1; 
+	
+	return pwm_set_duty_percent(chip->pwm, duty_percent);
+}
 
 static int snd_legoev3_do_tone(struct snd_legoev3 *chip, int hz)
 {
@@ -99,7 +116,8 @@ static int snd_legoev3_do_tone(struct snd_legoev3 *chip, int hz)
 		gpio_set_value(chip->amp_gpio, 0);
 		pwm_stop(chip->pwm);
 		pwm_set_duty_percent(chip->pwm, 0);
-		chip->tone_busy = 0;
+		chip->tone_frequency = 0;
+		chip->tone_duration  = 0;
 		return 0;
 	}
 	if (hz < TONE_MIN_HZ)
@@ -109,13 +127,17 @@ static int snd_legoev3_do_tone(struct snd_legoev3 *chip, int hz)
 	err = pwm_set_frequency(chip->pwm, hz);
 	if (err < 0)
 		return err;
-	/* TODO: add volume parameter and factor in here*/
-	err = pwm_set_duty_percent(chip->pwm, 50);
+		
+	err = snd_legoev3_apply_tone_volume(chip);
 	if (err < 0)
 		return err;
+	
 	err = pwm_start(chip->pwm);
 	if (err < 0)
 		return err;
+	
+	chip->tone_frequency = hz;
+	chip->tone_duration  = 0;
 	gpio_set_value(chip->amp_gpio, 1);
 
 	return 0;
@@ -124,6 +146,15 @@ static int snd_legoev3_do_tone(struct snd_legoev3 *chip, int hz)
 static void snd_legoev3_stop_tone(struct snd_legoev3 * chip)
 {
 	snd_legoev3_do_tone(chip, 0);
+}
+
+static enum hrtimer_restart snd_legoev3_cb_stop_tone(struct hrtimer *pTimer)
+{
+	struct snd_legoev3 *chip = container_of(pTimer, struct snd_legoev3, tone_timer);
+
+	snd_legoev3_do_tone(chip, 0);
+
+	return HRTIMER_NORESTART;
 }
 
 static int snd_legoev3_beep_event(struct input_dev *dev, unsigned int type,
@@ -173,8 +204,13 @@ static int snd_legoev3_et_callback(struct ehrpwm_pwm *ehrpwm, void *data)
 		return 0;
 #endif
 	sample = *(short *)(runtime->dma_area + chip->playback_ptr);
-	sample = (sample * chip->global_volume) >> 8;
+	sample = (sample * chip->volume) >> 8;
 	duty_ticks = ((sample + 0x7FFF) * pwm->period_ticks) >> 16;
+	
+	if (duty_ticks<5)
+		duty_ticks = 5;
+	else if (duty_ticks+5>pwm->period_ticks)
+		duty_ticks = pwm->period_ticks-5;
 
 	pwm_set_duty_ticks(pwm, duty_ticks);
 
@@ -213,7 +249,7 @@ static int __devinit snd_legoev3_create(struct snd_card *card,
 	if (err < 0)
 		return err;
 
-	err = snd_ctl_add(card, snd_ctl_new1(&global_volume_control, chip));
+	err = snd_ctl_add(card, snd_ctl_new1(&volume_control, chip));
 	if (err < 0)
 		return err;
 
@@ -288,8 +324,166 @@ static int __devinit snd_legoev3_input_device_create(struct snd_card *card)
 	input_set_drvdata(dev, chip);
 	chip->input_dev = dev;
 
+	hrtimer_init(&chip->tone_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	chip->tone_timer.function = snd_legoev3_cb_stop_tone;
+
 	return 0;
 }
+
+//-------------------------------------
+
+static ssize_t show_mode(struct device *dev,
+                         struct device_attribute *attr,
+                         char *buf)
+{
+	struct snd_card *card = dev_get_drvdata(&to_platform_device(dev)->dev);
+	struct snd_legoev3 *chip = card->private_data;
+
+	if (chip->tone_frequency)
+		return snprintf(buf, PAGE_SIZE, "tone\n");
+	else if (chip->pcm->streams[0].substream_opened || 
+	         chip->pcm->streams[1].substream_opened)
+		return snprintf(buf, PAGE_SIZE, "pcm\n");
+
+	return snprintf(buf, PAGE_SIZE, "idle\n");
+}
+
+static ssize_t show_tone(struct device *dev,
+                         struct device_attribute *attr,
+                         char *buf)
+{
+	struct snd_card *card = dev_get_drvdata(&to_platform_device(dev)->dev);
+	struct snd_legoev3 *chip = card->private_data;
+
+	if (chip->tone_frequency)
+	{
+		if (chip->tone_duration)
+			return snprintf(buf, PAGE_SIZE, "%lu %lu\n",
+			                chip->tone_frequency, chip->tone_duration);
+		else
+			return snprintf(buf, PAGE_SIZE, "%lu\n", chip->tone_frequency);
+	}
+	
+	return snprintf(buf, PAGE_SIZE, "0\n");
+}
+
+static ssize_t store_tone(struct device *dev,
+                          struct device_attribute *attr,
+                          const char *buf, size_t count)
+{
+	struct snd_card *card = dev_get_drvdata(&to_platform_device(dev)->dev);
+	struct snd_legoev3 *chip = card->private_data;
+
+	const char *start = buf;
+	      char *end   = (char*)buf;
+	const char *last  = buf + count;
+
+	int freq, duration = 0;
+	ktime_t time;
+
+	start = skip_spaces(end);
+	if (last <= start)
+		return -EINVAL;
+
+	freq = simple_strtol(start, &end, 0);
+	if (end == start)
+		return -EINVAL;
+	
+	if (freq != 0)
+	{
+		if (freq < TONE_MIN_HZ)
+			return -EINVAL;
+		if (freq > TONE_MAX_HZ)
+			return -EINVAL;
+	}
+
+	start = skip_spaces(end);	
+	if (last <= start)
+	{
+		if (snd_legoev3_do_tone(chip, freq) == 0)
+			return count;
+ 	
+		return -EINVAL;
+	}
+
+	duration = simple_strtol(start, &end, 0);
+	if (end == start)
+		return -EINVAL;
+		
+	if (duration < 0)
+		return -EINVAL;
+
+	if (snd_legoev3_do_tone(chip, freq) == 0)
+	{
+		time = ktime_set(duration/1000, (duration%1000)*NSEC_PER_MSEC);
+		hrtimer_start(&chip->tone_timer, time, HRTIMER_MODE_REL);
+
+		return count;
+	}
+
+	return -EINVAL;
+}
+
+static ssize_t show_volume(struct device *dev,
+                           struct device_attribute *attr,
+                           char *buf)
+{
+	struct snd_card *card = dev_get_drvdata(&to_platform_device(dev)->dev);
+	struct snd_legoev3 *chip = card->private_data;
+
+	return snprintf(buf, PAGE_SIZE, "%u\n", (chip->volume * 100)/MAX_VOLUME);
+}
+
+static ssize_t store_volume(struct device *dev,
+                            struct device_attribute *attr,
+                            const char *buf, size_t count)
+{
+	struct snd_card *card = dev_get_drvdata(&to_platform_device(dev)->dev);
+	struct snd_legoev3 *chip = card->private_data;
+
+	const char *start = buf;
+	      char *end   = (char*)buf;
+	const char *last  = buf + count;
+
+	int value;
+
+	start = skip_spaces(end);
+	if (last <= start)
+		return -EINVAL;
+
+	value = simple_strtol(start, &end, 0);
+	if (end == start)
+		return -EINVAL;
+
+	if (value < 0)
+		return -EINVAL;
+	if (value > 100)
+		return -EINVAL;
+
+	chip->volume = value * MAX_VOLUME / 100;
+
+	// if tone is running, apply volume
+	if (chip->tone_frequency)
+		snd_legoev3_apply_tone_volume(chip);
+
+	return count;
+}
+
+static DEVICE_ATTR(mode,   0444, show_mode,   NULL);
+static DEVICE_ATTR(tone,   0666, show_tone,   store_tone);
+static DEVICE_ATTR(volume, 0666, show_volume, store_volume);
+
+static struct attribute *snd_legoev3_attrs[] = {
+    &dev_attr_mode.attr
+  , &dev_attr_tone.attr
+  , &dev_attr_volume.attr
+  , NULL
+};
+
+static struct attribute_group snd_legoev3_attr_group = {
+	.attrs = snd_legoev3_attrs,
+};
+
 
 static int __devinit snd_legoev3_probe(struct platform_device *pdev)
 {
@@ -331,6 +525,10 @@ static int __devinit snd_legoev3_probe(struct platform_device *pdev)
 		goto err2;
 
 	dev_set_drvdata(&pdev->dev, card);
+
+	err = sysfs_create_group(&(pdev->dev.kobj),
+	                         &snd_legoev3_attr_group);
+
 	return 0;
 
 err2:
@@ -347,7 +545,10 @@ static int __devexit snd_legoev3_remove(struct platform_device *pdev)
 	struct snd_card *card = dev_get_drvdata(&pdev->dev);
 	struct snd_legoev3 *chip =  card->private_data;
 
-	/* TODO: make sure sound is off */
+	/* make sure sound is off */
+	hrtimer_cancel(&chip->tone_timer);
+	snd_legoev3_stop_tone(chip);
+
 	input_unregister_device(chip->input_dev);
 	input_free_device(chip->input_dev);
 	snd_card_free(card);
@@ -363,7 +564,7 @@ static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int err;
 
-	if (chip->tone_busy)
+	if (chip->tone_frequency)
 		return -EBUSY;
 
 	err = ehrpwm_tb_set_prescalar_val(chip->pwm, TB_DIV1, TB_HS_DIV1);
@@ -497,8 +698,8 @@ static int __devinit snd_legoev3_new_pcm(struct snd_legoev3 *chip)
 	return 0;
 }
 
-static int global_volume_control_info(struct snd_kcontrol *kcontrol,
-                                      struct snd_ctl_elem_info *uinfo)
+static int volume_control_info(struct snd_kcontrol *kcontrol,
+                               struct snd_ctl_elem_info *uinfo)
 {
 	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
 	uinfo->count = 1;
@@ -507,16 +708,16 @@ static int global_volume_control_info(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int global_volume_control_get(struct snd_kcontrol *kcontrol,
-                                     struct snd_ctl_elem_value *ucontrol)
+static int volume_control_get(struct snd_kcontrol *kcontrol,
+                              struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_legoev3 *chip = snd_kcontrol_chip(kcontrol);
-	ucontrol->value.integer.value[0] = chip->global_volume;
+	ucontrol->value.integer.value[0] = chip->volume;
 	return 0;
 }
 
-static int global_volume_control_put(struct snd_kcontrol *kcontrol,
-                                     struct snd_ctl_elem_value *ucontrol)
+static int volume_control_put(struct snd_kcontrol *kcontrol,
+                              struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_legoev3 *chip = snd_kcontrol_chip(kcontrol);
 	int changed = 0, newValue = ucontrol->value.integer.value[0];
@@ -524,26 +725,27 @@ static int global_volume_control_put(struct snd_kcontrol *kcontrol,
 	if (newValue < 0) newValue = 0;
 	if (newValue > MAX_VOLUME) newValue = MAX_VOLUME;
 
-	if (chip->global_volume != newValue) {
-		chip->global_volume = newValue;
+	if (chip->volume != newValue) {
+		chip->volume = newValue;
+	
+		// if tone is running, apply volume
+		if (chip->tone_frequency)
+			snd_legoev3_apply_tone_volume(chip);
+
 		changed = 1;
 	}
 
-	if (chip->global_volume != ucontrol->value.integer.value[0]) {
-		chip->global_volume = ucontrol->value.integer.value[0];
-		changed = 1;
-	}
 	return changed;
 }
 
-static struct snd_kcontrol_new global_volume_control = {
-	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
-	.name = "Playback Volume",
-	.index = 0,
+static struct snd_kcontrol_new volume_control = {
+	.iface  = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name   = "Playback Volume",
+	.index  = 0,
 	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE,
-	.info = global_volume_control_info,
-	.get = global_volume_control_get,
-	.put = global_volume_control_put
+	.info   = volume_control_info,
+	.get    = volume_control_get,
+	.put    = volume_control_put
 };
 
 static struct platform_driver snd_legoev3_platform_driver = {
