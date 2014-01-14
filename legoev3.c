@@ -26,6 +26,7 @@
 #include <linux/init.h>
 #include <linux/input.h>
 #include <linux/interrupt.h>
+#include <linux/jiffies.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/pwm/ehrpwm.h>
@@ -39,13 +40,13 @@
 
 #include "legoev3.h"
 
-#define BUFFER_SIZE (64*1024)
+#define BUFFER_SIZE (128*1024)
 #define TONE_MIN_HZ 100
 #define TONE_MAX_HZ 10000
-#define SAMPLE_RATE 22050
-#define SAMPLE_RATE_SYMBOLIC SNDRV_PCM_RATE_22050
-#define PWM_FACTOR  1
-#define PWM_MASK    ((PWM_FACTOR>>1)-1)
+//#define SAMPLE_RATE 22050
+//#define SAMPLE_RATE_SYMBOLIC SNDRV_PCM_RATE_22050
+//#define PWM_FACTOR  1
+//#define PWM_MASK    ((PWM_FACTOR>>1)-1)
 #define MAX_VOLUME  256
 
 struct snd_legoev3 {
@@ -63,6 +64,8 @@ struct snd_legoev3 {
 	size_t        playback_ptr;
 	unsigned long et_callback_count;
 	unsigned long et_pwm_cycle;
+	u32 et_pulse_jiffies;
+	u32 et_timestamp;
 
 	int volume;
 };
@@ -72,9 +75,9 @@ static struct snd_pcm_hardware snd_legoev3_playback_hw = {
 	         SNDRV_PCM_INFO_MMAP_VALID |
 	         SNDRV_PCM_INFO_INTERLEAVED),
 	.formats =          SNDRV_PCM_FMTBIT_S16_LE,
-	.rates =            SAMPLE_RATE_SYMBOLIC,
-	.rate_min =         SAMPLE_RATE,
-	.rate_max =         SAMPLE_RATE,
+	.rates =            SNDRV_PCM_RATE_CONTINUOUS,
+	.rate_min =         8000,
+	.rate_max =         48000,
 	.channels_min =     1,
 	.channels_max =     1,
 	.buffer_bytes_max = BUFFER_SIZE,
@@ -83,14 +86,14 @@ static struct snd_pcm_hardware snd_legoev3_playback_hw = {
 	.periods_min =      1,
 	.periods_max =      1024,
 };
-
+/*
 static unsigned int rates[] = { SAMPLE_RATE };
 static struct snd_pcm_hw_constraint_list constraints_rates = {
 	.count = ARRAY_SIZE(rates),
 	.list = rates,
 	.mask = 0,
 };
-
+*/
 static struct snd_kcontrol_new volume_control;
 
 static int snd_legoev3_apply_tone_volume(struct snd_legoev3 *chip)
@@ -185,24 +188,39 @@ static void snd_legoev3_call_pcm_elapsed(unsigned long data)
 {
 	if (data)
 	{
-		struct snd_pcm_substream *substream = (struct snd_pcm_substream *)data;
+		struct snd_pcm_substream *substream = (void *)data;
 		snd_pcm_period_elapsed(substream);
 	}
 }
 
 static int snd_legoev3_et_callback(struct ehrpwm_pwm *ehrpwm, void *data)
 {
-	struct snd_pcm_substream *substream = (struct snd_pcm_substream *)data;
+	struct snd_pcm_substream *substream = data;
 	struct snd_legoev3 *chip = snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct pwm_device *pwm = chip->pwm;
-	int sample;
+	int sample, elapsed_frames;
 	unsigned long duty_ticks;
-
+	u32 now = jiffies;
+	u32 elapsed_time;
+/*
 #if (PWM_FACTOR>3)
 	if (++chip->et_pwm_cycle & PWM_MASK)
 		return 0;
-#endif
+#endif */
+
+	elapsed_time = now - chip->et_timestamp;
+	elapsed_frames = elapsed_time / chip->et_pulse_jiffies + 1;
+	chip->playback_ptr += frames_to_bytes(runtime, elapsed_frames);
+	chip->playback_ptr %= snd_pcm_lib_buffer_bytes(substream);
+
+	chip->et_callback_count += elapsed_frames;
+	if (chip->et_callback_count >= runtime->period_size)
+	{
+		chip->et_callback_count %= runtime->period_size;
+		tasklet_schedule(&chip->pcm_period_tasklet);
+	}
+
 	sample = *(short *)(runtime->dma_area + chip->playback_ptr);
 	sample = (sample * chip->volume) >> 8;
 	duty_ticks = ((sample + 0x7FFF) * pwm->period_ticks) >> 16;
@@ -214,16 +232,7 @@ static int snd_legoev3_et_callback(struct ehrpwm_pwm *ehrpwm, void *data)
 
 	pwm_set_duty_ticks(pwm, duty_ticks);
 
-	chip->playback_ptr += frames_to_bytes(runtime, 1);
-	if (chip->playback_ptr >= runtime->dma_bytes)
-		chip->playback_ptr = 0;
-
-	if (++chip->et_callback_count >= runtime->period_size)
-	{
-		chip->et_callback_count = 0;
-		//snd_pcm_period_elapsed(substream);
-		tasklet_schedule(&(chip->pcm_period_tasklet));
-	}	
+	chip->et_timestamp = now;
 
 	return 0;
 }
@@ -283,10 +292,6 @@ static int __devinit snd_legoev3_init_ehrpwm(struct pwm_device *pwm)
 	if (err < 0)
 		return err;
 	err = ehrpwm_pc_en_dis(pwm, PC_DISABLE);
-	if (err < 0)
-		return err;
-	err = ehrpwm_et_set_sel_evt(pwm, ET_CTR_PRD,
-		(PWM_FACTOR==1 ? ET_1ST : (PWM_FACTOR==3 ? ET_3RD : ET_2ND)));
 	if (err < 0)
 		return err;
 	err = ehrpwm_hr_config(pwm, HR_CTR_ZERO, HR_DUTY, HR_MEP_DISABLE);
@@ -526,8 +531,7 @@ static int __devinit snd_legoev3_probe(struct platform_device *pdev)
 
 	dev_set_drvdata(&pdev->dev, card);
 
-	err = sysfs_create_group(&(pdev->dev.kobj),
-	                         &snd_legoev3_attr_group);
+	err = sysfs_create_group(&pdev->dev.kobj, &snd_legoev3_attr_group);
 
 	return 0;
 
@@ -549,6 +553,7 @@ static int __devexit snd_legoev3_remove(struct platform_device *pdev)
 	hrtimer_cancel(&chip->tone_timer);
 	snd_legoev3_stop_tone(chip);
 
+	sysfs_remove_group(&pdev->dev.kobj, &snd_legoev3_attr_group);
 	input_unregister_device(chip->input_dev);
 	input_free_device(chip->input_dev);
 	snd_card_free(card);
@@ -570,18 +575,11 @@ static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 	err = ehrpwm_tb_set_prescalar_val(chip->pwm, TB_DIV1, TB_HS_DIV1);
 	if (err < 0)
 		return err;
-
-	err = pwm_set_frequency(chip->pwm, SAMPLE_RATE * PWM_FACTOR);
-	if (err < 0)
-		return err;
-
-        printk(KERN_INFO "pwm params f=%d scale=%d p_ticks=%lu hz=%lu\n",
-		SAMPLE_RATE, PWM_FACTOR, chip->pwm->period_ticks, chip->pwm->tick_hz);
-
+/*
 	err = snd_pcm_hw_constraint_list(substream->runtime, 0,
 	                                 SNDRV_PCM_HW_PARAM_RATE,
 	                                 &constraints_rates);
-	if (err < 0)
+*/	if (err < 0)
 		return err;
 
 	tasklet_init(&chip->pcm_period_tasklet, snd_legoev3_call_pcm_elapsed,
@@ -594,6 +592,7 @@ static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 		return err;
 
 	pwm_set_duty_ticks(chip->pwm, 0);
+	gpio_set_value(chip->amp_gpio, 1);
 
 	return 0;
 }
@@ -605,6 +604,9 @@ static int snd_legoev3_pcm_playback_close(struct snd_pcm_substream *substream)
 	if (chip)
 	{
 		tasklet_kill(&chip->pcm_period_tasklet);
+		pwm_set_duty_ticks(chip->pwm, 0);
+		pwm_stop(chip->pwm);
+		gpio_set_value(chip->amp_gpio, 0);
 	}
 
 	return 0;
@@ -625,10 +627,28 @@ static int snd_legoev3_pcm_hw_free(struct snd_pcm_substream *substream)
 static int snd_legoev3_pcm_prepare(struct snd_pcm_substream *substream)
 {
 	struct snd_legoev3 *chip = snd_pcm_substream_chip(substream);
+	int err, int_prd;
 
 	chip->playback_ptr = 0;
 	chip->et_pwm_cycle = 0;
 	chip->et_callback_count = 0;
+
+	/* interrupt can occur on every 1st, 2nd or 3rd pwm pulse */
+	if (substream->runtime->rate > 32000)
+		int_prd = 1;
+	else if (substream->runtime->rate > 16000)
+		int_prd = 2;
+	else
+		int_prd = 3;
+	err = pwm_set_frequency(chip->pwm, substream->runtime->rate * int_prd);
+	if (err < 0)
+		return err;
+	err = ehrpwm_et_set_sel_evt(chip->pwm, ET_CTR_PRD, int_prd);
+	if (err < 0)
+		return err;
+	chip->et_pulse_jiffies = usecs_to_jiffies(pwm_get_period_ns(chip->pwm) / 1000);
+//        printk(KERN_INFO "pwm params f=%d scale=%d p_ticks=%lu hz=%lu\n",
+//		substream->runtime->rate, int_prd, chip->pwm->period_ticks, chip->pwm->tick_hz);
 
 	return 0;
 }
@@ -639,15 +659,16 @@ static int snd_legoev3_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
+		chip->et_timestamp = jiffies;
 		ehrpwm_et_int_en_dis(chip->pwm, ET_ENABLE);
-		gpio_set_value(chip->amp_gpio, 1);
+//		gpio_set_value(chip->amp_gpio, 1);
 		pwm_start(chip->pwm);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
-		gpio_set_value(chip->amp_gpio, 0);
+//		gpio_set_value(chip->amp_gpio, 0);
 		ehrpwm_et_int_en_dis(chip->pwm, ET_DISABLE);
-		pwm_set_duty_ticks(chip->pwm, 0);
-		pwm_stop(chip->pwm);
+//		pwm_set_duty_ticks(chip->pwm, 0);
+//		pwm_stop(chip->pwm);
 		break;
 	default:
 		return -EINVAL;
@@ -772,4 +793,3 @@ MODULE_DESCRIPTION("LEGO Mindstorms EV3 speaker driver");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:snd-legoev3");
-MODULE_SUPPORTED_DEVICE("{{ev3dev,legoev3}}");
