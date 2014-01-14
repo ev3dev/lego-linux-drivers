@@ -88,4 +88,11 @@ config LEGOEV3_MS_LIGHT_ARRAY
 	help
 	  Select Y to enable the driver for the Mindsensors Light Sensor Array.
 
+config LEGOEV3_UART_SENSORS
+	tristate "EV3 UART sensor suppport"
+	default y
+	depends on LEGOEV3_INPUT_PORT
+	help
+	  Select Y to enable support for EV3 UART sensors.
+
 endif #LEGOEV3_DRIVERS

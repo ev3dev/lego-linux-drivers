@@ -360,13 +360,13 @@ int ev3_input_port_register_i2c(struct legoev3_port_device *in_port,
 	gpio_set_value(port->gpio[GPIO_BUF_ENA].gpio, 0); /* active low */
 	err = davinci_cfg_reg(port->pin5_mux[PIN5_MUX_MODE_I2C]);
 	if (err) {
-		dev_err(parent, "Pin 5 mux failed for i2c device.\n");
+		dev_err(&in_port->dev, "Pin 5 mux failed for i2c device.\n");
 		goto davinci_cfg_reg_fail;
 	}
 	port->i2c_pdev_info.parent = parent;
 	pdev = platform_device_register_full(&port->i2c_pdev_info);
 	if (IS_ERR(pdev)) {
-		dev_err(parent, "Could not register i2c device.\n");
+		dev_err(&in_port->dev, "Could not register i2c device.\n");
 		err = PTR_ERR(pdev);
 		goto platform_device_register_fail;
 	}
@@ -391,6 +391,30 @@ void ev3_input_port_unregister_i2c(struct legoev3_port_device *in_port)
 	gpio_set_value(port->gpio[GPIO_BUF_ENA].gpio, 1); /* active low */
 }
 EXPORT_SYMBOL_GPL(ev3_input_port_unregister_i2c);
+
+int ev3_input_port_enable_uart(struct legoev3_port_device *in_port)
+{
+	struct ev3_input_port_data *port = dev_get_drvdata(&in_port->dev);
+	int err;
+
+	err = davinci_cfg_reg(port->pin5_mux[PIN5_MUX_MODE_UART]);
+	if (err) {
+		dev_err(&in_port->dev, "Pin 5 mux failed for uart device.\n");
+		return err;
+	}
+	gpio_set_value(port->gpio[GPIO_BUF_ENA].gpio, 0); /* active low */
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(ev3_input_port_enable_uart);
+
+void ev3_input_port_disable_uart(struct legoev3_port_device *in_port)
+{
+	struct ev3_input_port_data *port = dev_get_drvdata(&in_port->dev);
+
+	gpio_set_value(port->gpio[GPIO_BUF_ENA].gpio, 1); /* active low */
+}
+EXPORT_SYMBOL_GPL(ev3_input_port_disable_uart);
 
 void ev3_input_port_float(struct ev3_input_port_data *port)
 {
