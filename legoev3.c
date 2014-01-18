@@ -183,7 +183,7 @@ static int snd_legoev3_beep_event(struct input_dev *dev, unsigned int type,
  * This avoids spinlock messes and long-running irq contexts
  */
 static void snd_legoev3_call_pcm_elapsed(unsigned long data)
-{printk("%s\n", __func__);
+{
 	if (data)
 	{
 		struct snd_pcm_substream *substream = (void *)data;
@@ -540,7 +540,7 @@ static int __devexit snd_legoev3_remove(struct platform_device *pdev)
 }
 
 static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
-{printk("%s\n", __func__);
+{
 	struct snd_legoev3 *chip = snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int err;
@@ -548,33 +548,35 @@ static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 	if (chip->tone_frequency)
 		return -EBUSY;
 
-	err = ehrpwm_tb_set_prescalar_val(chip->pwm, TB_DIV1, TB_HS_DIV1);
+	err = legoev3_fiq_ehrpwm_request(substream);
 	if (err < 0)
 		return err;
-/*
-	err = snd_pcm_hw_constraint_list(substream->runtime, 0,
-	                                 SNDRV_PCM_HW_PARAM_RATE,
-	                                 &constraints_rates);
-*/	if (err < 0)
-		return err;
 
-	tasklet_init(&chip->pcm_period_tasklet, snd_legoev3_call_pcm_elapsed,
-	             (unsigned long)substream);
+	err = ehrpwm_tb_set_prescalar_val(chip->pwm, TB_DIV1, TB_HS_DIV1);
+	if (err < 0)
+		goto err_ehrpwm_tb_set_prescalar_val;
 
 	runtime->hw = snd_legoev3_playback_hw;
 	err = ehrpwm_et_cb_register(chip->pwm, substream,
 				    snd_legoev3_et_callback);
 	if (err < 0)
-		return err;
+		goto err_ehrpwm_et_cb_register;
 
 	pwm_set_duty_ticks(chip->pwm, 0);
-	gpio_set_value(chip->amp_gpio, 1);
+
+	tasklet_init(&chip->pcm_period_tasklet, snd_legoev3_call_pcm_elapsed,
+	             (unsigned long)substream);
 
 	return 0;
+
+err_ehrpwm_et_cb_register:
+err_ehrpwm_tb_set_prescalar_val:
+	legoev3_fiq_ehrpwm_release();
+	return err;
 }
 
 static int snd_legoev3_pcm_playback_close(struct snd_pcm_substream *substream)
-{printk("%s\n", __func__);
+{
 	struct snd_legoev3 *chip = snd_pcm_substream_chip(substream);
 	
 	if (chip)
@@ -584,34 +586,24 @@ static int snd_legoev3_pcm_playback_close(struct snd_pcm_substream *substream)
 		pwm_stop(chip->pwm);
 		gpio_set_value(chip->amp_gpio, 0);
 	}
+	legoev3_fiq_ehrpwm_release();
 
 	return 0;
 }
 
 static int snd_legoev3_pcm_hw_params(struct snd_pcm_substream *substream,
                                      struct snd_pcm_hw_params *hw_params)
-{printk("%s\n", __func__);
-	int err;
-
-	err = snd_pcm_lib_malloc_pages(substream, params_buffer_bytes(hw_params));
-	if (err)
-		return err;
-
-	err = legoev3_fiq_ehrpwm_request(substream);
-	if (err)
-		snd_pcm_lib_free_pages(substream);
-
-	return err;
+{
+	return snd_pcm_lib_malloc_pages(substream, params_buffer_bytes(hw_params));
 }
 
 static int snd_legoev3_pcm_hw_free(struct snd_pcm_substream *substream)
-{printk("%s\n", __func__);
-	legoev3_fiq_ehrpwm_release();
+{
 	return snd_pcm_lib_free_pages(substream);
 }
 
 static int snd_legoev3_pcm_prepare(struct snd_pcm_substream *substream)
-{printk("%s\n", __func__);
+{
 	struct snd_legoev3 *chip = snd_pcm_substream_chip(substream);
 	int err, int_prd;
 
@@ -628,33 +620,27 @@ static int snd_legoev3_pcm_prepare(struct snd_pcm_substream *substream)
 	err = ehrpwm_et_set_sel_evt(chip->pwm, ET_CTR_PRD, int_prd);
 	if (err < 0)
 		return err;
-	legoev3_fiq_ehrpwm_prepare(substream, chip->pwm->period_ticks, chip->volume,
-				snd_legoev3_period_elapsed, chip);
-//        printk(KERN_INFO "pwm params f=%d scale=%d p_ticks=%lu hz=%lu\n",
-//		substream->runtime->rate, int_prd, chip->pwm->period_ticks, chip->pwm->tick_hz);
+	legoev3_fiq_ehrpwm_prepare(substream, chip->pwm->period_ticks,
+				   chip->volume, snd_legoev3_period_elapsed,
+				   chip);
 
 	return 0;
 }
 
 static int snd_legoev3_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
-{printk("%s\n", __func__);
+{
 	struct snd_legoev3 *chip = snd_pcm_substream_chip(substream);
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
-		local_fiq_disable();
 		ehrpwm_et_int_en_dis(chip->pwm, ET_ENABLE);
-//		gpio_set_value(chip->amp_gpio, 1);
 		pwm_start(chip->pwm);
-		local_fiq_enable();
+		gpio_set_value(chip->amp_gpio, 1);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
-//		gpio_set_value(chip->amp_gpio, 0);
-		local_fiq_disable();
 		ehrpwm_et_int_en_dis(chip->pwm, ET_DISABLE);
 		pwm_set_duty_ticks(chip->pwm, 0);
 		pwm_stop(chip->pwm);
-		local_fiq_enable();
 		break;
 	default:
 		return -EINVAL;
@@ -664,7 +650,7 @@ static int snd_legoev3_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 
 static snd_pcm_uframes_t
 snd_legoev3_pcm_pointer(struct snd_pcm_substream *substream)
-{printk("%s\n", __func__);
+{
 	return bytes_to_frames(substream->runtime,
 			       legoev3_fiq_ehrpwm_get_playback_ptr());
 }
