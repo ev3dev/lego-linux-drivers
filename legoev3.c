@@ -443,9 +443,12 @@ static ssize_t store_volume(struct device *dev,
 
 	chip->volume = value * MAX_VOLUME / 100;
 
-	// if tone is running, apply volume
+	/* if tone or pcm playback is running, apply volume */
 	if (chip->tone_frequency)
 		snd_legoev3_apply_tone_volume(chip);
+	if (chip->pcm->streams[0].substream_opened ||
+	    chip->pcm->streams[1].substream_opened)
+		legoev3_fiq_ehrpwm_set_volume(chip->volume);
 
 	return count;
 }
@@ -720,9 +723,12 @@ static int volume_control_put(struct snd_kcontrol *kcontrol,
 	if (chip->volume != newValue) {
 		chip->volume = newValue;
 	
-		// if tone is running, apply volume
+		/* if tone or PCM playback is running, apply volume */
 		if (chip->tone_frequency)
 			snd_legoev3_apply_tone_volume(chip);
+		if (chip->pcm->streams[0].substream_opened ||
+		    chip->pcm->streams[1].substream_opened)
+			legoev3_fiq_ehrpwm_set_volume(chip->volume);
 
 		changed = 1;
 	}
