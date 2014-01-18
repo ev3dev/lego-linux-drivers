@@ -46,10 +46,6 @@
 #define BUFFER_SIZE (128*1024)
 #define TONE_MIN_HZ 100
 #define TONE_MAX_HZ 10000
-//#define SAMPLE_RATE 22050
-//#define SAMPLE_RATE_SYMBOLIC SNDRV_PCM_RATE_22050
-//#define PWM_FACTOR  1
-//#define PWM_MASK    ((PWM_FACTOR>>1)-1)
 #define MAX_VOLUME  256
 
 struct snd_legoev3 {
@@ -83,14 +79,7 @@ static struct snd_pcm_hardware snd_legoev3_playback_hw = {
 	.periods_min =      1,
 	.periods_max =      1024,
 };
-/*
-static unsigned int rates[] = { SAMPLE_RATE };
-static struct snd_pcm_hw_constraint_list constraints_rates = {
-	.count = ARRAY_SIZE(rates),
-	.list = rates,
-	.mask = 0,
-};
-*/
+
 static struct snd_kcontrol_new volume_control;
 
 static int snd_legoev3_apply_tone_volume(struct snd_legoev3 *chip)
@@ -179,6 +168,21 @@ static int snd_legoev3_beep_event(struct input_dev *dev, unsigned int type,
 }
 
 /*
+ * Only called when the ehrpwm interrupt is configured as regular IRQ and
+ * not as a FIQ. In other words, this is for debugging (when assigned to IRQ)
+ * and serves as a dummy callback duing normal usage (when assigned to FIQ).
+ */
+static int snd_legoev3_et_callback(struct ehrpwm_pwm *ehrpwm, void *data)
+{
+	fiq_c_handler_t handler = get_fiq_c_handler();
+
+	if (handler)
+		handler();
+
+	return 0;
+}
+
+/*
  * Call snd_pcm_period_elapsed in a tasklet
  * This avoids spinlock messes and long-running irq contexts
  */
@@ -189,21 +193,6 @@ static void snd_legoev3_call_pcm_elapsed(unsigned long data)
 		struct snd_pcm_substream *substream = (void *)data;
 		snd_pcm_period_elapsed(substream);
 	}
-}
-
-/*
- * Only called when interrupt is configured as regular IRQ and not FIQ.
- * In other words, this is for debugging (when assigned to IRQ) and serves
- * as a placeholder during normal usage (when assigned to FIQ).
- */
-static int snd_legoev3_et_callback(struct ehrpwm_pwm *ehrpwm, void *data)
-{
-	fiq_c_handler_t handler = get_fiq_c_handler();
-
-	if (handler)
-		handler();
-
-	return 0;
 }
 
 static void snd_legoev3_period_elapsed(void* data)
@@ -245,6 +234,10 @@ static int __devinit snd_legoev3_init_ehrpwm(struct pwm_device *pwm)
 {
 	int err;
 
+	/*
+	 * This configuration code was copied from lms2012. Much of it is
+	 * probably redudant or not needed.
+	 */
 	err = ehrpwm_tb_set_phase(pwm, 0);
 	if (err < 0)
 		return err;
