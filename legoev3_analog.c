@@ -20,7 +20,7 @@
  *
  * For more information, see Documentation/legoev3/analog.txt
  *
- * Acknowledgements:
+ * Acknowledgments:
  *
  * This file is based on:
  *
@@ -101,12 +101,12 @@ enum nxt_color_read_state {
  * @read_one_rx_buf: Receive buffer for a "read one channel" message.
  * @read_one_txf: Structure that binds the transmit and receive buffers to the
  *	"read one channel" message.
- * @read_one_msg: SPI message that realg only only channel of the ADC.
+ * @read_one_msg: SPI message that reads only one channel of the ADC.
  * @read_all_tx_buf: Transmit buffer for a "read all channels" message.
  * @read_all_rx_buf: Receive buffer for a "read all channels" message.
  * @read_all_txf: Structure that binds the transmit and receive buffers to the
  *	"read all channels" message.
- * @read_all_msg: SPI message that we realg all of the channels of the ADC.
+ * @read_all_msg: SPI message that we reads all of the channels of the ADC.
  * @current_command: Stores the most recent command that was sent to the ADC.
  * @raw_data: Buffer to hold the raw (unscaled) input from the ADC for each
  *	channel.
@@ -213,7 +213,7 @@ static enum hrtimer_restart legoev3_analog_timer_callback(struct hrtimer *timer)
 	bool last_color_read_state = alg->current_nxt_color_read_state ==
 						NUM_NXT_COLOR_READ_STATE - 1;
 	int ret;
-alg->num_connected = 1;
+
 	if (!alg->num_connected)
 		alg->next_update_ns = UPDATE_SLOW_NS;
 	else if (read_color)
@@ -252,7 +252,7 @@ u16 legoev3_analog_get_value_for_ch(struct legoev3_analog_device *alg, u8 channe
 	unsigned long flags;
 
 	if (channel > ADS7957_NUM_CHANNELS) {
-		dev_crit(&alg->dev, "%s: channel id %d >= availible channels (%d)\n",
+		dev_crit(&alg->dev, "%s: channel id %d >= available channels (%d)\n",
 			 __func__, channel, ADS7957_NUM_CHANNELS);
 		return ret;
 	}
@@ -267,7 +267,7 @@ u16 legoev3_analog_in_pin1_value(struct legoev3_analog_device *alg,
 				 enum ev3_input_port_id id)
 {
 	if (id >= NUM_EV3_PORT_IN) {
-		dev_crit(&alg->dev, "%s: id %d >= availible ports (%d)\n",
+		dev_crit(&alg->dev, "%s: id %d >= available ports (%d)\n",
 			 __func__, id, NUM_EV3_PORT_IN);
 		return -EINVAL;
 	}
@@ -279,7 +279,7 @@ u16 legoev3_analog_in_pin6_value(struct legoev3_analog_device *alg,
 				 enum ev3_input_port_id id)
 {
 	if (id >= NUM_EV3_PORT_IN) {
-		dev_crit(&alg->dev, "%s: id %d >= availible ports (%d)\n",
+		dev_crit(&alg->dev, "%s: id %d >= available ports (%d)\n",
 			 __func__, id, NUM_EV3_PORT_IN);
 		return -EINVAL;
 	}
@@ -291,7 +291,7 @@ u16 legoev3_analog_out_pin5_value(struct legoev3_analog_device *alg,
 				  enum ev3_output_port_id id)
 {
 	if (id >= NUM_EV3_PORT_OUT) {
-		dev_crit(&alg->dev, "%s: id %d >= availible ports (%d)\n",
+		dev_crit(&alg->dev, "%s: id %d >= available ports (%d)\n",
 			 __func__, id, NUM_EV3_PORT_OUT);
 		return -EINVAL;
 	}
@@ -450,7 +450,7 @@ struct legoev3_analog_device legoev3_analog = {
  * get_legoev3_analog - get the legoev3-analog device
  *
  * This will return a pointer to the legoev3-analog device if it has been
- * initalized. Otherwise, it returns -ENODEV. If get_legoev3_analog succeeds,
+ * Initialized. Otherwise, it returns -ENODEV. If get_legoev3_analog succeeds,
  * the calling code needs to release the analog device when it is no longer
  * required using the put_legoev3_analog function.
  */
