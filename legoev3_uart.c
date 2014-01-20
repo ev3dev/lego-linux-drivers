@@ -1,5 +1,5 @@
 /*
- * tty line dicipline for LEGO Mindstorms EV3 UART sensors
+ * tty line discipline for LEGO Mindstorms EV3 UART sensors
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *
@@ -13,18 +13,26 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/bitops.h>
 #include <linux/module.h>
-#include <linux/poll.h>
-#include <linux/sched.h>
 #include <linux/slab.h>
+#include <linux/string.h>
 #include <linux/tty.h>
 
-#define BUFFER_SIZE 36
+
+#define BUFFER_SIZE 50
+#define NAME_SIZE 11
+#define UNITS_SIZE 4
+#define SENOR_DATA_SIZE 32
 
 #define LEGOEV3_UART_MSG_TYPE_MASK 0xC0
 #define LEGOEV3_UART_CMD_SIZE(byte) (1 << ((byte >> 3) & 0x7))
 #define LEGOEV3_UART_MSG_CMD_MASK 0x07
 #define LEGOEV3_UART_TYPE_MAX 101
+#define LEGOEV3_UART_MODE_MAX 7
+
+#define LEGOEV3_UART_TYPE_UNKNOWN 125
+#define LEGOEV3_UART_SPEED_MIN 2400
 
 enum legoev3_uart_msg_type {
 	LEGOEV3_UART_MSG_TYPE_SYS	= 0x00,
@@ -34,26 +42,99 @@ enum legoev3_uart_msg_type {
 };
 
 enum legoev3_uart_sys {
-	LEGOEV3_UART_SYS_SYNC	= 0x0,
-	LEGOEV3_UART_SYS_NACK	= 0x2,
-	LEGOEV3_UART_SYS_ACK	= 0x4,
-	LEGOEV3_UART_SYS_ESC	= 0x6,
+	LEGOEV3_UART_SYS_SYNC		= 0x0,
+	LEGOEV3_UART_SYS_NACK		= 0x2,
+	LEGOEV3_UART_SYS_ACK		= 0x4,
+	LEGOEV3_UART_SYS_ESC		= 0x6,
 };
 
 enum legoev3_uart_cmd {
-	LEGOEV3_UART_CMD_TYPE	= 0x0,
-	LEGOEV3_UART_CMD_MODES	= 0x1,
-	LEGOEV3_UART_CMD_SPEED	= 0x2,
-	LEGOEV3_UART_CMD_SELECT	= 0x3,
-	LEGOEV3_UART_CMD_WRITE	= 0x4,
+	LEGOEV3_UART_CMD_TYPE		= 0x0,
+	LEGOEV3_UART_CMD_MODES		= 0x1,
+	LEGOEV3_UART_CMD_SPEED		= 0x2,
+	LEGOEV3_UART_CMD_SELECT		= 0x3,
+	LEGOEV3_UART_CMD_WRITE		= 0x4,
 };
 
+enum legoev3_uart_info {
+	LEGOEV3_UART_INFO_NAME		= 0x00,
+	LEGOEV3_UART_INFO_RAW		= 0x01,
+	LEGOEV3_UART_INFO_PCT		= 0x02,
+	LEGOEV3_UART_INFO_SI		= 0x03,
+	LEGOEV3_UART_INFO_UNITS		= 0x04,
+	LEGOEV3_UART_INFO_FORMAT	= 0x80,
+};
+
+#define LEGOEV3_UART_INFO_BIT_CMD_TYPE		0
+#define LEGOEV3_UART_INFO_BIT_CMD_MODES		1
+#define LEGOEV3_UART_INFO_BIT_CMD_SPEED		2
+#define LEGOEV3_UART_INFO_BIT_INFO_NAME		3
+#define LEGOEV3_UART_INFO_BIT_INFO_RAW		4
+#define LEGOEV3_UART_INFO_BIT_INFO_PCT		5
+#define LEGOEV3_UART_INFO_BIT_INFO_SI		6
+#define LEGOEV3_UART_INFO_BIT_INFO_UNITS	7
+#define LEGOEV3_UART_INFO_BIT_INFO_FORMAT	8
+
+enum legoev3_uart_info_flags {
+	LEGOEV3_UART_INFO_FLAG_CMD_TYPE		= BIT(LEGOEV3_UART_INFO_BIT_CMD_TYPE),
+	LEGOEV3_UART_INFO_FLAG_CMD_MODES	= BIT(LEGOEV3_UART_INFO_BIT_CMD_MODES),
+	LEGOEV3_UART_INFO_FLAG_CMD_SPEED	= BIT(LEGOEV3_UART_INFO_BIT_CMD_SPEED),
+	LEGOEV3_UART_INFO_FLAG_INFO_NAME	= BIT(LEGOEV3_UART_INFO_BIT_INFO_NAME),
+	LEGOEV3_UART_INFO_FLAG_INFO_RAW		= BIT(LEGOEV3_UART_INFO_BIT_INFO_RAW),
+	LEGOEV3_UART_INFO_FLAG_INFO_PCT		= BIT(LEGOEV3_UART_INFO_BIT_INFO_PCT),
+	LEGOEV3_UART_INFO_FLAG_INFO_SI		= BIT(LEGOEV3_UART_INFO_BIT_INFO_SI),
+	LEGOEV3_UART_INFO_FLAG_INFO_UNITS	= BIT(LEGOEV3_UART_INFO_BIT_INFO_UNITS),
+	LEGOEV3_UART_INFO_FLAG_INFO_FORMAT	= BIT(LEGOEV3_UART_INFO_BIT_INFO_FORMAT),
+	LEGOEV3_UART_INFO_FLAG_INFO_ALL		= LEGOEV3_UART_INFO_FLAG_INFO_NAME
+						| LEGOEV3_UART_INFO_FLAG_INFO_RAW
+						| LEGOEV3_UART_INFO_FLAG_INFO_PCT
+						| LEGOEV3_UART_INFO_FLAG_INFO_SI
+						| LEGOEV3_UART_INFO_FLAG_INFO_UNITS
+						| LEGOEV3_UART_INFO_FLAG_INFO_FORMAT,
+	LEGOEV3_UART_INFO_FLAG_REQUIRED		= LEGOEV3_UART_INFO_FLAG_CMD_TYPE
+						| LEGOEV3_UART_INFO_FLAG_CMD_MODES
+						| LEGOEV3_UART_INFO_FLAG_INFO_NAME
+						| LEGOEV3_UART_INFO_FLAG_INFO_FORMAT,
+};
+
+struct legoev3_uart_sensor_info {
+	u8 type;
+	u8 mode;
+	u8 num_modes;
+	unsigned speed;
+	char name[NAME_SIZE + 1];
+	/* min/max values are actually float data type */
+	unsigned raw_min;
+	unsigned raw_max;
+	unsigned pct_min;
+	unsigned pct_max;
+	unsigned si_min;
+	unsigned si_max;
+	char units[UNITS_SIZE + 1];
+	u8 data_sets;
+	u8 format;
+	u8 figures;
+	u8 decimals;
+};
+
+static struct legoev3_uart_sensor_info default_sensor_info = {
+	.type		= LEGOEV3_UART_TYPE_UNKNOWN,
+	.speed		= LEGOEV3_UART_SPEED_MIN,
+	.raw_max	= 0x447fc000,	/* 1023.0 */
+	.pct_max	= 0x42c80000,	/*  100.0 */
+	.si_max		= 0x3f800000,	/*    1.0 */
+};
 
 struct legoev3_uart_data {
 	struct tty_struct *tty;
+	struct legoev3_uart_sensor_info sensor_info[LEGOEV3_UART_MODE_MAX + 1];
+	u8 type;
+	u8 num_modes;
+	u8 num_view_modes;
+	u8 mode;
+	long unsigned info_flags;
 	u8 buffer[BUFFER_SIZE];
 	unsigned write_ptr;
-	u8 type;
 	unsigned synced:1;
 };
 
@@ -129,39 +210,10 @@ static void legoev3_uart_close(struct tty_struct *tty)
 printk("%s\n", __func__);
 }
 
-static void legoev3_uart_flush_buffer(struct tty_struct *tty)
-{
-printk("%s\n", __func__);
-}
-
-static ssize_t legoev3_uart_chars_in_buffer(struct tty_struct *tty)
-{
-printk("%s\n", __func__);
-	return 0;
-}
-
-static ssize_t legoev3_uart_read(struct tty_struct *tty, struct file *file,
-				 unsigned char __user *buf, size_t nr)
-{printk("%s\n", __func__);
-	return 0;
-}
-
-static ssize_t legoev3_uart_write(struct tty_struct *tty, struct file *file,
-				  const unsigned char *data, size_t count)
-{printk("%s\n", __func__);
-	return count;
-}
-
 static int legoev3_uart_ioctl(struct tty_struct *tty, struct file *file,
 			      unsigned int cmd, unsigned long arg)
 {printk("%s\n", __func__);
 	return tty_mode_ioctl(tty, file, cmd, arg);
-}
-
-static unsigned int legoev3_uart_poll(struct tty_struct *tty,
-				      struct file *filp, poll_table *wait)
-{printk("%s\n", __func__);
-	return 0;
 }
 
 static void legoev3_uart_receive_buf(struct tty_struct *tty,
@@ -170,7 +222,8 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 {
 	struct legoev3_uart_data *data = tty->disc_data;
 	int i = 0;
-	u8 cmd, cmd2, type, msg_size, chksum;
+	int j, speed;
+	u8 cmd, cmd2, type, mode, msg_type, msg_size, chksum;
 
 printk("received: ");
 for (i = 0; i < count; i++)
@@ -188,13 +241,18 @@ i=0;
 		cmd = cp[i++];
 		if (cmd != (LEGOEV3_UART_MSG_TYPE_CMD | LEGOEV3_UART_CMD_TYPE))
 			continue;
-		cmd2 = cp[i];
-		if (!cmd2 || cmd2 > LEGOEV3_UART_TYPE_MAX)
+		type = cp[i];
+		if (!type || type > LEGOEV3_UART_TYPE_MAX)
 			continue;
-		chksum = 0xFF ^ cmd ^ cmd2;
+		chksum = 0xFF ^ cmd ^ type;
 		if (cp[i+1] != chksum)
 			continue;
-		data->type = cmd2;
+		for (j = 0; j <= LEGOEV3_UART_MODE_MAX; j++)
+			data->sensor_info[j] = default_sensor_info;
+		data->type = type;
+		data->num_modes = 0;
+		data->num_view_modes = 0;
+		data->info_flags = LEGOEV3_UART_INFO_FLAG_CMD_TYPE;
 		data->synced = 1;
 		data->write_ptr = 0;
 		i += 2;
@@ -207,10 +265,8 @@ i=0;
 	 * a complete command.
 	 */
 	while (i < count) {
-		if (data->write_ptr >= BUFFER_SIZE) {
-			data->synced = 0;
-			return;printk("read too much\n");
-		}
+		if (data->write_ptr >= BUFFER_SIZE)
+			goto err_bad_data;
 		data->buffer[data->write_ptr++] = cp[i++];
 	}
 
@@ -225,27 +281,127 @@ for (i = 0; i < data->write_ptr; i++)
 	printk("0x%02x ", data->buffer[i]);
 printk(" (%d)\n", data->write_ptr);
 		printk("msg_size:%d\n", msg_size);
-		type = data->buffer[0] & LEGOEV3_UART_MSG_TYPE_MASK;
+		msg_type = data->buffer[0] & LEGOEV3_UART_MSG_TYPE_MASK;
+		cmd = data->buffer[0] & LEGOEV3_UART_MSG_CMD_MASK;
+		mode = cmd;
 		cmd2 = data->buffer[1];
 		if (msg_size > 1) {
 			chksum = 0xFF;
 			for (i = 0; i < msg_size - 1; i++)
 				chksum ^= data->buffer[i];
 			printk("chksum:%d, actual:%d\n", chksum, data->buffer[msg_size - 1]);
-			if (chksum != data->buffer[msg_size - 1]) {
-				data->synced = 0;
-				return;
-			}
+			if (chksum != data->buffer[msg_size - 1])
+				goto err_bad_data;
 		}
-		switch (type) {
+		switch (msg_type) {
 		case LEGOEV3_UART_MSG_TYPE_SYS:
 			printk("SYS:%d\n", data->buffer[0] & LEGOEV3_UART_MSG_CMD_MASK);
 			break;
 		case LEGOEV3_UART_MSG_TYPE_CMD:
-			printk("CMD:%d\n", data->buffer[0] & LEGOEV3_UART_MSG_CMD_MASK);
+			printk("CMD:%d\n", cmd);
+			/* TODO: handle ACK */
+			switch (cmd) {
+			case LEGOEV3_UART_CMD_MODES:
+				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_CMD_MODES, &data->info_flags))
+					goto err_bad_data;
+				if (!cmd2 || cmd2 > LEGOEV3_UART_MODE_MAX)
+					goto err_bad_data;
+				data->num_modes = cmd2 + 1;
+				if (msg_size > 3)
+					data->num_view_modes = data->buffer[2] + 1;
+				else
+					data->num_view_modes = data->num_modes;
+				printk("num_modes:%d, num_view_modes:%d\n", data->num_modes, data->num_view_modes);
+				break;
+			case LEGOEV3_UART_CMD_SPEED:
+				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_CMD_SPEED, &data->info_flags))
+					goto err_bad_data;
+				speed = *(int*)(data->buffer + 1);
+				/* TODO: change uart bit rate */
+				printk("speed:%d\n", speed);
+				break;
+			default:
+				goto err_bad_data;
+			}
 			break;
 		case LEGOEV3_UART_MSG_TYPE_INFO:
-			printk("INFO:%d\n", data->buffer[0] & LEGOEV3_UART_MSG_CMD_MASK);
+			printk("INFO:%d, mode:%d\n", cmd2, mode);
+			switch (cmd2) {
+			case LEGOEV3_UART_INFO_NAME:
+				data->info_flags &= ~LEGOEV3_UART_INFO_FLAG_INFO_ALL;
+				if (data->buffer[2] < 'A' || data->buffer[2] > 'z')
+					goto err_bad_data;
+				if (strlen(data->buffer + 2) > NAME_SIZE)
+					goto err_bad_data;
+				snprintf(data->sensor_info[mode].name,
+				         NAME_SIZE + 1, "%s", data->buffer + 2);
+				data->mode = mode;
+				data->info_flags |= LEGOEV3_UART_INFO_FLAG_INFO_NAME;
+				printk("mode %d name:%s\n", mode, data->sensor_info[mode].name);
+				break;
+			case LEGOEV3_UART_INFO_RAW:
+				if (data->mode != mode)
+					goto err_bad_data;
+				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_INFO_RAW, &data->info_flags))
+					goto err_bad_data;
+				data->sensor_info[mode].raw_min = *(unsigned *)(data->buffer + 2);
+				data->sensor_info[mode].raw_max = *(unsigned *)(data->buffer + 6);
+				printk("mode %d raw_min:%08x, raw_max:%08x\n", mode, data->sensor_info[mode].raw_min, data->sensor_info[mode].raw_max);
+				break;
+			case LEGOEV3_UART_INFO_PCT:
+				if (data->mode != mode)
+					goto err_bad_data;
+				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_INFO_PCT, &data->info_flags))
+					goto err_bad_data;
+				data->sensor_info[mode].pct_min = *(unsigned *)(data->buffer + 2);
+				data->sensor_info[mode].pct_max = *(unsigned *)(data->buffer + 6);
+				printk("mode %d pct_min:%08x, pct_max:%08x\n", mode, data->sensor_info[mode].pct_min, data->sensor_info[mode].pct_max);
+				break;
+			case LEGOEV3_UART_INFO_SI:
+				if (data->mode != mode)
+					goto err_bad_data;
+				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_INFO_SI, &data->info_flags))
+					goto err_bad_data;
+				data->sensor_info[mode].si_min = *(unsigned *)(data->buffer + 2);
+				data->sensor_info[mode].si_max = *(unsigned *)(data->buffer + 6);
+				printk("mode %d si_min:%08x, si_max:%08x\n", mode, data->sensor_info[mode].si_min, data->sensor_info[mode].si_max);
+				break;
+			case LEGOEV3_UART_INFO_UNITS:
+				if (data->mode != mode)
+					goto err_bad_data;
+				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_INFO_UNITS, &data->info_flags))
+					goto err_bad_data;
+				snprintf(data->sensor_info[mode].units,
+					 UNITS_SIZE + 1, "%s", data->buffer + 2);
+				printk("mode %d units:%s\n", mode, data->sensor_info[mode].units);
+				break;
+			case LEGOEV3_UART_INFO_FORMAT:
+				if (data->mode != mode)
+					goto err_bad_data;
+				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_INFO_FORMAT, &data->info_flags))
+					goto err_bad_data;
+				data->sensor_info[mode].data_sets = data->buffer[2];
+				if (!data->sensor_info[mode].data_sets)
+					goto err_bad_data;
+				if (msg_size < 7)
+					goto err_bad_data;
+				if ((data->info_flags & LEGOEV3_UART_INFO_FLAG_REQUIRED)
+						!= LEGOEV3_UART_INFO_FLAG_REQUIRED)
+					goto err_bad_data;
+				data->sensor_info[mode].format = data->buffer[3];
+				if (data->mode) {
+					data->mode--;
+					data->sensor_info[mode].type = data->type;
+					data->sensor_info[mode].num_modes = data->num_modes;
+					data->sensor_info[mode].figures = data->buffer[4];
+					data->sensor_info[mode].decimals = data->buffer[5];
+					/* TODO: copy IR Seeker hack from lms2012 */
+				}
+				printk("mode %d data_sets:%d, format:%d, figures:%d, decimals:%d\n",
+				       mode, data->sensor_info[mode].data_sets, data->sensor_info[mode].format,
+				       data->sensor_info[mode].figures, data->sensor_info[mode].decimals);
+				break;
+			}
 			break;
 		case LEGOEV3_UART_MSG_TYPE_DATA:
 			printk("DATA:%d\n", data->buffer[0] & LEGOEV3_UART_MSG_CMD_MASK);
@@ -253,13 +409,17 @@ printk(" (%d)\n", data->write_ptr);
 		}
 
 		/*
-		 * If there is leftover data, we move it to the begining
+		 * If there is leftover data, we move it to the beginning
 		 * of the buffer.
 		 */
 		for (i = 0; i + msg_size < data->write_ptr; i++)
 			data->buffer[i] = data->buffer[i + msg_size];
 		data->write_ptr = i;
 	}
+	return;
+
+err_bad_data:
+	data->synced = 0;
 }
 
 static void legoev3_uart_write_wakeup(struct tty_struct *tty)
@@ -272,18 +432,9 @@ static struct tty_ldisc_ops legoev3_uart_ldisc = {
 	.name			= "n_legoev3",
 	.open			= legoev3_uart_open,
 	.close			= legoev3_uart_close,
-//	.flush_buffer		= legoev3_uart_flush_buffer,
-//	.chars_in_buffer	= legoev3_uart_chars_in_buffer,
-//	.read			= legoev3_uart_read,
-//	.write			= legoev3_uart_write,
 	.ioctl			= legoev3_uart_ioctl,
-//	.compat_ioctl		= NULL,
-//	.set_termios		= NULL,
-//	.poll			= legoev3_uart_poll,
 	.receive_buf		= legoev3_uart_receive_buf,
 	.write_wakeup		= legoev3_uart_write_wakeup,
-//	.hangup			= NULL,
-//	.dcd_change		= NULL,
 	.owner			= THIS_MODULE,
 };
 
@@ -293,12 +444,12 @@ static int __init legoev3_uart_init(void)
 
 	err = tty_register_ldisc(N_LEGOEV3, &legoev3_uart_ldisc);
 	if (err) {
-		pr_err("Could not register LEGOEV3 line dicipline. (%d)\n",
+		pr_err("Could not register LEGOEV3 line discipline. (%d)\n",
 			err);
 		return err;
 	}
 
-	pr_info("Registered LEGOEV3 line dicipline. (%d)\n", N_LEGOEV3);
+	pr_info("Registered LEGOEV3 line discipline. (%d)\n", N_LEGOEV3);
 
 	return 0;
 }
@@ -310,12 +461,12 @@ static void __exit legoev3_uart_exit(void)
 
 	err = tty_unregister_ldisc(N_LEGOEV3);
 	if (err)
-		pr_err("Could not unregister LEGOEV3 line dicipline. (%d)\n",
+		pr_err("Could not unregister LEGOEV3 line discipline. (%d)\n",
 			err);
 }
 module_exit(legoev3_uart_exit);
 
-MODULE_DESCRIPTION("tty line dicipline for LEGO Mindstorms EV3 sensors");
+MODULE_DESCRIPTION("tty line discipline for LEGO Mindstorms EV3 sensors");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS_LDISC(N_LEGOEV3);
