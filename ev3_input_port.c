@@ -193,7 +193,7 @@ enum sensor_type {
 	NUM_SENSOR
 };
 
-const struct attribute_group *common_sensor_device_type_attr_groups[] = {
+const struct attribute_group *ev3_sensor_device_type_attr_groups[] = {
 	&legoev3_port_device_type_attr_grp,
 	NULL
 };
@@ -201,83 +201,83 @@ const struct attribute_group *common_sensor_device_type_attr_groups[] = {
 struct device_type ev3_sensor_device_types[] = {
 	[SENSOR_NXT_TOUCH] = {
 		.name	= "nxt-touch-sensor",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_NXT_LIGHT] = {
 		.name	= "nxt-light-sensor",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_NXT_COLOR] = {
 		.name	= "nxt-color-sensor",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_NXT_DUMB] = {
 		.name	= "nxt-generic-analog-sensor",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_NXT_I2C] = {
 		.name	= "nxt-i2c-sensor",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_01] = {
 		.name	= "ev3-sensor-01",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_02] = {
 		.name	= "ev3-touch-sensor",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_03] = {
 		.name	= "ev3-sensor-03",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_04] = {
 		.name	= "ev3-sensor-04",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_05] = {
 		.name	= "ev3-sensor-05",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_06] = {
 		.name	= "ev3-sensor-06",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_07] = {
 		.name	= "ev3-sensor-07",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_08] = {
 		.name	= "ev3-sensor-08",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_09] = {
 		.name	= "ev3-sensor-09",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_10] = {
 		.name	= "ev3-sensor-10",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_11] = {
 		.name	= "ev3-sensor-11",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_12] = {
 		.name	= "ev3-sensor-12",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_13] = {
 		.name	= "ev3-sensor-13",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ID_14] = {
 		.name	= "ev3-sensor-14",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_UART] = {
 		.name	= "ev3-uart-sensor",
-		.groups	= common_sensor_device_type_attr_groups,
+		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 };
 

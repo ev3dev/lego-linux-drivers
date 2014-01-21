@@ -76,7 +76,6 @@ struct legoev3_port_driver ev3_uart_sensor_driver = {
 		.owner	= THIS_MODULE,
 	},
 };
-EXPORT_SYMBOL_GPL(ev3_uart_sensor_driver);
 legoev3_port_driver(ev3_uart_sensor_driver);
 
 MODULE_DESCRIPTION("EV3 UART sensor device driver for LEGO Mindstorms EV3");
