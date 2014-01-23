@@ -8,6 +8,7 @@ obj-$(CONFIG_LEGOEV3_INPUT_PORT)	+= ev3_input_port.o
 # Sensor classes
 obj-$(CONFIG_LEGOEV3_SWITCH_SENSORS)	+= switch_sensor_class.o
 obj-$(CONFIG_LEGOEV3_MEASURE_SENSORS)	+= measure_sensor_class.o
+obj-$(CONFIG_LEGOEV3_SENSOR_CONTROLS)	+= sensor_controls_class.o
 
 # Analog sensors
 obj-$(CONFIG_LEGOEV3_EV3_TOUCH_SENSOR)	+= ev3_touch_sensor.o
@@ -21,4 +22,5 @@ obj-$(CONFIG_LEGOEV3_MS_LIGHT_ARRAY)	+= ms_light_array.o
 # UART Sensors
 obj-$(CONFIG_LEGOEV3_UART_SENSORS)	+= legoev3_uart.o
 obj-$(CONFIG_LEGOEV3_UART_SENSORS)	+= ev3_uart_sensor.o
+obj-$(CONFIG_LEGOEV3_UNKNOWN_UART)	+= ev3_unknown_uart_sensor.o
 
