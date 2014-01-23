@@ -18,18 +18,18 @@
 #include <linux/slab.h>
 #include <linux/legoev3/legoev3_ports.h>
 #include <linux/legoev3/ev3_input_port.h>
-#include <linux/legoev3/touch_sensor_class.h>
+#include <linux/legoev3/switch_sensor_class.h>
 
 #include <asm/bug.h>
 
 #define PIN1_NEAR_5V		4800		/* 4.80V */
 
 struct nxt_touch_sensor_data {
-	struct touch_sensor_device ts;
+	struct switch_sensor_device ts;
 	struct legoev3_port_device *in_port;
 };
 
-static bool nxt_touch_sensor_pressed(struct touch_sensor_device *ts)
+static bool nxt_touch_sensor_pressed(struct switch_sensor_device *ts)
 {
 	struct nxt_touch_sensor_data *nxt_ts =
 			container_of(ts, struct nxt_touch_sensor_data, ts);
@@ -50,10 +50,10 @@ static int __devinit nxt_touch_sensor_probe(struct legoev3_port_device *sensor)
 	if (!nxt_ts)
 		return -ENOMEM;
 
-	nxt_ts->ts.pressed = nxt_touch_sensor_pressed;
+	nxt_ts->ts.get_value = nxt_touch_sensor_pressed;
 	nxt_ts->in_port = pdata->in_port;
 
-	err = register_touch_sensor(&nxt_ts->ts, &sensor->dev);
+	err = register_switch_sensor(&nxt_ts->ts, &sensor->dev);
 	if (err)
 		goto register_touch_sensor_fail;
 
@@ -67,7 +67,7 @@ static int __devinit nxt_touch_sensor_probe(struct legoev3_port_device *sensor)
 	return 0;
 
 dev_set_drvdata_fail:
-	unregister_touch_sensor(&nxt_ts->ts);
+	unregister_switch_sensor(&nxt_ts->ts);
 register_touch_sensor_fail:
 	kfree(nxt_ts);
 
@@ -80,7 +80,7 @@ static int __devexit nxt_touch_sensor_remove(struct legoev3_port_device *sensor)
 
 	dev_info(&sensor->dev, "NXT Touch sensor removed from port %s\n",
 		 dev_name(&nxt_ts->in_port->dev));
-	unregister_touch_sensor(&nxt_ts->ts);
+	unregister_switch_sensor(&nxt_ts->ts);
 	dev_set_drvdata(&sensor->dev, NULL);
 	kfree(nxt_ts);
 	return 0;

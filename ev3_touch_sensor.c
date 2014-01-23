@@ -18,18 +18,18 @@
 #include <linux/slab.h>
 #include <linux/legoev3/legoev3_ports.h>
 #include <linux/legoev3/ev3_input_port.h>
-#include <linux/legoev3/touch_sensor_class.h>
+#include <linux/legoev3/switch_sensor_class.h>
 
 #include <asm/bug.h>
 
 #define PIN6_NEAR_GND		250		/* 0.25V */
 
 struct ev3_touch_sensor_data {
-	struct touch_sensor_device ts;
+	struct switch_sensor_device ts;
 	struct legoev3_port_device *in_port;
 };
 
-static bool ev3_touch_sensor_pressed(struct touch_sensor_device *ts)
+static bool ev3_touch_sensor_pressed(struct switch_sensor_device *ts)
 {
 	struct ev3_touch_sensor_data *ev3_ts =
 			container_of(ts, struct ev3_touch_sensor_data, ts);
@@ -50,10 +50,10 @@ static int __devinit ev3_touch_sensor_probe(struct legoev3_port_device *sensor)
 	if (!ev3_ts)
 		return -ENOMEM;
 
-	ev3_ts->ts.pressed = ev3_touch_sensor_pressed;
+	ev3_ts->ts.get_value = ev3_touch_sensor_pressed;
 	ev3_ts->in_port = pdata->in_port;
 
-	err = register_touch_sensor(&ev3_ts->ts, &sensor->dev);
+	err = register_switch_sensor(&ev3_ts->ts, &sensor->dev);
 	if (err)
 		goto register_touch_sensor_fail;
 
@@ -67,7 +67,7 @@ static int __devinit ev3_touch_sensor_probe(struct legoev3_port_device *sensor)
 	return 0;
 
 dev_set_drvdata_fail:
-	unregister_touch_sensor(&ev3_ts->ts);
+	unregister_switch_sensor(&ev3_ts->ts);
 register_touch_sensor_fail:
 	kfree(ev3_ts);
 
@@ -80,7 +80,7 @@ static int __devexit ev3_touch_sensor_remove(struct legoev3_port_device *sensor)
 
 	dev_info(&sensor->dev, "EV3 Touch sensor removed from port %s\n",
 		 dev_name(&ev3_ts->in_port->dev));
-	unregister_touch_sensor(&ev3_ts->ts);
+	unregister_switch_sensor(&ev3_ts->ts);
 	dev_set_drvdata(&sensor->dev, NULL);
 	kfree(ev3_ts);
 	return 0;
