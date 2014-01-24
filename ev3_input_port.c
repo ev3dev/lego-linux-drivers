@@ -54,8 +54,9 @@
 #define PIN1_ID_14		2826	/* 3rd party */
 #define PIN1_ID_VAR		50	/* IDs can be +/- 50mV */
 
-/* resistor ids for EV3 dumb sensor devices */
+/* resistor ids for EV3 analog sensor devices */
 enum ev3_in_dev_id {
+	EV3_IN_DEV_ID_ERR,
 	EV3_IN_DEV_ID_01,
 	EV3_IN_DEV_ID_02,
 	EV3_IN_DEV_ID_03,
@@ -71,7 +72,6 @@ enum ev3_in_dev_id {
 	EV3_IN_DEV_ID_13,
 	EV3_IN_DEV_ID_14,
 	NUM_EV3_IN_DEV_ID,
-	EV3_IN_DEV_ID_ERR = -1
 };
 
 static int ev3_in_dev_id_max[NUM_EV3_IN_DEV_ID] = {
@@ -172,22 +172,9 @@ enum sensor_type {
 	SENSOR_NXT_TOUCH,
 	SENSOR_NXT_LIGHT,
 	SENSOR_NXT_COLOR,
-	SENSOR_NXT_DUMB,
+	SENSOR_NXT_ANALOG,
 	SENSOR_NXT_I2C,
-	SENSOR_EV3_ID_01,
-	SENSOR_EV3_ID_02,
-	SENSOR_EV3_ID_03,
-	SENSOR_EV3_ID_04,
-	SENSOR_EV3_ID_05,
-	SENSOR_EV3_ID_06,
-	SENSOR_EV3_ID_07,
-	SENSOR_EV3_ID_08,
-	SENSOR_EV3_ID_09,
-	SENSOR_EV3_ID_10,
-	SENSOR_EV3_ID_11,
-	SENSOR_EV3_ID_12,
-	SENSOR_EV3_ID_13,
-	SENSOR_EV3_ID_14,
+	SENSOR_EV3_ANALOG,
 	SENSOR_EV3_UART,
 	SENSOR_ERR,
 	NUM_SENSOR
@@ -211,7 +198,7 @@ struct device_type ev3_sensor_device_types[] = {
 		.name	= "nxt-color-sensor",
 		.groups	= ev3_sensor_device_type_attr_groups,
 	},
-	[SENSOR_NXT_DUMB] = {
+	[SENSOR_NXT_ANALOG] = {
 		.name	= "nxt-generic-analog-sensor",
 		.groups	= ev3_sensor_device_type_attr_groups,
 	},
@@ -219,60 +206,8 @@ struct device_type ev3_sensor_device_types[] = {
 		.name	= "nxt-i2c-sensor",
 		.groups	= ev3_sensor_device_type_attr_groups,
 	},
-	[SENSOR_EV3_ID_01] = {
-		.name	= "ev3-sensor-01",
-		.groups	= ev3_sensor_device_type_attr_groups,
-	},
-	[SENSOR_EV3_ID_02] = {
-		.name	= "ev3-touch-sensor",
-		.groups	= ev3_sensor_device_type_attr_groups,
-	},
-	[SENSOR_EV3_ID_03] = {
-		.name	= "ev3-sensor-03",
-		.groups	= ev3_sensor_device_type_attr_groups,
-	},
-	[SENSOR_EV3_ID_04] = {
-		.name	= "ev3-sensor-04",
-		.groups	= ev3_sensor_device_type_attr_groups,
-	},
-	[SENSOR_EV3_ID_05] = {
-		.name	= "ev3-sensor-05",
-		.groups	= ev3_sensor_device_type_attr_groups,
-	},
-	[SENSOR_EV3_ID_06] = {
-		.name	= "ev3-sensor-06",
-		.groups	= ev3_sensor_device_type_attr_groups,
-	},
-	[SENSOR_EV3_ID_07] = {
-		.name	= "ev3-sensor-07",
-		.groups	= ev3_sensor_device_type_attr_groups,
-	},
-	[SENSOR_EV3_ID_08] = {
-		.name	= "ev3-sensor-08",
-		.groups	= ev3_sensor_device_type_attr_groups,
-	},
-	[SENSOR_EV3_ID_09] = {
-		.name	= "ev3-sensor-09",
-		.groups	= ev3_sensor_device_type_attr_groups,
-	},
-	[SENSOR_EV3_ID_10] = {
-		.name	= "ev3-sensor-10",
-		.groups	= ev3_sensor_device_type_attr_groups,
-	},
-	[SENSOR_EV3_ID_11] = {
-		.name	= "ev3-sensor-11",
-		.groups	= ev3_sensor_device_type_attr_groups,
-	},
-	[SENSOR_EV3_ID_12] = {
-		.name	= "ev3-sensor-12",
-		.groups	= ev3_sensor_device_type_attr_groups,
-	},
-	[SENSOR_EV3_ID_13] = {
-		.name	= "ev3-sensor-13",
-		.groups	= ev3_sensor_device_type_attr_groups,
-	},
-	[SENSOR_EV3_ID_14] = {
-		.name	= "ev3-sensor-14",
+	[SENSOR_EV3_ANALOG] = {
+		.name	= "ev3-analog-sensor",
 		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_UART] = {
@@ -304,6 +239,7 @@ struct device_type ev3_sensor_device_types[] = {
  *	state of the port's pins.
  * @pin1_mv: Used in the polling loop to track changes in pin 1 voltage.
  * @sensor_type: The type of sensor currently connected.
+ * @sensor_type_id: The sensor type id for EV3 sensors or -1 for NXT sensors.
  * @sensor: Pointer to the sensor device that is connected to the input port.
  */
 struct ev3_input_port_data {
@@ -322,6 +258,7 @@ struct ev3_input_port_data {
 	unsigned pin_state_flags:NUM_PIN_STATE_FLAG;
 	unsigned pin1_mv;
 	enum sensor_type sensor_type;
+	int sensor_type_id;
 	struct legoev3_port_device *sensor;
 };
 
@@ -448,6 +385,7 @@ void ev3_input_port_register_sensor(struct work_struct *work)
 	pdata.in_port = port->pdev;
 	sensor = legoev3_port_device_register("sensor", -1,
 				&ev3_sensor_device_types[port->sensor_type],
+				port->sensor_type_id,
 				&pdata, sizeof(struct ev3_sensor_platform_data),
 				&port->pdev->dev);
 	if (IS_ERR(sensor)) {
@@ -486,6 +424,7 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 			ev3_input_port_float(port);
 			port->timer_loop_cnt = 0;
 			port->sensor_type = SENSOR_NONE;
+			port->sensor_type_id = -1;
 			port->con_state = CON_STATE_INIT_SETTLE;
 		}
 		break;
@@ -520,7 +459,7 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 						port->sensor_type = SENSOR_NXT_I2C;
 				} else if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN5_LOW)) {
 					if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN6_HIGH))
-						port->sensor_type = SENSOR_NXT_DUMB;
+						port->sensor_type = SENSOR_NXT_ANALOG;
 					else
 						port->sensor_type = SENSOR_NXT_LIGHT;
 				} else if (new_pin1_mv < PIN1_NEAR_GND)
@@ -533,7 +472,7 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 					port->timer_loop_cnt = 0;
 					port->pin1_mv = new_pin1_mv;
 				} else
-					port->sensor_type = SENSOR_NXT_DUMB;
+					port->sensor_type = SENSOR_NXT_ANALOG;
 			} else if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN1_LOADED)) {
 				port->con_state = CON_STATE_HAVE_EV3;
 				if (new_pin1_mv > PIN1_NEAR_PIN2)
@@ -541,53 +480,10 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 				else if (new_pin1_mv < PIN1_NEAR_GND)
 					port->sensor_type = SENSOR_EV3_UART;
 				else {
-					switch(to_ev3_in_dev_id(new_pin1_mv)) {
-					case EV3_IN_DEV_ID_01:
-						port->sensor_type = SENSOR_EV3_ID_01;
-						break;
-					case EV3_IN_DEV_ID_02:
-						port->sensor_type = SENSOR_EV3_ID_02;
-						break;
-					case EV3_IN_DEV_ID_03:
-						port->sensor_type = SENSOR_EV3_ID_03;
-						break;
-					case EV3_IN_DEV_ID_04:
-						port->sensor_type = SENSOR_EV3_ID_04;
-						break;
-					case EV3_IN_DEV_ID_05:
-						port->sensor_type = SENSOR_EV3_ID_05;
-						break;
-					case EV3_IN_DEV_ID_06:
-						port->sensor_type = SENSOR_EV3_ID_06;
-						break;
-					case EV3_IN_DEV_ID_07:
-						port->sensor_type = SENSOR_EV3_ID_07;
-						break;
-					case EV3_IN_DEV_ID_08:
-						port->sensor_type = SENSOR_EV3_ID_08;
-						break;
-					case EV3_IN_DEV_ID_09:
-						port->sensor_type = SENSOR_EV3_ID_09;
-						break;
-					case EV3_IN_DEV_ID_10:
-						port->sensor_type = SENSOR_EV3_ID_10;
-						break;
-					case EV3_IN_DEV_ID_11:
-						port->sensor_type = SENSOR_EV3_ID_11;
-						break;
-					case EV3_IN_DEV_ID_12:
-						port->sensor_type = SENSOR_EV3_ID_12;
-						break;
-					case EV3_IN_DEV_ID_13:
-						port->sensor_type = SENSOR_EV3_ID_13;
-						break;
-					case EV3_IN_DEV_ID_14:
-						port->sensor_type = SENSOR_EV3_ID_14;
-						break;
-					default:
+					port->sensor_type = SENSOR_EV3_ANALOG;
+					port->sensor_type_id = to_ev3_in_dev_id(new_pin1_mv);
+					if (port->sensor_type_id == EV3_IN_DEV_ID_ERR)
 						port->sensor_type = SENSOR_ERR;
-						break;
-					}
 				}
 			} else if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN6_HIGH)) {
 				port->con_state = CON_STATE_HAVE_I2C;
@@ -612,7 +508,7 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 			    new_pin1_mv < (port->pin1_mv + PIN1_TOUCH_VAR))
 				port->sensor_type = SENSOR_NXT_TOUCH;
 			else
-				port->sensor_type = SENSOR_NXT_DUMB;
+				port->sensor_type = SENSOR_NXT_ANALOG;
 		}
 		break;
 	case CON_STATE_HAVE_NXT:

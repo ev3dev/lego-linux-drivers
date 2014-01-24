@@ -21,6 +21,5 @@ obj-$(CONFIG_LEGOEV3_MS_LIGHT_ARRAY)	+= ms_light_array.o
 
 # UART Sensors
 obj-$(CONFIG_LEGOEV3_UART_SENSORS)	+= legoev3_uart.o
+obj-$(CONFIG_LEGOEV3_GENERIC_UART)	+= ev3_generic_uart_sensor.o
 obj-$(CONFIG_LEGOEV3_UART_SENSORS)	+= ev3_uart_sensor.o
-obj-$(CONFIG_LEGOEV3_UNKNOWN_UART)	+= ev3_unknown_uart_sensor.o
-

@@ -35,7 +35,6 @@
 #define LEGOEV3_UART_MSG_TYPE_MASK	0xC0
 #define LEGOEV3_UART_CMD_SIZE(byte)	(1 << ((byte >> 3) & 0x7))
 #define LEGOEV3_UART_MSG_CMD_MASK	0x07
-#define LEGOEV3_UART_TYPE_MAX		101
 #define LEGOEV3_UART_MAX_DATA_ERR	6
 
 #define LEGOEV3_UART_TYPE_UNKNOWN	125
@@ -112,8 +111,15 @@ enum legoev3_uart_info_flags {
 						| LEGOEV3_UART_INFO_FLAG_INFO_FORMAT,
 };
 
-static char legoev3_uart_sensor_type_names[LEGOEV3_UART_TYPE_MAX + 1][LEGOEV3_UART_DEVICE_TYPE_NAME_SIZE];
-static struct device_type legoev3_uart_sensor_device_types[LEGOEV3_UART_TYPE_MAX + 1];
+const struct attribute_group *ev3_sensor_device_type_attr_groups[] = {
+	&legoev3_port_device_type_attr_grp,
+	NULL
+};
+
+static struct device_type legoev3_uart_sensor_device_type = {
+	.name	= "ev3-uart-sensor",
+	.groups	= ev3_sensor_device_type_attr_groups,
+};
 
 static struct legoev3_uart_mode_info legoev3_uart_default_mode_info = {
 	.raw_max	= 0x447fc000,	/* 1023.0 */
@@ -257,9 +263,10 @@ static void legoev3_uart_send_ack(struct work_struct *work)
 		port->pdata.num_modes = port->num_modes;
 		port->pdata.num_view_modes = port->num_view_modes;
 		sensor = legoev3_port_device_register(
-				legoev3_uart_sensor_type_names[port->type],
+				"ev3-uart-sensor",
 				-1, /* TODO: get input port ID here */
-				&legoev3_uart_sensor_device_types[port->type],
+				&legoev3_uart_sensor_device_type,
+				port->type,
 				&port->pdata,
 				sizeof(struct legoev3_uart_sensor_platform_data),
 				port->tty->dev);
@@ -422,7 +429,7 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 #endif
 
 	/*
-	 * to get in sync with the data stream from the sensor, we look
+	 * To get in sync with the data stream from the sensor, we look
 	 * for a valid TYPE command.
 	 */
 	while (!port->synced) {
@@ -702,11 +709,6 @@ static void legoev3_uart_write_wakeup(struct tty_struct *tty)
 	debug_pr("%s\n", __func__);
 }
 
-const struct attribute_group *ev3_sensor_device_type_attr_groups[] = {
-	&legoev3_port_device_type_attr_grp,
-	NULL
-};
-
 static struct tty_ldisc_ops legoev3_uart_ldisc = {
 	.magic			= TTY_LDISC_MAGIC,
 	.name			= "n_legoev3",
@@ -720,23 +722,13 @@ static struct tty_ldisc_ops legoev3_uart_ldisc = {
 
 static int __init legoev3_uart_init(void)
 {
-	int err, i;
+	int err;
 
 	err = tty_register_ldisc(N_LEGOEV3, &legoev3_uart_ldisc);
 	if (err) {
 		pr_err("Could not register LEGOEV3 line discipline. (%d)\n",
 			err);
 		return err;
-	}
-	for (i = 0; i <= LEGOEV3_UART_TYPE_MAX; i++){
-		snprintf(legoev3_uart_sensor_type_names[i],
-				LEGOEV3_UART_DEVICE_TYPE_NAME_SIZE,
-				"ev3-uart-sensor-type-%d", i);
-	}
-	for (i = 0; i <= LEGOEV3_UART_TYPE_MAX; i++){
-		struct device_type *type = &legoev3_uart_sensor_device_types[i];
-		type->name = legoev3_uart_sensor_type_names[i];
-		type->groups = ev3_sensor_device_type_attr_groups;
 	}
 
 	pr_info("Registered LEGOEV3 line discipline. (%d)\n", N_LEGOEV3);
