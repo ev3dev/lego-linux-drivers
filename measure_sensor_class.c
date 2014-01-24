@@ -84,7 +84,7 @@ static ssize_t measure_sensor_show_scaled_value(struct device *dev,
 	struct measure_sensor_device *ms =
 		container_of(dev, struct measure_sensor_device, dev);
 	int value;
-
+/* TODO: check for division by zero */
 	value = ms->cal_value(ms) * (ms->scale_info[ms->scale_idx].max
 		- ms->scale_info[ms->scale_idx].min)
 		/ (ms->cal_max - ms->cal_min);
