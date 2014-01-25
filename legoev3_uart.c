@@ -205,9 +205,11 @@ int legoev3_uart_write_byte(struct tty_struct *tty, const u8 byte)
 	int ret;
 
 	set_bit(TTY_DO_WRITE_WAKEUP, &tty->flags);
-	while (!(ret = tty->ops->write(tty, &byte, 1)));
+	ret = tty_put_char(tty, byte);
+	if (tty->ops->flush_chars)
+		tty->ops->flush_chars(tty);
 
-	return ret < 0 ? ret : 0;
+	return ret;
 }
 
 int legoev3_uart_get_mode(struct tty_struct *tty)
