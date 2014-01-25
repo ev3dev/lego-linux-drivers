@@ -246,9 +246,11 @@ int legoev3_uart_set_mode(struct tty_struct *tty, const u8 mode)
 	data[2] = 0xFF ^ data[0] ^ data[1];
 
 	set_bit(TTY_DO_WRITE_WAKEUP, &tty->flags);
-	while (!(ret = tty->ops->write(tty, data, data_size)));
+	ret = tty->ops->write(tty, data, data_size);
+	if (ret < 0)
+		return ret;
 
-	return ret < 0 ? ret : 0;
+	return 0;
 }
 EXPORT_SYMBOL_GPL(legoev3_uart_set_mode);
 
@@ -677,6 +679,7 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 			debug_pr("DATA:%d\n", port->buffer[0] & LEGOEV3_UART_MSG_CMD_MASK);
 			if (!port->info_done)
 				goto err_invalid_state;
+			port->mode = mode;
 			memcpy(port->mode_info[mode].raw_data,
 			       port->buffer + 1, msg_size - 2);
 			port->data_rec = 1;

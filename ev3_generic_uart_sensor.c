@@ -37,7 +37,7 @@ static inline void print_raw_data(u8 *data)
 
 	for (i = 0; i < 32; i++) {
 		printk("0x%02X", data[i]);
-		printk("%c", i % 15 ? '\n': ' ');
+		printk("%c", (i + 1) % 16 ? ' ': '\n');
 	}
 }
 
@@ -74,21 +74,32 @@ int ev3_generic_uart_sensor_raw_float_value(struct measure_sensor_device *measur
 		container_of(measure, struct ev3_generic_uart_sensor_data, measure);
 	int mode = legoev3_uart_get_mode(ev3_gen->pdata->tty);
 print_raw_data(ev3_gen->pdata->mode_info[mode].raw_data);
-	/* TODO: need a float to int conversion function */
-	return *(u32 *)ev3_gen->pdata->mode_info[mode].raw_data;
+
+	return legoev3_uart_ftoi(*(u32 *)ev3_gen->pdata->mode_info[mode].raw_data,
+		ev3_gen->pdata->mode_info[mode].decimals);
 }
 
 int ev3_generic_uart_sensor_register_measure(
 	struct ev3_generic_uart_sensor_data *ev3_gen, int mode)
 {
+	memset(&ev3_gen->measure, 0, sizeof(struct measure_sensor_device));
+	memset(&ev3_gen->scale_info, 0, sizeof(struct measure_sensor_scale_info));
+	ev3_gen->measure.scale_info = ev3_gen->scale_info;
+
 	ev3_gen->measure.name = ev3_gen->pdata->mode_info[mode].name;
-	ev3_gen->measure.raw_min = ev3_gen->pdata->mode_info[mode].raw_min;
-	ev3_gen->measure.raw_max = ev3_gen->pdata->mode_info[mode].raw_max;
-	ev3_gen->measure.cal_min = ev3_gen->pdata->mode_info[mode].raw_min;
-	ev3_gen->measure.cal_max = ev3_gen->pdata->mode_info[mode].raw_max;
+	ev3_gen->measure.raw_min =
+		legoev3_uart_ftoi(ev3_gen->pdata->mode_info[mode].raw_min, 0);
+	ev3_gen->measure.raw_max =
+		legoev3_uart_ftoi(ev3_gen->pdata->mode_info[mode].raw_max, 0);
+	ev3_gen->measure.cal_min = ev3_gen->measure.raw_min;
+	ev3_gen->measure.cal_max = ev3_gen->measure.raw_max;
 	ev3_gen->scale_info[0].units = ev3_gen->pdata->mode_info[mode].units;
-	ev3_gen->scale_info[0].min = ev3_gen->pdata->mode_info[mode].si_min;
-	ev3_gen->scale_info[0].max = ev3_gen->pdata->mode_info[mode].si_max;
+	ev3_gen->scale_info[0].min =
+		legoev3_uart_ftoi(ev3_gen->pdata->mode_info[mode].si_min,
+				  ev3_gen->pdata->mode_info[mode].decimals);
+	ev3_gen->scale_info[0].max =
+		legoev3_uart_ftoi(ev3_gen->pdata->mode_info[mode].si_max,
+				  ev3_gen->pdata->mode_info[mode].decimals);
 	ev3_gen->scale_info[0].dp = ev3_gen->pdata->mode_info[mode].decimals;
 	switch (ev3_gen->pdata->mode_info[mode].format) {
 	case LEGOEV3_UART_DATA_8:
@@ -158,7 +169,6 @@ static int __devinit ev3_generic_uart_sensor_probe(struct legoev3_port_device *s
 		ev3_gen->modes[i].id = i;
 	}
 	ev3_gen->ctrl.mode_info	= ev3_gen->modes;
-	ev3_gen->measure.scale_info = ev3_gen->scale_info;
 	ev3_gen->sensor = sensor;
 	ev3_gen->pdata = pdata;
 
