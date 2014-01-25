@@ -18,8 +18,6 @@
  * This framework consists of a timer loop to poll the analog/digital converter
  * and functions to access the data that is recorded.
  *
- * For more information, see Documentation/legoev3/analog.txt
- *
  * Acknowledgments:
  *
  * This file is based on:
