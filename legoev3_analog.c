@@ -92,7 +92,6 @@ enum nxt_color_read_state {
  * @spi: SPI device that communicates the the ADC chip.
  * @pdata: Platform data that defines channel assignments.
  * @timer: Timer used to poll the ADC.
- * @lock: Spin lock.
  * @next_update_ns: Number of nanoseconds to load into the timer for the next
  *	update.
  * @msg_busy: Used to prevent sending a second SPI message before the current
@@ -125,7 +124,6 @@ struct legoev3_analog_device {
 	struct spi_device *spi;
 	struct legoev3_analog_platform_data *pdata;
 	struct hrtimer timer;
-	spinlock_t lock;
 	u64 next_update_ns;
 	bool msg_busy;
 	u16 read_one_tx_buf;
@@ -249,16 +247,13 @@ u16 legoev3_analog_get_value_for_ch(struct legoev3_analog_device *alg, u8 channe
 {
 	int ret = -EINVAL;
 	u16 val;
-	unsigned long flags;
 
 	if (channel > ADS7957_NUM_CHANNELS) {
 		dev_crit(&alg->dev, "%s: channel id %d >= available channels (%d)\n",
 			 __func__, channel, ADS7957_NUM_CHANNELS);
 		return ret;
 	}
-	spin_lock_irqsave(&alg->lock, flags);
 	val = alg->raw_data[channel];
-	spin_unlock_irqrestore(&alg->lock, flags);
 	ret = val * ADS7957_LSB_UV / 1000;
 	return ret;
 }
