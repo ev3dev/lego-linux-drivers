@@ -149,17 +149,15 @@ struct legoev3_port_device
 		pdev->dev.parent = &legoev3_ports->pdev->dev;
 		if (pdev->id < 0)
 			err = dev_set_name(&pdev->dev, "%s", pdev->name);
-		else
-			{
+		else {
 			if( 0 == strncmp( pdev->name, "out", LEGOEV3_PORT_NAME_SIZE ) ) {
 				err = dev_set_name(&pdev->dev, "%s%c", pdev->name,
 						   'A' - 1 + pdev->id);
 			} else {
 				err = dev_set_name(&pdev->dev, "%s%c", pdev->name,
 						   '0' + pdev->id);
-
                         }
-			}
+		}
 	}
 	if (err < 0) {
 		dev_err(&pdev->dev, "Could not set name.\n");
@@ -326,10 +324,10 @@ err_legoev3_port_device_register:
 	return err;
 }
 
-
 static int __devinit legoev3_ports_probe(struct platform_device *pdev)
 {
 	struct legoev3_ports_data *ports;
+	int i = 0;
 	int err;
 
 	if (!pdev || !pdev->dev.platform_data)
@@ -354,20 +352,24 @@ static int __devinit legoev3_ports_probe(struct platform_device *pdev)
 					   NUM_EV3_PORT_IN);
 	if (err) {
 		dev_err(&pdev->dev, "Could not register input ports!\n");
-		goto err_legoev3_register_ports;
+		goto err_legoev3_register_input_ports;
 	}
 
 	err = legoev3_register_output_ports(ports->out_ports,
-					   ports->pdata->output_port_data,
-					   NUM_EV3_PORT_OUT);
+					    ports->pdata->output_port_data,
+					    NUM_EV3_PORT_OUT);
 	if (err) {
 		dev_err(&pdev->dev, "Could not register output ports!\n");
-		goto err_legoev3_register_ports;
+		goto err_legoev3_register_output_ports;
 	}
 
 	return 0;
 
-err_legoev3_register_ports:
+err_legoev3_register_output_ports:
+	for(i = 0; i < NUM_EV3_PORT_IN; i++)
+		legoev3_port_device_unregister(ports->in_ports[i]);
+
+err_legoev3_register_input_ports:
 	legoev3_ports = NULL;
 	kfree(ports);
 err_ports_kzalloc:
