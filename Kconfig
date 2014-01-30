@@ -98,7 +98,7 @@ config LEGOEV3_MS_LIGHT_ARRAY
 config LEGOEV3_UART_SENSORS
 	tristate "EV3 UART sensor suppport"
 	default y
-	depends on LEGOEV3_INPUT_PORT
+	depends on LEGOEV3_INPUT_PORT && SERIAL_SUART_OMAPL_PRU
 	help
 	  Select Y to enable support for EV3 UART sensors.
 

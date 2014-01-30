@@ -211,7 +211,7 @@ struct device_type ev3_sensor_device_types[] = {
 		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_UART] = {
-		.name	= "ev3-uart-sensor",
+		.name	= "ev3-uart-host",
 		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 };
@@ -383,11 +383,12 @@ void ev3_input_port_register_sensor(struct work_struct *work)
 		msleep(1000);
 
 	pdata.in_port = port->pdev;
-	sensor = legoev3_port_device_register("sensor", -1,
-				&ev3_sensor_device_types[port->sensor_type],
-				port->sensor_type_id,
-				&pdata, sizeof(struct ev3_sensor_platform_data),
-				&port->pdev->dev);
+	sensor = legoev3_port_device_register(
+		ev3_sensor_device_types[port->sensor_type].name, -1,
+		&ev3_sensor_device_types[port->sensor_type],
+		port->sensor_type_id,
+		&pdata, sizeof(struct ev3_sensor_platform_data),
+		&port->pdev->dev);
 	if (IS_ERR(sensor)) {
 		dev_err(&port->pdev->dev, "Could not register sensor on port %s.\n",
 			dev_name(&port->pdev->dev));
