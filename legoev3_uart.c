@@ -309,6 +309,51 @@ static ssize_t legoev3_uart_show_value(struct device *dev,
 	return count;
 }
 
+static ssize_t legoev3_uart_show_raw_data_format(struct device *dev,
+                                                 struct device_attribute *attr,
+                                                 char *buf)
+{
+	struct legoev3_uart_sensor_platform_data *pdata = dev->platform_data;
+	struct legoev3_uart_port_data *port = pdata->tty->disc_data;
+	int count = -ENXIO;
+
+	switch (pdata->mode_info[port->mode].format) {
+	case LEGOEV3_UART_DATA_8:
+		count = sprintf(buf, "%s\n", "u8");
+		break;
+	case LEGOEV3_UART_DATA_16:
+		count = sprintf(buf, "%s\n", "u16");
+		break;
+	case LEGOEV3_UART_DATA_32:
+		count = sprintf(buf, "%s\n", "u32");
+		break;
+	case LEGOEV3_UART_DATA_FLOAT:
+		count = sprintf(buf, "%s\n", "float");
+		break;
+	}
+
+	return count;
+}
+
+static ssize_t legoev3_uart_read_raw_data(struct file *file, struct kobject *kobj,
+                                          struct bin_attribute *attr,
+                                          char *buf, loff_t off, size_t count)
+{
+	struct device *dev = container_of(kobj, struct device, kobj);
+	struct legoev3_uart_sensor_platform_data *pdata = dev->platform_data;
+	struct legoev3_uart_port_data *port = pdata->tty->disc_data;
+	size_t size = attr->size;
+
+	if (off >= size || !count)
+		return 0;
+	size -= off;
+	if (count < size)
+		size = count;
+	memcpy(buf + off, pdata->mode_info[port->mode].raw_data, size);
+
+	return size;
+}
+
 DEVICE_ATTR(type_id, S_IRUGO , legoev3_uart_show_type_id, NULL);
 DEVICE_ATTR(mode, S_IRUGO | S_IWUGO, legoev3_uart_show_mode, legoev3_uart_store_mode);
 DEVICE_ATTR(raw_min, S_IRUGO , legoev3_uart_show_raw_min, NULL);
@@ -320,6 +365,16 @@ DEVICE_ATTR(si_max, S_IRUGO , legoev3_uart_show_si_max, NULL);
 DEVICE_ATTR(si_units, S_IRUGO , legoev3_uart_show_si_units, NULL);
 DEVICE_ATTR(dp, S_IRUGO , legoev3_uart_show_dp, NULL);
 DEVICE_ATTR(value, S_IRUGO , legoev3_uart_show_value, NULL);
+DEVICE_ATTR(raw_data_format, S_IRUGO , legoev3_uart_show_raw_data_format, NULL);
+
+static struct bin_attribute dev_bin_attr_raw_data = {
+	.attr	= {
+		.name	= "raw_data",
+		.mode	= S_IRUGO,
+	},
+	.size	= LEGOEV3_UART_SENSOR_DATA_SIZE,
+	.read	= legoev3_uart_read_raw_data,
+};
 
 static struct attribute *legoev3_uart_sensor_type_attrs[] = {
 	&dev_attr_type_id.attr,
@@ -333,6 +388,7 @@ static struct attribute *legoev3_uart_sensor_type_attrs[] = {
 	&dev_attr_si_units.attr,
 	&dev_attr_dp.attr,
 	&dev_attr_value.attr,
+	&dev_attr_raw_data_format.attr,
 	NULL
 };
 
@@ -442,6 +498,7 @@ static void legoev3_uart_send_ack(struct work_struct *work)
 	struct legoev3_uart_port_data *port =
 		container_of(dwork, struct legoev3_uart_port_data, send_ack_work);
 	struct legoev3_port_device *sensor;
+	int err;
 
 	if (!port->sensor && port->type <= LEGOEV3_UART_TYPE_MAX) {
 		port->pdata.tty = port->tty;
@@ -459,6 +516,12 @@ static void legoev3_uart_send_ack(struct work_struct *work)
 		if (IS_ERR(sensor)) {
 			dev_err(port->tty->dev, "Could not register UART sensor on tty %s",
 					port->tty->name);
+			return;
+		}
+		err = sysfs_create_bin_file(&sensor->dev.kobj, &dev_bin_attr_raw_data);
+		if (err < 0) {
+			dev_err(&sensor->dev, "Could not register binary attribute.");
+			legoev3_port_device_unregister(sensor);
 			return;
 		}
 		port->sensor = sensor;
@@ -581,8 +644,11 @@ static void legoev3_uart_close(struct tty_struct *tty)
 {
 	struct legoev3_uart_port_data *port = tty->disc_data;
 
-	if (port->sensor)
+	if (port->sensor) {
+		sysfs_remove_bin_file(&port->sensor->dev.kobj,
+				      &dev_bin_attr_raw_data);
 		legoev3_port_device_unregister(port->sensor);
+	}
 	cancel_delayed_work_sync(&port->send_ack_work);
 	cancel_delayed_work_sync(&port->change_bitrate_work);
 	hrtimer_cancel(&port->keep_alive_timer);
