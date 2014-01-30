@@ -102,11 +102,4 @@ config LEGOEV3_UART_SENSORS
 	help
 	  Select Y to enable support for EV3 UART sensors.
 
-config LEGOEV3_GENERIC_UART
-	tristate "EV3 generic UART sensor support"
-	default y
-	depends on LEGOEV3_UART_SENSORS && LEGOEV3_SENSOR_CONTROLS
-	help
-	  Select Y to enable support for generic EV3 UART sensors.
-
 endif #LEGOEV3_DRIVERS

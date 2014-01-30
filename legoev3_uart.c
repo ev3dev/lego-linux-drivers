@@ -111,23 +111,6 @@ enum legoev3_uart_info_flags {
 						| LEGOEV3_UART_INFO_FLAG_INFO_FORMAT,
 };
 
-const struct attribute_group *ev3_sensor_device_type_attr_groups[] = {
-	&legoev3_port_device_type_attr_grp,
-	NULL
-};
-
-static struct device_type legoev3_uart_sensor_device_type = {
-	.name	= "ev3-uart-sensor",
-	.groups	= ev3_sensor_device_type_attr_groups,
-};
-
-static struct legoev3_uart_mode_info legoev3_uart_default_mode_info = {
-	.raw_max	= 0x447fc000,	/* 1023.0 */
-	.pct_max	= 0x42c80000,	/*  100.0 */
-	.si_max		= 0x3f800000,	/*    1.0 */
-	.figures	= 4,
-};
-
 /**
  * struct legoev3_uart_data - Discipline data for EV3 UART Sensor communication
  * @tty: Pointer to the tty device that the sensor is connected to
@@ -174,6 +157,205 @@ struct legoev3_uart_port_data {
 	unsigned synced:1;
 	unsigned info_done:1;
 	unsigned data_rec:1;
+};
+
+static ssize_t legoev3_uart_show_type_id(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
+{
+	struct legoev3_uart_sensor_platform_data *pdata = dev->platform_data;
+	struct legoev3_uart_port_data *port = pdata->tty->disc_data;
+
+	return sprintf(buf, "%d\n", port->type);
+}
+
+static ssize_t legoev3_uart_show_mode(struct device *dev,
+				      struct device_attribute *attr,
+				      char *buf)
+{
+	struct legoev3_uart_sensor_platform_data *pdata = dev->platform_data;
+	struct legoev3_uart_port_data *port = pdata->tty->disc_data;
+	int i;
+	unsigned count = 0;
+	int mode = port->mode;
+
+	for (i = 0; i < port->num_modes; i++) {
+		if (i == mode)
+			count += sprintf(buf + count, "[");
+		count += sprintf(buf + count, "%s", pdata->mode_info[i].name);
+		if (i == mode)
+			count += sprintf(buf + count, "]");
+		count += sprintf(buf + count, "%c", ' ');
+	}
+	if (count == 0)
+		return -ENXIO;
+	buf[count - 1] = '\n';
+
+	return count;
+}
+
+static ssize_t legoev3_uart_store_mode(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t count)
+{
+	struct legoev3_uart_sensor_platform_data *pdata = dev->platform_data;
+	struct legoev3_uart_port_data *port = pdata->tty->disc_data;
+	int i, err;
+
+	for (i = 0; i < port->num_modes; i++) {
+		if (sysfs_streq(buf, pdata->mode_info[i].name)) {
+			err = legoev3_uart_set_mode(port->tty, i);
+			if (err)
+				return err;
+			return count;
+		}
+	}
+	return -EINVAL;
+}
+
+/* common definition for the min/max properties (float data)*/
+#define LEGOEV3_UART_SHOW_F(name)						\
+static ssize_t legoev3_uart_show_##name(struct device *dev,			\
+					struct device_attribute *attr,		\
+					char *buf)				\
+{										\
+	struct legoev3_uart_sensor_platform_data *pdata = dev->platform_data;	\
+	struct legoev3_uart_port_data *port = pdata->tty->disc_data;		\
+	int value = pdata->mode_info[port->mode].name;				\
+	int dp = pdata->mode_info[port->mode].decimals;				\
+										\
+	return sprintf(buf, "%d\n", legoev3_uart_ftoi(value, dp));		\
+}
+
+LEGOEV3_UART_SHOW_F(raw_min)
+LEGOEV3_UART_SHOW_F(raw_max)
+LEGOEV3_UART_SHOW_F(pct_min)
+LEGOEV3_UART_SHOW_F(pct_max)
+LEGOEV3_UART_SHOW_F(si_min)
+LEGOEV3_UART_SHOW_F(si_max)
+
+static ssize_t legoev3_uart_show_si_units(struct device *dev,
+                                          struct device_attribute *attr,
+                                          char *buf)
+{
+	struct legoev3_uart_sensor_platform_data *pdata = dev->platform_data;
+	struct legoev3_uart_port_data *port = pdata->tty->disc_data;
+
+	return sprintf(buf, "%s\n",pdata->mode_info[port->mode].units);
+}
+
+static ssize_t legoev3_uart_show_dp(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	struct legoev3_uart_sensor_platform_data *pdata = dev->platform_data;
+	struct legoev3_uart_port_data *port = pdata->tty->disc_data;
+
+	return sprintf(buf, "%d\n", pdata->mode_info[port->mode].decimals);
+}
+
+int legoev3_uart_raw_u8_value(struct legoev3_uart_sensor_platform_data *pdata)
+{
+	int mode = legoev3_uart_get_mode(pdata->tty);
+
+	return pdata->mode_info[mode].raw_data[0];
+}
+
+int legoev3_uart_raw_u16_value(struct legoev3_uart_sensor_platform_data *pdata)
+{
+	int mode = legoev3_uart_get_mode(pdata->tty);
+
+	return *(u16 *)pdata->mode_info[mode].raw_data;
+}
+
+int legoev3_uart_raw_u32_value(struct legoev3_uart_sensor_platform_data *pdata)
+{
+	int mode = legoev3_uart_get_mode(pdata->tty);
+
+	return *(u32 *)pdata->mode_info[mode].raw_data;
+}
+
+int legoev3_uart_raw_float_value(struct legoev3_uart_sensor_platform_data *pdata)
+{
+	int mode = legoev3_uart_get_mode(pdata->tty);
+
+	return legoev3_uart_ftoi(*(u32 *)pdata->mode_info[mode].raw_data,
+		pdata->mode_info[mode].decimals);
+}
+
+static ssize_t legoev3_uart_show_value(struct device *dev,
+                                       struct device_attribute *attr,
+                                       char *buf)
+{
+	struct legoev3_uart_sensor_platform_data *pdata = dev->platform_data;
+	struct legoev3_uart_port_data *port = pdata->tty->disc_data;
+	int count = -ENXIO;
+
+	switch (pdata->mode_info[port->mode].format) {
+	case LEGOEV3_UART_DATA_8:
+		count = sprintf(buf, "%d\n", legoev3_uart_raw_u8_value(pdata));
+		break;
+	case LEGOEV3_UART_DATA_16:
+		count = sprintf(buf, "%d\n", legoev3_uart_raw_u16_value(pdata));
+		break;
+	case LEGOEV3_UART_DATA_32:
+		count = sprintf(buf, "%d\n", legoev3_uart_raw_u32_value(pdata));
+		break;
+	case LEGOEV3_UART_DATA_FLOAT:
+		count = sprintf(buf, "%d\n", legoev3_uart_raw_float_value(pdata));
+		break;
+	}
+
+	return count;
+}
+
+DEVICE_ATTR(type_id, S_IRUGO , legoev3_uart_show_type_id, NULL);
+DEVICE_ATTR(mode, S_IRUGO | S_IWUGO, legoev3_uart_show_mode, legoev3_uart_store_mode);
+DEVICE_ATTR(raw_min, S_IRUGO , legoev3_uart_show_raw_min, NULL);
+DEVICE_ATTR(raw_max, S_IRUGO , legoev3_uart_show_raw_max, NULL);
+DEVICE_ATTR(pct_min, S_IRUGO , legoev3_uart_show_pct_min, NULL);
+DEVICE_ATTR(pct_max, S_IRUGO , legoev3_uart_show_pct_max, NULL);
+DEVICE_ATTR(si_min, S_IRUGO , legoev3_uart_show_si_min, NULL);
+DEVICE_ATTR(si_max, S_IRUGO , legoev3_uart_show_si_max, NULL);
+DEVICE_ATTR(si_units, S_IRUGO , legoev3_uart_show_si_units, NULL);
+DEVICE_ATTR(dp, S_IRUGO , legoev3_uart_show_dp, NULL);
+DEVICE_ATTR(value, S_IRUGO , legoev3_uart_show_value, NULL);
+
+static struct attribute *legoev3_uart_sensor_type_attrs[] = {
+	&dev_attr_type_id.attr,
+	&dev_attr_mode.attr,
+	&dev_attr_raw_min.attr,
+	&dev_attr_raw_max.attr,
+	&dev_attr_pct_min.attr,
+	&dev_attr_pct_max.attr,
+	&dev_attr_si_min.attr,
+	&dev_attr_si_max.attr,
+	&dev_attr_si_units.attr,
+	&dev_attr_dp.attr,
+	&dev_attr_value.attr,
+	NULL
+};
+
+struct attribute_group legoev3_uart_sensor_type_attr_grp = {
+	.attrs	= legoev3_uart_sensor_type_attrs,
+};
+
+const struct attribute_group *legoev3_uart_sensor_device_type_attr_groups[] = {
+	&legoev3_port_device_type_attr_grp,
+	&legoev3_uart_sensor_type_attr_grp,
+	NULL
+};
+
+static struct device_type legoev3_uart_sensor_device_type = {
+	.name	= "ev3-uart-sensor",
+	.groups	= legoev3_uart_sensor_device_type_attr_groups,
+};
+
+static struct legoev3_uart_mode_info legoev3_uart_default_mode_info = {
+	.raw_max	= 0x447fc000,	/* 1023.0 */
+	.pct_max	= 0x42c80000,	/*  100.0 */
+	.si_max		= 0x3f800000,	/*    1.0 */
+	.figures	= 4,
 };
 
 static inline int legoev3_uart_msg_size(u8 header)
