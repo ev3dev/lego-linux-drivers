@@ -160,6 +160,14 @@ struct legoev3_uart_port_data {
 	unsigned data_rec:1;
 };
 
+u8 legoev3_uart_set_msg_hdr(u8 type, const unsigned long size, u8 cmd)
+{
+	u8 size_code = (find_last_bit(&size, sizeof(unsigned long)) & 0x7) << 3;
+
+	return (type & LEGOEV3_UART_MSG_TYPE_MASK) | size_code
+		| (cmd & LEGOEV3_UART_MSG_CMD_MASK);
+}
+
 struct indexed_device_attribute {
 	struct device_attribute dev_attr;
 	int index;
@@ -395,6 +403,45 @@ static ssize_t legoev3_uart_read_bin_data(struct file *file, struct kobject *kob
 	return size;
 }
 
+static ssize_t legoev3_uart_write_bin_data(struct file *file ,struct kobject *kobj,
+                                           struct bin_attribute *attr,
+                                           char *buf, loff_t off, size_t count)
+{
+	struct device *dev = container_of(kobj, struct device, kobj);
+	struct legoev3_uart_sensor_platform_data *pdata = dev->platform_data;
+	struct legoev3_uart_port_data *port = pdata->tty->disc_data;
+	char data[32 + 2];
+	int size, i, err;
+
+	if (off != 0 || count > 32)
+		return -EINVAL;
+	if (count == 0)
+		return count;
+	memset(data + 1, 0, 32);
+	memcpy(data + 1, buf, count);
+	if (count <= 2)
+		size = count;
+	else if (count <= 4)
+		size = 4;
+	else if (count <= 8)
+		size = 8;
+	else if (count <= 16)
+		size = 16;
+	else
+		size = 32;
+	data[0] = legoev3_uart_set_msg_hdr(LEGOEV3_UART_MSG_TYPE_CMD, size,
+					   LEGOEV3_UART_CMD_WRITE);
+	data[size + 1] = 0xFF;
+	for (i = 0; i <= size; i++)
+		data[size + 1] ^= data[i];
+	set_bit(TTY_DO_WRITE_WAKEUP, &port->tty->flags);
+	err = port->tty->ops->write(port->tty, data, size + 2);
+	if (err < 0)
+		return err;
+
+	return count;
+}
+
 DEVICE_ATTR(type_id, S_IRUGO , legoev3_uart_show_type_id, NULL);
 DEVICE_ATTR(mode, S_IRUGO | S_IWUGO, legoev3_uart_show_mode, legoev3_uart_store_mode);
 DEVICE_ATTR(raw_min, S_IRUGO , legoev3_uart_show_raw_min, NULL);
@@ -428,6 +475,7 @@ static struct bin_attribute dev_bin_attr_bin_data = {
 	},
 	.size	= LEGOEV3_UART_SENSOR_DATA_SIZE,
 	.read	= legoev3_uart_read_bin_data,
+	.write	= legoev3_uart_write_bin_data,
 };
 
 static struct attribute *legoev3_uart_sensor_attrs[] = {
@@ -490,15 +538,6 @@ static inline int legoev3_uart_msg_size(u8 header)
 
 	return size;
 }
-
-u8 legoev3_uart_set_msg_hdr(u8 type, const unsigned long size, u8 cmd)
-{
-	u8 size_code = (find_last_bit(&size, sizeof(unsigned long)) & 0x7) << 3;
-
-	return (type & LEGOEV3_UART_MSG_TYPE_MASK) | size_code
-		| (cmd & LEGOEV3_UART_MSG_CMD_MASK);
-}
-
 
 int legoev3_uart_write_byte(struct tty_struct *tty, const u8 byte)
 {
