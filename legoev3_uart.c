@@ -255,25 +255,25 @@ static ssize_t legoev3_uart_show_dp(struct device *dev,
 	return sprintf(buf, "%d\n", pdata->mode_info[port->mode].decimals);
 }
 
-int legoev3_uart_raw_u8_value(struct legoev3_uart_sensor_platform_data *pdata)
+int legoev3_uart_raw_s8_value(struct legoev3_uart_sensor_platform_data *pdata)
 {
 	int mode = legoev3_uart_get_mode(pdata->tty);
 
-	return pdata->mode_info[mode].raw_data[0];
+	return *(s8 *)pdata->mode_info[mode].raw_data;
 }
 
-int legoev3_uart_raw_u16_value(struct legoev3_uart_sensor_platform_data *pdata)
+int legoev3_uart_raw_s16_value(struct legoev3_uart_sensor_platform_data *pdata)
 {
 	int mode = legoev3_uart_get_mode(pdata->tty);
 
-	return *(u16 *)pdata->mode_info[mode].raw_data;
+	return *(s16 *)pdata->mode_info[mode].raw_data;
 }
 
-int legoev3_uart_raw_u32_value(struct legoev3_uart_sensor_platform_data *pdata)
+int legoev3_uart_raw_s32_value(struct legoev3_uart_sensor_platform_data *pdata)
 {
 	int mode = legoev3_uart_get_mode(pdata->tty);
 
-	return *(u32 *)pdata->mode_info[mode].raw_data;
+	return *(s32 *)pdata->mode_info[mode].raw_data;
 }
 
 int legoev3_uart_raw_float_value(struct legoev3_uart_sensor_platform_data *pdata)
@@ -294,13 +294,13 @@ static ssize_t legoev3_uart_show_value(struct device *dev,
 
 	switch (pdata->mode_info[port->mode].format) {
 	case LEGOEV3_UART_DATA_8:
-		count = sprintf(buf, "%d\n", legoev3_uart_raw_u8_value(pdata));
+		count = sprintf(buf, "%d\n", legoev3_uart_raw_s8_value(pdata));
 		break;
 	case LEGOEV3_UART_DATA_16:
-		count = sprintf(buf, "%d\n", legoev3_uart_raw_u16_value(pdata));
+		count = sprintf(buf, "%d\n", legoev3_uart_raw_s16_value(pdata));
 		break;
 	case LEGOEV3_UART_DATA_32:
-		count = sprintf(buf, "%d\n", legoev3_uart_raw_u32_value(pdata));
+		count = sprintf(buf, "%d\n", legoev3_uart_raw_s32_value(pdata));
 		break;
 	case LEGOEV3_UART_DATA_FLOAT:
 		count = sprintf(buf, "%d\n", legoev3_uart_raw_float_value(pdata));
@@ -320,13 +320,13 @@ static ssize_t legoev3_uart_show_raw_data_format(struct device *dev,
 
 	switch (pdata->mode_info[port->mode].format) {
 	case LEGOEV3_UART_DATA_8:
-		count = sprintf(buf, "%s\n", "u8");
+		count = sprintf(buf, "%s\n", "s8");
 		break;
 	case LEGOEV3_UART_DATA_16:
-		count = sprintf(buf, "%s\n", "u16");
+		count = sprintf(buf, "%s\n", "s16");
 		break;
 	case LEGOEV3_UART_DATA_32:
-		count = sprintf(buf, "%s\n", "u32");
+		count = sprintf(buf, "%s\n", "s32");
 		break;
 	case LEGOEV3_UART_DATA_FLOAT:
 		count = sprintf(buf, "%s\n", "float");
