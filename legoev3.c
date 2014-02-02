@@ -48,6 +48,8 @@
 #define TONE_MAX_HZ 10000
 #define MAX_VOLUME  256
 
+static bool debug = false;
+
 //--- device data struct ---
 
 struct snd_legoev3 {
@@ -295,13 +297,6 @@ static struct snd_pcm_hardware snd_legoev3_playback_hw = {
 	.periods_max =      1024,
 };
 
-/*static unsigned int rates[] = { SAMPLE_RATE };
-static struct snd_pcm_hw_constraint_list constraints_rates = {
-	.count = ARRAY_SIZE(rates),
-	.list = rates,
-	.mask = 0,
-};*/
-
 /*
  * Call snd_pcm_period_elapsed in a tasklet
  * This avoids spinlock messes and long-running irq contexts
@@ -418,6 +413,11 @@ static int snd_legoev3_pcm_prepare(struct snd_pcm_substream *substream)
 	err = ehrpwm_et_set_sel_evt(chip->pwm, ET_CTR_PRD, int_prd);
 	if (err < 0)
 		return err;
+
+	if (debug)
+        	printk(KERN_INFO "legoev3_pcm_prepare with sample rate=%d, pwm factor=%d\n",
+		       substream->runtime->rate, int_prd);
+
 	legoev3_fiq_ehrpwm_prepare(substream, chip->pwm->period_ticks,
 				   chip->volume, snd_legoev3_period_elapsed,
 				   chip);
@@ -712,6 +712,10 @@ static int __devinit snd_legoev3_init_ehrpwm(struct pwm_device *pwm)
 	return 0;
 }
 
+static unsigned int maxSampleRate = 22050;
+module_param(maxSampleRate, uint, S_IRUGO);
+module_param(debug, bool, S_IRUGO|S_IWUSR);
+
 static int __devinit snd_legoev3_probe(struct platform_device *pdev)
 {
 	struct snd_legoev3_platform_data *pdata;
@@ -724,6 +728,14 @@ static int __devinit snd_legoev3_probe(struct platform_device *pdev)
 	pdata->pwm = pwm_request_byname(pdata->pwm_dev_name, "snd-legoev3");
 	if (IS_ERR(pdata->pwm))
 		return PTR_ERR(pdata->pwm);
+
+	// configure maximal sample rate
+	if (maxSampleRate < 8000)
+		maxSampleRate = 8000;
+	else if (maxSampleRate > 48000)
+		maxSampleRate = 48000;
+	
+	snd_legoev3_playback_hw.rate_max = maxSampleRate;
 
 	err = snd_card_create(-1, "legoev3", THIS_MODULE,
 	                      sizeof(struct snd_legoev3), &card);
