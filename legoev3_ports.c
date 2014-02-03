@@ -77,8 +77,19 @@ struct device_type ev3_input_port_device_type = {
 	.groups	= ev3_input_port_device_type_attr_groups,
 };
 
+static struct attribute *legoev3_output_port_device_type_attrs[] = {
+	&dev_attr_device_type.attr,
+	NULL
+};
+
+struct attribute_group legoev3_output_port_device_type_attr_grp = {
+	.attrs	= legoev3_output_port_device_type_attrs,
+};
+
+EXPORT_SYMBOL_GPL(legoev3_output_port_device_type_attr_grp);
+
 const struct attribute_group *ev3_output_port_device_type_attr_groups[] = {
-	&legoev3_port_device_type_attr_grp,
+	&legoev3_output_port_device_type_attr_grp,
 	NULL
 };
 
@@ -348,8 +359,8 @@ static int __devinit legoev3_ports_probe(struct platform_device *pdev)
 	legoev3_ports = ports;
 
 	err = legoev3_register_input_ports(ports->in_ports,
-					   ports->pdata->input_port_data,
-					   NUM_EV3_PORT_IN);
+				   ports->pdata->input_port_data,
+				   NUM_EV3_PORT_IN);
 	if (err) {
 		dev_err(&pdev->dev, "Could not register input ports!\n");
 		goto err_legoev3_register_input_ports;

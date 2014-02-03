@@ -1,7 +1,7 @@
-# LEGO Mindstroms EV3 device drivers
+# LEGO Mindstorms EV3 device drivers
 
 menuconfig LEGOEV3_DRIVERS
-	tristate "LEGO Mindstroms EV3 support"
+	tristate "LEGO Mindstorms EV3 support"
 	depends on MACH_DAVINCI_LEGOEV3
 	help
 	  This enables platform specific drivers for the LEGO Mindstorms EV3
@@ -28,6 +28,13 @@ config LEGOEV3_DEV_PORTS
 	help
 	  Select Y to provide support for devices that plug into the input
 	  and output ports of the EV3.
+
+config LEGOEV3_OUTPUT_PORT
+	tristate "Output port driver"
+	default y
+	depends on LEGOEV3_DEV_PORTS && LEGOEV3_ANALOG && GPIOLIB
+	help
+	  Select Y to enable the driver for the EV3 output ports.
 
 config LEGOEV3_INPUT_PORT
 	tristate "Input port driver"
@@ -94,5 +101,12 @@ config LEGOEV3_UART_SENSORS
 	depends on LEGOEV3_INPUT_PORT
 	help
 	  Select Y to enable support for EV3 UART sensors.
+
+config LEGOEV3_MOTORS
+	tristate "EV3 motor suppport"
+	default y
+	depends on LEGOEV3_OUTPUT_PORT
+	help
+	  Select Y to enable support for EV3 motors.
 
 endif #LEGOEV3_DRIVERS
