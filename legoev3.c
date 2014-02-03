@@ -31,6 +31,7 @@
 #include <linux/platform_device.h>
 #include <linux/pwm/ehrpwm.h>
 #include <linux/slab.h>
+#include <linux/timer.h>
 
 #include <sound/control.h>
 #include <sound/core.h>
@@ -58,6 +59,7 @@ struct snd_legoev3 {
 	struct input_dev     *input_dev;
 	struct snd_pcm       *pcm;
 	struct tasklet_struct pcm_period_tasklet;
+	struct timer_list     pcm_stop_timer;
 	unsigned              amp_gpio;
 
 	unsigned long  tone_frequency;
@@ -297,6 +299,8 @@ static struct snd_pcm_hardware snd_legoev3_playback_hw = {
 	.periods_max =      1024,
 };
 
+static unsigned int rampMS = 20;
+
 /*
  * Call snd_pcm_period_elapsed in a tasklet
  * This avoids spinlock messes and long-running irq contexts
@@ -359,6 +363,9 @@ static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 
 	tasklet_init(&chip->pcm_period_tasklet, snd_legoev3_call_pcm_elapsed,
 	             (unsigned long)substream);
+	init_timer(&chip->pcm_stop_timer);
+
+	if (debug) printk(KERN_INFO "legoev3_pcm_playback_open\n");
 
 	return 0;
 
@@ -375,9 +382,15 @@ static int snd_legoev3_pcm_playback_close(struct snd_pcm_substream *substream)
 	if (chip)
 	{
 		tasklet_kill(&chip->pcm_period_tasklet);
-		pwm_set_duty_ticks(chip->pwm, 0);
-		pwm_stop(chip->pwm);
+		while (timer_pending(&chip->pcm_stop_timer))
+		{
+			if (debug) printk(KERN_INFO "legoev3_pcm_wait(stop_timer)\n");
+			set_current_state(TASK_INTERRUPTIBLE);
+			schedule_timeout(rampMS * HZ / 1000);
+		}
 		gpio_set_value(chip->amp_gpio, 0);
+
+		if (debug) printk(KERN_INFO "legoev3_pcm_playback_close\n");
 	}
 	legoev3_fiq_ehrpwm_release();
 
@@ -415,14 +428,26 @@ static int snd_legoev3_pcm_prepare(struct snd_pcm_substream *substream)
 		return err;
 
 	if (debug)
-        	printk(KERN_INFO "legoev3_pcm_prepare with sample rate=%d, pwm factor=%d\n",
-		       substream->runtime->rate, int_prd);
+        	printk(KERN_INFO "legoev3_pcm_prepare with sample rate=%d, factor=%d, ramp=%d\n",
+		       substream->runtime->rate, int_prd, rampMS);
+
+	gpio_set_value(chip->amp_gpio, 1);
 
 	legoev3_fiq_ehrpwm_prepare(substream, chip->pwm->period_ticks,
-				   chip->volume, snd_legoev3_period_elapsed,
-				   chip);
+				   chip->volume, snd_legoev3_period_elapsed, chip);
 
 	return 0;
+}
+
+static void snd_legoev3_pcm_stop(unsigned long arg)
+{
+	struct snd_legoev3 *chip = (void *)arg;
+	if (chip)
+	{
+		if (debug) printk(KERN_INFO "legoev3_pcm_stop\n");
+		pwm_stop(chip->pwm);
+		ehrpwm_et_int_en_dis(chip->pwm, ET_DISABLE);
+	}
 }
 
 static int snd_legoev3_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
@@ -431,14 +456,23 @@ static int snd_legoev3_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
+		if (debug) printk(KERN_INFO "legoev3_pcm_trigger(start)\n");
+		if (timer_pending(&chip->pcm_stop_timer))
+		{ 
+			del_timer_sync(&chip->pcm_stop_timer);
+			snd_legoev3_pcm_stop((unsigned long)chip);
+		}
+		legoev3_fiq_ehrpwm_ramp(substream, 1, rampMS);
 		ehrpwm_et_int_en_dis(chip->pwm, ET_ENABLE);
 		pwm_start(chip->pwm);
-		gpio_set_value(chip->amp_gpio, 1);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
-		ehrpwm_et_int_en_dis(chip->pwm, ET_DISABLE);
-		pwm_set_duty_ticks(chip->pwm, 0);
-		pwm_stop(chip->pwm);
+		if (debug) printk(KERN_INFO "legoev3_pcm_trigger(stop)\n");
+		legoev3_fiq_ehrpwm_ramp(substream, -1, rampMS);
+		chip->pcm_stop_timer.data = (unsigned long)chip;
+		chip->pcm_stop_timer.function = snd_legoev3_pcm_stop;
+		chip->pcm_stop_timer.expires = jiffies + rampMS * HZ / 1000;
+		add_timer(&chip->pcm_stop_timer);
 		break;
 	default:
 		return -EINVAL;
@@ -714,7 +748,8 @@ static int __devinit snd_legoev3_init_ehrpwm(struct pwm_device *pwm)
 
 static unsigned int maxSampleRate = 22050;
 module_param(maxSampleRate, uint, S_IRUGO);
-module_param(debug, bool, S_IRUGO|S_IWUSR);
+module_param(rampMS, uint, S_IRUGO|S_IWUSR);
+module_param(debug,  bool, S_IRUGO|S_IWUSR);
 
 static int __devinit snd_legoev3_probe(struct platform_device *pdev)
 {
