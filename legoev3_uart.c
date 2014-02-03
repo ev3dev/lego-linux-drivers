@@ -841,6 +841,17 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 		printk(" (%d)\n", port->write_ptr);
 		printk("msg_size:%d\n", msg_size);
 #endif
+		/*
+		 * The IR sensor sends 0xFF after SYNC (0x00). If these two
+		 * bytes get split between two interrupts, then it will throw
+		 * us off and prevent the sensor from being recognized. So,
+		 * if the first byte is 0xFF, we just ignore it and continue
+		 * with our loop.
+		 */
+		if (port->buffer[0] == 0xFF) {
+			msg_size = 1;
+			goto err_split_sync_checksum;
+		}
 		msg_type = port->buffer[0] & LEGOEV3_UART_MSG_TYPE_MASK;
 		cmd = port->buffer[0] & LEGOEV3_UART_MSG_CMD_MASK;
 		mode = cmd;
@@ -870,10 +881,11 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 		}
 		switch (msg_type) {
 		case LEGOEV3_UART_MSG_TYPE_SYS:
-			debug_pr("SYS:%d\n", data->buffer[0] & LEGOEV3_UART_MSG_CMD_MASK);
+			debug_pr("SYS:%d\n", port->buffer[0] & LEGOEV3_UART_MSG_CMD_MASK);
 			switch(cmd) {
 			case LEGOEV3_UART_SYS_SYNC:
-				if ((cmd ^ cmd2) == 0xFF)
+				/* IR sensor (type 33) sends checksum after SYNC */
+				if (msg_size > 1 && (cmd ^ cmd2) == 0xFF)
 					msg_size++;
 				break;
 			case LEGOEV3_UART_SYS_ACK:
@@ -1103,10 +1115,11 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 			break;
 		}
 
+
 err_bad_data_msg_checksum:
 		if (port->info_done && port->num_data_err > LEGOEV3_UART_MAX_DATA_ERR)
 			goto err_invalid_state;
-
+err_split_sync_checksum:
 		/*
 		 * If there is leftover data, we move it to the beginning
 		 * of the buffer.
