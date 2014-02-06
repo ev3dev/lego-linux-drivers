@@ -203,7 +203,7 @@ struct device_type ev3_sensor_device_types[] = {
 		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_NXT_I2C] = {
-		.name	= "nxt-i2c-sensor",
+		.name	= "nxt-i2c-host",
 		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_EV3_ANALOG] = {
