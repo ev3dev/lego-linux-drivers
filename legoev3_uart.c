@@ -376,8 +376,7 @@ enum hrtimer_restart legoev3_uart_keep_alive_timer_callback(struct hrtimer *time
 
 	tasklet_schedule(&port->keep_alive_tasklet);
 
-	return port->num_data_err > LEGOEV3_UART_MAX_DATA_ERR
-		? HRTIMER_NORESTART : HRTIMER_RESTART;
+	return HRTIMER_RESTART;
 }
 
 static int legoev3_uart_open(struct tty_struct *tty)
@@ -435,6 +434,7 @@ static int legoev3_uart_open(struct tty_struct *tty)
 	mutex_unlock(&tty->termios_mutex);
 
 	tty->receive_room = 65536;
+	tty->low_latency = 1;
 
 	/* flush any existing data in the buffer */
 	if (tty->ldisc->ops->flush_buffer)
@@ -520,8 +520,10 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 	 * a complete command.
 	 */
 	while (i < count) {
-		if (port->write_ptr >= LEGOEV3_UART_BUFFER_SIZE)
+		if (port->write_ptr >= LEGOEV3_UART_BUFFER_SIZE) {
+			port->last_err = "Receive buffer overrun.";
 			goto err_invalid_state;
+		}
 		port->buffer[port->write_ptr++] = cp[i++];
 	}
 
@@ -548,6 +550,10 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 		if (port->buffer[0] == 0xFF) {
 			msg_size = 1;
 			goto err_split_sync_checksum;
+		}
+		if (msg_size > MSENSOR_RAW_DATA_SIZE + 2) {
+			port->last_err = "Bad message size.";
+			goto err_invalid_state;
 		}
 		msg_type = port->buffer[0] & LEGOEV3_UART_MSG_TYPE_MASK;
 		cmd = port->buffer[0] & LEGOEV3_UART_MSG_CMD_MASK;
@@ -801,6 +807,10 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 			debug_pr("DATA:%d\n", port->buffer[0] & LEGOEV3_UART_MSG_CMD_MASK);
 			if (!port->info_done) {
 				port->last_err = "Received DATA before INFO was complete.";
+				goto err_invalid_state;
+			}
+			if (mode > MSENSOR_MODE_MAX) {
+				port->last_err = "Invalid mode received.";
 				goto err_invalid_state;
 			}
 			port->mode = mode;
