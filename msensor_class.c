@@ -17,6 +17,14 @@
 #include <linux/module.h>
 #include <linux/legoev3/msensor_class.h>
 
+size_t legoev3_msensor_data_size[] = {
+	[MSENSOR_DATA_8]	= 1,
+	[MSENSOR_DATA_16]	= 2,
+	[MSENSOR_DATA_32]	= 4,
+	[MSENSOR_DATA_FLOAT]	= 4,
+};
+EXPORT_SYMBOL_GPL(legoev3_msensor_data_size);
+
 #define to_msensor(_dev) \
 	container_of(_dev, struct msensor_device, dev)
 
@@ -330,9 +338,9 @@ static struct device_attribute msensor_device_attrs[] = {
 	__ATTR(num_values, S_IRUGO, msensor_show_num_values, NULL),
 	__ATTR(bin_data_format, S_IRUGO, msensor_show_bin_data_format, NULL),
 	/*
-	 * Technically, it is possible to have 32 8-bit values from UART sensors and
-	 * 255 8-bit values from I2C sensors, but known sensors so far are 8 or less,
-	 * so we only expose 8 values to prevent sysfs overcrowding.
+	 * Technically, it is possible to have 32 8-bit values from UART sensors
+	 * and 255 8-bit values from I2C sensors, but known sensors so far are 8
+	 * or less, so we only expose 8 values to prevent sysfs overcrowding.
 	 */
 	__ATTR(value0, S_IRUGO , msensor_show_value, NULL),
 	__ATTR(value1, S_IRUGO , msensor_show_value, NULL),

@@ -69,23 +69,9 @@ config LEGOEV3_NXT_TOUCH_SENSOR
 config LEGOEV3_I2C_SENSORS
 	tristate "I2C sensor support"
 	default y
-	depends on LEGOEV3_INPUT_PORT && I2C_LEGOEV3
+	depends on LEGOEV3_INPUT_PORT && I2C_LEGOEV3 && LEGOEV3_MSENSORS
 	help
-	  Select Y to enable support for I2C sensors.
-
-config LEGOEV3_NXT_ULTRASONIC
-	tristate "NXT Ultrasonic Distance Sensor"
-	default y
-	depends on LEGOEV3_I2C_SENSORS && LEGOEV3_MEASURE_SENSORS
-	help
-	  Select Y to enable the driver for the NXT ultrasonic distance sensor.
-
-config LEGOEV3_MS_LIGHT_ARRAY
-	tristate "Mindsensors Light Sensor Array"
-	default y
-	depends on LEGOEV3_I2C_SENSORS && LEGOEV3_MEASURE_SENSORS
-	help
-	  Select Y to enable the driver for the Mindsensors Light Sensor Array.
+	  Select Y to enable support for NXT I2C sensors.
 
 config LEGOEV3_UART_SENSORS
 	tristate "EV3 UART sensor support"
