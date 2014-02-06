@@ -52,14 +52,6 @@ config LEGOEV3_MSENSORS
 	  device class interface for most types of sensors (UART sensors,
 	  LEGO-approved I2C sensors and analog sensors).
 
-config LEGOEV3_SENSOR_CONTROLS
-	tristate "Controllable sensor support"
-	default y
-	help
-	  Select Y to enable support for controllable sensors. This provides a
-	  device class that can control sensors. For example many sensors have
-	  multiple modes of operation. The modes are switched using this class.
-
 config LEGOEV3_EV3_TOUCH_SENSOR
 	tristate "EV3 touch sensor"
 	default y
