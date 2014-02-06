@@ -98,7 +98,7 @@ static int __devinit nxt_us_probe(struct i2c_client *client,
 	nxt_us->ms.scale_info = nxt_us_scale_info;
 	nxt_i2c_read_string(client, FIRMWARE_REG, nxt_us->fw_ver, ID_STR_LEN);
 
-	err = register_measure_sensor(&nxt_us->ms, &client->dev);
+	err = register_msensor(&nxt_us->ms, &client->dev);
 	if (err) {
 		dev_err(&client->dev, "could not register measurement sensor!\n");
 		goto err_register_measure_sensor;
@@ -124,7 +124,7 @@ static int __devexit nxt_us_remove(struct i2c_client *client)
 	dev_info(&client->dev, "NXT Ultrasonic sensor '%s' removed.\n",
 		 dev_name(&client->dev));
 	ev3_input_port_set_pin1_out(nxt_us->in_port, 0);
-	unregister_measure_sensor(&nxt_us->ms);
+	unregister_msensor(&nxt_us->ms);
 	kfree(nxt_us);
 
 	return 0;

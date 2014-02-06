@@ -44,7 +44,7 @@ static struct sensor_controls_mode_info ev3_color_sensor_modes[] = {
 static int __devinit ev3_color_sensor_probe(struct legoev3_port_device *sensor)
 {
 	struct ev3_color_sensor_data *ev3_cs;
-	struct legoev3_uart_sensor_platform_data *pdata = sensor->dev.platform_data;
+	struct msensor_device *pdata = sensor->dev.platform_data;
 	int err;
 
 	if (WARN_ON(!pdata))
@@ -54,7 +54,7 @@ static int __devinit ev3_color_sensor_probe(struct legoev3_port_device *sensor)
 	if (!ev3_cs)
 		return -ENOMEM;
 
-	ev3_cs->tty = pdata->tty;
+	ev3_cs->tty = pdata->context;
 	ev3_cs->ctrl.name	= "color";
 	ev3_cs->ctrl.id		= -1; /* TODO do we need to make this unique or get rid of id? */
 	ev3_cs->ctrl.get_mode	= ev3_color_sensor_get_mode;

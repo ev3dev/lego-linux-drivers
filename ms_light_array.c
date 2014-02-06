@@ -88,7 +88,7 @@ int ms_light_array_register_measure_sensors(struct ms_light_array_data *la,
 	int i = 0;
 
 	do {
-		err = register_measure_sensor(&la->ms[i], parent);
+		err = register_msensor(&la->ms[i], parent);
 		if (err)
 			goto err_register_measure_sensor;
 	} while (++i < NUM_SENSOR);
@@ -97,7 +97,7 @@ int ms_light_array_register_measure_sensors(struct ms_light_array_data *la,
 
 err_register_measure_sensor:
 	while (i--)
-		unregister_measure_sensor(&la->ms[i]);
+		unregister_msensor(&la->ms[i]);
 
 	return err;
 }
@@ -159,7 +159,7 @@ static int __devexit ms_light_array_sensor_remove(struct i2c_client *client)
 	dev_info(&client->dev, "Mindsensors Light Sensor Array '%s' removed.\n",
 		 dev_name(&client->dev));
 	for (i = 0; i < NUM_SENSOR; i++)
-		unregister_measure_sensor(&la->ms[i]);
+		unregister_msensor(&la->ms[i]);
 	kfree(la);
 
 	return 0;

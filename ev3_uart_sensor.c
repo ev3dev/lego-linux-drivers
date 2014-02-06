@@ -22,13 +22,13 @@
 
 struct ev3_uart_sensor_data {
 	struct legoev3_port_device *sensor;
-	struct legoev3_uart_sensor_platform_data *pdata;
+	struct msensor_device *pdata;
 };
 
 static int __devinit ev3_uart_sensor_probe(struct legoev3_port_device *pdev)
 {
 	struct ev3_uart_sensor_data *sensor;
-	struct legoev3_uart_sensor_platform_data *pdata = pdev->dev.platform_data;
+	struct msensor_device *pdata = pdev->dev.platform_data;
 	int err, i;
 
 	if (WARN_ON(!pdata))

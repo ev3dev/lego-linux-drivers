@@ -44,13 +44,13 @@ config LEGOEV3_SWITCH_SENSORS
 	  class for sensors that indicate an on/off state such as the NXT and EV3
 	  touch sensors.
 
-config LEGOEV3_MEASURE_SENSORS
-	tristate "Measurement sensor support"
+config LEGOEV3_MSENSORS
+	tristate "Mindstorms sensors support"
 	default y
 	help
-	  Select Y to enable support for measurement sensors. Provides a common
-	  device class interface for any type of sensor that measures one or
-	  more values.
+	  Select Y to enable support for Mindstorms sensors. Provides a common
+	  device class interface for most types of sensors (UART sensors,
+	  LEGO-approved I2C sensors and analog sensors).
 
 config LEGOEV3_SENSOR_CONTROLS
 	tristate "Controllable sensor support"
@@ -96,9 +96,9 @@ config LEGOEV3_MS_LIGHT_ARRAY
 	  Select Y to enable the driver for the Mindsensors Light Sensor Array.
 
 config LEGOEV3_UART_SENSORS
-	tristate "EV3 UART sensor suppport"
+	tristate "EV3 UART sensor support"
 	default y
-	depends on LEGOEV3_INPUT_PORT && SERIAL_SUART_OMAPL_PRU
+	depends on LEGOEV3_INPUT_PORT && SERIAL_SUART_OMAPL_PRU && LEGOEV3_MSENSORS
 	help
 	  Select Y to enable support for EV3 UART sensors.
 
