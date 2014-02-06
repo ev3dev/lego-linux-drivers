@@ -74,6 +74,7 @@ enum connection_state {
  	CON_STATE_PIN6_SETTLE,			/* Pin6 to settle after changing state  */
  	CON_STATE_CONNECTED,			/* We are ready to figure out what's connected */
  	CON_STATE_PIN5_SETTLE,			/* Pin5 to settle after changing state  */
+        CON_STATE_DEVICE_CONNECTED,		/* We detected the connection of a device */
         CON_STATE_WAITING_FOR_DISCONNECT,	/* We are waiting for disconnect */
 	NUM_CON_STATE
 };
@@ -152,13 +153,13 @@ struct ev3_output_port_data {
  	struct legoev3_port_device *motor;
 };
 
-int ev3_output_port_get_foo(struct legoev3_port_device *out_port)
-{
-	struct ev3_output_port_data *port = dev_get_drvdata(&out_port->dev);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(ev3_output_port_get_foo);
+// int ev3_output_port_get_foo(struct legoev3_port_device *out_port)
+// {
+// 	struct ev3_output_port_data *port = dev_get_drvdata(&out_port->dev);
+// 
+// 	return 0;
+// }
+// EXPORT_SYMBOL_GPL(ev3_output_port_get_foo);
 
 void ev3_output_port_float(struct ev3_output_port_data *port)
 {
@@ -168,13 +169,14 @@ void ev3_output_port_float(struct ev3_output_port_data *port)
 	gpio_direction_input( port->gpio[GPIO_PIN6].gpio   );
 }
 
-// void ev3_input_port_register_sensor(struct work_struct *work)
-// {
-// 	struct ev3_input_port_data *port =
-// 			container_of(work, struct ev3_input_port_data, work);
-// 	struct legoev3_port_device *sensor;
-// 	struct ev3_sensor_platform_data pdata;
-// 
+void ev3_output_port_register_motor(struct work_struct *work)
+{
+	struct ev3_output_port_data *port =
+			container_of(work, struct ev3_output_port_data, work);
+	struct legoev3_port_device *motor;
+	struct ev3_motor_platform_data pdata;
+
+        pr_warning("Registering a motor driver for type %d on port %d!\n", port->motor_type, port->id );
 // 	if (port->sensor_type == SENSOR_NONE
 // 	    || port->sensor_type == SENSOR_ERR
 // 	    || port->sensor_type >= NUM_SENSOR)
@@ -199,19 +201,20 @@ void ev3_output_port_float(struct ev3_output_port_data *port)
 // 		return;
 // 	}
 // 
-// 	port->sensor = sensor;
-// 
-// 	return;
-// }
-// 
-// void ev3_input_port_unregister_sensor(struct work_struct *work)
-// {
-// 	struct ev3_input_port_data *port =
-// 			container_of(work, struct ev3_input_port_data, work);
-// 
+	port->motor = 1;
+
+	return;
+}
+
+void ev3_output_port_unregister_motor(struct work_struct *work)
+{
+	struct ev3_output_port_data *port =
+			container_of(work, struct ev3_output_port_data, work);
+
+        pr_warning("Unregistering a motor driver on port %d!\n", port->id );
 // 	legoev3_port_device_unregister(port->sensor);
-// 	port->sensor = NULL;
-// }
+	port->motor = NULL;
+}
 
 static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer)
 {
@@ -222,10 +225,6 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
  
  	hrtimer_forward_now(timer, ktime_set(0, OUTPUT_PORT_POLL_NS));
  	port->timer_loop_cnt++;
-
- //       if( 25*port->id == (port->timer_loop_cnt % 100) ) {
- //       	pr_warning("output port timer for %s is at %d\n", port->pdev->name, port->timer_loop_cnt );
-//	}
 
 	switch(port->con_state) {
 	case CON_STATE_INIT:
@@ -238,7 +237,6 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 		break;
 	case CON_STATE_INIT_SETTLE:
 		if (port->timer_loop_cnt >= SETTLE_CNT) {
-        	        pr_warning("Output Port %d pin6 state %d\n", port->id, gpio_get_value(port->gpio[GPIO_PIN6].gpio) );
 			port->timer_loop_cnt = 0;
 			port->con_state = CON_STATE_NO_DEV;
 		}
@@ -277,7 +275,6 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 
  	case CON_STATE_CONNECTED:
 
-        	pr_warning("Output Port %d connected %d %d\n", port->id, port->pin5_float_mv, port->pin5_low_mv );
                 // Make a temporary variable that we can use to determine the relative
                 // difference between pin5_float_mv and pin5_low_mv
 
@@ -290,25 +287,21 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 				// NXT TOUCH SENSOR, NXT SOUND SENSOR or NEW UART SENSOR
 				port->motor_type = MOTOR_ERR;
 				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
-        	                pr_warning("Output Port %d connected illegal\n", port->id );
 
 			} else if (port->pin5_float_mv < PIN5_NEAR_GND) {
 				// NEW DUMB SENSOR
 				port->motor_type = MOTOR_ERR;
 				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
-        	                pr_warning("Output Port %d connected illegal\n", port->id );
 
 			} else if ((port->pin5_float_mv >= PIN5_LIGHT_LOW) && (port->pin5_float_mv  <= PIN5_LIGHT_HIGH)) {
 				// NXT LIGHT SENSOR
 				port->motor_type = MOTOR_ERR;
 				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
-        	                pr_warning("Output Port %d connected illegal\n", port->id );
 
 			} else if ((port->pin5_float_mv >= PIN5_IIC_LOW) && (port->pin5_float_mv <= PIN5_IIC_HIGH)) {
 				// NXT IIC SENSOR
 				port->motor_type = MOTOR_ERR;
 				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
-        	                pr_warning("Output Port %d connected illegal\n", port->id );
 
 			} else if (port->pin5_float_mv < PIN5_BALANCE_LOW) {
 
@@ -323,14 +316,12 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 
 				}
 
-				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
-        	                pr_warning("Output Port %d connected type %d\n", port->id, port->motor_type );
+				port->con_state = CON_STATE_DEVICE_CONNECTED;
 
 			} else {
 				gpio_direction_output(port->gpio[GPIO_PIN5].gpio, 1);
 				port->timer_loop_cnt = 0;
 				port->con_state        =  CON_STATE_PIN5_SETTLE;
-        	                pr_warning("Output Port %d not sure - check pin 5\n", port->id );
 			}
 
 		// Value5Float is NOT equal to Value5Low
@@ -338,11 +329,9 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 				// NEW ACTUATOR
 				port->motor_type = MOTOR_ERR;
 				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
-        	                pr_warning("Output Port %d connected dumb actuator\n", port->id );
 		} else {
 				port->motor_type = MOTOR_ERR;
 				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
-        	                pr_warning("Output Port %d connected illegal\n", port->id );
 		}
                 break;
 
@@ -350,7 +339,6 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
                 // Update conection type, may need to force pin5 low to determine motor type
 		if (port->timer_loop_cnt >= SETTLE_CNT) {
 			port->pin5_low_mv = legoev3_analog_out_pin5_value(port->analog, port->id);
-        	        pr_warning("Output Port %d pin5 low %d\n", port->id, port->pin5_low_mv );
  			port->timer_loop_cnt = 0;
 			gpio_direction_output(port->gpio[GPIO_PIN5].gpio, 0);
 
@@ -364,10 +352,19 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 				port->motor_type = MOTOR_TACHO;
 			}
 
-        	        pr_warning("Output Port %d connected type %d\n", port->id, port->motor_type );
-
-		        port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+		        port->con_state = CON_STATE_DEVICE_CONNECTED;
 		}
+
+		break;
+
+ 	case CON_STATE_DEVICE_CONNECTED:
+
+		port->timer_loop_cnt = 0;
+		if (port->motor_type != MOTOR_ERR) {
+			PREPARE_WORK(&port->work, ev3_output_port_register_motor);
+			schedule_work(&port->work);
+                }
+		port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
 
 		break;
 
@@ -381,8 +378,10 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 		if ((new_pin5_mv < PIN5_BALANCE_LOW) || (new_pin5_mv > PIN5_BALANCE_HIGH))
  			port->timer_loop_cnt = 0;
 
-		if (port->timer_loop_cnt >= REMOVE_CNT) {
-        		pr_warning("Output Port %d disconnected\n", port->id ); 
+		if ((port->timer_loop_cnt >= REMOVE_CNT) && !work_busy(&port->work) && (port->motor)) {
+			PREPARE_WORK(&port->work, ev3_output_port_unregister_motor);
+			schedule_work(&port->work);
+
 			port->con_state = CON_STATE_INIT;
                 }
                 break;
