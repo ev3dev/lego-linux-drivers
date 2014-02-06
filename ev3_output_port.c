@@ -36,100 +36,24 @@
 #define ADD_CNT			(350000000/OUTPUT_PORT_POLL_NS) /* 350 msec */
 #define REMOVE_CNT		(100000000/OUTPUT_PORT_POLL_NS) /* 100 msec */
 
-// 
-// #define PIN1_NEAR_5V		4800		/* 4.80V */
-// #define PIN1_NEAR_PIN2		3100		/* 3.1V */
-// #define PIN1_TOUCH_HIGH		950 		/* 0.95V */
-// #define PIN1_TOUCH_LOW		850		/* 0.85V */
-// #define PIN1_TOUCH_VAR		10		/* 0.01V */
-// #define PIN1_NEAR_GND		100		/* 0.1V */
-// #define PIN6_NEAR_GND		150		/* 0.15V */
-// 
-// #define PIN1_ID_01		206
-// #define PIN1_ID_02		417	/* EV3 touch sensor */
-// #define PIN1_ID_03		575
-// #define PIN1_ID_04		833
-// #define PIN1_ID_05		1063
-// #define PIN1_ID_06		1241
-// #define PIN1_ID_07		1403
-// #define PIN1_ID_08		1599
-// #define PIN1_ID_09		1795
-// #define PIN1_ID_10		2024
-// #define PIN1_ID_11		2204
-// #define PIN1_ID_12		2382
-// #define PIN1_ID_13		2619
-// #define PIN1_ID_14		2826	/* 3rd party */
-// #define PIN1_ID_VAR		50	/* IDs can be +/- 50mV */
-// 
-// /* resistor ids for EV3 dumb sensor devices */
-// enum ev3_in_dev_id {
-// 	EV3_IN_DEV_ID_01,
-// 	EV3_IN_DEV_ID_02,
-// 	EV3_IN_DEV_ID_03,
-// 	EV3_IN_DEV_ID_04,
-// 	EV3_IN_DEV_ID_05,
-// 	EV3_IN_DEV_ID_06,
-// 	EV3_IN_DEV_ID_07,
-// 	EV3_IN_DEV_ID_08,
-// 	EV3_IN_DEV_ID_09,
-// 	EV3_IN_DEV_ID_10,
-// 	EV3_IN_DEV_ID_11,
-// 	EV3_IN_DEV_ID_12,
-// 	EV3_IN_DEV_ID_13,
-// 	EV3_IN_DEV_ID_14,
-// 	NUM_EV3_IN_DEV_ID,
-// 	EV3_IN_DEV_ID_ERR = -1
-// };
-// 
-// static int ev3_in_dev_id_max[NUM_EV3_IN_DEV_ID] = {
-// 	[EV3_IN_DEV_ID_01] = PIN1_ID_01 + PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_02] = PIN1_ID_02 + PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_03] = PIN1_ID_03 + PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_04] = PIN1_ID_04 + PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_05] = PIN1_ID_05 + PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_06] = PIN1_ID_06 + PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_07] = PIN1_ID_07 + PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_08] = PIN1_ID_08 + PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_09] = PIN1_ID_09 + PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_10] = PIN1_ID_11 + PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_11] = PIN1_ID_11 + PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_12] = PIN1_ID_12 + PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_13] = PIN1_ID_13 + PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_14] = PIN1_ID_14 + PIN1_ID_VAR,
-// };
-// 
-// static int ev3_in_dev_id_min[NUM_EV3_IN_DEV_ID] = {
-// 	[EV3_IN_DEV_ID_01] = PIN1_ID_01 - PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_02] = PIN1_ID_02 - PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_03] = PIN1_ID_03 - PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_04] = PIN1_ID_04 - PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_05] = PIN1_ID_05 - PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_06] = PIN1_ID_06 - PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_07] = PIN1_ID_07 - PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_08] = PIN1_ID_08 - PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_09] = PIN1_ID_09 - PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_10] = PIN1_ID_11 - PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_11] = PIN1_ID_11 - PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_12] = PIN1_ID_12 - PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_13] = PIN1_ID_13 - PIN1_ID_VAR,
-// 	[EV3_IN_DEV_ID_14] = PIN1_ID_14 - PIN1_ID_VAR,
-// };
-// 
-// /**
-//  * to_ev3_in_dev_id - converts id resistor mV value to an enum
-//  * @mv: The value to convert.
-//  */
-// enum ev3_in_dev_id to_ev3_in_dev_id(int mv)
-// {
-// 	enum ev3_in_dev_id id = NUM_EV3_IN_DEV_ID;
-// 
-// 	while (id--) {
-// 		if (mv >= ev3_in_dev_id_min[id] && mv <= ev3_in_dev_id_max[id])
-// 			return id;
-// 	}
-// 
-// 	return EV3_IN_DEV_ID_ERR;
-// }
+#define   ADC_REF                       5000  //  [mV]  Maximum voltage that the A/D can read
+
+#define   PIN5_IIC_HIGH                 3700  //  [mV]  values in between these limits means that
+#define   PIN5_IIC_LOW                  2800  //  [mV]    an old IIC sensor or color sensor is connected
+
+#define   PIN5_MINITACHO_HIGH1          2000  //  [mV]  values in between these limits means that
+#define   PIN5_MINITACHO_LOW1           1600  //  [mV]    a mini tacho motor is pulling high when pin5 is pulling low
+
+#define   PIN5_BALANCE_HIGH             2600  //  [mV]  values in between these limits means that
+#define   PIN5_BALANCE_LOW              2400  //  [mV]    connection 5 is floating
+
+#define   PIN5_LIGHT_HIGH                850  //  [mV]  values in between these limits means that
+#define   PIN5_LIGHT_LOW                 650  //  [mV]    an old light sensor is connected
+
+#define   PIN5_MINITACHO_HIGH2           450  //  [mV]  values in between these limits means that
+#define   PIN5_MINITACHO_LOW2            250  //  [mV]    a mini tacho motor is pulling low when pin5 floats
+
+#define   PIN5_NEAR_GND                  100  //  [mV]  lower  values mean that connection 5 is shorted to ground
 
 enum gpio_index {
 	GPIO_PIN1,
@@ -139,68 +63,37 @@ enum gpio_index {
 	NUM_GPIO
 };
 
-// enum pin5_mux_mode {
-// 	PIN5_MUX_MODE_I2C,
-// 	PIN5_MUX_MODE_UART,
-// 	NUM_PIN5_MUX_MODE
-// };
-// 
 enum connection_state {
-	CON_STATE_INIT,			/* Wait for motor to unregister, then
-						Set port to "float" state */
-// 	CON_STATE_INIT_SETTLE,		/* Wait for port to settle */
-// 	CON_STATE_NO_DEV,		/* No device present, wait until something
-// 						interesting happens on one or more
-// 						of the pins and a steady state is
-// 						reached */
-// 	CON_STATE_TEST_NXT_TOUCH,	/* We might have a NXT touch sensor that
-// 						is pressed. We need to watch
-// 						that pin 1 voltage doesn't change
-// 						to be sure */
-// 	CON_STATE_HAVE_NXT,		/* Wait for pin 2 to float */
-// 	CON_STATE_HAVE_EV3,		/* Wait for pin 1 to float */
-// 	CON_STATE_HAVE_I2C,		/* Wait for pin 6 to float */
-// 	CON_STATE_HAVE_PIN5_ERR,	/* Wait for pin 5 to float */
+	CON_STATE_INIT,				/* Wait for motor to unregister, then
+							Set port to "float" state */
+	CON_STATE_INIT_SETTLE,			/* Wait for port to settle */
+	CON_STATE_NO_DEV,			/* No device present, wait until something
+							interesting happens on one or more
+							of the pins and a steady state is
+ 							reached */
+ 	CON_STATE_PIN6_SETTLE,			/* Pin6 to settle after changing state  */
+ 	CON_STATE_CONNECTED,			/* We are ready to figure out what's connected */
+ 	CON_STATE_PIN5_SETTLE,			/* Pin5 to settle after changing state  */
+        CON_STATE_WAITING_FOR_DISCONNECT,	/* We are waiting for disconnect */
 	NUM_CON_STATE
 };
 
-// enum pin_state_flag {
-// 	PIN_STATE_FLAG_PIN2_LOW,
-// 	PIN_STATE_FLAG_PIN1_LOADED,
-// 	PIN_STATE_FLAG_PIN5_LOW,
-// 	PIN_STATE_FLAG_PIN6_HIGH,
-// 	NUM_PIN_STATE_FLAG
-// };
-// 
-// enum sensor_type {
-// 	SENSOR_NONE,
-// 	SENSOR_NXT_TOUCH,
-// 	SENSOR_NXT_LIGHT,
-// 	SENSOR_NXT_COLOR,
-// 	SENSOR_NXT_DUMB,
-// 	SENSOR_NXT_I2C,
-// 	SENSOR_EV3_ID_01,
-// 	SENSOR_EV3_ID_02,
-// 	SENSOR_EV3_ID_03,
-// 	SENSOR_EV3_ID_04,
-// 	SENSOR_EV3_ID_05,
-// 	SENSOR_EV3_ID_06,
-// 	SENSOR_EV3_ID_07,
-// 	SENSOR_EV3_ID_08,
-// 	SENSOR_EV3_ID_09,
-// 	SENSOR_EV3_ID_10,
-// 	SENSOR_EV3_ID_11,
-// 	SENSOR_EV3_ID_12,
-// 	SENSOR_EV3_ID_13,
-// 	SENSOR_EV3_ID_14,
-// 	SENSOR_EV3_UART,
-// 	SENSOR_ERR,
-// 	NUM_SENSOR
-// };
-//
+enum pin_state_flag {
+	PIN_STATE_FLAG_PIN2_LOW,
+	PIN_STATE_FLAG_PIN5_LOADED,
+	PIN_STATE_FLAG_PIN5_LOW,
+	PIN_STATE_FLAG_PIN6_HIGH,
+	NUM_PIN_STATE_FLAG
+};
 
-
-
+enum motor_type {
+	MOTOR_NONE,
+	MOTOR_NEWTACHO,
+	MOTOR_MINITACHO,
+	MOTOR_TACHO,
+ 	MOTOR_ERR,
+	NUM_MOTOR
+};
 
 
 DEVICE_ATTR(foo, S_IRUGO, NULL, NULL);
@@ -214,8 +107,6 @@ struct attribute_group legoev3_output_port_device_type_attr_grp = {
 	.attrs	= legoev3_output_port_device_type_attrs,
 };
 
-// EXPORT_SYMBOL_GPL(legoev3_output_port_device_type_attr_grp);
-
 const struct attribute_group *ev3_output_port_device_type_attr_groups[] = {
 	&legoev3_output_port_device_type_attr_grp,
 	NULL
@@ -226,105 +117,13 @@ struct device_type ev3_output_port_device_type = {
 	.groups	= ev3_output_port_device_type_attr_groups,
 };
 
- 
-
-// struct device_type ev3_sensor_device_types[] = {
-// 	[SENSOR_NXT_TOUCH] = {
-// 		.name	= "nxt-touch-sensor",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_NXT_LIGHT] = {
-// 		.name	= "nxt-light-sensor",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_NXT_COLOR] = {
-// 		.name	= "nxt-color-sensor",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_NXT_DUMB] = {
-// 		.name	= "nxt-generic-analog-sensor",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_NXT_I2C] = {
-// 		.name	= "nxt-i2c-sensor",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_EV3_ID_01] = {
-// 		.name	= "ev3-sensor-01",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_EV3_ID_02] = {
-// 		.name	= "ev3-touch-sensor",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_EV3_ID_03] = {
-// 		.name	= "ev3-sensor-03",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_EV3_ID_04] = {
-// 		.name	= "ev3-sensor-04",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_EV3_ID_05] = {
-// 		.name	= "ev3-sensor-05",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_EV3_ID_06] = {
-// 		.name	= "ev3-sensor-06",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_EV3_ID_07] = {
-// 		.name	= "ev3-sensor-07",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_EV3_ID_08] = {
-// 		.name	= "ev3-sensor-08",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_EV3_ID_09] = {
-// 		.name	= "ev3-sensor-09",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_EV3_ID_10] = {
-// 		.name	= "ev3-sensor-10",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_EV3_ID_11] = {
-// 		.name	= "ev3-sensor-11",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_EV3_ID_12] = {
-// 		.name	= "ev3-sensor-12",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_EV3_ID_13] = {
-// 		.name	= "ev3-sensor-13",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_EV3_ID_14] = {
-// 		.name	= "ev3-sensor-14",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// 	[SENSOR_EV3_UART] = {
-// 		.name	= "ev3-uart-sensor",
-// 		.groups	= ev3_sensor_device_type_attr_groups,
-// 	},
-// };
-
 /**
- * struct ev3_input_port_data - Driver data for an input port on the EV3 brick
+ * struct ev3_output_port_data - Driver data for an output port on the EV3 brick
  * @id: Unique identifier for the port.
  * @pdev: Pointer to the legoev3_port_device that is bound to this instance.
  * @analog: pointer to the legoev3-analog device for accessing data from the
  *	analog/digital converter.
  * @gpio: Array of gpio pins used by this input port.
- * @pin5_mux: Pin mux info for the i2c clock and uart Tx pins. These two
- *	functions share a physical pin on the microprocessor so we have to
- *	change the pin mux each time we change which one we are using.
- * @i2c_data: Platform data for i2c-gpio platform device.
- * @i2c_pdev_info: Platform device information for creating a new i2c-gpio
- *	device each time we connect an i2c sensor.
- * @i2c_pdev: I2C platform device.
  * @work: Worker for registering and unregistering sensors when they are
  *	connected and disconnected.
  * @timer: Polling timer to monitor the port.
@@ -332,130 +131,43 @@ struct device_type ev3_output_port_device_type = {
  * @con_state: The current state of the port.
  * @pin_state_flags: Used in the polling loop to track certain changes in the
  *	state of the port's pins.
- * @pin1_mv: Used in the polling loop to track changes in pin 1 voltage.
- * @sensor_type: The type of sensor currently connected.
- * @sensor: Pointer to the sensor device that is connected to the input port.
+ * @pin5_float_mv: Used in the polling loop to track pin 5 voltage.
+ * @pin5_low_mv: Used in the polling loop to track pin 5 voltage.
+ * @motor_type: The type of sensor currently connected.
+ * @motor: Pointer to the motor device that is connected to the output port.
  */
 struct ev3_output_port_data {
 	enum ev3_output_port_id id;
 	struct legoev3_port_device *pdev;
 	struct legoev3_analog_device *analog;
  	struct gpio gpio[NUM_GPIO];
-
-// 	unsigned pin5_mux[NUM_PIN5_MUX_MODE];
-// 	struct i2c_legoev3_platform_data i2c_data;
-// 	struct platform_device_info i2c_pdev_info;
-// 	struct platform_device *i2c_pdev;
  	struct work_struct work;
  	struct hrtimer timer;
  	unsigned timer_loop_cnt;
  	enum connection_state con_state;
-// 	unsigned pin_state_flags:NUM_PIN_STATE_FLAG;
-// 	unsigned pin1_mv;
-// 	enum sensor_type sensor_type;
-// 	struct legoev3_port_device *sensor;
+ 	unsigned pin_state_flags:NUM_PIN_STATE_FLAG;
+ 	unsigned pin5_float_mv;
+ 	unsigned pin5_low_mv;
+ 	enum motor_type motor_type;
+ 	struct legoev3_port_device *motor;
 };
-// 
-// int ev3_input_port_get_pin1_mv(struct legoev3_port_device *in_port)
-// {
-// 	struct ev3_input_port_data *port = dev_get_drvdata(&in_port->dev);
-// 
-// 	return legoev3_analog_in_pin1_value(port->analog, port->id);
-// }
-// EXPORT_SYMBOL_GPL(ev3_input_port_get_pin1_mv);
-// 
-// int ev3_input_port_get_pin6_mv(struct legoev3_port_device *in_port)
-// {
-// 	struct ev3_input_port_data *port = dev_get_drvdata(&in_port->dev);
-// 
-// 	return legoev3_analog_in_pin6_value(port->analog, port->id);
-// }
-// EXPORT_SYMBOL_GPL(ev3_input_port_get_pin6_mv);
-// 
-// void ev3_input_port_set_pin1_out(struct legoev3_port_device *in_port,
-// 					int value)
-// {
-// 	struct ev3_input_port_data *port = dev_get_drvdata(&in_port->dev);
-// 
-// 	gpio_set_value(port->gpio[GPIO_PIN1].gpio, value);
-// }
-// EXPORT_SYMBOL_GPL(ev3_input_port_set_pin1_out);
-// 
-// int ev3_input_port_register_i2c(struct legoev3_port_device *in_port,
-// 				struct device *parent)
-// {
-// 	struct ev3_input_port_data *port = dev_get_drvdata(&in_port->dev);
-// 	struct platform_device *pdev;
-// 	int err;
-// 
-// 	gpio_set_value(port->gpio[GPIO_BUF_ENA].gpio, 0); /* active low */
-// 	err = davinci_cfg_reg(port->pin5_mux[PIN5_MUX_MODE_I2C]);
-// 	if (err) {
-// 		dev_err(&in_port->dev, "Pin 5 mux failed for i2c device.\n");
-// 		goto davinci_cfg_reg_fail;
-// 	}
-// 	port->i2c_pdev_info.parent = parent;
-// 	pdev = platform_device_register_full(&port->i2c_pdev_info);
-// 	if (IS_ERR(pdev)) {
-// 		dev_err(&in_port->dev, "Could not register i2c device.\n");
-// 		err = PTR_ERR(pdev);
-// 		goto platform_device_register_fail;
-// 	}
-// 	port->i2c_pdev = pdev;
-// 
-// 	return 0;
-// 
-// platform_device_register_fail:
-// davinci_cfg_reg_fail:
-// 	gpio_set_value(port->gpio[GPIO_BUF_ENA].gpio, 1); /* active low */
-// 
-// 	return err;
-// }
-// EXPORT_SYMBOL_GPL(ev3_input_port_register_i2c);
-// 
-// void ev3_input_port_unregister_i2c(struct legoev3_port_device *in_port)
-// {
-// 	struct ev3_input_port_data *port = dev_get_drvdata(&in_port->dev);
-// 
-// 	platform_device_unregister(port->i2c_pdev);
-// 	port->i2c_pdev = NULL;
-// 	gpio_set_value(port->gpio[GPIO_BUF_ENA].gpio, 1); /* active low */
-// }
-// EXPORT_SYMBOL_GPL(ev3_input_port_unregister_i2c);
-// 
-// int ev3_input_port_enable_uart(struct legoev3_port_device *in_port)
-// {
-// 	struct ev3_input_port_data *port = dev_get_drvdata(&in_port->dev);
-// 	int err;
-// 
-// 	err = davinci_cfg_reg(port->pin5_mux[PIN5_MUX_MODE_UART]);
-// 	if (err) {
-// 		dev_err(&in_port->dev, "Pin 5 mux failed for uart device.\n");
-// 		return err;
-// 	}
-// 	gpio_set_value(port->gpio[GPIO_BUF_ENA].gpio, 0); /* active low */
-// 
-// 	return 0;
-// }
-// EXPORT_SYMBOL_GPL(ev3_input_port_enable_uart);
-// 
-// void ev3_input_port_disable_uart(struct legoev3_port_device *in_port)
-// {
-// 	struct ev3_input_port_data *port = dev_get_drvdata(&in_port->dev);
-// 
-// 	gpio_set_value(port->gpio[GPIO_BUF_ENA].gpio, 1); /* active low */
-// }
-// EXPORT_SYMBOL_GPL(ev3_input_port_disable_uart);
-// 
-// void ev3_input_port_float(struct ev3_input_port_data *port)
-// {
-// 	gpio_direction_output(port->gpio[GPIO_PIN1].gpio, 0);
-// 	gpio_direction_input(port->gpio[GPIO_PIN2].gpio);
-// 	gpio_direction_input(port->gpio[GPIO_PIN5].gpio);
-// 	gpio_direction_input(port->gpio[GPIO_PIN6].gpio);
-// 	gpio_direction_output(port->gpio[GPIO_BUF_ENA].gpio, 1); /* active low */
-// }
-// 
+
+int ev3_output_port_get_foo(struct legoev3_port_device *out_port)
+{
+	struct ev3_output_port_data *port = dev_get_drvdata(&out_port->dev);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(ev3_output_port_get_foo);
+
+void ev3_output_port_float(struct ev3_output_port_data *port)
+{
+	gpio_direction_output(port->gpio[GPIO_PIN1].gpio, 0);
+	gpio_direction_output(port->gpio[GPIO_PIN2].gpio, 0);
+	gpio_direction_output(port->gpio[GPIO_PIN5].gpio, 0);
+	gpio_direction_input( port->gpio[GPIO_PIN6].gpio   );
+}
+
 // void ev3_input_port_register_sensor(struct work_struct *work)
 // {
 // 	struct ev3_input_port_data *port =
@@ -505,182 +217,181 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 {
  	struct ev3_output_port_data *port =
  			container_of(timer, struct ev3_output_port_data, timer);
-// 	unsigned new_pin_state_flags = 0;
-// 	unsigned new_pin1_mv = 0;
-// 
+ 	unsigned new_pin_state_flags = 0;
+ 	unsigned new_pin5_mv = 0;
+ 
  	hrtimer_forward_now(timer, ktime_set(0, OUTPUT_PORT_POLL_NS));
  	port->timer_loop_cnt++;
 
-        if( 25*port->id == (port->timer_loop_cnt % 100) ) {
-        	pr_warning("output port timer for %s is at %d\n", port->pdev->name, port->timer_loop_cnt );
+ //       if( 25*port->id == (port->timer_loop_cnt % 100) ) {
+ //       	pr_warning("output port timer for %s is at %d\n", port->pdev->name, port->timer_loop_cnt );
+//	}
+
+	switch(port->con_state) {
+	case CON_STATE_INIT:
+		if (!port->motor) {
+			ev3_output_port_float(port);
+			port->timer_loop_cnt = 0;
+			port->motor_type = MOTOR_NONE;
+			port->con_state = CON_STATE_INIT_SETTLE;
+		}
+		break;
+	case CON_STATE_INIT_SETTLE:
+		if (port->timer_loop_cnt >= SETTLE_CNT) {
+        	        pr_warning("Output Port %d pin6 state %d\n", port->id, gpio_get_value(port->gpio[GPIO_PIN6].gpio) );
+			port->timer_loop_cnt = 0;
+			port->con_state = CON_STATE_NO_DEV;
+		}
+		break;
+	case CON_STATE_NO_DEV:
+		new_pin5_mv = legoev3_analog_out_pin5_value(port->analog, port->id);
+
+		if (gpio_get_value(port->gpio[GPIO_PIN6].gpio))
+			new_pin_state_flags |= BIT(PIN_STATE_FLAG_PIN6_HIGH);
+		if ((new_pin5_mv < PIN5_BALANCE_LOW) || (new_pin5_mv > PIN5_BALANCE_HIGH))
+			new_pin_state_flags |= BIT(PIN_STATE_FLAG_PIN5_LOADED);
+
+ 		if (new_pin_state_flags != port->pin_state_flags) {
+ 			port->pin_state_flags = new_pin_state_flags;
+ 			port->timer_loop_cnt = 0;
+                }
+
+		if (port->pin_state_flags && (port->timer_loop_cnt >= ADD_CNT)) {
+			port->pin5_float_mv = new_pin5_mv;
+ 			port->timer_loop_cnt = 0;
+			gpio_direction_output(port->gpio[GPIO_PIN6].gpio, 0);
+			port->con_state = CON_STATE_PIN6_SETTLE;
+		}
+		break;
+
+	case CON_STATE_PIN6_SETTLE:
+		new_pin5_mv = legoev3_analog_out_pin5_value(port->analog, port->id);
+
+		if (port->timer_loop_cnt >= SETTLE_CNT) {
+			port->pin5_low_mv = new_pin5_mv;
+ 			port->timer_loop_cnt = 0;
+			gpio_direction_input(port->gpio[GPIO_PIN6].gpio);
+			port->con_state = CON_STATE_CONNECTED;
+			}
+		break;
+
+ 	case CON_STATE_CONNECTED:
+
+        	pr_warning("Output Port %d connected %d %d\n", port->id, port->pin5_float_mv, port->pin5_low_mv );
+                // Make a temporary variable that we can use to determine the relative
+                // difference between pin5_float_mv and pin5_low_mv
+
+		new_pin5_mv = ADC_REF + port->pin5_float_mv - port->pin5_low_mv;
+
+                if ((new_pin5_mv > (ADC_REF - 50)) && (new_pin5_mv < (ADC_REF + 50))) {
+			// The pin5 values are the same, let's see what we have!
+
+			if ((port->pin5_float_mv >= PIN5_BALANCE_LOW) && (port->pin5_float_mv <= PIN5_BALANCE_HIGH) && (port->pin_state_flags & (0x01 << PIN_STATE_FLAG_PIN6_HIGH))) {
+				// NXT TOUCH SENSOR, NXT SOUND SENSOR or NEW UART SENSOR
+				port->motor_type = MOTOR_ERR;
+				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+        	                pr_warning("Output Port %d connected illegal\n", port->id );
+
+			} else if (port->pin5_float_mv < PIN5_NEAR_GND) {
+				// NEW DUMB SENSOR
+				port->motor_type = MOTOR_ERR;
+				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+        	                pr_warning("Output Port %d connected illegal\n", port->id );
+
+			} else if ((port->pin5_float_mv >= PIN5_LIGHT_LOW) && (port->pin5_float_mv  <= PIN5_LIGHT_HIGH)) {
+				// NXT LIGHT SENSOR
+				port->motor_type = MOTOR_ERR;
+				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+        	                pr_warning("Output Port %d connected illegal\n", port->id );
+
+			} else if ((port->pin5_float_mv >= PIN5_IIC_LOW) && (port->pin5_float_mv <= PIN5_IIC_HIGH)) {
+				// NXT IIC SENSOR
+				port->motor_type = MOTOR_ERR;
+				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+        	                pr_warning("Output Port %d connected illegal\n", port->id );
+
+			} else if (port->pin5_float_mv < PIN5_BALANCE_LOW) {
+
+				if (port->pin5_float_mv > PIN5_MINITACHO_HIGH2) {
+					port->motor_type = MOTOR_NEWTACHO;
+
+				} else if (port->pin5_float_mv > PIN5_MINITACHO_LOW2) {
+					port->motor_type = MOTOR_MINITACHO;
+
+				} else {
+					port->motor_type = MOTOR_TACHO;
+
+				}
+
+				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+        	                pr_warning("Output Port %d connected type %d\n", port->id, port->motor_type );
+
+			} else {
+				gpio_direction_output(port->gpio[GPIO_PIN5].gpio, 1);
+				port->timer_loop_cnt = 0;
+				port->con_state        =  CON_STATE_PIN5_SETTLE;
+        	                pr_warning("Output Port %d not sure - check pin 5\n", port->id );
+			}
+
+		// Value5Float is NOT equal to Value5Low
+		} else if ((port->pin5_float_mv > PIN5_NEAR_GND) && (port->pin5_float_mv < PIN5_BALANCE_LOW)) {
+				// NEW ACTUATOR
+				port->motor_type = MOTOR_ERR;
+				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+        	                pr_warning("Output Port %d connected dumb actuator\n", port->id );
+		} else {
+				port->motor_type = MOTOR_ERR;
+				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+        	                pr_warning("Output Port %d connected illegal\n", port->id );
+		}
+                break;
+
+	case CON_STATE_PIN5_SETTLE:
+                // Update conection type, may need to force pin5 low to determine motor type
+		if (port->timer_loop_cnt >= SETTLE_CNT) {
+			port->pin5_low_mv = legoev3_analog_out_pin5_value(port->analog, port->id);
+        	        pr_warning("Output Port %d pin5 low %d\n", port->id, port->pin5_low_mv );
+ 			port->timer_loop_cnt = 0;
+			gpio_direction_output(port->gpio[GPIO_PIN5].gpio, 0);
+
+			if (port->pin5_low_mv  < PIN5_MINITACHO_LOW1) {
+				port->motor_type = MOTOR_ERR;
+
+			} else if (port->pin5_low_mv  < PIN5_MINITACHO_HIGH1) {
+				port->motor_type = MOTOR_MINITACHO;
+
+			} else {
+				port->motor_type = MOTOR_TACHO;
+			}
+
+        	        pr_warning("Output Port %d connected type %d\n", port->id, port->motor_type );
+
+		        port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+		}
+
+		break;
+
+ 	case CON_STATE_WAITING_FOR_DISCONNECT:
+
+		new_pin5_mv = legoev3_analog_out_pin5_value(port->analog, port->id);
+
+		if (gpio_get_value(port->gpio[GPIO_PIN6].gpio))
+ 			port->timer_loop_cnt = 0;
+
+		if ((new_pin5_mv < PIN5_BALANCE_LOW) || (new_pin5_mv > PIN5_BALANCE_HIGH))
+ 			port->timer_loop_cnt = 0;
+
+		if (port->timer_loop_cnt >= REMOVE_CNT) {
+        		pr_warning("Output Port %d disconnected\n", port->id ); 
+			port->con_state = CON_STATE_INIT;
+                }
+                break;
+
+	default:
+		port->con_state = CON_STATE_INIT;
+		break;
 	}
-// 
-// 	switch(port->con_state) {
-// 	case CON_STATE_INIT:
-// 		if (!port->sensor) {
-// 			ev3_input_port_float(port);
-// 			port->timer_loop_cnt = 0;
-// 			port->sensor_type = SENSOR_NONE;
-// 			port->con_state = CON_STATE_INIT_SETTLE;
-// 		}
-// 		break;
-// 	case CON_STATE_INIT_SETTLE:
-// 		if (port->timer_loop_cnt >= SETTLE_CNT) {
-// 			port->timer_loop_cnt = 0;
-// 			port->con_state = CON_STATE_NO_DEV;
-// 		}
-// 		break;
-// 	case CON_STATE_NO_DEV:
-// 		new_pin1_mv = legoev3_analog_in_pin1_value(port->analog, port->id);
-// 		if (!gpio_get_value(port->gpio[GPIO_PIN2].gpio))
-// 			new_pin_state_flags |= BIT(PIN_STATE_FLAG_PIN2_LOW);
-// 		if (new_pin1_mv < PIN1_NEAR_5V)
-// 			new_pin_state_flags |= BIT(PIN_STATE_FLAG_PIN1_LOADED);
-// 		if (!gpio_get_value(port->gpio[GPIO_PIN5].gpio))
-// 			new_pin_state_flags |= BIT(PIN_STATE_FLAG_PIN5_LOW);
-// 		if (gpio_get_value(port->gpio[GPIO_PIN6].gpio))
-// 			new_pin_state_flags |= BIT(PIN_STATE_FLAG_PIN6_HIGH);
-// 		if (new_pin_state_flags != port->pin_state_flags)
-// 			port->timer_loop_cnt = 0;
-// 		else if (new_pin_state_flags && port->timer_loop_cnt >= ADD_CNT
-// 			 && !work_busy(&port->work))
-// 		{
-// 			if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN2_LOW)) {
-// 				port->con_state = CON_STATE_HAVE_NXT;
-// 				if (~new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN5_LOW)
-// 				    && new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN6_HIGH)) {
-// 					if (new_pin1_mv < PIN1_NEAR_GND)
-// 						port->sensor_type = SENSOR_NXT_COLOR;
-// 					else
-// 						port->sensor_type = SENSOR_NXT_I2C;
-// 				} else if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN5_LOW)) {
-// 					if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN6_HIGH))
-// 						port->sensor_type = SENSOR_NXT_DUMB;
-// 					else
-// 						port->sensor_type = SENSOR_NXT_LIGHT;
-// 				} else if (new_pin1_mv < PIN1_NEAR_GND)
-// 					port->sensor_type = SENSOR_NXT_COLOR;
-// 				else if (new_pin1_mv > PIN1_NEAR_5V)
-// 					port->sensor_type = SENSOR_NXT_TOUCH;
-// 				else if (new_pin1_mv > PIN1_TOUCH_LOW
-// 					 && new_pin1_mv < PIN1_TOUCH_HIGH) {
-// 					port->con_state = CON_STATE_TEST_NXT_TOUCH;
-// 					port->timer_loop_cnt = 0;
-// 					port->pin1_mv = new_pin1_mv;
-// 				} else
-// 					port->sensor_type = SENSOR_NXT_DUMB;
-// 			} else if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN1_LOADED)) {
-// 				port->con_state = CON_STATE_HAVE_EV3;
-// 				if (new_pin1_mv > PIN1_NEAR_PIN2)
-// 					port->sensor_type = SENSOR_ERR;
-// 				else if (new_pin1_mv < PIN1_NEAR_GND)
-// 					port->sensor_type = SENSOR_EV3_UART;
-// 				else {
-// 					switch(to_ev3_in_dev_id(new_pin1_mv)) {
-// 					case EV3_IN_DEV_ID_01:
-// 						port->sensor_type = SENSOR_EV3_ID_01;
-// 						break;
-// 					case EV3_IN_DEV_ID_02:
-// 						port->sensor_type = SENSOR_EV3_ID_02;
-// 						break;
-// 					case EV3_IN_DEV_ID_03:
-// 						port->sensor_type = SENSOR_EV3_ID_03;
-// 						break;
-// 					case EV3_IN_DEV_ID_04:
-// 						port->sensor_type = SENSOR_EV3_ID_04;
-// 						break;
-// 					case EV3_IN_DEV_ID_05:
-// 						port->sensor_type = SENSOR_EV3_ID_05;
-// 						break;
-// 					case EV3_IN_DEV_ID_06:
-// 						port->sensor_type = SENSOR_EV3_ID_06;
-// 						break;
-// 					case EV3_IN_DEV_ID_07:
-// 						port->sensor_type = SENSOR_EV3_ID_07;
-// 						break;
-// 					case EV3_IN_DEV_ID_08:
-// 						port->sensor_type = SENSOR_EV3_ID_08;
-// 						break;
-// 					case EV3_IN_DEV_ID_09:
-// 						port->sensor_type = SENSOR_EV3_ID_09;
-// 						break;
-// 					case EV3_IN_DEV_ID_10:
-// 						port->sensor_type = SENSOR_EV3_ID_10;
-// 						break;
-// 					case EV3_IN_DEV_ID_11:
-// 						port->sensor_type = SENSOR_EV3_ID_11;
-// 						break;
-// 					case EV3_IN_DEV_ID_12:
-// 						port->sensor_type = SENSOR_EV3_ID_12;
-// 						break;
-// 					case EV3_IN_DEV_ID_13:
-// 						port->sensor_type = SENSOR_EV3_ID_13;
-// 						break;
-// 					case EV3_IN_DEV_ID_14:
-// 						port->sensor_type = SENSOR_EV3_ID_14;
-// 						break;
-// 					default:
-// 						port->sensor_type = SENSOR_ERR;
-// 						break;
-// 					}
-// 				}
-// 			} else if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN6_HIGH)) {
-// 				port->con_state = CON_STATE_HAVE_I2C;
-// 				port->sensor_type = SENSOR_NXT_I2C;
-// 			} else {
-// 				port->con_state = CON_STATE_HAVE_PIN5_ERR;
-// 				port->sensor_type = SENSOR_ERR;
-// 			}
-// 			port->timer_loop_cnt = 0;
-// 			if (port->sensor_type != SENSOR_ERR) {
-// 				PREPARE_WORK(&port->work, ev3_input_port_register_sensor);
-// 				schedule_work(&port->work);
-// 			}
-// 		}
-// 		port->pin_state_flags = new_pin_state_flags;
-// 		break;
-// 	case CON_STATE_TEST_NXT_TOUCH:
-// 		if (port->timer_loop_cnt >= SETTLE_CNT) {
-// 			port->con_state = CON_STATE_HAVE_NXT;
-// 			new_pin1_mv = legoev3_analog_in_pin1_value(port->analog, port->id);
-// 			if (new_pin1_mv > (port->pin1_mv - PIN1_TOUCH_VAR) &&
-// 			    new_pin1_mv < (port->pin1_mv + PIN1_TOUCH_VAR))
-// 				port->sensor_type = SENSOR_NXT_TOUCH;
-// 			else
-// 				port->sensor_type = SENSOR_NXT_DUMB;
-// 		}
-// 		break;
-// 	case CON_STATE_HAVE_NXT:
-// 		if (!gpio_get_value(port->gpio[GPIO_PIN2].gpio))
-// 			port->timer_loop_cnt = 0;
-// 		break;
-// 	case CON_STATE_HAVE_EV3:
-// 		new_pin1_mv = legoev3_analog_in_pin1_value(port->analog, port->id);
-// 		if (new_pin1_mv < PIN1_NEAR_5V)
-// 			port->timer_loop_cnt = 0;
-// 		break;
-// 	case CON_STATE_HAVE_I2C:
-// 		if (gpio_get_value(port->gpio[GPIO_PIN6].gpio))
-// 			port->timer_loop_cnt = 0;
-// 		break;
-// 	case CON_STATE_HAVE_PIN5_ERR:
-// 		if (!gpio_get_value(port->gpio[GPIO_PIN5].gpio))
-// 			port->timer_loop_cnt = 0;
-// 		break;
-// 	default:
-// 		port->con_state = CON_STATE_INIT;
-// 		break;
-// 	}
-// 	if (port->sensor_type
-// 	    && port->timer_loop_cnt >= REMOVE_CNT && !work_busy(&port->work))
-// 	{
-// 		if (port->sensor) {
-// 			PREPARE_WORK(&port->work, ev3_input_port_unregister_sensor);
-// 			schedule_work(&port->work);
-// 		}
-// 		port->con_state = CON_STATE_INIT;
-// 	}
-// 
+
 	return HRTIMER_RESTART;
 }
 
