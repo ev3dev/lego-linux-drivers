@@ -17,13 +17,16 @@
 #include <linux/module.h>
 #include <linux/legoev3/msensor_class.h>
 
-size_t legoev3_msensor_data_size[] = {
-	[MSENSOR_DATA_8]	= 1,
-	[MSENSOR_DATA_16]	= 2,
-	[MSENSOR_DATA_32]	= 4,
+size_t msensor_data_size[NUM_MSENSOR_DATA_TYPE] = {
+	[MSENSOR_DATA_S8]	= 1,
+	[MSENSOR_DATA_U8]	= 1,
+	[MSENSOR_DATA_S16]	= 2,
+	[MSENSOR_DATA_U16]	= 2,
+	[MSENSOR_DATA_S32]	= 4,
+	[MSENSOR_DATA_U32]	= 4,
 	[MSENSOR_DATA_FLOAT]	= 4,
 };
-EXPORT_SYMBOL_GPL(legoev3_msensor_data_size);
+EXPORT_SYMBOL_GPL(msensor_data_size);
 
 #define to_msensor(_dev) \
 	container_of(_dev, struct msensor_device, dev)
@@ -38,7 +41,7 @@ EXPORT_SYMBOL_GPL(legoev3_msensor_data_size);
  * @f: The floating point number.
  * @dp: The number of decimal places in the fixed-point integer.
  */
-int msensor_ftoi(uint f, unsigned dp)
+int msensor_ftoi(u32 f, unsigned dp)
 {
 	int s = (f & 0x80000000) ? -1 : 1;
 	unsigned char e = (f & 0x7F800000) >> 23;
@@ -64,13 +67,14 @@ int msensor_ftoi(uint f, unsigned dp)
 
 	return s * i;
 }
+EXPORT_SYMBOL_GPL(msensor_ftoi);
 
 /**
  * msensor_itof - convert fixed point integer to 32-bit IEEE 754 float
  * @i: The fixed-point integer.
  * @dp: The number of decimal places in the fixed-point integer.
  */
-uint msensor_itof(int i, unsigned dp)
+u32 msensor_itof(int i, unsigned dp)
 {
 	int s = i < 0 ? -1 : 1;
 	unsigned char e = 127;
@@ -98,6 +102,7 @@ uint msensor_itof(int i, unsigned dp)
 
 	return f | e << 23;
 }
+EXPORT_SYMBOL_GPL(msensor_itof);
 
 static ssize_t msensor_show_type_id(struct device *dev,
 				    struct device_attribute *attr,
@@ -150,27 +155,6 @@ static ssize_t msensor_store_mode(struct device *dev,
 	return -EINVAL;
 }
 
-/* common definition for the min/max properties (float data)*/
-#define MSENSOR_SHOW_F(_name)							\
-static ssize_t msensor_show_##_name(struct device *dev,				\
-				    struct device_attribute *attr,		\
-				    char *buf)					\
-{										\
-	struct msensor_device *ms = to_msensor(dev);				\
-	u8 mode = ms->get_mode(ms->context);					\
-	int value = ms->mode_info[mode]._name;					\
-	int dp = ms->mode_info[mode].decimals;					\
-										\
-	return sprintf(buf, "%d\n", msensor_ftoi(value, dp));		\
-}
-
-MSENSOR_SHOW_F(raw_min)
-MSENSOR_SHOW_F(raw_max)
-MSENSOR_SHOW_F(pct_min)
-MSENSOR_SHOW_F(pct_max)
-MSENSOR_SHOW_F(si_min)
-MSENSOR_SHOW_F(si_max)
-
 static ssize_t msensor_show_si_units(struct device *dev,
                                      struct device_attribute *attr,
                                      char *buf)
@@ -201,6 +185,13 @@ static ssize_t msensor_show_num_values(struct device *dev,
 	return sprintf(buf, "%d\n", ms->mode_info[mode].data_sets);
 }
 
+int msensor_raw_u8_value(struct msensor_device *ms, int index)
+{
+	int mode = ms->get_mode(ms->context);
+
+	return *(u8 *)(ms->mode_info[mode].raw_data + index);
+}
+
 int msensor_raw_s8_value(struct msensor_device *ms, int index)
 {
 	int mode = ms->get_mode(ms->context);
@@ -208,11 +199,25 @@ int msensor_raw_s8_value(struct msensor_device *ms, int index)
 	return *(s8 *)(ms->mode_info[mode].raw_data + index);
 }
 
+int msensor_raw_u16_value(struct msensor_device *ms, int index)
+{
+	int mode = ms->get_mode(ms->context);
+
+	return *(u16 *)(ms->mode_info[mode].raw_data + index * 2);
+}
+
 int msensor_raw_s16_value(struct msensor_device *ms, int index)
 {
 	int mode = ms->get_mode(ms->context);
 
 	return *(s16 *)(ms->mode_info[mode].raw_data + index * 2);
+}
+
+int msensor_raw_u32_value(struct msensor_device *ms, int index)
+{
+	int mode = ms->get_mode(ms->context);
+
+	return *(u32 *)(ms->mode_info[mode].raw_data + index * 4);
 }
 
 int msensor_raw_s32_value(struct msensor_device *ms, int index)
@@ -237,36 +242,49 @@ static ssize_t msensor_show_value(struct device *dev,
 {
 	struct msensor_device *ms = to_msensor(dev);
 	int mode = ms->get_mode(ms->context);
-	int count = -ENXIO;
+	struct msensor_mode_info *mode_info = &ms->mode_info[mode];
+	long int value;
 	int index;
 
 	if (strlen(attr->attr.name) < 6)
-		return count;
+		return -ENXIO;
 	if (sscanf(attr->attr.name + 5, "%d", &index) != 1)
-		return count;
-	if (index < 0 || index >= ms->mode_info[mode].data_sets)
-		return count;
+		return -ENXIO;
+	if (index < 0 || index >= mode_info->data_sets)
+		return -ENXIO;
 
-	switch (ms->mode_info[mode].format) {
-	case MSENSOR_DATA_8:
-		count = sprintf(buf, "%d\n",
-			msensor_raw_s8_value(ms, index));
+	switch (mode_info->data_type) {
+	case MSENSOR_DATA_U8:
+		value = msensor_raw_u8_value(ms, index);
 		break;
-	case MSENSOR_DATA_16:
-		count = sprintf(buf, "%d\n",
-			msensor_raw_s16_value(ms, index));
+	case MSENSOR_DATA_S8:
+		value = msensor_raw_s8_value(ms, index);
 		break;
-	case MSENSOR_DATA_32:
-		count = sprintf(buf, "%d\n",
-			msensor_raw_s32_value(ms, index));
+	case MSENSOR_DATA_U16:
+		value = msensor_raw_u16_value(ms, index);
+		break;
+	case MSENSOR_DATA_S16:
+		value = msensor_raw_s16_value(ms, index);
+		break;
+	case MSENSOR_DATA_U32:
+		value = msensor_raw_u32_value(ms, index);
+		break;
+	case MSENSOR_DATA_S32:
+		value = msensor_raw_s32_value(ms, index);
 		break;
 	case MSENSOR_DATA_FLOAT:
-		count = sprintf(buf, "%d\n",
-			msensor_raw_float_value(ms, index));
+		value = msensor_raw_float_value(ms, index);
 		break;
+	default:
+		return -ENXIO;
 	}
 
-	return count;
+	value = (value - mode_info->raw_min)
+		* (mode_info->si_max - mode_info->si_min)
+		/ (mode_info->raw_max - mode_info->raw_min)
+		+ mode_info->si_min;
+
+	return sprintf(buf, "%ld\n", value);
 }
 
 static ssize_t msensor_show_bin_data_format(struct device *dev,
@@ -275,24 +293,35 @@ static ssize_t msensor_show_bin_data_format(struct device *dev,
 {
 	struct msensor_device *ms = to_msensor(dev);
 	int mode = ms->get_mode(ms->context);
-	int count = -ENXIO;
+	char *value;
 
-	switch (ms->mode_info[mode].format) {
-	case MSENSOR_DATA_8:
-		count = sprintf(buf, "%s\n", "s8");
+	switch (ms->mode_info[mode].data_type) {
+	case MSENSOR_DATA_U8:
+		value = "u8";
 		break;
-	case MSENSOR_DATA_16:
-		count = sprintf(buf, "%s\n", "s16");
+	case MSENSOR_DATA_S8:
+		value = "s8";
 		break;
-	case MSENSOR_DATA_32:
-		count = sprintf(buf, "%s\n", "s32");
+	case MSENSOR_DATA_U16:
+		value = "u16";
+		break;
+	case MSENSOR_DATA_S16:
+		value = "s16";
+		break;
+	case MSENSOR_DATA_U32:
+		value = "u32";
+		break;
+	case MSENSOR_DATA_S32:
+		value = "s32";
 		break;
 	case MSENSOR_DATA_FLOAT:
-		count = sprintf(buf, "%s\n", "float");
+		value = "float";
 		break;
+	default:
+		return -ENXIO;
 	}
 
-	return count;
+	return sprintf(buf, "%s\n", value);
 }
 
 static ssize_t msensor_read_bin_data(struct file *file, struct kobject *kobj,
@@ -327,12 +356,6 @@ static ssize_t msensor_write_bin_data(struct file *file ,struct kobject *kobj,
 static struct device_attribute msensor_device_attrs[] = {
 	__ATTR(type_id, S_IRUGO, msensor_show_type_id, NULL),
 	__ATTR(mode, S_IRUGO | S_IWUGO, msensor_show_mode, msensor_store_mode),
-	__ATTR(raw_min, S_IRUGO, msensor_show_raw_min, NULL),
-	__ATTR(raw_max, S_IRUGO, msensor_show_raw_max, NULL),
-	__ATTR(pct_min, S_IRUGO, msensor_show_pct_min, NULL),
-	__ATTR(pct_max, S_IRUGO, msensor_show_pct_max, NULL),
-	__ATTR(si_min, S_IRUGO, msensor_show_si_min, NULL),
-	__ATTR(si_max, S_IRUGO, msensor_show_si_max, NULL),
 	__ATTR(si_units, S_IRUGO, msensor_show_si_units, NULL),
 	__ATTR(dp, S_IRUGO, msensor_show_dp, NULL),
 	__ATTR(num_values, S_IRUGO, msensor_show_num_values, NULL),

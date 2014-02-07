@@ -84,6 +84,7 @@ struct nxt_i2c_sensor_data {
  * - ms.type_id
  * - ms.num_modes
  * - mode_info.ms_mode_info.name
+ * - i2c_mode_info.read_data_reg
  * - num_modes
  *
  * Optional values:
@@ -96,17 +97,15 @@ struct nxt_i2c_sensor_data {
  * - ms_mode_info.si_max (default 255)
  * - ms_mode_info.units
  * - ms_mode_info.data_sets (default 1)
- * - ms_mode_info.format (default MSENSOR_DATA_8)
+ * - ms_mode_info.data_type (default MSENSOR_DATA_U8)
  * - ms_mode_info.figures (default 5)
  * - ms_mode_info.decimals
  * - i2c_mode_info.set_mode_reg and mode_info.set_mode_data
- * - i2c_mode_info.read_data_reg
  * - i2c_mode_info.pin1_state
  *
  * All other values will be overwritten during device initialization.
  *
- * Each sensor should have at least one mode. Mode [0] should be the default
- * mode that the sensor is in when it first starts.
+ * Each sensor should have at least one mode. Mode [0] will be the default mode.
  *
  * Type ids come from sys/settings/typedata.rcf in LMS2012
  * This link will probably break eventually, but for easy access, try:
@@ -117,18 +116,29 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "LEGO",
 		.product_id	= "Sonar",
 		.ms.type_id	= 5,
-		.ms.num_modes	= 3,
+		.ms.num_modes	= 5,
 		.ms_mode_info	= {
 			[0] = {
 				.name	= "NXT-US-CM",
 				.units	= "cm",
 			},
 			[1] = {
-				.name	= "NXT-US-SI-CM",
-				.units	= "cm",
-				.data_sets = 8,
+				.name	= "NXT-US-IN",
+				.units	= "in",
+				.si_max = 1000,
+				.decimals = 1,
 			},
 			[2] = {
+				.name	= "NXT-US-SI-CM",
+				.units	= "cm",
+			},
+			[3] = {
+				.name	= "NXT-US-SI-IN",
+				.units	= "in",
+				.si_max = 1000,
+				.decimals = 1,
+			},
+			[4] = {
 				.name	= "NXT-US-LIST",
 				.raw_max = 1,
 				.si_max  = 1,
@@ -143,11 +153,23 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[1] = {
 				.set_mode_reg	= 0x41,
-				.set_mode_data	= 0x01,
+				.set_mode_data	= 0x02,
 				.read_data_reg	= 0x42,
 				.pin1_state	= 1,
 			},
 			[2] = {
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= 0x01,
+				.read_data_reg	= 0x42,
+				.pin1_state	= 1,
+			},
+			[3] = {
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= 0x01,
+				.read_data_reg	= 0x42,
+				.pin1_state	= 1,
+			},
+			[4] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x03,
 				.read_data_reg	= 0x42,
@@ -173,7 +195,7 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = 65535,
 				.si_max = 65535,
 				.data_sets = 8,
-				.format = MSENSOR_DATA_16,
+				.data_type = MSENSOR_DATA_S16,
 			},
 		},
 		.i2c_mode_info	= {
@@ -203,11 +225,13 @@ static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
 	struct nxt_i2c_sensor_data *sensor = context;
 	int err;
 
-	err = i2c_smbus_write_byte_data(sensor->client,
-		sensor->info.i2c_mode_info[mode].set_mode_reg,
-		sensor->info.i2c_mode_info[mode].set_mode_data);
-	if (err < 0)
-		return err;
+	if (sensor->info.i2c_mode_info[mode].set_mode_reg) {
+		err = i2c_smbus_write_byte_data(sensor->client,
+			sensor->info.i2c_mode_info[mode].set_mode_reg,
+			sensor->info.i2c_mode_info[mode].set_mode_data);
+		if (err < 0)
+			return err;
+	}
 
 	ev3_input_port_set_pin1_out(sensor->in_port,
 	                            sensor->info.i2c_mode_info[mode].pin1_state);
@@ -242,9 +266,8 @@ void nxt_i2c_sensor_poll_work(struct work_struct *work)
 
 	i2c_smbus_read_i2c_block_data(sensor->client, i2c_mode_info->read_data_reg,
 	                              ms_mode_info->data_sets
-	                              * legoev3_msensor_data_size[ms_mode_info->format],
+	                              * msensor_data_size[ms_mode_info->data_type],
 	                              ms_mode_info->raw_data);
-
 	schedule_delayed_work(&sensor->poll_work, NXT_I2C_POLL_DELAY);
 }
 
@@ -306,6 +329,7 @@ static int __devinit nxt_i2c_sensor_probe(struct i2c_client *client,
 	if (sensor->info.i2c_mode_info[0].pin1_state)
 		ev3_input_port_set_pin1_out(sensor->in_port, 1);
 
+	nxt_i2c_sensor_set_mode(sensor, sensor->mode);
 	INIT_DELAYED_WORK(&sensor->poll_work, nxt_i2c_sensor_poll_work);
 	i2c_set_clientdata(client, sensor);
 	dev_info(&client->dev, "NXT I2C sensor registered as '%s'\n",
