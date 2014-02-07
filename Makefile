@@ -15,6 +15,7 @@ obj-$(CONFIG_LEGOEV3_NXT_TOUCH_SENSOR)	+= nxt_touch_sensor.o
 
 # I2C Sensors
 obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= nxt_i2c_host.o
+nxt_i2c_sensor-objs := nxt_i2c_sensor_core.o nxt_i2c_sensor_defs.o
 obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= nxt_i2c_sensor.o
 
 # UART Sensors

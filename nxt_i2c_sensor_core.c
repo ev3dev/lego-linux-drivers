@@ -25,47 +25,14 @@
 #include <linux/legoev3/ev3_input_port.h>
 #include <linux/legoev3/msensor_class.h>
 
+#include "nxt_i2c_sensor.h"
+
 #define NXT_I2C_FW_VER_REG	0x00
 #define	NXT_I2C_VEND_ID_REG	0x08
 #define NXT_I2C_PROD_ID_REG	0x10
 
-#define NXT_I2C_ID_STR_LEN	8
-
 #define NXT_I2C_POLL_MS		100
 #define NXT_I2C_POLL_DELAY	msecs_to_jiffies(NXT_I2C_POLL_MS)
-
-/**
- * struct nxt_i2c_sensor_mode_info
- * @ms_mode_info: Mode info used by the msensor device class.
- * @set_mode_reg: The register address used to set the mode.
- * @set_mode_data: The data to write to the command register.
- * @read_data_reg: The starting register address of the data to be read.
- * @pin1_state: Sets input port pin 1 high (battery voltage) when 1.
- */
-struct nxt_i2c_sensor_mode_info {
-	u8 set_mode_reg;
-	u8 set_mode_data;
-	u8 read_data_reg;
-	unsigned pin1_state:1;
-};
-
-/**
- * struct nxt_i2c_sensor_info
- * @vendor_id: The vendor ID string to match to the sensor.
- * @product_id: The product ID string to match to the sensor.
- * @fw_version: The firmware version read from the sensor.
- * @ms: The msensor class device for this sensor.
- * @mode_info: Array of mode information for each sensor mode.
- * @num_modes: Number of valid elements in the mode_info array.
- */
-struct nxt_i2c_sensor_info {
-	const char *vendor_id;
-	const char *product_id;
-	char fw_version[NXT_I2C_ID_STR_LEN + 1];
-	struct msensor_device ms;
-	struct msensor_mode_info ms_mode_info[MSENSOR_MODE_MAX + 1];
-	struct nxt_i2c_sensor_mode_info i2c_mode_info[MSENSOR_MODE_MAX + 1];
-};
 
 struct nxt_i2c_sensor_data {
 	struct i2c_client *client;
@@ -73,144 +40,6 @@ struct nxt_i2c_sensor_data {
 	struct nxt_i2c_sensor_info info;
 	struct delayed_work poll_work;
 	u8 mode;
-};
-
-/*
- * Definitions for all known sensors
- *
- * Required values:
- * - vendor_id
- * - product_id
- * - ms.type_id
- * - ms.num_modes
- * - mode_info.ms_mode_info.name
- * - i2c_mode_info.read_data_reg
- * - num_modes
- *
- * Optional values:
- * - ms.num_view_modes (default 1)
- * - ms_mode_info.raw_min
- * - ms_mode_info.raw_max (default 255)
- * - ms_mode_info.pct_min
- * - ms_mode_info.pct_max (default 100)
- * - ms_mode_info.si_min
- * - ms_mode_info.si_max (default 255)
- * - ms_mode_info.units
- * - ms_mode_info.data_sets (default 1)
- * - ms_mode_info.data_type (default MSENSOR_DATA_U8)
- * - ms_mode_info.figures (default 5)
- * - ms_mode_info.decimals
- * - i2c_mode_info.set_mode_reg and mode_info.set_mode_data
- * - i2c_mode_info.pin1_state
- *
- * All other values will be overwritten during device initialization.
- *
- * Each sensor should have at least one mode. Mode [0] will be the default mode.
- *
- * Type ids come from sys/settings/typedata.rcf in LMS2012
- * This link will probably break eventually, but for easy access, try:
- * <http://python-ev3.org/types.html>
- */
-struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
-	{
-		.vendor_id	= "LEGO",
-		.product_id	= "Sonar",
-		.ms.type_id	= 5,
-		.ms.num_modes	= 5,
-		.ms_mode_info	= {
-			[0] = {
-				.name	= "NXT-US-CM",
-				.units	= "cm",
-			},
-			[1] = {
-				.name	= "NXT-US-IN",
-				.units	= "in",
-				.si_max = 1000,
-				.decimals = 1,
-			},
-			[2] = {
-				.name	= "NXT-US-SI-CM",
-				.units	= "cm",
-			},
-			[3] = {
-				.name	= "NXT-US-SI-IN",
-				.units	= "in",
-				.si_max = 1000,
-				.decimals = 1,
-			},
-			[4] = {
-				.name	= "NXT-US-LIST",
-				.raw_max = 1,
-				.si_max  = 1,
-			},
-		},
-		.i2c_mode_info	= {
-			[0] = {
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= 0x02,
-				.read_data_reg	= 0x42,
-				.pin1_state	= 1,
-			},
-			[1] = {
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= 0x02,
-				.read_data_reg	= 0x42,
-				.pin1_state	= 1,
-			},
-			[2] = {
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= 0x01,
-				.read_data_reg	= 0x42,
-				.pin1_state	= 1,
-			},
-			[3] = {
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= 0x01,
-				.read_data_reg	= 0x42,
-				.pin1_state	= 1,
-			},
-			[4] = {
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= 0x03,
-				.read_data_reg	= 0x42,
-				.pin1_state	= 1,
-			},
-		},
-	},
-	{
-		.vendor_id	= "mndsnsrs",
-		.product_id	= "LSArray",
-		.ms.type_id	= 70,
-		.ms.num_modes	= 2,
-		.ms_mode_info	= {
-			[0] = {
-				.name	= "MS-LSA-CAL",
-				.raw_max = 100,
-				.si_max = 100,
-				.data_sets = 8,
-				.units	= "pct",
-			},
-			[1] = {
-				.name	= "MS-LSA-RAW",
-				.raw_max = 65535,
-				.si_max = 65535,
-				.data_sets = 8,
-				.data_type = MSENSOR_DATA_S16,
-			},
-		},
-		.i2c_mode_info	= {
-			[0] = {
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= 'w',
-				.read_data_reg	= 0x42,
-			},
-			[1] = {
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= 'w',
-				.read_data_reg	= 0x6A,
-			},
-		},
-	},
 };
 
 static u8 nxt_i2c_sensor_get_mode(void *context)
@@ -381,7 +210,7 @@ static int nxt_i2c_sensor_detect(struct i2c_client *client,
 	if (ret < 0)
 		return -ENODEV;
 
-	for (i = 0; i < ARRAY_SIZE(nxt_i2c_sensor_defs); i++)
+	for (i = 0; i < num_nxt_i2c_sensor_defs; i++)
 	{
 		if (!strcmp(nxt_i2c_sensor_defs[i].vendor_id, vendor_id)
 			&& !strcmp(nxt_i2c_sensor_defs[i].product_id, product_id))
