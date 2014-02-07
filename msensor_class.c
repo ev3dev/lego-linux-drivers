@@ -22,6 +22,7 @@ size_t msensor_data_size[NUM_MSENSOR_DATA_TYPE] = {
 	[MSENSOR_DATA_U8]	= 1,
 	[MSENSOR_DATA_S16]	= 2,
 	[MSENSOR_DATA_U16]	= 2,
+	[MSENSOR_DATA_S16_BE]	= 2,
 	[MSENSOR_DATA_S32]	= 4,
 	[MSENSOR_DATA_U32]	= 4,
 	[MSENSOR_DATA_FLOAT]	= 4,
@@ -213,6 +214,13 @@ int msensor_raw_s16_value(struct msensor_device *ms, int index)
 	return *(s16 *)(ms->mode_info[mode].raw_data + index * 2);
 }
 
+int msensor_raw_s16_be_value(struct msensor_device *ms, int index)
+{
+	int mode = ms->get_mode(ms->context);
+
+	return (s16)ntohs(*(u16 *)(ms->mode_info[mode].raw_data + index * 2));
+}
+
 int msensor_raw_u32_value(struct msensor_device *ms, int index)
 {
 	int mode = ms->get_mode(ms->context);
@@ -266,6 +274,9 @@ static ssize_t msensor_show_value(struct device *dev,
 	case MSENSOR_DATA_S16:
 		value = msensor_raw_s16_value(ms, index);
 		break;
+	case MSENSOR_DATA_S16_BE:
+		value = msensor_raw_s16_be_value(ms, index);
+		break;
 	case MSENSOR_DATA_U32:
 		value = msensor_raw_u32_value(ms, index);
 		break;
@@ -307,6 +318,9 @@ static ssize_t msensor_show_bin_data_format(struct device *dev,
 		break;
 	case MSENSOR_DATA_S16:
 		value = "s16";
+		break;
+	case MSENSOR_DATA_S16_BE:
+		value = "s16_be";
 		break;
 	case MSENSOR_DATA_U32:
 		value = "u32";

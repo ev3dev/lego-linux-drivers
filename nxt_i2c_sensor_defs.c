@@ -120,6 +120,103 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		},
 	},
 	{
+		.vendor_id	= "LEGO",
+		.product_id	= "", /* energy storage */
+		.ms.type_id	= 99,
+		.ms.num_modes	= 8,
+		.ms_mode_info	= {
+			[0] = {
+				.name = "ES-IN-VOLT",
+				.units = "V",
+				.raw_max = 10000,
+				.si_max = 10000,
+				.decimals = 3,
+				.data_type = MSENSOR_DATA_S16_BE,
+			},
+			[1] = {
+				.name = "ES-IN-AMP",
+				.units = "A",
+				.raw_max = 10000,
+				.si_max = 10000,
+				.decimals = 3,
+				.data_type = MSENSOR_DATA_S16_BE,
+			},
+			[2] = {
+				.name = "ES-OUT-VOLT",
+				.units = "V",
+				.raw_max = 10000,
+				.si_max = 10000,
+				.decimals = 3,
+				.data_type = MSENSOR_DATA_S16_BE,
+			},
+			[3] = {
+				.name = "ES-OUT-AMP",
+				.units = "A",
+				.raw_max = 10000,
+				.si_max = 10000,
+				.decimals = 3,
+				.data_type = MSENSOR_DATA_S16_BE,
+			},
+			[4] = {
+				.name = "ES-JOULE",
+				.units = "J",
+				.raw_max = 100,
+				.si_max = 100,
+				.data_type = MSENSOR_DATA_S16_BE,
+			},
+			[5] = {
+				.name = "ES-IN-WATT",
+				.units = "V",
+				.raw_max = 10000,
+				.si_max = 10000,
+				.decimals = 3,
+				.data_type = MSENSOR_DATA_S16_BE,
+			},
+			[6] = {
+				.name = "ES-OUT-WATT",
+				.units = "A",
+				.raw_max = 10000,
+				.si_max = 10000,
+				.decimals = 3,
+				.data_type = MSENSOR_DATA_S16_BE,
+			},
+			[7] = {
+				.name = "ES-ALL",
+				.raw_max = 10000,
+				.si_max = 10000,
+				.decimals = 3,
+				.data_sets = 7,
+				.data_type = MSENSOR_DATA_S16_BE,
+			},
+		},
+		.i2c_mode_info	= {
+			[0] = {
+				.read_data_reg	= 0x0A,
+			},
+			[1] = {
+				.read_data_reg	= 0x0C,
+			},
+			[2] = {
+				.read_data_reg	= 0x0E,
+			},
+			[3] = {
+				.read_data_reg	= 0x10,
+			},
+			[4] = {
+				.read_data_reg	= 0x12,
+			},
+			[5] = {
+				.read_data_reg	= 0x14,
+			},
+			[6] = {
+				.read_data_reg	= 0x16,
+			},
+			[7] = {
+				.read_data_reg	= 0x0A,
+			},
+		},
+	},
+	{
 		.vendor_id	= "mndsnsrs",
 		.product_id	= "LSArray",
 		.ms.type_id	= 70,
