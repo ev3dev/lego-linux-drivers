@@ -101,27 +101,43 @@ void nxt_i2c_sensor_poll_work(struct work_struct *work)
 }
 
 static int __devinit nxt_i2c_sensor_probe(struct i2c_client *client,
-				  const struct i2c_device_id *id)
+                                          const struct i2c_device_id *id)
 {
 	struct nxt_i2c_sensor_data *sensor;
 	struct i2c_legoev3_platform_data *apdata =
 					client->adapter->dev.platform_data;
-	struct nxt_i2c_sensor_info *cpdata = client->dev.platform_data;
+	struct nxt_i2c_sensor_info *sensor_info = NULL;
 	int err, i;
 
 	if (WARN(!apdata, "Adapter platform data is required."))
 		return -EINVAL;
 	if (WARN(!apdata->in_port, "Adapter platform data missing input port."))
 		return -EINVAL;
-	if (WARN(!cpdata, "Client platform data is required."))
+
+	/*
+	 * If a sensor was manually specified, look up the info in sensor defs.
+	 * Otherwise, if a sensor was automatically detected, then the info
+	 * is already in the client platform data.
+	 */
+	if (id->driver_data) {
+		for (i = 0; i < num_nxt_i2c_sensor_defs; i++) {
+			if (id->driver_data == nxt_i2c_sensor_defs[i].ms.type_id) {
+				sensor_info = &nxt_i2c_sensor_defs[i];
+				break;
+			}
+		}
+	} else
+		sensor_info = client->dev.platform_data;
+	if (WARN(!sensor_info, "Sensor info is missing."))
 		return -EINVAL;
+
 	sensor = kzalloc(sizeof(struct nxt_i2c_sensor_data), GFP_KERNEL);
 	if (!sensor)
 		return -ENOMEM;
 
 	sensor->client = client;
 	sensor->in_port = apdata->in_port;
-	memcpy(&sensor->info, cpdata, sizeof(struct nxt_i2c_sensor_info));
+	memcpy(&sensor->info, sensor_info, sizeof(struct nxt_i2c_sensor_info));
 
 	i2c_smbus_read_i2c_block_data(client, NXT_I2C_FW_VER_REG,
 	                              NXT_I2C_ID_STR_LEN,
@@ -224,7 +240,25 @@ static int nxt_i2c_sensor_detect(struct i2c_client *client,
 }
 
 static struct i2c_device_id nxt_i2c_sensor_idtable[] = {
-	{ "nxt-i2c-sensor", 0 },
+	{ "nxt-i2c-sensor", 0 }, /* used by nxt_i2c_sensor_detect */
+	{ "lego-9846", 5 },
+	{ "lego-9749", 6 },
+	{ "ht-nis1070", 50 },
+	{ "ht-nbr1036", 51 },
+	{ "ht-nsk1042", 52 },
+	{ "ht-nco", 53 }, /* TODO: need real part number */
+	{ "ht-nco1038", 54 },
+	{ "ht-naa1030", 55 },
+	{ "ht-naa1030", 55 },
+	{ "ht-nmc1034", 56 },
+	{ "ht-nir1032", 57 },
+	{ "ht-nac1040", 58 },
+	{ "ht-nil1046", 59 },
+	{ "ht-spr2010", 60 },
+	{ "ht-nsx2020", 61 },
+	{ "lego-9668", 99 },
+	{ "nxt-i2c-unknown", 100 },
+	{ "ms-light-array", 157 },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, nxt_i2c_sensor_idtable);
