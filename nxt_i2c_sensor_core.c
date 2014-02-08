@@ -75,7 +75,16 @@ static ssize_t nxt_i2c_sensor_write_data(void *context, char *data, loff_t off,
 	struct nxt_i2c_sensor_data *sensor = context;
 	int err;
 
-	err = i2c_smbus_write_i2c_block_data(sensor->client, off, count, data);
+	if (off)
+		return -EINVAL;
+
+	if (count == 0)
+		err = 0;
+	else if (count == 1)
+		err = i2c_smbus_write_byte(sensor->client, data[0]);
+	else
+		err = i2c_smbus_write_i2c_block_data(sensor->client, data[0],
+						     count - 1, &data[1]);
 	if (err < 0)
 		return err;
 
