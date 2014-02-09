@@ -31,14 +31,17 @@
 #define	NXT_I2C_VEND_ID_REG	0x08
 #define NXT_I2C_PROD_ID_REG	0x10
 
-#define NXT_I2C_POLL_MS		100
-#define NXT_I2C_POLL_DELAY	msecs_to_jiffies(NXT_I2C_POLL_MS)
+#define NXT_I2C_MIN_POLL_MS 50
+
+static u16 default_poll_ms = 100;
+module_param(default_poll_ms, ushort, 0);
 
 struct nxt_i2c_sensor_data {
 	struct i2c_client *client;
 	struct legoev3_port_device *in_port;
 	struct nxt_i2c_sensor_info info;
 	struct delayed_work poll_work;
+	unsigned poll_ms;
 	u8 mode;
 };
 
@@ -65,6 +68,8 @@ static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
 	ev3_input_port_set_pin1_out(sensor->in_port,
 	                            sensor->info.i2c_mode_info[mode].pin1_state);
 	sensor->mode = mode;
+	schedule_delayed_work(&sensor->poll_work,
+			      msecs_to_jiffies(sensor->poll_ms));
 
 	return 0;
 }
@@ -91,6 +96,31 @@ static ssize_t nxt_i2c_sensor_write_data(void *context, char *data, loff_t off,
 	return count;
 }
 
+static int nxt_i2c_sensor_get_poll_ms(void *context)
+{
+	struct nxt_i2c_sensor_data *sensor = context;
+
+	return sensor->poll_ms;
+}
+
+static int nxt_i2c_sensor_set_poll_ms(void *context, unsigned value)
+{
+	struct nxt_i2c_sensor_data *sensor = context;
+
+	if (value > 0 && value < NXT_I2C_MIN_POLL_MS)
+		return -EINVAL;
+	if (sensor->poll_ms == value)
+		return 0;
+	if (!value)
+		cancel_delayed_work(&sensor->poll_work);
+	else if (!sensor->poll_ms)
+		schedule_delayed_work(&sensor->poll_work,
+				      msecs_to_jiffies(value));
+
+	sensor->poll_ms = value;
+	return 0;
+}
+
 void nxt_i2c_sensor_poll_work(struct work_struct *work)
 {
 	struct delayed_work *dwork =
@@ -106,7 +136,9 @@ void nxt_i2c_sensor_poll_work(struct work_struct *work)
 	                              ms_mode_info->data_sets
 	                              * msensor_data_size[ms_mode_info->data_type],
 	                              ms_mode_info->raw_data);
-	schedule_delayed_work(&sensor->poll_work, NXT_I2C_POLL_DELAY);
+	if (sensor->poll_ms)
+		schedule_delayed_work(&sensor->poll_work,
+				      msecs_to_jiffies(sensor->poll_ms));
 }
 
 static int __devinit nxt_i2c_sensor_probe(struct i2c_client *client,
@@ -157,6 +189,8 @@ static int __devinit nxt_i2c_sensor_probe(struct i2c_client *client,
 	sensor->info.ms.get_mode = nxt_i2c_sensor_get_mode;
 	sensor->info.ms.set_mode = nxt_i2c_sensor_set_mode;
 	sensor->info.ms.write_data = nxt_i2c_sensor_write_data;
+	sensor->info.ms.get_poll_ms = nxt_i2c_sensor_get_poll_ms;
+	sensor->info.ms.set_poll_ms = nxt_i2c_sensor_set_poll_ms;
 	sensor->info.ms.context = sensor;
 
 	for (i = 0; i < sensor->info.ms.num_modes; i++) {
@@ -174,26 +208,27 @@ static int __devinit nxt_i2c_sensor_probe(struct i2c_client *client,
 			minfo->figures = 5;
 	}
 
+
+	INIT_DELAYED_WORK(&sensor->poll_work, nxt_i2c_sensor_poll_work);
+	if (default_poll_ms && default_poll_ms < NXT_I2C_MIN_POLL_MS)
+		default_poll_ms = NXT_I2C_MIN_POLL_MS;
+	sensor->poll_ms = default_poll_ms;
+	i2c_set_clientdata(client, sensor);
+
 	err = register_msensor(&sensor->info.ms, &client->dev);
 	if (err) {
 		dev_err(&client->dev, "could not register sensor!\n");
 		goto err_register_msensor;
 	}
 
-	if (sensor->info.i2c_mode_info[0].pin1_state)
-		ev3_input_port_set_pin1_out(sensor->in_port, 1);
-
 	nxt_i2c_sensor_set_mode(sensor, sensor->mode);
-	INIT_DELAYED_WORK(&sensor->poll_work, nxt_i2c_sensor_poll_work);
-	i2c_set_clientdata(client, sensor);
 	dev_info(&client->dev, "NXT I2C sensor registered as '%s'\n",
 		 dev_name(&client->dev));
-
-	schedule_delayed_work(&sensor->poll_work, NXT_I2C_POLL_DELAY);
 
 	return 0;
 
 err_register_msensor:
+	i2c_set_clientdata(client, NULL);
 	kfree(sensor);
 
 	return err;

@@ -338,6 +338,43 @@ static ssize_t msensor_show_bin_data_format(struct device *dev,
 	return sprintf(buf, "%s\n", value);
 }
 
+static ssize_t msensor_show_poll_ms(struct device *dev,
+                                    struct device_attribute *attr,
+                                    char *buf)
+{
+	struct msensor_device *ms = to_msensor(dev);
+	int ret;
+
+	if (!ms->get_poll_ms)
+		return -ENXIO;
+
+	ret = ms->get_poll_ms(ms->context);
+	if (ret < 0)
+		return ret;
+
+	return sprintf(buf, "%d\n", ret);
+}
+
+static ssize_t msensor_store_poll_ms(struct device *dev,
+                                     struct device_attribute *attr,
+                                     const char *buf, size_t count)
+{
+	struct msensor_device *ms = to_msensor(dev);
+	unsigned value;
+	int err;
+
+	if (!ms->set_poll_ms)
+		return -ENXIO;
+
+	if (sscanf(buf, "%ud", &value) != 1)
+		return -EINVAL;
+	err = ms->set_poll_ms(ms->context, value);
+	if (err < 0)
+		return err;
+
+	return count;
+}
+
 static ssize_t msensor_read_bin_data(struct file *file, struct kobject *kobj,
                                      struct bin_attribute *attr,
                                      char *buf, loff_t off, size_t count)
@@ -374,6 +411,7 @@ static struct device_attribute msensor_device_attrs[] = {
 	__ATTR(dp, S_IRUGO, msensor_show_dp, NULL),
 	__ATTR(num_values, S_IRUGO, msensor_show_num_values, NULL),
 	__ATTR(bin_data_format, S_IRUGO, msensor_show_bin_data_format, NULL),
+	__ATTR(poll_ms, S_IRUGO | S_IWUGO, msensor_show_poll_ms, msensor_store_poll_ms),
 	/*
 	 * Technically, it is possible to have 32 8-bit values from UART sensors
 	 * and 255 8-bit values from I2C sensors, but known sensors so far are 8
