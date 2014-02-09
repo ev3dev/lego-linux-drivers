@@ -1,5 +1,5 @@
 /*
- * NXT Ultrasonic sensor device driver for LEGO Mindstorms EV3
+ * NXT I2C sensor device driver for LEGO Mindstorms EV3
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
@@ -17,10 +17,8 @@
 
 #include "nxt_i2c_sensor.h"
 
-
-
 /**
- * nxt_i2c_sensor_defs- Sensor definitions
+ * nxt_i2c_sensor_defs - Sensor definitions
  *
  * Required values:
  * - vendor_id
@@ -157,7 +155,7 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 	},
 	{
 		.vendor_id	= "LEGO",
-		.product_id	= "", /* energy storage */
+		.product_id	= "", /* LMS2012 fakes this with "Store." */
 		.ms.type_id	= 99,
 		.ms.num_modes	= 8,
 		.ms_mode_info	= {

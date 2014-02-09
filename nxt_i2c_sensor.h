@@ -1,5 +1,5 @@
 /*
- * NXT Ultrasonic sensor device driver for LEGO Mindstorms EV3
+ * NXT I2C sensor device driver for LEGO Mindstorms EV3
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *

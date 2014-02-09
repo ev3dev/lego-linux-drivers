@@ -1,5 +1,5 @@
 /*
- * NXT Ultrasonic sensor device driver for LEGO Mindstorms EV3
+ * NXT I2C sensor device driver for LEGO Mindstorms EV3
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
@@ -15,6 +15,7 @@
 
 #include <linux/device.h>
 #include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/bug.h>
@@ -34,7 +35,11 @@
 #define NXT_I2C_MIN_POLL_MS 50
 
 static u16 default_poll_ms = 100;
-module_param(default_poll_ms, ushort, 0);
+module_param(default_poll_ms, ushort, 0644);
+MODULE_PARM_DESC(default_poll_ms, "Polling period in milliseconds. Minimum value is "__stringify(NXT_I2C_MIN_POLL_MS)" or 0 to disable polling.");
+static bool allow_autodetect = 1;
+module_param(allow_autodetect, bool, 0644);
+MODULE_PARM_DESC(allow_autodetect, "Allow NXT I2C sensors to be automatically detected.");
 
 struct nxt_i2c_sensor_data {
 	struct i2c_client *client;
@@ -254,6 +259,9 @@ static int nxt_i2c_sensor_detect(struct i2c_client *client,
 	char vendor_id[NXT_I2C_ID_STR_LEN + 1] = { 0 };
 	char product_id[NXT_I2C_ID_STR_LEN + 1] = { 0 };
 	int ret, i;
+
+	if (!allow_autodetect)
+		return -ENODEV;
 
 	ret = i2c_smbus_read_i2c_block_data(client, NXT_I2C_VEND_ID_REG,
 					    NXT_I2C_ID_STR_LEN, vendor_id);
