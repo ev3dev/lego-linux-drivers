@@ -108,14 +108,30 @@ struct attribute_group legoev3_output_port_device_type_attr_grp = {
 	.attrs	= legoev3_output_port_device_type_attrs,
 };
 
-const struct attribute_group *ev3_output_port_device_type_attr_groups[] = {
+const struct attribute_group *ev3_motor_device_type_attr_groups[] = {
+	&legoev3_port_device_type_attr_grp,
 	&legoev3_output_port_device_type_attr_grp,
 	NULL
 };
 
-struct device_type ev3_output_port_device_type = {
-	.name	= "ev3-output-port",
-	.groups	= ev3_output_port_device_type_attr_groups,
+// struct device_type ev3_output_port_device_type = {
+// 	.name	= "ev3-output-port",
+// 	.groups	= ev3_output_port_device_type_attr_groups,
+// };
+
+struct device_type ev3_motor_device_types[] = {
+	[MOTOR_NEWTACHO] = {
+		.name	= "ev3-tacho-motor",
+		.groups	= ev3_motor_device_type_attr_groups,
+	},
+	[MOTOR_MINITACHO] = {
+		.name	= "ev3-tacho-motor",
+		.groups	= ev3_motor_device_type_attr_groups,
+	},
+	[MOTOR_TACHO] = {
+		.name	= "ev3-tacho-motor",
+		.groups	= ev3_motor_device_type_attr_groups,
+	},
 };
 
 /**
@@ -177,31 +193,33 @@ void ev3_output_port_register_motor(struct work_struct *work)
 	struct ev3_motor_platform_data pdata;
 
         pr_warning("Registering a motor driver for type %d on port %d!\n", port->motor_type, port->id );
-// 	if (port->sensor_type == SENSOR_NONE
-// 	    || port->sensor_type == SENSOR_ERR
-// 	    || port->sensor_type >= NUM_SENSOR)
-// 	{
-// 		dev_err(&port->pdev->dev, "Trying to register an invalid sensor on %s.\n",
-// 			dev_name(&port->pdev->dev));
-// 		return;
-// 	}
+
+	if (port->motor_type == MOTOR_NONE
+	    || port->motor_type == MOTOR_ERR
+	    || port->motor_type >= NUM_MOTOR)
+	{
+		dev_err(&port->pdev->dev, "Trying to register an invalid motor on %s.\n",
+			dev_name(&port->pdev->dev));
+		return;
+	}
 // 
 // 	/* Give the sensor time to boot */
 // 	if (port->sensor_type == SENSOR_NXT_I2C)
 // 		msleep(1000);
 // 
-// 	pdata.in_port = port->pdev;
-// 	sensor = legoev3_port_device_register("sensor", -1,
-// 				&ev3_sensor_device_types[port->sensor_type],
-// 				&pdata, sizeof(struct ev3_sensor_platform_data),
-// 				&port->pdev->dev);
-// 	if (IS_ERR(sensor)) {
-// 		dev_err(&port->pdev->dev, "Could not register sensor on port %s.\n",
-// 			dev_name(&port->pdev->dev));
-// 		return;
-// 	}
-// 
-	port->motor = 1;
+ 	pdata.out_port = port->pdev;
+
+ 	motor = legoev3_port_device_register("motor", -1,
+ 				&ev3_motor_device_types[port->motor_type],
+ 				&pdata, sizeof(struct ev3_motor_platform_data),
+ 				&port->pdev->dev);
+ 	if (IS_ERR(motor)) {
+ 		dev_err(&port->pdev->dev, "Could not register motor on port %s.\n",
+ 			dev_name(&port->pdev->dev));
+		return;
+ 	}
+ 
+	port->motor = motor;
 
 	return;
 }
@@ -212,8 +230,8 @@ void ev3_output_port_unregister_motor(struct work_struct *work)
 			container_of(work, struct ev3_output_port_data, work);
 
         pr_warning("Unregistering a motor driver on port %d!\n", port->id );
-// 	legoev3_port_device_unregister(port->sensor);
-	port->motor = NULL;
+
+ 	legoev3_port_device_unregister(port->motor);
 }
 
 static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer)

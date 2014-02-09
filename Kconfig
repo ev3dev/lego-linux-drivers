@@ -107,6 +107,15 @@ config LEGOEV3_MOTORS
 	default y
 	depends on LEGOEV3_OUTPUT_PORT
 	help
-	  Select Y to enable support for EV3 motors.
+	  Select Y to enable support for EV3 motors. Provides a common device
+	  class interface for LEGO EV3 and NXT compatible motors.
+
+config LEGOEV3_TACHO_MOTORS
+	tristate "EV3 tacho motor suppport"
+	default y
+	depends on LEGOEV3_MOTORS
+	help
+	  Select Y to enable support for LEGO EV3 and NXT tacho motors.
+
 
 endif #LEGOEV3_DRIVERS

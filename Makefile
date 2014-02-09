@@ -6,8 +6,11 @@ obj-$(CONFIG_LEGOEV3_DEV_PORTS)		+= legoev3_ports.o
 obj-$(CONFIG_LEGOEV3_INPUT_PORT)	+= ev3_input_port.o
 obj-$(CONFIG_LEGOEV3_OUTPUT_PORT)	+= ev3_output_port.o
 
+# motor classes
+obj-$(CONFIG_LEGOEV3_MOTORS)		+= tacho_motor_class.o
+
 # Motors
-obj-$(CONFIG_LEGOEV3_MOTORS)		+= legoev3_motor.c
+obj-$(CONFIG_LEGOEV3_TACHO_MOTORS)	+= ev3_tacho_motor.o
 
 # Sensor classes
 obj-$(CONFIG_LEGOEV3_TOUCH_SENSORS)	+= touch_sensor_class.o
