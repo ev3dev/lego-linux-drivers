@@ -447,27 +447,36 @@ static void msensor_release(struct device *dev)
 
 int register_msensor(struct msensor_device *ms, struct device *parent)
 {
-	if (!ms || !parent)
+	int err;
+
+	if (!ms || !ms->name || !parent)
 		return -EINVAL;
 
 	ms->dev.release = msensor_release;
 	ms->dev.parent = parent;
 	ms->dev.class = &msensor_class;
-	dev_set_name(&ms->dev, "%s", dev_name(parent));
+	dev_set_name(&ms->dev, "%s", ms->name);
 
-	return device_register(&ms->dev);
+	err = device_register(&ms->dev);
+	if (err)
+		return err;
+
+	dev_info(&ms->dev, "Mindstorms sensor registered.\n");
+
+	return 0;
 }
 EXPORT_SYMBOL_GPL(register_msensor);
 
 void unregister_msensor(struct msensor_device *ms)
 {
+	dev_info(&ms->dev, "Mindstorms sensor unregistered.\n");
 	device_unregister(&ms->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_msensor);
 
 static char *msensor_devnode(struct device *dev, umode_t *mode)
 {
-	return kasprintf(GFP_KERNEL, "msensor/%s", dev_name(dev->parent));
+	return kasprintf(GFP_KERNEL, "msensor/%s", dev_name(dev));
 }
 
 struct class msensor_class = {

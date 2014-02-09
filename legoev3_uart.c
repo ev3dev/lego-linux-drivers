@@ -41,6 +41,7 @@
 #define LEGOEV3_UART_SPEED_MIN		2400
 #define LEGOEV3_UART_SPEED_MID		57600
 #define LEGOEV3_UART_SPEED_MAX		460800
+#define LEGOEV3_UART_MODE_NAME_SIZE	11
 
 #define LEGOEV3_UART_SEND_ACK_DELAY		10 /* msec */
 #define LEGOEV3_UART_SET_BITRATE_DELAY		10 /* msec */
@@ -122,6 +123,7 @@ enum legoev3_uart_info_flags {
  * struct legoev3_uart_data - Discipline data for EV3 UART Sensor communication
  * @tty: Pointer to the tty device that the sensor is connected to
  * @sensor: The real sensor device.
+ * @in_port: The input port device associated with this tty.
  * @send_ack_work: Used to send ACK after a delay.
  * @change_bitrate_work: Used to change the baud rate after a delay.
  * @keep_alive_timer: Sends a NACK every 100usec when a sensor is connected.
@@ -154,6 +156,7 @@ enum legoev3_uart_info_flags {
 struct legoev3_uart_port_data {
 	struct tty_struct *tty;
 	struct legoev3_port_device *sensor;
+	struct legoev3_port_device *in_port;
 	struct msensor_device ms;
 	struct delayed_work send_ack_work;
 	struct delayed_work change_bitrate_work;
@@ -308,12 +311,26 @@ static ssize_t legoev3_uart_write_data(void *context, char *data, loff_t off,
 	return count;
 }
 
+int legoev3_uart_match_input_port(struct device *dev, void *data)
+{
+	struct legoev3_port_device *pdev = to_legoev3_port_device(dev);
+	struct ev3_input_port_platform_data *pdata;
+	char *tty_name = data;
+
+	if (strcmp(pdev->dev.type->name, "ev3-input-port"))
+		return 0;
+	pdata = dev->platform_data;
+
+	return !strcmp(pdata->uart_tty, tty_name);
+}
+
 static void legoev3_uart_send_ack(struct work_struct *work)
 {
 	struct delayed_work *dwork = to_delayed_work(work);
 	struct legoev3_uart_port_data *port =
 		container_of(dwork, struct legoev3_uart_port_data, send_ack_work);
 	struct legoev3_port_device *sensor;
+	struct device *in_port_dev;
 	int err;
 
 	if (!port->sensor && port->ms.type_id <= LEGOEV3_UART_TYPE_MAX) {
@@ -332,8 +349,23 @@ static void legoev3_uart_send_ack(struct work_struct *work)
 			return;
 		}
 		port->sensor = sensor;
+		/*
+		 * This is a special case for the input ports on the EV3 brick.
+		 * We use the name of the input port instead of the tty to make
+		 * it easier to know which sensor is which.
+		 */
+		in_port_dev = bus_find_device(&legoev3_bus_type, NULL,
+					      port->tty->name,
+					      legoev3_uart_match_input_port);
+		if (in_port_dev) {
+			port->in_port = to_legoev3_port_device(in_port_dev);
+			snprintf(port->ms.name, MSENSOR_NAME_SIZE,
+				 "%s:tty", dev_name(&port->in_port->dev));
+		} else
+			strncpy(port->ms.name, port->tty->name,
+				MSENSOR_NAME_SIZE);
 		port->ms.context = port->tty;
-		err = register_msensor(&port->ms, port->tty->dev);
+		err = register_msensor(&port->ms, &port->sensor->dev);
 		if (err < 0) {
 			dev_err(port->tty->dev,
 				"Could not register UART sensor on tty %s",
@@ -429,7 +461,7 @@ static int legoev3_uart_open(struct tty_struct *tty)
 	/* set baud rate and other port settings */
 	mutex_lock(&tty->termios_mutex);
 	tty->termios->c_iflag &=
-		 ~(IGNBRK	/* disable ignore break */
+		~(IGNBRK	/* disable ignore break */
 		| BRKINT	/* disable break causes interrupt */
 		| PARMRK	/* disable mark parity errors */
 		| ISTRIP	/* disable clear high bit of input characters */
@@ -442,7 +474,7 @@ static int legoev3_uart_open(struct tty_struct *tty)
 	tty->termios->c_oflag &= ~OPOST;
 
 	tty->termios->c_lflag &=
-		 ~(ECHO		/* disable echo input characters */
+		~(ECHO		/* disable echo input characters */
 		| ECHONL	/* disable echo new line */
 		| ICANON	/* disable erase, kill, werase, and rprnt
 				   special characters */
@@ -475,6 +507,8 @@ static void legoev3_uart_close(struct tty_struct *tty)
 		unregister_msensor(&port->ms);
 		legoev3_port_device_unregister(port->sensor);
 	}
+	if (port->in_port)
+		put_device(&port->in_port->dev);
 	cancel_delayed_work_sync(&port->send_ack_work);
 	cancel_delayed_work_sync(&port->change_bitrate_work);
 	hrtimer_cancel(&port->keep_alive_timer);
@@ -691,12 +725,12 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 				 * functions.
 				 */
 				port->buffer[msg_size - 1] = 0;
-				if (strlen(port->buffer + 2) > MSENSOR_NAME_SIZE) {
+				if (strlen(port->buffer + 2) > LEGOEV3_UART_MODE_NAME_SIZE) {
 					port->last_err = "Name is too long.";
 					goto err_invalid_state;
 				}
 				snprintf(port->mode_info[mode].name,
-				         MSENSOR_NAME_SIZE + 1, "%s",
+				         LEGOEV3_UART_MODE_NAME_SIZE + 1, "%s",
 				         port->buffer + 2);
 				port->mode = mode;
 				port->info_flags |= LEGOEV3_UART_INFO_FLAG_INFO_NAME;

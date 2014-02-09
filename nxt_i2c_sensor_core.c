@@ -188,6 +188,8 @@ static int __devinit nxt_i2c_sensor_probe(struct i2c_client *client,
 	i2c_smbus_read_i2c_block_data(client, NXT_I2C_FW_VER_REG,
 	                              NXT_I2C_ID_STR_LEN,
 	                              sensor->info.fw_version);
+	snprintf(sensor->info.ms.name, MSENSOR_NAME_SIZE, "%s:i2c:%02x",
+	         dev_name(&apdata->in_port->dev), client->addr);
 	if (!sensor->info.ms.num_view_modes)
 		sensor->info.ms.num_view_modes = 1;
 	sensor->info.ms.mode_info = sensor->info.ms_mode_info;
@@ -227,8 +229,6 @@ static int __devinit nxt_i2c_sensor_probe(struct i2c_client *client,
 	}
 
 	nxt_i2c_sensor_set_mode(sensor, sensor->mode);
-	dev_info(&client->dev, "NXT I2C sensor registered as '%s'\n",
-		 dev_name(&client->dev));
 
 	return 0;
 
@@ -243,8 +243,6 @@ static int __devexit nxt_i2c_sensor_remove(struct i2c_client *client)
 {
 	struct nxt_i2c_sensor_data *sensor = i2c_get_clientdata(client);
 
-	dev_info(&client->dev, "NXT I2C sensor '%s' removed.\n",
-		 dev_name(&client->dev));
 	cancel_delayed_work_sync(&sensor->poll_work);
 	ev3_input_port_set_pin1_out(sensor->in_port, 0);
 	unregister_msensor(&sensor->info.ms);
