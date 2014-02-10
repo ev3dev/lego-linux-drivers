@@ -114,6 +114,15 @@ static ssize_t msensor_show_type_id(struct device *dev,
 	return sprintf(buf, "%d\n", ms->type_id);
 }
 
+static ssize_t msensor_show_port_name(struct device *dev,
+				      struct device_attribute *attr,
+				      char *buf)
+{
+	struct msensor_device *ms = to_msensor(dev);
+
+	return snprintf(buf, MSENSOR_PORT_NAME_SIZE, "%s\n", ms->port_name);
+}
+
 static ssize_t msensor_show_mode(struct device *dev,
 				 struct device_attribute *attr,
 				 char *buf)
@@ -406,6 +415,7 @@ static ssize_t msensor_write_bin_data(struct file *file ,struct kobject *kobj,
 
 static struct device_attribute msensor_device_attrs[] = {
 	__ATTR(type_id, S_IRUGO, msensor_show_type_id, NULL),
+	__ATTR(port_name, S_IRUGO, msensor_show_port_name, NULL),
 	__ATTR(mode, S_IRUGO | S_IWUGO, msensor_show_mode, msensor_store_mode),
 	__ATTR(si_units, S_IRUGO, msensor_show_si_units, NULL),
 	__ATTR(dp, S_IRUGO, msensor_show_dp, NULL),
@@ -445,17 +455,19 @@ static void msensor_release(struct device *dev)
 {
 }
 
+static unsigned msensor_class_id = 0;
+
 int register_msensor(struct msensor_device *ms, struct device *parent)
 {
 	int err;
 
-	if (!ms || !ms->name || !parent)
+	if (!ms || !ms->port_name || !parent)
 		return -EINVAL;
 
 	ms->dev.release = msensor_release;
 	ms->dev.parent = parent;
 	ms->dev.class = &msensor_class;
-	dev_set_name(&ms->dev, "%s", ms->name);
+	dev_set_name(&ms->dev, "sensor%d", msensor_class_id++);
 
 	err = device_register(&ms->dev);
 	if (err)

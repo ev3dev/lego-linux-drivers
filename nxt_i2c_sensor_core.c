@@ -186,10 +186,10 @@ static int __devinit nxt_i2c_sensor_probe(struct i2c_client *client,
 	memcpy(&sensor->info, sensor_info, sizeof(struct nxt_i2c_sensor_info));
 
 	i2c_smbus_read_i2c_block_data(client, NXT_I2C_FW_VER_REG,
-	                              NXT_I2C_ID_STR_LEN,
-	                              sensor->info.fw_version);
-	snprintf(sensor->info.ms.name, MSENSOR_NAME_SIZE, "%s:i2c:%02x",
-	         dev_name(&apdata->in_port->dev), client->addr);
+				      NXT_I2C_ID_STR_LEN,
+				      sensor->info.fw_version);
+	strncpy(sensor->info.ms.port_name, dev_name(&sensor->in_port->dev),
+		MSENSOR_PORT_NAME_SIZE);
 	if (!sensor->info.ms.num_view_modes)
 		sensor->info.ms.num_view_modes = 1;
 	sensor->info.ms.mode_info = sensor->info.ms_mode_info;

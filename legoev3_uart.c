@@ -359,11 +359,11 @@ static void legoev3_uart_send_ack(struct work_struct *work)
 					      legoev3_uart_match_input_port);
 		if (in_port_dev) {
 			port->in_port = to_legoev3_port_device(in_port_dev);
-			snprintf(port->ms.name, MSENSOR_NAME_SIZE,
-				 "%s:tty", dev_name(&port->in_port->dev));
+			strncpy(port->ms.port_name, dev_name(&port->in_port->dev),
+				MSENSOR_PORT_NAME_SIZE);
 		} else
-			strncpy(port->ms.name, port->tty->name,
-				MSENSOR_NAME_SIZE);
+			strncpy(port->ms.port_name, port->tty->name,
+				MSENSOR_PORT_NAME_SIZE);
 		port->ms.context = port->tty;
 		err = register_msensor(&port->ms, &port->sensor->dev);
 		if (err < 0) {
@@ -735,7 +735,7 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 				port->mode = mode;
 				port->info_flags |= LEGOEV3_UART_INFO_FLAG_INFO_NAME;
 				debug_pr("mode %d name:%s\n",
-				       mode, port->mode_info[mode].name);
+				       mode, port->mode_info[mode].port_name);
 				break;
 			case LEGOEV3_UART_INFO_RAW:
 				if (port->mode != mode) {
