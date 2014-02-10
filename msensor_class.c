@@ -165,9 +165,9 @@ static ssize_t msensor_store_mode(struct device *dev,
 	return -EINVAL;
 }
 
-static ssize_t msensor_show_si_units(struct device *dev,
-                                     struct device_attribute *attr,
-                                     char *buf)
+static ssize_t msensor_show_units(struct device *dev,
+				  struct device_attribute *attr,
+				  char *buf)
 {
 	struct msensor_device *ms = to_msensor(dev);
 	int mode = ms->get_mode(ms->context);
@@ -435,7 +435,7 @@ static struct device_attribute msensor_device_attrs[] = {
 	__ATTR(type_id, S_IRUGO, msensor_show_type_id, NULL),
 	__ATTR(port_name, S_IRUGO, msensor_show_port_name, NULL),
 	__ATTR(mode, S_IRUGO | S_IWUGO, msensor_show_mode, msensor_store_mode),
-	__ATTR(si_units, S_IRUGO, msensor_show_si_units, NULL),
+	__ATTR(units, S_IRUGO, msensor_show_units, NULL),
 	__ATTR(dp, S_IRUGO, msensor_show_dp, NULL),
 	__ATTR(num_values, S_IRUGO, msensor_show_num_values, NULL),
 	__ATTR(bin_data_format, S_IRUGO, msensor_show_bin_data_format, NULL),
