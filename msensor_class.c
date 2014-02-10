@@ -384,6 +384,24 @@ static ssize_t msensor_store_poll_ms(struct device *dev,
 	return count;
 }
 
+static ssize_t msensor_show_fw_version(struct device *dev,
+				       struct device_attribute *attr,
+				       char *buf)
+{
+	struct msensor_device *ms = to_msensor(dev);
+
+	return snprintf(buf, MSENSOR_FW_VERSION_SIZE, "%s\n", ms->fw_version);
+}
+
+static ssize_t msensor_show_i2c_addr(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	struct msensor_device *ms = to_msensor(dev);
+
+	return sprintf(buf, "0x%02x\n", ms->i2c_addr);
+}
+
 static ssize_t msensor_read_bin_data(struct file *file, struct kobject *kobj,
                                      struct bin_attribute *attr,
                                      char *buf, loff_t off, size_t count)
@@ -421,7 +439,6 @@ static struct device_attribute msensor_device_attrs[] = {
 	__ATTR(dp, S_IRUGO, msensor_show_dp, NULL),
 	__ATTR(num_values, S_IRUGO, msensor_show_num_values, NULL),
 	__ATTR(bin_data_format, S_IRUGO, msensor_show_bin_data_format, NULL),
-	__ATTR(poll_ms, S_IRUGO | S_IWUGO, msensor_show_poll_ms, msensor_store_poll_ms),
 	/*
 	 * Technically, it is possible to have 32 8-bit values from UART sensors
 	 * and 255 8-bit values from I2C sensors, but known sensors so far are 8
@@ -436,6 +453,38 @@ static struct device_attribute msensor_device_attrs[] = {
 	__ATTR(value6, S_IRUGO , msensor_show_value, NULL),
 	__ATTR(value7, S_IRUGO , msensor_show_value, NULL),
 	__ATTR_NULL
+};
+
+static DEVICE_ATTR(poll_ms, S_IRUGO | S_IWUGO, msensor_show_poll_ms, msensor_store_poll_ms);
+static DEVICE_ATTR(fw_version, S_IRUGO , msensor_show_fw_version, NULL);
+static DEVICE_ATTR(i2c_addr, S_IRUGO , msensor_show_i2c_addr, NULL);
+
+struct attribute *msensor_optional_attrs[] = {
+	&dev_attr_poll_ms.attr,
+	&dev_attr_fw_version.attr,
+	&dev_attr_i2c_addr.attr,
+	NULL
+};
+
+static umode_t msensor_attr_is_visible (struct kobject *kobj,
+					struct attribute *attr, int index)
+{
+	struct device *dev = container_of(kobj, struct device, kobj);
+	struct msensor_device *ms = to_msensor(dev);
+
+	if (attr == &dev_attr_poll_ms.attr)
+		return (ms->get_poll_ms || ms->set_poll_ms) ? attr->mode : 0;
+	if (attr == &dev_attr_fw_version.attr)
+		return ms->fw_version[0] ? attr->mode : 0;
+	if (attr == &dev_attr_i2c_addr.attr)
+		return ms->i2c_addr ? attr->mode : 0;
+
+	return attr->mode;
+}
+
+static struct attribute_group msensor_optional_attr_grp = {
+	.is_visible	= msensor_attr_is_visible,
+	.attrs		= msensor_optional_attrs,
 };
 
 static struct bin_attribute msensor_device_bin_attrs[] = {
@@ -473,6 +522,12 @@ int register_msensor(struct msensor_device *ms, struct device *parent)
 	if (err)
 		return err;
 
+	err = sysfs_create_group(&ms->dev.kobj, &msensor_optional_attr_grp);
+	if (err) {
+		device_unregister(&ms->dev);
+		return err;
+	}
+
 	dev_info(&ms->dev, "Mindstorms sensor registered.\n");
 
 	return 0;
@@ -482,6 +537,7 @@ EXPORT_SYMBOL_GPL(register_msensor);
 void unregister_msensor(struct msensor_device *ms)
 {
 	dev_info(&ms->dev, "Mindstorms sensor unregistered.\n");
+	sysfs_remove_group(&ms->dev.kobj, &msensor_optional_attr_grp);
 	device_unregister(&ms->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_msensor);

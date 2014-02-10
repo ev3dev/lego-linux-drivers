@@ -39,7 +39,6 @@ struct nxt_i2c_sensor_mode_info {
  * struct nxt_i2c_sensor_info
  * @vendor_id: The vendor ID string to match to the sensor.
  * @product_id: The product ID string to match to the sensor.
- * @fw_version: The firmware version read from the sensor.
  * @ms: The msensor class device for this sensor.
  * @mode_info: Array of mode information for each sensor mode.
  * @num_modes: Number of valid elements in the mode_info array.
@@ -47,7 +46,6 @@ struct nxt_i2c_sensor_mode_info {
 struct nxt_i2c_sensor_info {
 	const char *vendor_id;
 	const char *product_id;
-	char fw_version[NXT_I2C_ID_STR_LEN + 1];
 	struct msensor_device ms;
 	struct msensor_mode_info ms_mode_info[MSENSOR_MODE_MAX + 1];
 	struct nxt_i2c_sensor_mode_info i2c_mode_info[MSENSOR_MODE_MAX + 1];

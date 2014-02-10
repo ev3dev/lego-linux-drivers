@@ -185,9 +185,6 @@ static int __devinit nxt_i2c_sensor_probe(struct i2c_client *client,
 	sensor->in_port = apdata->in_port;
 	memcpy(&sensor->info, sensor_info, sizeof(struct nxt_i2c_sensor_info));
 
-	i2c_smbus_read_i2c_block_data(client, NXT_I2C_FW_VER_REG,
-				      NXT_I2C_ID_STR_LEN,
-				      sensor->info.fw_version);
 	strncpy(sensor->info.ms.port_name, dev_name(&sensor->in_port->dev),
 		MSENSOR_PORT_NAME_SIZE);
 	if (!sensor->info.ms.num_view_modes)
@@ -199,6 +196,10 @@ static int __devinit nxt_i2c_sensor_probe(struct i2c_client *client,
 	sensor->info.ms.get_poll_ms = nxt_i2c_sensor_get_poll_ms;
 	sensor->info.ms.set_poll_ms = nxt_i2c_sensor_set_poll_ms;
 	sensor->info.ms.context = sensor;
+	i2c_smbus_read_i2c_block_data(client, NXT_I2C_FW_VER_REG,
+				      NXT_I2C_ID_STR_LEN,
+				      sensor->info.ms.fw_version);
+	sensor->info.ms.i2c_addr = client->addr;
 
 	for (i = 0; i < sensor->info.ms.num_modes; i++) {
 		struct msensor_mode_info *minfo = &sensor->info.ms_mode_info[i];
