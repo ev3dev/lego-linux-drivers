@@ -66,7 +66,7 @@ struct snd_legoev3 {
 	struct input_dev     *input_dev;
 	struct snd_pcm       *pcm;
 	struct tasklet_struct pcm_period_tasklet;
-	struct timer_list     pcm_stop_timer;
+	struct delayed_work   pcm_stop;
 	unsigned              amp_gpio;
 
 	unsigned long  tone_frequency;
@@ -372,7 +372,6 @@ static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 
 	tasklet_init(&chip->pcm_period_tasklet, snd_legoev3_call_pcm_elapsed,
 	             (unsigned long)substream);
-	init_timer(&chip->pcm_stop_timer);
 
 	if (debug) printk(KERN_INFO "legoev3_pcm_playback_open\n");
 
@@ -391,14 +390,6 @@ static int snd_legoev3_pcm_playback_close(struct snd_pcm_substream *substream)
 	if (chip)
 	{
 		tasklet_kill(&chip->pcm_period_tasklet);
-		while (timer_pending(&chip->pcm_stop_timer))
-		{
-			if (debug) printk(KERN_INFO "legoev3_pcm_wait(stop_timer)\n");
-			set_current_state(TASK_INTERRUPTIBLE);
-			schedule_timeout(rampMS * HZ / 1000);
-		}
-		gpio_set_value(chip->amp_gpio, 0);
-
 		if (debug) printk(KERN_INFO "legoev3_pcm_playback_close\n");
 	}
 	legoev3_fiq_ehrpwm_release();
@@ -448,14 +439,17 @@ static int snd_legoev3_pcm_prepare(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-static void snd_legoev3_pcm_stop(unsigned long arg)
+static void snd_legoev3_pcm_stop(struct work_struct *work)
 {
-	struct snd_legoev3 *chip = (void *)arg;
+	struct snd_legoev3 *chip = container_of((struct delayed_work*)work,
+	                                        struct snd_legoev3, pcm_stop);
+
 	if (chip)
 	{
 		if (debug) printk(KERN_INFO "legoev3_pcm_stop\n");
 		pwm_stop(chip->pwm);
 		ehrpwm_et_int_en_dis(chip->pwm, ET_DISABLE);
+		gpio_set_value(chip->amp_gpio, 0);		
 	}
 }
 
@@ -466,11 +460,7 @@ static int snd_legoev3_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 		if (debug) printk(KERN_INFO "legoev3_pcm_trigger(start)\n");
-		if (timer_pending(&chip->pcm_stop_timer))
-		{ 
-			del_timer_sync(&chip->pcm_stop_timer);
-			snd_legoev3_pcm_stop((unsigned long)chip);
-		}
+		cancel_delayed_work_sync(&chip->pcm_stop);
 		legoev3_fiq_ehrpwm_ramp(substream, 1, rampMS);
 		ehrpwm_et_int_en_dis(chip->pwm, ET_ENABLE);
 		pwm_start(chip->pwm);
@@ -478,10 +468,7 @@ static int snd_legoev3_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	case SNDRV_PCM_TRIGGER_STOP:
 		if (debug) printk(KERN_INFO "legoev3_pcm_trigger(stop)\n");
 		legoev3_fiq_ehrpwm_ramp(substream, -1, rampMS);
-		chip->pcm_stop_timer.data = (unsigned long)chip;
-		chip->pcm_stop_timer.function = snd_legoev3_pcm_stop;
-		chip->pcm_stop_timer.expires = jiffies + rampMS * HZ / 1000;
-		add_timer(&chip->pcm_stop_timer);
+		schedule_delayed_work(&chip->pcm_stop, msecs_to_jiffies(1000));
 		break;
 	default:
 		return -EINVAL;
@@ -698,6 +685,7 @@ static int __devinit snd_legoev3_create(struct snd_card *card,
 
 	chip->card = card;
 	chip->pwm = pdata->pwm;
+	INIT_DELAYED_WORK(&chip->pcm_stop, snd_legoev3_pcm_stop);	
 	chip->amp_gpio = pdata->amp_gpio;
 
 	err = snd_device_new(card, SNDRV_DEV_LOWLEVEL, chip, &ops);
@@ -828,6 +816,8 @@ static int __devexit snd_legoev3_remove(struct platform_device *pdev)
 	/* make sure sound is off */
 	hrtimer_cancel(&chip->tone_timer);
 	snd_legoev3_stop_tone(chip);
+
+	cancel_delayed_work_sync(&chip->pcm_stop);
 
 	sysfs_remove_group(&pdev->dev.kobj, &snd_legoev3_attr_group);
 	input_unregister_device(chip->input_dev);
