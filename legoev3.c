@@ -42,16 +42,23 @@
 #include <asm/fiq.h>
 #include <mach/legoev3-fiq.h>
 
-//--- configuration defines ---
+/*--- configuration defines ---*/
 
 #define BUFFER_SIZE (128*1024)
 #define TONE_MIN_HZ 100
 #define TONE_MAX_HZ 10000
 #define MAX_VOLUME  256
 
+/*--- module parameters ---*/
+
+static unsigned int maxSampleRate = 22050;
+static unsigned int rampMS = 20;
 static bool debug = false;
 
-//--- device data struct ---
+module_param(maxSampleRate, uint, S_IRUGO);
+module_param(rampMS, uint, S_IRUGO|S_IWUSR);
+module_param(debug,  bool, S_IRUGO|S_IWUSR);
+
 
 struct snd_legoev3 {
 	struct pwm_device    *pwm;
@@ -69,7 +76,7 @@ struct snd_legoev3 {
 	int volume;
 };
 
-//--- tone mode ---
+/*--- tone mode ---*/
 
 static int snd_legoev3_apply_tone_volume(struct snd_legoev3 *chip)
 {
@@ -127,7 +134,9 @@ static void snd_legoev3_stop_tone(struct snd_legoev3 * chip)
 	snd_legoev3_do_tone(chip, 0);
 }
 
-/*! timer callback on end of tone duration */
+/**
+ * snd_legoev3_cb_stop_tone - timer callback on end of tone duration
+ */
 static enum hrtimer_restart snd_legoev3_cb_stop_tone(struct hrtimer *pTimer)
 {
 	struct snd_legoev3 *chip = container_of(pTimer, struct snd_legoev3, tone_timer);
@@ -137,9 +146,10 @@ static enum hrtimer_restart snd_legoev3_cb_stop_tone(struct hrtimer *pTimer)
 	return HRTIMER_NORESTART;
 }
 
-/*! sysfs 'tone' attribute read
-
-	output: frequency in Hz, 0 if no tone active
+/**
+ * snd_legoev3_show_tone - sysfs 'tone' attribute read
+ *
+ * @output: frequency in Hz, 0 if no tone active
 */
 static ssize_t snd_legoev3_show_tone(struct device *dev,
                                      struct device_attribute *attr,      
@@ -160,15 +170,16 @@ static ssize_t snd_legoev3_show_tone(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "0\n");
 }
 
-/* sysfs 'tone' attribute write
-
-   input:  frequency (Hz) [duration (ms)]
-
-   frequency == 0 stops tone
-   
-   Examples: '1000'     // 1KHz tone
-             '440 1000' // 440 Hz tone for one second
-             '0'        // stop tone
+/**
+ * snd_legoev3_store_tone - sysfs 'tone' attribute write
+ *
+ *  input:  frequency (Hz) [duration (ms)]
+ *
+ * frequency == 0 stops tone
+ * 
+ * Examples: '1000'     // 1KHz tone
+ *           '440 1000' // 440 Hz tone for one second
+ *           '0'        // stop tone
 */
 static ssize_t snd_legoev3_store_tone(struct device *dev,
                                       struct device_attribute *attr,
@@ -227,7 +238,7 @@ static ssize_t snd_legoev3_store_tone(struct device *dev,
 	return -EINVAL;
 }
 
-//--- input device (beep) ---
+/*--- input device (beep) ---*/
 
 static int snd_legoev3_beep_event(struct input_dev *dev, unsigned int type,
                                   unsigned int code, int hz)
@@ -280,7 +291,7 @@ static int __devinit snd_legoev3_input_device_create(struct snd_card *card)
 	return 0;
 }
 
-//--- ALSA PCM device ---
+/*--- ALSA PCM device ---*/
 
 static struct snd_pcm_hardware snd_legoev3_playback_hw = {
 	.info = (SNDRV_PCM_INFO_MMAP |
@@ -298,8 +309,6 @@ static struct snd_pcm_hardware snd_legoev3_playback_hw = {
 	.periods_min =      1,
 	.periods_max =      1024,
 };
-
-static unsigned int rampMS = 20;
 
 /*
  * Call snd_pcm_period_elapsed in a tasklet
@@ -522,7 +531,7 @@ static int __devinit snd_legoev3_new_pcm(struct snd_legoev3 *chip)
 	return 0;
 }
 
-//--- volume control ---
+/*--- volume control ---*/
 
 static struct snd_kcontrol_new volume_control;
 
@@ -579,9 +588,10 @@ static struct snd_kcontrol_new volume_control = {
 	.put    = snd_legoev3_volume_control_put
 };
 
-/*! sysfs 'volume' attribute read
-
-	output: volume in percent (0..100)
+/**
+ * snd_legoev3_show_volume - sysfs 'volume' attribute read
+ *
+ * output: volume in percent (0..100)
 */
 static ssize_t snd_legoev3_show_volume(struct device *dev,
                                        struct device_attribute *attr,
@@ -593,9 +603,10 @@ static ssize_t snd_legoev3_show_volume(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%u\n", (chip->volume * 100)/MAX_VOLUME);
 }
 
-/*! sysfs 'volume' attribute write
-
-	input: volume in percent (0..100)
+/**
+ * snd_legoev3_store_volume - sysfs 'volume' attribute write
+ *
+ * input: volume in percent (0..100)
 */
 static ssize_t snd_legoev3_store_volume(struct device *dev,
                                         struct device_attribute *attr,
@@ -636,13 +647,14 @@ static ssize_t snd_legoev3_store_volume(struct device *dev,
 }
 
 
-//--- sysfs attributes ---
+/*--- sysfs attributes ---*/
 
-/*! sysfs 'mode' attribute read
-
-	output: 'tone' for tone mode
-	        'pcm'  for ALSA PCM playback mode
-	        'idle'
+/**
+ * snd_legoev3_show_mode - sysfs 'mode' attribute read
+ *
+ * output: 'tone' for tone mode
+ *         'pcm'  for ALSA PCM playback mode
+ *         'idle'
 */
 static ssize_t snd_legoev3_show_mode(struct device *dev,
                                      struct device_attribute *attr,
@@ -675,7 +687,7 @@ static struct attribute_group snd_legoev3_attr_group = {
 	.attrs = snd_legoev3_attrs,
 };
 
-//--- platform sound device ---
+/*--- platform sound device ---*/
 
 static int __devinit snd_legoev3_create(struct snd_card *card,
                                         struct snd_legoev3_platform_data *pdata)
@@ -745,11 +757,6 @@ static int __devinit snd_legoev3_init_ehrpwm(struct pwm_device *pwm)
 
 	return 0;
 }
-
-static unsigned int maxSampleRate = 22050;
-module_param(maxSampleRate, uint, S_IRUGO);
-module_param(rampMS, uint, S_IRUGO|S_IWUSR);
-module_param(debug,  bool, S_IRUGO|S_IWUSR);
 
 static int __devinit snd_legoev3_probe(struct platform_device *pdev)
 {
@@ -832,7 +839,7 @@ static int __devexit snd_legoev3_remove(struct platform_device *pdev)
 	return 0;
 }
 
-//--- module ---
+/*--- module ---*/
 
 static struct platform_driver snd_legoev3_platform_driver = {
 	.driver = {
@@ -855,6 +862,7 @@ static void __exit snd_legoev3_exit(void)
 module_exit(snd_legoev3_exit);
 
 MODULE_DESCRIPTION("LEGO Mindstorms EV3 speaker driver");
-MODULE_AUTHOR("David Lechner <david@lechnology.com>, Franz Detro <franz.detro@gmx.de>");
+MODULE_AUTHOR("David Lechner <david@lechnology.com>");
+MODULE_AUTHOR("Franz Detro <franz.detro@gmx.de>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:snd-legoev3");
