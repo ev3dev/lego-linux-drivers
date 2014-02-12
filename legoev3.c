@@ -51,14 +51,16 @@
 
 /*--- module parameters ---*/
 
-static unsigned int maxSampleRate = 22050;
-static unsigned int rampMS = 20;
+static unsigned int max_sample_rate = 22050;
+static unsigned int ramp_ms = 20;
 static bool debug = false;
 
-module_param(maxSampleRate, uint, S_IRUGO);
-module_param(rampMS, uint, S_IRUGO|S_IWUSR);
+module_param(max_sample_rate, uint, S_IRUGO);
+MODULE_PARM_DESC(max_sample_rate, "Maximum sample rate, range [8000..48000].");
+module_param(ramp_ms, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(ramp_ms, "PWM ramp time in ms. 0 turns ramping off.");
 module_param(debug,  bool, S_IRUGO|S_IWUSR);
-
+MODULE_PARM_DESC(debug, "Enable ALSA callback logging.");
 
 struct snd_legoev3 {
 	struct pwm_device    *pwm;
@@ -430,7 +432,7 @@ static int snd_legoev3_pcm_prepare(struct snd_pcm_substream *substream)
 
 	if (debug)
         	printk(KERN_INFO "legoev3_pcm_prepare with sample rate=%d, factor=%d, ramp=%d\n",
-		       substream->runtime->rate, int_prd, rampMS);
+		       substream->runtime->rate, int_prd, ramp_ms);
 
 	gpio_set_value(chip->amp_gpio, 1);
 
@@ -463,13 +465,13 @@ static int snd_legoev3_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		if (debug) printk(KERN_INFO "legoev3_pcm_trigger(start)\n");
 		chip->pcm_stop_cancelled = true;
 		cancel_delayed_work(&chip->pcm_stop);
-		legoev3_fiq_ehrpwm_ramp(substream, 1, rampMS);
+		legoev3_fiq_ehrpwm_ramp(substream, 1, ramp_ms);
 		ehrpwm_et_int_en_dis(chip->pwm, ET_ENABLE);
 		pwm_start(chip->pwm);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 		if (debug) printk(KERN_INFO "legoev3_pcm_trigger(stop)\n");
-		legoev3_fiq_ehrpwm_ramp(substream, -1, rampMS);
+		legoev3_fiq_ehrpwm_ramp(substream, -1, ramp_ms);
 		chip->pcm_stop_cancelled = false;
 		schedule_delayed_work(&chip->pcm_stop, msecs_to_jiffies(1000));
 		break;
@@ -764,12 +766,12 @@ static int __devinit snd_legoev3_probe(struct platform_device *pdev)
 		return PTR_ERR(pdata->pwm);
 
 	// configure maximal sample rate
-	if (maxSampleRate < 8000)
-		maxSampleRate = 8000;
-	else if (maxSampleRate > 48000)
-		maxSampleRate = 48000;
+	if (max_sample_rate < 8000)
+		max_sample_rate = 8000;
+	else if (max_sample_rate > 48000)
+		max_sample_rate = 48000;
 	
-	snd_legoev3_playback_hw.rate_max = maxSampleRate;
+	snd_legoev3_playback_hw.rate_max = max_sample_rate;
 
 	err = snd_card_create(-1, "legoev3", THIS_MODULE,
 	                      sizeof(struct snd_legoev3), &card);
