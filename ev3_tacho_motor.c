@@ -27,7 +27,50 @@
 struct ev3_tacho_motor_data {
 	struct tacho_motor_device tm;
 	struct legoev3_port_device *out_port;
+
+	unsigned dir_state;
+	unsigned int_state;
+
+//        irqreturn_t (*isr)(struct tacho_motor_device *)
 };
+
+// static void tacho_motor_isr(struct tacho_motor_device *tm)
+// {
+// extern int ev3_output_port_get_pin56_levels(struct legoev3_port_device *out_port, int *, int *)
+//static irqreturn_t bfin_rotary_isr(int irq, void *dev_id)
+//  62 {
+//  63         struct platform_device *pdev = dev_id;
+//  64         struct bfin_rot *rotary = platform_get_drvdata(pdev);
+//  65         int delta;
+//  66 
+//  67         switch (bfin_read_CNT_STATUS()) {
+//  68 
+//  69         case ICII:
+//  70                 break;
+//  71 
+//  72         case UCII:
+//  73         case DCII:
+//  74                 delta = bfin_read_CNT_COUNTER();
+//  75                 if (delta)
+//  76                         report_rotary_event(rotary, delta);
+//  77                 break;
+//  78 
+//  79         case CZMII:
+//  80                 report_key_event(rotary->input, rotary->button_key);
+//  81                 break;
+//  82 
+//  83         default:
+//  84                 break;
+//  85         }
+//  86 
+//  87         bfin_write_CNT_COMMAND(W1LCNT_ZERO);    /* Clear COUNTER */
+//  88         bfin_write_CNT_STATUS(-1);      /* Clear STATUS */
+//  89 
+//  90         return IRQ_HANDLED;
+//  91 }
+	
+// }
+
 
 // static bool ev3_touch_sensor_pressed(struct touch_sensor_device *ts)
 // {
@@ -65,6 +108,13 @@ static int __devinit ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 	dev_info(&motor->dev, "Tacho Motor connected to port %s\n",
 		dev_name(&ev3_tm->out_port->dev));
 
+        // Here's where we set up the port pins on a per-port basis
+        //
+
+//         err = ev3_output_port_register_irq_pin5( ev3_tm->out_port );
+//         err = request_irq(unsigned int irq, irq_handler_t handler, unsigned long flags,
+// 153             const char *name, void *dev);
+// 154 
 	return 0;
 
 dev_set_drvdata_fail:

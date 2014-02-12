@@ -59,6 +59,7 @@ enum gpio_index {
 	GPIO_PIN1,
 	GPIO_PIN2,
 	GPIO_PIN5,
+	GPIO_PIN5_TACHO,
 	GPIO_PIN6,
 	NUM_GPIO
 };
@@ -96,11 +97,7 @@ enum motor_type {
 	NUM_MOTOR
 };
 
-
-DEVICE_ATTR(foo, S_IRUGO, NULL, NULL);
-
 static struct attribute *legoev3_output_port_device_type_attrs[] = {
-	&dev_attr_foo.attr,
 	NULL
 };
 
@@ -113,11 +110,6 @@ const struct attribute_group *ev3_motor_device_type_attr_groups[] = {
 	&legoev3_output_port_device_type_attr_grp,
 	NULL
 };
-
-// struct device_type ev3_output_port_device_type = {
-// 	.name	= "ev3-output-port",
-// 	.groups	= ev3_output_port_device_type_attr_groups,
-// };
 
 struct device_type ev3_motor_device_types[] = {
 	[MOTOR_NEWTACHO] = {
@@ -169,6 +161,29 @@ struct ev3_output_port_data {
  	struct legoev3_port_device *motor;
 };
 
+int ev3_output_port_register_irq(struct legoev3_port_device *out_port)
+{
+//        err = request_irq(unsigned int irq, irq_handler_t handler, unsigned long flags,
+//             const char *name, void *dev);
+
+//        error = request_irq(rotary->irq, bfin_rotary_isr,
+//                             0, dev_name(&pdev->dev), pdev);
+  
+	return 0;
+}
+EXPORT_SYMBOL_GPL(ev3_output_port_register_irq);
+
+int ev3_output_port_get_pin56_levels(struct legoev3_port_device *out_port, unsigned *pin5, unsigned *pin6)
+{
+	struct ev3_output_port_data *port = dev_get_drvdata(&out_port->dev);
+
+ 	*pin5 = gpio_get_value(port->gpio[GPIO_PIN5_TACHO].gpio);
+ 	*pin6 = gpio_get_value(port->gpio[GPIO_PIN6].gpio);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(ev3_output_port_get_pin56_levels);
+
 // int ev3_output_port_get_foo(struct legoev3_port_device *out_port)
 // {
 // 	struct ev3_output_port_data *port = dev_get_drvdata(&out_port->dev);
@@ -179,10 +194,11 @@ struct ev3_output_port_data {
 
 void ev3_output_port_float(struct ev3_output_port_data *port)
 {
-	gpio_direction_output(port->gpio[GPIO_PIN1].gpio, 0);
-	gpio_direction_output(port->gpio[GPIO_PIN2].gpio, 0);
-	gpio_direction_output(port->gpio[GPIO_PIN5].gpio, 0);
-	gpio_direction_input( port->gpio[GPIO_PIN6].gpio   );
+	gpio_direction_output(port->gpio[GPIO_PIN1      ].gpio, 0);
+	gpio_direction_output(port->gpio[GPIO_PIN2      ].gpio, 0);
+	gpio_direction_output(port->gpio[GPIO_PIN5      ].gpio, 0);
+	gpio_direction_input( port->gpio[GPIO_PIN5_TACHO].gpio);
+	gpio_direction_input( port->gpio[GPIO_PIN6      ].gpio);
 }
 
 void ev3_output_port_register_motor(struct work_struct *work)
@@ -193,6 +209,13 @@ void ev3_output_port_register_motor(struct work_struct *work)
 	struct ev3_motor_platform_data pdata;
 
         pr_warning("Registering a motor driver for type %d on port %d!\n", port->motor_type, port->id );
+	
+        pr_warning("GPIO_PIN1       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN1].gpio);
+        pr_warning("GPIO_PIN2       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN2].gpio);
+        pr_warning("GPIO_PIN5       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN5].gpio);
+        pr_warning("GPIO_PIN5_TACHO for port %d is: %d\n", port->id, port->gpio[GPIO_PIN5_TACHO].gpio);
+        pr_warning("GPIO_PIN6       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN6].gpio);
+
 
 	if (port->motor_type == MOTOR_NONE
 	    || port->motor_type == MOTOR_ERR
@@ -446,9 +469,19 @@ static int __devinit ev3_output_port_probe(struct legoev3_port_device *pdev)
 	port->gpio[GPIO_PIN5].flags	= GPIOF_IN;
 	port->gpio[GPIO_PIN5].label	= "pin5";
 
+	port->gpio[GPIO_PIN5_TACHO].gpio	= pdata->pin5_tacho_gpio;
+	port->gpio[GPIO_PIN5_TACHO].flags	= GPIOF_IN;
+	port->gpio[GPIO_PIN5_TACHO].label	= "pin5_tacho";
+
 	port->gpio[GPIO_PIN6].gpio	= pdata->pin6_gpio;
 	port->gpio[GPIO_PIN6].flags	= GPIOF_IN;
 	port->gpio[GPIO_PIN6].label	= "pin6";
+
+        pr_warning("GPIO_PIN1       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN1].gpio);
+        pr_warning("GPIO_PIN2       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN2].gpio);
+        pr_warning("GPIO_PIN5       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN5].gpio);
+        pr_warning("GPIO_PIN5_TACHO for port %d is: %d\n", port->id, port->gpio[GPIO_PIN5_TACHO].gpio);
+        pr_warning("GPIO_PIN6       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN6].gpio);
 
 	err = gpio_request_array(port->gpio, ARRAY_SIZE(port->gpio));
 	if (err) {
@@ -486,9 +519,9 @@ static int __devexit ev3_output_port_remove(struct legoev3_port_device *pdev)
 
 	hrtimer_cancel(&port->timer);
 	cancel_work_sync(&port->work);
-//	if (port->sensor)
-//		legoev3_port_device_unregister(port->sensor);
-//	ev3_output_port_float(port);
+	if (port->motor)
+		legoev3_port_device_unregister(port->motor);
+	ev3_output_port_float(port);
 	gpio_free_array(port->gpio, ARRAY_SIZE(port->gpio));
 	put_legoev3_analog(port->analog);
 	dev_set_drvdata(&pdev->dev, NULL);
