@@ -67,6 +67,7 @@ struct snd_legoev3 {
 	struct snd_pcm       *pcm;
 	struct tasklet_struct pcm_period_tasklet;
 	struct delayed_work   pcm_stop;
+	bool                  pcm_stop_cancelled;
 	unsigned              amp_gpio;
 
 	unsigned long  tone_frequency;
@@ -444,7 +445,7 @@ static void snd_legoev3_pcm_stop(struct work_struct *work)
 	struct snd_legoev3 *chip = container_of((struct delayed_work*)work,
 	                                        struct snd_legoev3, pcm_stop);
 
-	if (chip)
+	if (chip && !chip->pcm_stop_cancelled)
 	{
 		if (debug) printk(KERN_INFO "legoev3_pcm_stop\n");
 		pwm_stop(chip->pwm);
@@ -460,7 +461,8 @@ static int snd_legoev3_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 		if (debug) printk(KERN_INFO "legoev3_pcm_trigger(start)\n");
-		cancel_delayed_work_sync(&chip->pcm_stop);
+		chip->pcm_stop_cancelled = true;
+		cancel_delayed_work(&chip->pcm_stop);
 		legoev3_fiq_ehrpwm_ramp(substream, 1, rampMS);
 		ehrpwm_et_int_en_dis(chip->pwm, ET_ENABLE);
 		pwm_start(chip->pwm);
@@ -468,6 +470,7 @@ static int snd_legoev3_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	case SNDRV_PCM_TRIGGER_STOP:
 		if (debug) printk(KERN_INFO "legoev3_pcm_trigger(stop)\n");
 		legoev3_fiq_ehrpwm_ramp(substream, -1, rampMS);
+		chip->pcm_stop_cancelled = false;
 		schedule_delayed_work(&chip->pcm_stop, msecs_to_jiffies(1000));
 		break;
 	default:
@@ -685,7 +688,8 @@ static int __devinit snd_legoev3_create(struct snd_card *card,
 
 	chip->card = card;
 	chip->pwm = pdata->pwm;
-	INIT_DELAYED_WORK(&chip->pcm_stop, snd_legoev3_pcm_stop);	
+	INIT_DELAYED_WORK(&chip->pcm_stop, snd_legoev3_pcm_stop);
+	chip->pcm_stop_cancelled = false;	
 	chip->amp_gpio = pdata->amp_gpio;
 
 	err = snd_device_new(card, SNDRV_DEV_LOWLEVEL, chip, &ops);
@@ -817,6 +821,7 @@ static int __devexit snd_legoev3_remove(struct platform_device *pdev)
 	hrtimer_cancel(&chip->tone_timer);
 	snd_legoev3_stop_tone(chip);
 
+	chip->pcm_stop_cancelled = false;	
 	cancel_delayed_work_sync(&chip->pcm_stop);
 
 	sysfs_remove_group(&pdev->dev.kobj, &snd_legoev3_attr_group);
