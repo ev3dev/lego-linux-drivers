@@ -336,7 +336,7 @@ static void snd_legoev3_period_elapsed(void* data)
 /*
  * Only called when the ehrpwm interrupt is configured as regular IRQ and
  * not as a FIQ. In other words, this is for debugging (when assigned to IRQ)
- * and serves as a dummy callback duing normal usage (when assigned to FIQ).
+ * and serves as a dummy callback during normal usage (when assigned to FIQ).
  */
 static int snd_legoev3_et_callback(struct ehrpwm_pwm *ehrpwm, void *data)
 {
@@ -715,7 +715,7 @@ static int __devinit snd_legoev3_init_ehrpwm(struct pwm_device *pwm)
 
 	/*
 	 * This configuration code was copied from lms2012. Much of it is
-	 * probably redudant or not needed.
+	 * probably redundant or not needed.
 	 */
 	err = ehrpwm_tb_set_phase(pwm, 0);
 	if (err < 0)
