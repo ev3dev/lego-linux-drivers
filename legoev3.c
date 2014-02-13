@@ -357,7 +357,7 @@ static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 	if (chip->tone_frequency)
 		return -EBUSY;
 
-	err = legoev3_fiq_ehrpwm_request(substream);
+	err = legoev3_fiq_ehrpwm_request();
 	if (err < 0)
 		return err;
 
