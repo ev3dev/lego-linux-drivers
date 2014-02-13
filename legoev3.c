@@ -761,9 +761,18 @@ static int __devinit snd_legoev3_probe(struct platform_device *pdev)
 	pdata = pdev->dev.platform_data;
 	if (!pdata || !pdata->pwm_dev_name || !pdata->amp_gpio)
 		return -ENXIO;
+
 	pdata->pwm = pwm_request_byname(pdata->pwm_dev_name, "snd-legoev3");
 	if (IS_ERR(pdata->pwm))
 		return PTR_ERR(pdata->pwm);
+
+	err = snd_legoev3_init_ehrpwm(pdata->pwm);
+	if (err < 0)
+		goto err_snd_legoev3_init_ehrpwm;
+
+	err = gpio_request_one(pdata->amp_gpio, GPIOF_OUT_INIT_LOW, "snd_ena");
+	if (err)
+		goto err_gpio_request_one;
 
 	// configure maximal sample rate
 	if (max_sample_rate < 8000)
@@ -776,15 +785,11 @@ static int __devinit snd_legoev3_probe(struct platform_device *pdev)
 	err = snd_card_create(-1, "legoev3", THIS_MODULE,
 	                      sizeof(struct snd_legoev3), &card);
 	if (err < 0)
-		goto err1;
+		goto err_snd_card_create;
 
 	err = snd_legoev3_create(card, pdata);
 	if (err < 0)
-		goto err2;
-
-	err = snd_legoev3_init_ehrpwm(pdata->pwm);
-	if (err < 0)
-		goto err2;
+		goto err_snd_legoev3_create;
 
 	strcpy(card->driver, "legoev3");
 	strcpy(card->shortname, "LEGO Mindstorms EV3 speaker");
@@ -793,11 +798,11 @@ static int __devinit snd_legoev3_probe(struct platform_device *pdev)
 
 	err = snd_card_register(card);
 	if (err < 0)
-		goto err2;
+		goto err_snd_card_register;
 
 	err = snd_legoev3_input_device_create(card);
 	if (err < 0)
-		goto err2;
+		goto err_snd_legoev3_input_device_create;
 
 	dev_set_drvdata(&pdev->dev, card);
 
@@ -805,9 +810,14 @@ static int __devinit snd_legoev3_probe(struct platform_device *pdev)
 
 	return 0;
 
-err2:
+err_snd_legoev3_input_device_create:
+err_snd_card_register:
+err_snd_legoev3_create:
 	snd_card_free(card);
-err1:
+err_snd_card_create:
+	gpio_free(pdata->amp_gpio);
+err_gpio_request_one:
+err_snd_legoev3_init_ehrpwm:
 	pwm_release(pdata->pwm);
 	pdata->pwm = NULL;
 	return err;
@@ -831,8 +841,10 @@ static int __devexit snd_legoev3_remove(struct platform_device *pdev)
 	input_free_device(chip->input_dev);
 	snd_card_free(card);
 	dev_set_drvdata(&pdev->dev, NULL);
+	gpio_free(pdata->amp_gpio);
 	pwm_release(pdata->pwm);
 	pdata->pwm = NULL;
+
 	return 0;
 }
 
