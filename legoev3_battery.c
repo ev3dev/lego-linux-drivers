@@ -23,12 +23,18 @@
 
 #include <mach/legoev3.h>
 
+enum legoev3_battery_gpio {
+	LEGOEV3_BATTERY_GPIO_ADC,
+	LEGOEV3_BATTERY_GPIO_TYPE,
+	NUM_LEGOEV3_BATTERY_GPIO
+};
+
 struct legoev3_battery {
 	struct power_supply psy;
 	struct legoev3_analog_device *alg;
 	int status;
 	int technology;
-	int batt_type_gpio;
+	struct gpio gpio[NUM_LEGOEV3_BATTERY_GPIO];
 	int v_max;
 	int v_min;
 };
@@ -125,14 +131,18 @@ static int __devinit legoev3_battery_probe(struct platform_device *pdev)
 	bat->psy.get_property = legoev3_battery_get_property;
 	bat->psy.use_for_apm = 1;
 
-	bat->batt_type_gpio = pdata->batt_type_gpio;
+	bat->gpio[LEGOEV3_BATTERY_GPIO_ADC].gpio = pdata->batt_adc_gpio;
+	bat->gpio[LEGOEV3_BATTERY_GPIO_ADC].flags = GPIOF_OUT_INIT_HIGH;
+	bat->gpio[LEGOEV3_BATTERY_GPIO_ADC].label = "EV3 battery to ADC";
+	bat->gpio[LEGOEV3_BATTERY_GPIO_TYPE].gpio = pdata->batt_type_gpio;
+	bat->gpio[LEGOEV3_BATTERY_GPIO_TYPE].flags = GPIOF_IN;
+	bat->gpio[LEGOEV3_BATTERY_GPIO_TYPE].label = "EV3 battery type indicator";
 
-	ret = gpio_request_one(bat->batt_type_gpio, GPIOF_IN,
-						"EV3 battery type indicator");
+	ret = gpio_request_array(bat->gpio, NUM_LEGOEV3_BATTERY_GPIO);
 	if (ret < 0)
-		goto gpio_request_one_fail;
+		goto gpio_request_gpio_request_array;
 
-	ret = gpio_get_value(bat->batt_type_gpio);
+	ret = gpio_get_value(bat->gpio[LEGOEV3_BATTERY_GPIO_TYPE].gpio);
 	if (ret < 0)
 		goto gpio_get_value_fail;
 	else if (ret) {
@@ -154,8 +164,9 @@ static int __devinit legoev3_battery_probe(struct platform_device *pdev)
 
 power_supply_register_fail:
 gpio_get_value_fail:
-	gpio_free(bat->batt_type_gpio);
-gpio_request_one_fail:
+	gpio_set_value(bat->gpio[LEGOEV3_BATTERY_GPIO_ADC].gpio, 0);
+	gpio_free_array(bat->gpio, NUM_LEGOEV3_BATTERY_GPIO);
+gpio_request_gpio_request_array:
 	put_legoev3_analog(bat->alg);
 no_analog_device:
 no_platform_data:
@@ -169,7 +180,8 @@ static int __devexit legoev3_battery_remove(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, NULL);
 	power_supply_unregister(&bat->psy);
-	gpio_free(bat->batt_type_gpio);
+	gpio_set_value(bat->gpio[LEGOEV3_BATTERY_GPIO_ADC].gpio, 0);
+	gpio_free_array(bat->gpio, NUM_LEGOEV3_BATTERY_GPIO);
 	put_legoev3_analog(bat->alg);
 	devm_kfree(&pdev->dev, bat);
 	return 0;
