@@ -200,7 +200,7 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[5] = {
 				.name = "ES-IN-WATT",
-				.units = "V",
+				.units = "W",
 				.raw_max = 10000,
 				.si_max = 10000,
 				.decimals = 3,
@@ -208,7 +208,7 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[6] = {
 				.name = "ES-OUT-WATT",
-				.units = "A",
+				.units = "W",
 				.raw_max = 10000,
 				.si_max = 10000,
 				.decimals = 3,
@@ -566,10 +566,14 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.ms_mode_info	= {
 			[0] = {
 				.name = "HT-IRRECV",
+				.units = "pct",
+				.data_type = MSENSOR_DATA_S8,
 			},
 			[1] = {
 				.name = "HT-IRRECV-8",
 				.data_sets = 8,
+				.units = "pct",
+				.data_type = MSENSOR_DATA_S8,
 			},
 		},
 		.i2c_mode_info	= {
@@ -627,36 +631,58 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.ms.num_modes	= 5,
 		.ms_mode_info	= {
 			[0] = {
-				.name = "HT-SPRO-DIN",
+				.name = "HT-SPRO-AIN",
+				.data_sets = 4,
+				.data_type = MSENSOR_DATA_U16,
 			},
 			[1] = {
-				.name = "HT-SPRO-DOT",
+				.name = "HT-SPRO-DIN",
 			},
 			[2] = {
-				.name = "HT-SPRO-DCT",
+				.name = "HT-SPRO-DOT",
 			},
 			[3] = {
-				.name = "HT-SPRO-STB",
+				.name = "HT-SPRO-DCT",
 			},
 			[4] = {
+				.name = "HT-SPRO-STB",
+			},
+			[5] = {
 				.name = "HT-SPRO-LED",
+			},
+			[6] = {
+				.name = "HT-SPRO-AO0",
+				.data_sets = 5,
+			},
+			[7] = {
+				.name = "HT-SPRO-AO1",
+				.data_sets = 5,
 			},
 		},
 		.i2c_mode_info	= {
 			[0] = {
-				.read_data_reg	= 0x4C,
+				.read_data_reg = 0x42,
 			},
 			[1] = {
-				.read_data_reg	= 0x4D,
+				.read_data_reg	= 0x4C,
 			},
 			[2] = {
-				.read_data_reg	= 0x4E,
+				.read_data_reg	= 0x4D,
 			},
 			[3] = {
-				.read_data_reg	= 0x50,
+				.read_data_reg	= 0x4E,
 			},
 			[4] = {
+				.read_data_reg	= 0x50,
+			},
+			[5] = {
 				.read_data_reg	= 0x51,
+			},
+			[6] = {
+				.read_data_reg	= 0x52,
+			},
+			[7] = {
+				.read_data_reg	= 0x57,
 			},
 		},
 	},
@@ -683,13 +709,9 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		},
 		.i2c_mode_info	= {
 			[0] = {
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= 'w',
 				.read_data_reg	= 0x42,
 			},
 			[1] = {
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= 'w',
 				.read_data_reg	= 0x6A,
 			},
 		},
