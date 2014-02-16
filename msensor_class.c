@@ -428,6 +428,9 @@ static ssize_t msensor_write_bin_data(struct file *file ,struct kobject *kobj,
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct msensor_device *ms = to_msensor(dev);
 
+	if (!ms->write_data)
+		return -ENXIO;
+
 	return ms->write_data(ms->context, buf, off, count);
 }
 

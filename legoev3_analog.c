@@ -35,6 +35,7 @@
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/init.h>
+#include <linux/interrupt.h>
 #include <linux/slab.h>
 #include <linux/device.h>
 #include <linux/err.h>
@@ -83,6 +84,11 @@ enum nxt_color_read_state {
 	NUM_NXT_COLOR_READ_STATE,
 };
 
+struct legoev3_analog_callback_info {
+	legoev3_analog_cb_func_t function;
+	void *context;
+};
+
 /**
  * struct legoev3_analog_device - TI ADS7957 analog/digital converter
  * @name: Name of this device.
@@ -107,6 +113,8 @@ enum nxt_color_read_state {
  * @current_command: Stores the most recent command that was sent to the ADC.
  * @raw_data: Buffer to hold the raw (unscaled) input from the ADC for each
  *	channel.
+ * @callbacks: Callback functions for each channel. Called when data is updated.
+ * @callback_tasklet: Tasklet to perform callbacks for each channel.
  * @num_connected: Number of devices connected to the input and output ports.
  * @read_nxt_color: Indicates if we should be reading NXT color data for each
  *	input port.
@@ -134,6 +142,8 @@ struct legoev3_analog_device {
 	struct spi_message read_all_msg;
 	u16 current_command;
 	u16 raw_data[ADS7957_NUM_CHANNELS];
+	struct legoev3_analog_callback_info callbacks[ADS7957_NUM_CHANNELS];
+	struct tasklet_struct callback_tasklet;
 	u8 num_connected;
 	bool read_nxt_color[NUM_EV3_PORT_IN];
 	enum ev3_input_port_id current_nxt_color_port;
@@ -195,6 +205,7 @@ static void legoev3_analog_read_all_msg_complete(void* context)
 				alg->current_nxt_color_port = EV3_PORT_IN1;
 			alg->current_nxt_color_read_state = NXT_COLOR_READ_STATE_AMBIANT;
 		}
+		tasklet_schedule(&alg->callback_tasklet);
 	}
 	alg->msg_busy = false;
 }
@@ -235,6 +246,7 @@ static enum hrtimer_restart legoev3_analog_timer_callback(struct hrtimer *timer)
 	if (ret < 0) {
 		dev_err(&spi->dev, "%s: spi async fail %d\n",
 				__func__, ret);
+		alg->msg_busy = false;
 		return HRTIMER_NORESTART;
 	}
 
@@ -246,7 +258,7 @@ u16 legoev3_analog_get_value_for_ch(struct legoev3_analog_device *alg, u8 channe
 	int ret = -EINVAL;
 	u16 val;
 
-	if (channel > ADS7957_NUM_CHANNELS) {
+	if (channel >= ADS7957_NUM_CHANNELS) {
 		dev_crit(&alg->dev, "%s: channel id %d >= available channels (%d)\n",
 			 __func__, channel, ADS7957_NUM_CHANNELS);
 		return ret;
@@ -303,6 +315,36 @@ u16 legoev3_analog_batt_curr_value(struct legoev3_analog_device *alg)
 	return legoev3_analog_get_value_for_ch(alg, alg->pdata->batt_curr_ch);
 }
 EXPORT_SYMBOL_GPL(legoev3_analog_batt_curr_value);
+
+void legoev3_analog_register_cb_for_ch(struct legoev3_analog_device *alg,
+				       u8 channel,
+				       legoev3_analog_cb_func_t function,
+				       void *context)
+{
+	if (channel >= ADS7957_NUM_CHANNELS) {
+		dev_crit(&alg->dev, "%s: channel id %d >= available channels (%d)\n",
+			 __func__, channel, ADS7957_NUM_CHANNELS);
+		return;
+	}
+
+	alg->callbacks[channel].function = function;
+	alg->callbacks[channel].context = context;
+}
+
+void legoev3_analog_register_in_cb(struct legoev3_analog_device *alg,
+				   enum ev3_input_port_id id,
+				   legoev3_analog_cb_func_t function,
+				   void *context)
+{
+	if (id >= NUM_EV3_PORT_IN) {
+		dev_crit(&alg->dev, "%s: id %d >= available ports (%d)\n",
+			 __func__, id, NUM_EV3_PORT_IN);
+		return;
+	}
+	legoev3_analog_register_cb_for_ch(alg, alg->pdata->in_pin1_ch[id],
+	                                  function, context);
+}
+EXPORT_SYMBOL_GPL(legoev3_analog_register_in_cb);
 
 static ssize_t legoev3_analog_show_name(struct device *dev,
 					struct device_attribute *devattr,
@@ -435,6 +477,17 @@ add_device_failed:
 	return err;
 }
 
+void legoev3_analog_tasklet_func(unsigned long data)
+{
+	struct legoev3_analog_device *alg = (void *)data;
+	int i;
+
+	for (i = 0; i < ADS7957_NUM_CHANNELS; i++) {
+		if (alg->callbacks[i].function)
+			alg->callbacks[i].function(alg->callbacks[i].context);
+	}
+}
+
 struct legoev3_analog_device legoev3_analog = {
 	.name	= "legoev3-analog",
 };
@@ -515,6 +568,9 @@ static int __devinit legoev3_analog_probe(struct spi_device *spi)
 	alg->read_all_msg.complete = legoev3_analog_read_all_msg_complete;
 	alg->read_all_msg.context = alg;
 
+	tasklet_init(&alg->callback_tasklet, legoev3_analog_tasklet_func,
+		     (unsigned long)alg);
+
 	err = legoev3_analog_device_register(&spi->dev, alg);
 	if (err < 0)
 		goto legoev3_analog_device_register_fail;
@@ -535,7 +591,10 @@ static int __devexit legoev3_analog_remove(struct spi_device *spi)
 {
 	struct legoev3_analog_device *alg = spi_get_drvdata(spi);
 
+	hrtimer_cancel(&alg->timer);
+	tasklet_kill(&alg->callback_tasklet);
 	device_unregister(&alg->dev);
+	spi_set_drvdata(alg->spi, NULL);
 
 	return 0;
 }

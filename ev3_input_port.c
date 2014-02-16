@@ -244,7 +244,7 @@ struct device_type ev3_sensor_device_types[] = {
 		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_NXT_ANALOG] = {
-		.name	= "nxt-generic-analog-sensor",
+		.name	= "nxt-analog-sensor",
 		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_NXT_I2C] = {
@@ -264,7 +264,7 @@ struct device_type ev3_sensor_device_types[] = {
 /**
  * struct ev3_input_port_data - Driver data for an input port on the EV3 brick
  * @id: Unique identifier for the port.
- * @pdev: Pointer to the legoev3_port_device that is bound to this instance.
+ * @in_port: Pointer to the legoev3_port_device that is bound to this instance.
  * @analog: pointer to the legoev3-analog device for accessing data from the
  *	analog/digital converter.
  * @gpio: Array of gpio pins used by this input port.
@@ -289,7 +289,7 @@ struct device_type ev3_sensor_device_types[] = {
  */
 struct ev3_input_port_data {
 	enum ev3_input_port_id id;
-	struct legoev3_port_device *pdev;
+	struct legoev3_port_device *in_port;
 	struct legoev3_analog_device *analog;
 	struct gpio gpio[NUM_GPIO];
 	unsigned pin5_mux[NUM_PIN5_MUX_MODE];
@@ -331,6 +331,17 @@ void ev3_input_port_set_pin1_out(struct legoev3_port_device *in_port,
 	gpio_set_value(port->gpio[GPIO_PIN1].gpio, value);
 }
 EXPORT_SYMBOL_GPL(ev3_input_port_set_pin1_out);
+
+void ev3_input_port_register_analog_cb(struct legoev3_port_device *in_port,
+				       legoev3_analog_cb_func_t function,
+				       void *context)
+{
+	struct ev3_input_port_data *port = dev_get_drvdata(&in_port->dev);
+
+	legoev3_analog_register_in_cb(port->analog, port->id,
+				      function, context);
+}
+EXPORT_SYMBOL_GPL(ev3_input_port_register_analog_cb);
 
 int ev3_input_port_register_i2c(struct legoev3_port_device *in_port,
 				struct device *parent)
@@ -418,8 +429,8 @@ void ev3_input_port_register_sensor(struct work_struct *work)
 	    || port->sensor_type == SENSOR_ERR
 	    || port->sensor_type >= NUM_SENSOR)
 	{
-		dev_err(&port->pdev->dev, "Trying to register an invalid sensor on %s.\n",
-			dev_name(&port->pdev->dev));
+		dev_err(&port->in_port->dev, "Trying to register an invalid sensor on %s.\n",
+			dev_name(&port->in_port->dev));
 		return;
 	}
 
@@ -427,16 +438,16 @@ void ev3_input_port_register_sensor(struct work_struct *work)
 	if (port->sensor_type == SENSOR_NXT_I2C)
 		msleep(1000);
 
-	pdata.in_port = port->pdev;
+	pdata.in_port = port->in_port;
 	sensor = legoev3_port_device_register(
 		ev3_sensor_device_types[port->sensor_type].name, -1,
 		&ev3_sensor_device_types[port->sensor_type],
 		port->sensor_type_id,
 		&pdata, sizeof(struct ev3_sensor_platform_data),
-		&port->pdev->dev);
+		&port->in_port->dev);
 	if (IS_ERR(sensor)) {
-		dev_err(&port->pdev->dev, "Could not register sensor on port %s.\n",
-			dev_name(&port->pdev->dev));
+		dev_err(&port->in_port->dev, "Could not register sensor on port %s.\n",
+			dev_name(&port->in_port->dev));
 		return;
 	}
 
@@ -510,9 +521,10 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 						port->sensor_type = SENSOR_NXT_LIGHT;
 				} else if (new_pin1_mv < PIN1_NEAR_GND)
 					port->sensor_type = SENSOR_NXT_COLOR;
-				else if (new_pin1_mv > PIN1_NEAR_5V)
+				else if (new_pin1_mv > PIN1_NEAR_5V) {
 					port->sensor_type = SENSOR_NXT_TOUCH;
-				else if (new_pin1_mv > PIN1_TOUCH_LOW
+					port->sensor_type_id = NXT_TOUCH_SENSOR_TYPE_ID;
+				} else if (new_pin1_mv > PIN1_TOUCH_LOW
 					 && new_pin1_mv < PIN1_TOUCH_HIGH) {
 					port->con_state = CON_STATE_TEST_NXT_TOUCH;
 					port->timer_loop_cnt = 0;
@@ -552,8 +564,10 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 			new_pin1_mv = legoev3_analog_in_pin1_value(port->analog, port->id);
 			if (new_pin1_mv > (port->pin1_mv - PIN1_TOUCH_VAR) &&
 			    new_pin1_mv < (port->pin1_mv + PIN1_TOUCH_VAR))
+			{
 				port->sensor_type = SENSOR_NXT_TOUCH;
-			else
+				port->sensor_type_id = NXT_TOUCH_SENSOR_TYPE_ID;
+			} else
 				port->sensor_type = SENSOR_NXT_ANALOG;
 		}
 		break;
@@ -610,7 +624,7 @@ static int __devinit ev3_input_port_probe(struct legoev3_port_device *pdev)
 		return -ENOMEM;
 
 	port->id = pdata->id;
-	port->pdev = pdev;
+	port->in_port = pdev;
 	port->analog = get_legoev3_analog();
 	if (IS_ERR(port->analog)) {
 		dev_err(&pdev->dev, "Could not get legoev3-analog device.\n");

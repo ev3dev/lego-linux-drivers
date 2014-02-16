@@ -9,8 +9,7 @@ obj-$(CONFIG_LEGOEV3_INPUT_PORT)	+= ev3_input_port.o
 obj-$(CONFIG_LEGOEV3_MSENSORS)		+= msensor_class.o
 
 # Analog sensors
-obj-$(CONFIG_LEGOEV3_EV3_TOUCH_SENSOR)	+= ev3_touch_sensor.o
-obj-$(CONFIG_LEGOEV3_NXT_TOUCH_SENSOR)	+= nxt_touch_sensor.o
+obj-$(CONFIG_LEGOEV3_TOUCH_SENSORS)	+= touch_sensor.o
 
 # I2C Sensors
 obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= nxt_i2c_host.o
