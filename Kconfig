@@ -36,14 +36,6 @@ config LEGOEV3_INPUT_PORT
 	help
 	  Select Y to enable the driver for the EV3 input ports.
 
-config LEGOEV3_SWITCH_SENSORS
-	tristate "Switch sensor support"
-	default y
-	help
-	  Select Y to enable support for switch sensors. Provides a common device
-	  class for sensors that indicate an on/off state such as the NXT and EV3
-	  touch sensors.
-
 config LEGOEV3_MSENSORS
 	tristate "Mindstorms sensors support"
 	default y
