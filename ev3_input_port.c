@@ -55,8 +55,7 @@
 #define PIN1_ID_VAR		50	/* IDs can be +/- 50mV */
 
 /* resistor ids for EV3 analog sensor devices */
-enum ev3_in_dev_id {
-	EV3_IN_DEV_ID_ERR,
+enum ev3_analog_sensor_res_id {
 	EV3_IN_DEV_ID_01,
 	EV3_IN_DEV_ID_02,
 	EV3_IN_DEV_ID_03,
@@ -74,54 +73,100 @@ enum ev3_in_dev_id {
 	NUM_EV3_IN_DEV_ID,
 };
 
-static int ev3_in_dev_id_max[NUM_EV3_IN_DEV_ID] = {
-	[EV3_IN_DEV_ID_01] = PIN1_ID_01 + PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_02] = PIN1_ID_02 + PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_03] = PIN1_ID_03 + PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_04] = PIN1_ID_04 + PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_05] = PIN1_ID_05 + PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_06] = PIN1_ID_06 + PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_07] = PIN1_ID_07 + PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_08] = PIN1_ID_08 + PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_09] = PIN1_ID_09 + PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_10] = PIN1_ID_11 + PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_11] = PIN1_ID_11 + PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_12] = PIN1_ID_12 + PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_13] = PIN1_ID_13 + PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_14] = PIN1_ID_14 + PIN1_ID_VAR,
+struct ev3_analog_sensor_info {
+	unsigned type_id;
+	int min_mv;
+	int max_mv;
 };
 
-static int ev3_in_dev_id_min[NUM_EV3_IN_DEV_ID] = {
-	[EV3_IN_DEV_ID_01] = PIN1_ID_01 - PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_02] = PIN1_ID_02 - PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_03] = PIN1_ID_03 - PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_04] = PIN1_ID_04 - PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_05] = PIN1_ID_05 - PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_06] = PIN1_ID_06 - PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_07] = PIN1_ID_07 - PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_08] = PIN1_ID_08 - PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_09] = PIN1_ID_09 - PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_10] = PIN1_ID_11 - PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_11] = PIN1_ID_11 - PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_12] = PIN1_ID_12 - PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_13] = PIN1_ID_13 - PIN1_ID_VAR,
-	[EV3_IN_DEV_ID_14] = PIN1_ID_14 - PIN1_ID_VAR,
+static struct ev3_analog_sensor_info ev3_analog_sensor_infos[NUM_EV3_IN_DEV_ID] = {
+	[EV3_IN_DEV_ID_01] = {
+		.type_id = 15,
+		.min_mv = PIN1_ID_01 - PIN1_ID_VAR,
+		.max_mv = PIN1_ID_01 + PIN1_ID_VAR,
+	},
+	[EV3_IN_DEV_ID_02] = {
+		.type_id = 16,
+		.min_mv = PIN1_ID_02 - PIN1_ID_VAR,
+		.max_mv = PIN1_ID_02 + PIN1_ID_VAR,
+	},
+	[EV3_IN_DEV_ID_03] = {
+		.type_id = 17,
+		.min_mv = PIN1_ID_03 - PIN1_ID_VAR,
+		.max_mv = PIN1_ID_03 + PIN1_ID_VAR,
+	},
+	[EV3_IN_DEV_ID_04] = {
+		.type_id = 18,
+		.min_mv = PIN1_ID_04 - PIN1_ID_VAR,
+		.max_mv = PIN1_ID_04 + PIN1_ID_VAR,
+	},
+	[EV3_IN_DEV_ID_05] = {
+		.type_id = 19,
+		.min_mv = PIN1_ID_05 - PIN1_ID_VAR,
+		.max_mv = PIN1_ID_05 + PIN1_ID_VAR,
+	},
+	[EV3_IN_DEV_ID_06] = {
+		.type_id = 20,
+		.min_mv = PIN1_ID_06 - PIN1_ID_VAR,
+		.max_mv = PIN1_ID_06 + PIN1_ID_VAR,
+	},
+	[EV3_IN_DEV_ID_07] = {
+		.type_id = 21,
+		.min_mv = PIN1_ID_07 - PIN1_ID_VAR,
+		.max_mv = PIN1_ID_07 + PIN1_ID_VAR,
+	},
+	[EV3_IN_DEV_ID_08] = {
+		.type_id = 22,
+		.min_mv = PIN1_ID_08 - PIN1_ID_VAR,
+		.max_mv = PIN1_ID_08 + PIN1_ID_VAR,
+	},
+	[EV3_IN_DEV_ID_09] = {
+		.type_id = 23,
+		.min_mv = PIN1_ID_09 - PIN1_ID_VAR,
+		.max_mv = PIN1_ID_09 + PIN1_ID_VAR,
+	},
+	[EV3_IN_DEV_ID_10] = {
+		.type_id = 24,
+		.min_mv = PIN1_ID_10 - PIN1_ID_VAR,
+		.max_mv = PIN1_ID_10 + PIN1_ID_VAR,
+	},
+	[EV3_IN_DEV_ID_11] = {
+		.type_id = 25,
+		.min_mv = PIN1_ID_11 - PIN1_ID_VAR,
+		.max_mv = PIN1_ID_11 + PIN1_ID_VAR,
+	},
+	[EV3_IN_DEV_ID_12] = {
+		.type_id = 26,
+		.min_mv = PIN1_ID_12 - PIN1_ID_VAR,
+		.max_mv = PIN1_ID_12 + PIN1_ID_VAR,
+	},
+	[EV3_IN_DEV_ID_13] = {
+		.type_id = 27,
+		.min_mv = PIN1_ID_13 - PIN1_ID_VAR,
+		.max_mv = PIN1_ID_13 + PIN1_ID_VAR,
+	},
+	[EV3_IN_DEV_ID_14] = {
+		.type_id = 28,
+		.min_mv = PIN1_ID_14 - PIN1_ID_VAR,
+		.max_mv = PIN1_ID_14 + PIN1_ID_VAR,
+	},
 };
 
 /**
- * to_ev3_in_dev_id - converts id resistor mV value to an enum
+ * to_ev3_analog_sensor_type_id - converts id resistor mV value to a Type ID
  * @mv: The value to convert.
  */
-enum ev3_in_dev_id to_ev3_in_dev_id(int mv)
+unsigned to_ev3_analog_sensor_type_id(int mv)
 {
-	enum ev3_in_dev_id id = NUM_EV3_IN_DEV_ID;
+	enum ev3_analog_sensor_res_id res_id = NUM_EV3_IN_DEV_ID;
 
-	while (id--) {
-		if (mv >= ev3_in_dev_id_min[id] && mv <= ev3_in_dev_id_max[id])
-			return id;
+	while (res_id--) {
+		if (mv >= ev3_analog_sensor_infos[res_id].min_mv
+		    && mv <= ev3_analog_sensor_infos[res_id].max_mv)
+			return ev3_analog_sensor_infos[res_id].type_id;
 	}
 
-	return EV3_IN_DEV_ID_ERR;
+	return LEGOEV3_TYPE_ID_UNKNOWN;
 }
 
 enum gpio_index {
@@ -482,8 +527,8 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 					port->sensor_type = SENSOR_EV3_UART;
 				else {
 					port->sensor_type = SENSOR_EV3_ANALOG;
-					port->sensor_type_id = to_ev3_in_dev_id(new_pin1_mv);
-					if (port->sensor_type_id == EV3_IN_DEV_ID_ERR)
+					port->sensor_type_id = to_ev3_analog_sensor_type_id(new_pin1_mv);
+					if (port->sensor_type_id == LEGOEV3_TYPE_ID_UNKNOWN)
 						port->sensor_type = SENSOR_ERR;
 				}
 			} else if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN6_HIGH)) {

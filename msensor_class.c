@@ -441,8 +441,10 @@ static struct device_attribute msensor_device_attrs[] = {
 	__ATTR(bin_data_format, S_IRUGO, msensor_show_bin_data_format, NULL),
 	/*
 	 * Technically, it is possible to have 32 8-bit values from UART sensors
-	 * and 255 8-bit values from I2C sensors, but known sensors so far are 8
-	 * or less, so we only expose 8 values to prevent sysfs overcrowding.
+	 * and 255 8-bit values from I2C sensors, but known UART sensors so far
+	 * have 8 data values or less and I2C sensors can arbitrarily be split
+	 * into multiple modes, so we only expose 8 values to prevent sysfs
+	 * overcrowding.
 	 */
 	__ATTR(value0, S_IRUGO , msensor_show_value, NULL),
 	__ATTR(value1, S_IRUGO , msensor_show_value, NULL),

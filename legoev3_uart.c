@@ -37,7 +37,6 @@
 #define LEGOEV3_UART_MAX_DATA_ERR	6
 
 #define LEGOEV3_UART_TYPE_MAX		101
-#define LEGOEV3_UART_TYPE_UNKNOWN	125
 #define LEGOEV3_UART_SPEED_MIN		2400
 #define LEGOEV3_UART_SPEED_MID		57600
 #define LEGOEV3_UART_SPEED_MAX		460800
@@ -445,7 +444,7 @@ static int legoev3_uart_open(struct tty_struct *tty)
 
 	port->tty = tty;
 	port->new_baud_rate = LEGOEV3_UART_SPEED_MIN;
-	port->ms.type_id = LEGOEV3_UART_TYPE_UNKNOWN;
+	port->ms.type_id = LEGOEV3_TYPE_ID_UNKNOWN;
 	port->ms.mode_info = port->mode_info;
 	port->ms.get_mode = legoev3_uart_get_mode;
 	port->ms.set_mode = legoev3_uart_set_mode;
