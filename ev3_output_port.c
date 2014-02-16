@@ -23,7 +23,6 @@
 #include <linux/workqueue.h>
 #include <linux/gpio.h>
 #include <linux/slab.h>
-
 // #include <linux/i2c-legoev3.h>
 #include <linux/legoev3/legoev3_analog.h>
 #include <linux/legoev3/legoev3_ports.h>
@@ -161,29 +160,6 @@ struct ev3_output_port_data {
  	struct legoev3_port_device *motor;
 };
 
-int ev3_output_port_register_irq(struct legoev3_port_device *out_port)
-{
-//        err = request_irq(unsigned int irq, irq_handler_t handler, unsigned long flags,
-//             const char *name, void *dev);
-
-//        error = request_irq(rotary->irq, bfin_rotary_isr,
-//                             0, dev_name(&pdev->dev), pdev);
-  
-	return 0;
-}
-EXPORT_SYMBOL_GPL(ev3_output_port_register_irq);
-
-int ev3_output_port_get_pin56_levels(struct legoev3_port_device *out_port, unsigned *pin5, unsigned *pin6)
-{
-	struct ev3_output_port_data *port = dev_get_drvdata(&out_port->dev);
-
- 	*pin5 = gpio_get_value(port->gpio[GPIO_PIN5_TACHO].gpio);
- 	*pin6 = gpio_get_value(port->gpio[GPIO_PIN6].gpio);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(ev3_output_port_get_pin56_levels);
-
 // int ev3_output_port_get_foo(struct legoev3_port_device *out_port)
 // {
 // 	struct ev3_output_port_data *port = dev_get_drvdata(&out_port->dev);
@@ -216,7 +192,6 @@ void ev3_output_port_register_motor(struct work_struct *work)
         pr_warning("GPIO_PIN5_TACHO for port %d is: %d\n", port->id, port->gpio[GPIO_PIN5_TACHO].gpio);
         pr_warning("GPIO_PIN6       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN6].gpio);
 
-
 	if (port->motor_type == MOTOR_NONE
 	    || port->motor_type == MOTOR_ERR
 	    || port->motor_type >= NUM_MOTOR)
@@ -230,7 +205,12 @@ void ev3_output_port_register_motor(struct work_struct *work)
 // 	if (port->sensor_type == SENSOR_NXT_I2C)
 // 		msleep(1000);
 // 
- 	pdata.out_port = port->pdev;
+        /* Fill in the motor platform data struct */
+
+ 	pdata.out_port  = port->pdev;
+
+ 	pdata.tacho_int_gpio = port->gpio[GPIO_PIN5_TACHO].gpio;
+ 	pdata.tacho_dir_gpio = port->gpio[GPIO_PIN6].gpio;
 
  	motor = legoev3_port_device_register("motor", -1,
  				&ev3_motor_device_types[port->motor_type],
@@ -255,6 +235,8 @@ void ev3_output_port_unregister_motor(struct work_struct *work)
         pr_warning("Unregistering a motor driver on port %d!\n", port->id );
 
  	legoev3_port_device_unregister(port->motor);
+
+	port->motor = NULL;
 }
 
 static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer)
@@ -517,14 +499,23 @@ static int __devexit ev3_output_port_remove(struct legoev3_port_device *pdev)
 {
 	struct ev3_output_port_data *port = dev_get_drvdata(&pdev->dev);
 
+        pr_warning("Canceling timer!\n");
 	hrtimer_cancel(&port->timer);
+        pr_warning("Canceling work!\n");
 	cancel_work_sync(&port->work);
-	if (port->motor)
+	if (port->motor) {
+                pr_warning("Unregistering motor!\n");
 		legoev3_port_device_unregister(port->motor);
+        }
+        pr_warning("Float motor!\n");
 	ev3_output_port_float(port);
+        pr_warning("Free motor GPIO!\n");
 	gpio_free_array(port->gpio, ARRAY_SIZE(port->gpio));
+        pr_warning("Free analog port!\n");
 	put_legoev3_analog(port->analog);
+        pr_warning("Unset driver data!\n");
 	dev_set_drvdata(&pdev->dev, NULL);
+        pr_warning("Free output port!\n");
 	kfree(port);
 
 	return 0;

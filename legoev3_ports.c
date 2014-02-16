@@ -36,6 +36,8 @@
 #include <linux/string.h>
 #include <linux/slab.h>
 #include <linux/err.h>
+#include <linux/gpio.h>
+#include <linux/ioport.h>
 #include <linux/legoev3/legoev3_ports.h>
 
 struct legoev3_ports_data {
@@ -43,6 +45,15 @@ struct legoev3_ports_data {
 	struct legoev3_ports_platform_data *pdata;
 	struct legoev3_port_device *in_ports[NUM_EV3_PORT_IN];
 	struct legoev3_port_device *out_ports[NUM_EV3_PORT_OUT];
+
+	struct resource *SYSCFG0_resource;  
+	struct resource *eHRPWM1_resource;  
+	struct resource *eCAP0_resource;  
+	struct resource *eCAP1_resource;  
+	struct resource *TIMER64P3_resource;  
+	struct resource *PSC1_resource;  
+
+        unsigned long *TIMER64P3;
 };
 
 static struct legoev3_ports_data *legoev3_ports;
@@ -85,7 +96,6 @@ static struct attribute *legoev3_output_port_device_type_attrs[] = {
 struct attribute_group legoev3_output_port_device_type_attr_grp = {
 	.attrs	= legoev3_output_port_device_type_attrs,
 };
-
 EXPORT_SYMBOL_GPL(legoev3_output_port_device_type_attr_grp);
 
 const struct attribute_group *ev3_output_port_device_type_attr_groups[] = {
@@ -202,6 +212,26 @@ void legoev3_port_device_unregister(struct legoev3_port_device *pdev)
 	put_device(&pdev->dev);
 }
 EXPORT_SYMBOL_GPL(legoev3_port_device_unregister);
+
+void *legoev3_port_remap_TIMER64P3(void)
+{
+ 	return ioremap(legoev3_ports->TIMER64P3_resource->start, legoev3_ports->TIMER64P3_resource->end - legoev3_ports->TIMER64P3_resource->start);
+// 		return;
+// unsigned long phys_addr
+// 	device_del(&pdev->dev);
+// 	put_device(&pdev->dev);
+}
+EXPORT_SYMBOL_GPL(legoev3_port_remap_TIMER64P3);
+
+void legoev3_port_unmap_TIMER64P3(void *addr)
+{
+ 	iounmap(addr);
+// 		return;
+// unsigned long phys_addr
+// 	device_del(&pdev->dev);
+// 	put_device(&pdev->dev);
+}
+EXPORT_SYMBOL_GPL(legoev3_port_unmap_TIMER64P3);
 
 static int legoev3_port_driver_probe(struct device *dev)
 {
@@ -334,6 +364,90 @@ err_legoev3_port_device_register:
 
 	return err;
 }
+/* TIMER64 register configuration */
+enum
+{
+  REVID       = 0,
+  EMUMGT      = 1,
+  GPINTGPEN   = 2,
+  GPDATGPDIR  = 3,
+  TIM12       = 4,
+  TIM34       = 5,
+  PRD12       = 6,
+  PRD34       = 7,
+  TCR         = 8,
+  TGCR        = 9,
+  WDTCR       = 10,
+  NOTUSED1    = 11,
+  NOTUSED2    = 12,
+  REL12       = 13,
+  REL34       = 14,
+  CAP12       = 15,
+  CAP34       = 16,
+  NOTUSED3    = 17,
+  NOTUSED4    = 18,
+  NOTUSED5    = 19,
+  NOTUSED6    = 20,
+  NOTUSED7    = 21,
+  NOTUSED8    = 22,
+  INTCTLSTAT  = 23,
+  CMP0        = 24,
+  CMP1        = 25,
+  CMP2        = 26,
+  CMP3        = 27,
+  CMP4        = 28,
+  CMP5        = 39,
+  CMP6        = 30,
+  CMP7        = 31,
+};
+	
+
+static int legoev3_init_ports_peripherals(struct legoev3_ports_data *ports)
+{
+        pr_warning("Initializing output port peripherals!\n");
+  
+        // TODO: Tableize this initialization into a loop!
+
+	ports->SYSCFG0_resource   = request_mem_region(0x01C14000, 0x190, "legoev3-ports");	/* SYSCFG0 pointer    */
+	ports->eHRPWM1_resource   = request_mem_region(0x01F02000, 0x2854,"legoev3-ports");	/* eHRPWM Pointer     */
+	ports->eCAP0_resource     = request_mem_region(0x01F06000, 0x60,  "legoev3-ports");	/* eCAP0 pointer      */
+	ports->eCAP1_resource     = request_mem_region(0x01F07000, 0x60,  "legoev3-ports");	/* eCAP1 pointer      */
+	ports->TIMER64P3_resource = request_mem_region(0x01F0D000, 0x80,  "legoev3-ports");	/* TIMER64P3 pointer  */
+	ports->PSC1_resource      = request_mem_region(0x01E27000, 0xA80, "legoev3-ports");	/* PSC1 pointer       */
+
+        ports->TIMER64P3 = legoev3_port_remap_TIMER64P3();
+
+    printk("ports->TIMER64P3[TGCR]  = %lx\n", (((unsigned long *)(ports->TIMER64P3))[TGCR])  );
+    printk("ports->TIMER64P3[PRD34] = %lx\n", (((unsigned long *)(ports->TIMER64P3))[PRD34]) );
+    printk("ports->TIMER64P3[TCR]   = %lx\n", (((unsigned long *)(ports->TIMER64P3))[TCR])   );
+
+        ports->TIMER64P3[TGCR]   = 0x00003304;
+        ports->TIMER64P3[TGCR]  |= 0x00000002;
+        ports->TIMER64P3[PRD34]  = 0xFFFFFFFF;
+        ports->TIMER64P3[TCR]    = 0x00800000;
+
+    printk("ports->TIMER64P3[TGCR]  = %lx\n", (((unsigned long *)(ports->TIMER64P3))[TGCR])  );
+    printk("ports->TIMER64P3[PRD34] = %lx\n", (((unsigned long *)(ports->TIMER64P3))[PRD34]) );
+    printk("ports->TIMER64P3[TCR]   = %lx\n", (((unsigned long *)(ports->TIMER64P3))[TCR])   );
+
+        return 0;
+}
+
+static void legoev3_exit_ports_peripherals(struct legoev3_ports_data *ports)
+{
+        pr_warning("Restoring output port peripherals!\n");
+
+        ports->TIMER64P3[TGCR]   = 0x00000000;
+
+        legoev3_port_unmap_TIMER64P3(ports->TIMER64P3);
+
+	release_mem_region(0x01C14000, 0x190  );	/* SYSCFG0 pointer    */
+	release_mem_region(0x01F02000, 0x2854 );        /* eHRPWM Pointer     */
+	release_mem_region(0x01F06000, 0x60   );	/* eCAP0 pointer      */
+	release_mem_region(0x01F07000, 0x60   );	/* eCAP1 pointer      */
+	release_mem_region(0x01F0D000, 0x80   );	/* TIMER64P3 pointer  */
+	release_mem_region(0x01E27000, 0xA80  );	/* PSC1 pointer       */
+}
 
 static int __devinit legoev3_ports_probe(struct platform_device *pdev)
 {
@@ -369,12 +483,24 @@ static int __devinit legoev3_ports_probe(struct platform_device *pdev)
 	err = legoev3_register_output_ports(ports->out_ports,
 					    ports->pdata->output_port_data,
 					    NUM_EV3_PORT_OUT);
+
 	if (err) {
 		dev_err(&pdev->dev, "Could not register output ports!\n");
 		goto err_legoev3_register_output_ports;
 	}
 
+        err = legoev3_init_ports_peripherals(legoev3_ports);
+
+	if (err) {
+		dev_err(&pdev->dev, "Could not initialize peripherals!\n");
+		goto err_legoev3_init_ports_peripherals;
+	}
+
 	return 0;
+
+err_legoev3_init_ports_peripherals:
+	for(i = 0; i < NUM_EV3_PORT_OUT; i++)
+		legoev3_port_device_unregister(ports->out_ports[i]);
 
 err_legoev3_register_output_ports:
 	for(i = 0; i < NUM_EV3_PORT_IN; i++)
@@ -397,6 +523,8 @@ static int legoev3_bus_match_all (struct device *dev, void *data)
 static int __devexit legoev3_ports_remove(struct platform_device *pdev)
 {
 	struct device *dev;
+
+	legoev3_exit_ports_peripherals(legoev3_ports);
 
 	legoev3_ports = NULL;
 	while ((dev = bus_find_device(&legoev3_bus_type, NULL, NULL,
