@@ -17,18 +17,31 @@
 #include <linux/module.h>
 #include <linux/legoev3/tacho_motor_class.h>
 
-static ssize_t tacho_motor_show_foo(struct device *dev,
-					 struct device_attribute *attr,
-					 char *buf)
+static ssize_t tacho_motor_show_tacho(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	struct tacho_motor_device *tm =
-		container_of(dev, struct tacho_motor_device, dev);
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
 
-	return sprintf(buf, "%d\n", 1234);
+	return sprintf(buf, "%d\n", tm->get_tacho(tm));
+}
+
+static ssize_t tacho_motor_show_direction(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->get_direction(tm));
+}
+
+static ssize_t tacho_motor_show_speed(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->get_speed(tm));
 }
 
 static struct device_attribute tacho_motor_class_dev_attrs[] = {
-	__ATTR(foo, S_IRUGO, tacho_motor_show_foo, NULL),
+	__ATTR(tacho,     S_IRUGO, tacho_motor_show_tacho,     NULL),
+	__ATTR(direction, S_IRUGO, tacho_motor_show_direction, NULL),
+	__ATTR(speed,     S_IRUGO, tacho_motor_show_speed,     NULL),
 	__ATTR_NULL
 };
 
