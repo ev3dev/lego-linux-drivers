@@ -21,7 +21,7 @@
  * The chip requires an external clock to function. This clock is generated
  * by one of the PWM devices on the AM1808 SoC.
  *
- * This also provides an interface simmilar to Device1 in d_bt.c from lms2012.
+ * This also provides an interface similar to Device1 in d_bt.c from lms2012.
  * -----------------------------------------------------------------------------
  */
 
@@ -36,7 +36,6 @@
 
 enum legoev3_bluetooth_gpios {
 	LEGOEV3_BT_GPIO_BT_ENA,
-	LEGOEV3_BT_GPIO_BT_ENA2,
 	LEGOEV3_BT_GPIO_PIC_ENA,
 	LEGOEV3_BT_GPIO_PIC_RST,
 	LEGOEV3_BT_GPIO_PIC_CTS,
@@ -130,9 +129,6 @@ static int __devinit legoev3_bluetooth_probe(struct platform_device *pdev)
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio	= pdata->bt_ena_gpio;
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].flags	= GPIOF_OUT_INIT_LOW;
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].label	= "bluetooth enable";
-	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA2].gpio	= pdata->bt_ena2_gpio;
-	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA2].flags	= GPIOF_OUT_INIT_LOW;
-	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA2].label	= "bluetooth enable EP2";
 	btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].gpio	= pdata->pic_ena_gpio;
 	btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].flags	= GPIOF_OUT_INIT_LOW;
 	btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].label	= "bt pic enable";
@@ -181,7 +177,6 @@ static int __devinit legoev3_bluetooth_probe(struct platform_device *pdev)
 		goto err_pwm_start;
 	}
 	gpio_set_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio, 1);
-	gpio_set_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA2].gpio, 1);
 
 	err = sysfs_create_group(&pdev->dev.kobj, &legoev3_bluetooth_attr_grp);
 	if (err)
@@ -214,7 +209,6 @@ static int __devexit legoev3_bluetooth_remove(struct platform_device *pdev)
 	/* TODO: set gpios to turn off device */
 	sysfs_remove_group(&pdev->dev.kobj, &legoev3_bluetooth_attr_grp);
 	gpio_set_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio, 0);
-	gpio_set_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA2].gpio, 0);
 	pwm_stop(btdev->pwm);
 	pwm_release(btdev->pwm);
 	gpio_free_array(btdev->gpios, NUM_LEGOEV3_BT_GPIO);
