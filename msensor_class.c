@@ -29,9 +29,6 @@ size_t msensor_data_size[NUM_MSENSOR_DATA_TYPE] = {
 };
 EXPORT_SYMBOL_GPL(msensor_data_size);
 
-#define to_msensor(_dev) \
-	container_of(_dev, struct msensor_device, dev)
-
 /*
  * Some sensors (i.e. UART) send floating point numbers so we need to convert
  * them to integers to be able to handle them in the kernel.
@@ -109,7 +106,7 @@ static ssize_t msensor_show_type_id(struct device *dev,
 				    struct device_attribute *attr,
 				    char *buf)
 {
-	struct msensor_device *ms = to_msensor(dev);
+	struct msensor_device *ms = to_msensor_device(dev);
 
 	return sprintf(buf, "%d\n", ms->type_id);
 }
@@ -118,7 +115,7 @@ static ssize_t msensor_show_port_name(struct device *dev,
 				      struct device_attribute *attr,
 				      char *buf)
 {
-	struct msensor_device *ms = to_msensor(dev);
+	struct msensor_device *ms = to_msensor_device(dev);
 
 	return snprintf(buf, MSENSOR_PORT_NAME_SIZE, "%s\n", ms->port_name);
 }
@@ -127,7 +124,7 @@ static ssize_t msensor_show_mode(struct device *dev,
 				 struct device_attribute *attr,
 				 char *buf)
 {
-	struct msensor_device *ms = to_msensor(dev);
+	struct msensor_device *ms = to_msensor_device(dev);
 	int i;
 	unsigned count = 0;
 	int mode = ms->get_mode(ms->context);
@@ -151,7 +148,7 @@ static ssize_t msensor_store_mode(struct device *dev,
 				  struct device_attribute *attr,
 				  const char *buf, size_t count)
 {
-	struct msensor_device *ms = to_msensor(dev);
+	struct msensor_device *ms = to_msensor_device(dev);
 	int i, err;
 
 	for (i = 0; i < ms->num_modes; i++) {
@@ -169,7 +166,7 @@ static ssize_t msensor_show_units(struct device *dev,
 				  struct device_attribute *attr,
 				  char *buf)
 {
-	struct msensor_device *ms = to_msensor(dev);
+	struct msensor_device *ms = to_msensor_device(dev);
 	int mode = ms->get_mode(ms->context);
 
 	return sprintf(buf, "%s\n",ms->mode_info[mode].units);
@@ -179,7 +176,7 @@ static ssize_t msensor_show_dp(struct device *dev,
 			       struct device_attribute *attr,
 			       char *buf)
 {
-	struct msensor_device *ms = to_msensor(dev);
+	struct msensor_device *ms = to_msensor_device(dev);
 	int mode = ms->get_mode(ms->context);
 
 	return sprintf(buf, "%d\n", ms->mode_info[mode].decimals);
@@ -189,7 +186,7 @@ static ssize_t msensor_show_num_values(struct device *dev,
 				       struct device_attribute *attr,
 				       char *buf)
 {
-	struct msensor_device *ms = to_msensor(dev);
+	struct msensor_device *ms = to_msensor_device(dev);
 	int mode = ms->get_mode(ms->context);
 
 	return sprintf(buf, "%d\n", ms->mode_info[mode].data_sets);
@@ -257,7 +254,7 @@ static ssize_t msensor_show_value(struct device *dev,
                                   struct device_attribute *attr,
                                   char *buf)
 {
-	struct msensor_device *ms = to_msensor(dev);
+	struct msensor_device *ms = to_msensor_device(dev);
 	int mode = ms->get_mode(ms->context);
 	struct msensor_mode_info *mode_info = &ms->mode_info[mode];
 	long int value;
@@ -311,7 +308,7 @@ static ssize_t msensor_show_bin_data_format(struct device *dev,
                                             struct device_attribute *attr,
                                             char *buf)
 {
-	struct msensor_device *ms = to_msensor(dev);
+	struct msensor_device *ms = to_msensor_device(dev);
 	int mode = ms->get_mode(ms->context);
 	char *value;
 
@@ -351,7 +348,7 @@ static ssize_t msensor_show_poll_ms(struct device *dev,
                                     struct device_attribute *attr,
                                     char *buf)
 {
-	struct msensor_device *ms = to_msensor(dev);
+	struct msensor_device *ms = to_msensor_device(dev);
 	int ret;
 
 	if (!ms->get_poll_ms)
@@ -368,7 +365,7 @@ static ssize_t msensor_store_poll_ms(struct device *dev,
                                      struct device_attribute *attr,
                                      const char *buf, size_t count)
 {
-	struct msensor_device *ms = to_msensor(dev);
+	struct msensor_device *ms = to_msensor_device(dev);
 	unsigned value;
 	int err;
 
@@ -388,7 +385,7 @@ static ssize_t msensor_show_fw_version(struct device *dev,
 				       struct device_attribute *attr,
 				       char *buf)
 {
-	struct msensor_device *ms = to_msensor(dev);
+	struct msensor_device *ms = to_msensor_device(dev);
 
 	return snprintf(buf, MSENSOR_FW_VERSION_SIZE, "%s\n", ms->fw_version);
 }
@@ -397,7 +394,7 @@ static ssize_t msensor_show_i2c_addr(struct device *dev,
 				    struct device_attribute *attr,
 				    char *buf)
 {
-	struct msensor_device *ms = to_msensor(dev);
+	struct msensor_device *ms = to_msensor_device(dev);
 
 	return sprintf(buf, "0x%02x\n", ms->i2c_addr);
 }
@@ -407,7 +404,7 @@ static ssize_t msensor_read_bin_data(struct file *file, struct kobject *kobj,
                                      char *buf, loff_t off, size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
-	struct msensor_device *ms = to_msensor(dev);
+	struct msensor_device *ms = to_msensor_device(dev);
 	int mode = ms->get_mode(ms->context);
 	size_t size = attr->size;
 
@@ -426,7 +423,7 @@ static ssize_t msensor_write_bin_data(struct file *file ,struct kobject *kobj,
                                       char *buf, loff_t off, size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
-	struct msensor_device *ms = to_msensor(dev);
+	struct msensor_device *ms = to_msensor_device(dev);
 
 	if (!ms->write_data)
 		return -ENXIO;
@@ -475,7 +472,7 @@ static umode_t msensor_attr_is_visible (struct kobject *kobj,
 					struct attribute *attr, int index)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
-	struct msensor_device *ms = to_msensor(dev);
+	struct msensor_device *ms = to_msensor_device(dev);
 
 	if (attr == &dev_attr_poll_ms.attr)
 		return (ms->get_poll_ms || ms->set_poll_ms) ? attr->mode : 0;

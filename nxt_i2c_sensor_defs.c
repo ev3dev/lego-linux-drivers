@@ -14,6 +14,7 @@
  */
 
 #include <linux/export.h>
+#include <linux/legoev3/ev3_input_port.h>
 
 #include "nxt_i2c_sensor.h"
 
@@ -125,31 +126,31 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x02,
 				.read_data_reg	= 0x42,
-				.pin1_state	= 1,
+				.pin1_state	= EV3_INPUT_PORT_GPIO_HIGH,
 			},
 			[1] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x02,
 				.read_data_reg	= 0x42,
-				.pin1_state	= 1,
+				.pin1_state	= EV3_INPUT_PORT_GPIO_HIGH,
 			},
 			[2] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x01,
 				.read_data_reg	= 0x42,
-				.pin1_state	= 1,
+				.pin1_state	= EV3_INPUT_PORT_GPIO_HIGH,
 			},
 			[3] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x01,
 				.read_data_reg	= 0x42,
-				.pin1_state	= 1,
+				.pin1_state	= EV3_INPUT_PORT_GPIO_HIGH,
 			},
 			[4] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x03,
 				.read_data_reg	= 0x42,
-				.pin1_state	= 1,
+				.pin1_state	= EV3_INPUT_PORT_GPIO_HIGH,
 			},
 		},
 	},

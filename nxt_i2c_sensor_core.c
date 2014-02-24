@@ -70,7 +70,7 @@ static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
 			return err;
 	}
 
-	ev3_input_port_set_pin1_out(sensor->in_port,
+	ev3_input_port_set_pin1_gpio(sensor->in_port,
 	                            sensor->info.i2c_mode_info[mode].pin1_state);
 	sensor->mode = mode;
 	schedule_delayed_work(&sensor->poll_work,
@@ -245,7 +245,7 @@ static int __devexit nxt_i2c_sensor_remove(struct i2c_client *client)
 	struct nxt_i2c_sensor_data *sensor = i2c_get_clientdata(client);
 
 	cancel_delayed_work_sync(&sensor->poll_work);
-	ev3_input_port_set_pin1_out(sensor->in_port, 0);
+	ev3_input_port_set_pin1_gpio(sensor->in_port, 0);
 	unregister_msensor(&sensor->info.ms);
 	kfree(sensor);
 

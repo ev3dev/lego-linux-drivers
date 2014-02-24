@@ -323,18 +323,35 @@ int ev3_input_port_get_pin6_mv(struct legoev3_port_device *in_port)
 }
 EXPORT_SYMBOL_GPL(ev3_input_port_get_pin6_mv);
 
-void ev3_input_port_set_pin1_out(struct legoev3_port_device *in_port,
-					int value)
+void ev3_input_port_set_gpio(struct legoev3_port_device *in_port, unsigned pin,
+			     enum ev3_input_port_gpio_state state)
 {
 	struct ev3_input_port_data *port = dev_get_drvdata(&in_port->dev);
 
-	gpio_set_value(port->gpio[GPIO_PIN1].gpio, value);
+	if (state == EV3_INPUT_PORT_GPIO_FLOAT)
+		gpio_direction_input(port->gpio[pin].gpio);
+	else
+		gpio_direction_output(port->gpio[pin].gpio,
+				      state == EV3_INPUT_PORT_GPIO_HIGH);
 }
-EXPORT_SYMBOL_GPL(ev3_input_port_set_pin1_out);
+
+void ev3_input_port_set_pin1_gpio(struct legoev3_port_device *in_port,
+				  enum ev3_input_port_gpio_state state)
+{
+	ev3_input_port_set_gpio(in_port, GPIO_PIN1, state);
+}
+EXPORT_SYMBOL_GPL(ev3_input_port_set_pin1_gpio);
+
+void ev3_input_port_set_pin5_gpio(struct legoev3_port_device *in_port,
+				  enum ev3_input_port_gpio_state state)
+{
+	ev3_input_port_set_gpio(in_port, GPIO_PIN5, state);
+}
+EXPORT_SYMBOL_GPL(ev3_input_port_set_pin5_gpio);
 
 void ev3_input_port_register_analog_cb(struct legoev3_port_device *in_port,
-				       legoev3_analog_cb_func_t function,
-				       void *context)
+                                       legoev3_analog_cb_func_t function,
+                                       void *context)
 {
 	struct ev3_input_port_data *port = dev_get_drvdata(&in_port->dev);
 

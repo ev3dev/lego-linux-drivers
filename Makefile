@@ -10,6 +10,8 @@ obj-$(CONFIG_LEGOEV3_MSENSORS)		+= msensor_class.o
 
 # Analog sensors
 obj-$(CONFIG_LEGOEV3_TOUCH_SENSORS)	+= touch_sensor.o
+obj-$(CONFIG_NXT_LIGHT_SENSOR)		+= nxt_light_sensor.o
+obj-$(CONFIG_NXT_ANALOG_SENSOR)		+= nxt_analog_sensor.o
 
 # I2C Sensors
 obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= nxt_i2c_host.o

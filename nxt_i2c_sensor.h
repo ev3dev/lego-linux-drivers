@@ -32,7 +32,7 @@ struct nxt_i2c_sensor_mode_info {
 	u8 set_mode_reg;
 	u8 set_mode_data;
 	u8 read_data_reg;
-	unsigned pin1_state:1;
+	enum ev3_input_port_gpio_state pin1_state;
 };
 
 /**
