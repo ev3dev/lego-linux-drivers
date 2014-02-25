@@ -17,6 +17,7 @@
 #include <linux/module.h>
 #include <linux/legoev3/tacho_motor_class.h>
 
+
 static ssize_t tacho_motor_show_tacho(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
@@ -38,10 +39,46 @@ static ssize_t tacho_motor_show_speed(struct device *dev, struct device_attribut
 	return sprintf(buf, "%d\n", tm->get_speed(tm));
 }
 
+static ssize_t tacho_motor_show_power(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->get_power(tm));
+}
+
+
+static ssize_t tacho_motor_show_target_power(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->get_target_power(tm));
+}
+
+static ssize_t tacho_motor_store_target_power(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+        char *end;
+        long target_power = simple_strtol(buf, &end, 0);
+
+	/* FIXME: Make these hardcoded values #defines */
+        if (end == buf || target_power > 100 || target_power < -100 )
+                return -EINVAL;
+
+        tm->set_target_power(tm, target_power);
+
+        /* Always return full write size even if we didn't consume all */
+        return size;
+}
+
 static struct device_attribute tacho_motor_class_dev_attrs[] = {
 	__ATTR(tacho,     S_IRUGO, tacho_motor_show_tacho,     NULL),
 	__ATTR(direction, S_IRUGO, tacho_motor_show_direction, NULL),
 	__ATTR(speed,     S_IRUGO, tacho_motor_show_speed,     NULL),
+	__ATTR(power,     S_IRUGO, tacho_motor_show_power,     NULL),
+
+	__ATTR(target_power,     S_IRUGO | S_IWUGO, tacho_motor_show_target_power, tacho_motor_store_target_power),
+
 	__ATTR_NULL
 };
 

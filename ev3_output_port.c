@@ -23,7 +23,8 @@
 #include <linux/workqueue.h>
 #include <linux/gpio.h>
 #include <linux/slab.h>
-// #include <linux/i2c-legoev3.h>
+// #include <linux/pwm/pwm.h>
+#include <linux/pwm/ehrpwm.h>
 #include <linux/legoev3/legoev3_analog.h>
 #include <linux/legoev3/legoev3_ports.h>
 #include <linux/legoev3/ev3_output_port.h>
@@ -131,10 +132,11 @@ struct device_type ev3_motor_device_types[] = {
  * @pdev: Pointer to the legoev3_port_device that is bound to this instance.
  * @analog: pointer to the legoev3-analog device for accessing data from the
  *	analog/digital converter.
+ * @pwm: Pointer to the pwm device that is bound to this port
  * @gpio: Array of gpio pins used by this input port.
  * @work: Worker for registering and unregistering sensors when they are
  *	connected and disconnected.
- * @timer: Polling timer to monitor the port.
+ * @timer: Polling timer to monitor the port connect/disconnect.
  * @timer_loop_cnt: Used to measure time in the polling loop.
  * @con_state: The current state of the port.
  * @pin_state_flags: Used in the polling loop to track certain changes in the
@@ -148,6 +150,7 @@ struct ev3_output_port_data {
 	enum ev3_output_port_id id;
 	struct legoev3_port_device *pdev;
 	struct legoev3_analog_device *analog;
+	struct pwm_device *pwm;
  	struct gpio gpio[NUM_GPIO];
  	struct work_struct work;
  	struct hrtimer timer;
@@ -186,12 +189,6 @@ void ev3_output_port_register_motor(struct work_struct *work)
 
         pr_warning("Registering a motor driver for type %d on port %d!\n", port->motor_type, port->id );
 	
-        pr_warning("GPIO_PIN1       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN1].gpio);
-        pr_warning("GPIO_PIN2       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN2].gpio);
-        pr_warning("GPIO_PIN5       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN5].gpio);
-        pr_warning("GPIO_PIN5_TACHO for port %d is: %d\n", port->id, port->gpio[GPIO_PIN5_TACHO].gpio);
-        pr_warning("GPIO_PIN6       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN6].gpio);
-
 	if (port->motor_type == MOTOR_NONE
 	    || port->motor_type == MOTOR_ERR
 	    || port->motor_type >= NUM_MOTOR)
@@ -200,17 +197,16 @@ void ev3_output_port_register_motor(struct work_struct *work)
 			dev_name(&port->pdev->dev));
 		return;
 	}
-// 
-// 	/* Give the sensor time to boot */
-// 	if (port->sensor_type == SENSOR_NXT_I2C)
-// 		msleep(1000);
-// 
+
         /* Fill in the motor platform data struct */
 
  	pdata.out_port  = port->pdev;
 
- 	pdata.tacho_int_gpio = port->gpio[GPIO_PIN5_TACHO].gpio;
- 	pdata.tacho_dir_gpio = port->gpio[GPIO_PIN6].gpio;
+ 	pdata.motor_dir0_gpio = port->gpio[GPIO_PIN1].gpio;
+ 	pdata.motor_dir1_gpio = port->gpio[GPIO_PIN2].gpio;
+ 	pdata.tacho_int_gpio  = port->gpio[GPIO_PIN5_TACHO].gpio;
+ 	pdata.tacho_dir_gpio  = port->gpio[GPIO_PIN6].gpio;
+ 	pdata.pwm             = port->pwm;
 
  	motor = legoev3_port_device_register("motor", -1,
  				&ev3_motor_device_types[port->motor_type],
@@ -421,6 +417,7 @@ static int __devinit ev3_output_port_probe(struct legoev3_port_device *pdev)
 {
  	struct ev3_output_port_data *port;
  	struct ev3_output_port_platform_data *pdata = pdev->dev.platform_data;
+        struct pwm_device *pwm;
 	int err;
 
 	if (WARN(!pdata, "Platform data is required."))
@@ -471,6 +468,13 @@ static int __devinit ev3_output_port_probe(struct legoev3_port_device *pdev)
 		goto gpio_request_array_fail;
  	}
 
+        pr_warning("GPIO_PWM       for port %d is: %d\n", port->id, pdata->pwm_gpio);
+	err = davinci_cfg_reg(pdata->pwm_gpio);
+	if (err) {
+		dev_err(&pdev->dev, "Requesting PWM GPIOs failed.\n");
+		goto gpio_request_array_fail;
+ 	}
+
  	err = dev_set_drvdata(&pdev->dev, port);
 	if (err)
 		goto dev_set_drvdata_fail;
@@ -478,13 +482,80 @@ static int __devinit ev3_output_port_probe(struct legoev3_port_device *pdev)
 	INIT_WORK(&port->work, NULL);
  
 	port->con_state = CON_STATE_INIT;
+
+        /* Set up the connect/disconnect poll timer */
+
 	hrtimer_init(&port->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	port->timer.function = ev3_output_port_timer_callback;
 	hrtimer_start(&port->timer, ktime_set(0, OUTPUT_PORT_POLL_NS),
 		      HRTIMER_MODE_REL);
 
+	/* Now get the PWM driver registered for this port */
+
+ 	pwm = pwm_request_byname(pdata->pwm_dev_name, dev_name(&port->pdev->dev));
+   	if (IS_ERR(pwm)) {
+   		dev_err(&pdev->dev, "%s: Could not request pwm device '%s'! (%ld)\n",
+   			__func__, pdata->pwm_dev_name, PTR_ERR(pwm));
+   		err = PTR_ERR(pwm);
+   		goto err_pwm_request_byname;
+   	}
+
+	/* FIXME: Separate platform and generic PWM setup code here */
+
+	if (strncmp(pdata->pwm_dev_name, "ehrpwm", 6) == 0) {
+   		dev_err(&pdev->dev, "%s: Setting up PWM '%s'! (%lx)\n",
+   			__func__, pdata->pwm_dev_name, PTR_ERR(pwm));
+
+		err = ehrpwm_tb_set_phase(pwm,0);
+		err = ehrpwm_tb_set_counter(pwm,0);
+		err = ehrpwm_cmp_set_cmp_ctl(pwm, 0, 0, 0, 0);
+		err = ehrpwm_tb_set_prescalar_val(pwm, 0, 0);
+		err = ehrpwm_tb_config_sync(pwm,0,3);
+		err = ehrpwm_tb_set_counter_mode(pwm,3,1);
+	} else if (strncmp(pdata->pwm_dev_name, "ecap", 4) == 0) {
+        }
+
+ 	err = pwm_set_polarity(pwm, 1);
+ 	if (err) {
+ 		dev_err(&pdev->dev, "%s: Failed to set pwm polarity! (%d)\n",
+ 			__func__, err);
+ 		goto err_pwm_set_polarity;
+ 	}
+
+	err = pwm_set_frequency(pwm, 10000);
+ 	if (err) {
+ 		dev_err(&pdev->dev, "%s: Failed to set pwm frequency! (%d)\n",
+ 			__func__, err);
+ 		goto err_pwm_set_frequency;
+ 	}
+
+ 	err = pwm_set_duty_percent(pwm, 0);
+ 	if (err) {
+ 		dev_err(&pdev->dev, "%s: Failed to set pwm duty percent! (%d)\n",
+ 			__func__, err);
+ 		goto err_pwm_set_duty_percent;
+ 	}
+ 	err = pwm_start(pwm);
+ 	if (err) {
+ 		dev_err(&pdev->dev, "%s: Failed to start pwm! (%d)\n",
+ 			__func__, err);
+ 		goto err_pwm_start;
+ 	}
+
+	port->pwm = pwm;
+
 	return 0;
- 
+
+// 	pwm_release(pwm);
+// err_sysfs_create_group:
+// 	pwm_stop(pwm);
+err_pwm_start:
+err_pwm_set_duty_percent:
+err_pwm_set_frequency:
+err_pwm_set_polarity:
+	pwm_release(pwm);
+   err_pwm_request_byname:
+	hrtimer_cancel(&port->timer);
    dev_set_drvdata_fail:
  	gpio_free_array(port->gpio, ARRAY_SIZE(port->gpio));
    gpio_request_array_fail:
@@ -499,23 +570,17 @@ static int __devexit ev3_output_port_remove(struct legoev3_port_device *pdev)
 {
 	struct ev3_output_port_data *port = dev_get_drvdata(&pdev->dev);
 
-        pr_warning("Canceling timer!\n");
+ 	pwm_stop(port->pwm);
+ 	pwm_release(port->pwm);
+
 	hrtimer_cancel(&port->timer);
-        pr_warning("Canceling work!\n");
 	cancel_work_sync(&port->work);
-	if (port->motor) {
-                pr_warning("Unregistering motor!\n");
+	if (port->motor)
 		legoev3_port_device_unregister(port->motor);
-        }
-        pr_warning("Float motor!\n");
 	ev3_output_port_float(port);
-        pr_warning("Free motor GPIO!\n");
 	gpio_free_array(port->gpio, ARRAY_SIZE(port->gpio));
-        pr_warning("Free analog port!\n");
 	put_legoev3_analog(port->analog);
-        pr_warning("Unset driver data!\n");
 	dev_set_drvdata(&pdev->dev, NULL);
-        pr_warning("Free output port!\n");
 	kfree(port);
 
 	return 0;
@@ -523,16 +588,18 @@ static int __devexit ev3_output_port_remove(struct legoev3_port_device *pdev)
 
 static void ev3_output_port_shutdown(struct legoev3_port_device *pdev)
 {
-// 	struct ev3_input_port_data *port = dev_get_drvdata(&pdev->dev);
-// 
-// 	hrtimer_cancel(&port->timer);
-// 	cancel_work_sync(&port->work);
+ 	struct ev3_output_port_data *port = dev_get_drvdata(&pdev->dev);
+
+ 	pwm_stop(port->pwm);
+
+ 	hrtimer_cancel(&port->timer);
+ 	cancel_work_sync(&port->work);
 }
 
 struct legoev3_port_driver ev3_output_port_driver = {
   	.probe		= ev3_output_port_probe,
 	.remove		= __devexit_p(ev3_output_port_remove),
-//	.shutdown	= ev3_output_port_shutdown,
+	.shutdown	= ev3_output_port_shutdown,
 	.driver = {
 		.name	= "ev3-output-port",
 		.owner	= THIS_MODULE,

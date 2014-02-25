@@ -40,6 +40,8 @@
 #include <linux/ioport.h>
 #include <linux/legoev3/legoev3_ports.h>
 
+#include <mach/da8xx.h>
+
 struct legoev3_ports_data {
 	struct platform_device *pdev;
 	struct legoev3_ports_platform_data *pdata;
@@ -497,6 +499,8 @@ static int __devinit legoev3_ports_probe(struct platform_device *pdev)
 	}
 
 	return 0;
+
+err_pwm_request_byname:
 
 err_legoev3_init_ports_peripherals:
 	for(i = 0; i < NUM_EV3_PORT_OUT; i++)
