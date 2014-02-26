@@ -214,10 +214,8 @@ enum pin_state_flag {
 
 enum sensor_type {
 	SENSOR_NONE,
-	SENSOR_NXT_TOUCH,
-	SENSOR_NXT_LIGHT,
-	SENSOR_NXT_COLOR,
 	SENSOR_NXT_ANALOG,
+	SENSOR_NXT_COLOR,
 	SENSOR_NXT_I2C,
 	SENSOR_EV3_ANALOG,
 	SENSOR_EV3_UART,
@@ -231,20 +229,12 @@ const struct attribute_group *ev3_sensor_device_type_attr_groups[] = {
 };
 
 struct device_type ev3_sensor_device_types[] = {
-	[SENSOR_NXT_TOUCH] = {
-		.name	= "nxt-touch-sensor",
-		.groups	= ev3_sensor_device_type_attr_groups,
-	},
-	[SENSOR_NXT_LIGHT] = {
-		.name	= "nxt-light-sensor",
+	[SENSOR_NXT_ANALOG] = {
+		.name	= "nxt-analog-sensor",
 		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_NXT_COLOR] = {
 		.name	= "nxt-color-sensor",
-		.groups	= ev3_sensor_device_type_attr_groups,
-	},
-	[SENSOR_NXT_ANALOG] = {
-		.name	= "nxt-analog-sensor",
 		.groups	= ev3_sensor_device_type_attr_groups,
 	},
 	[SENSOR_NXT_I2C] = {
@@ -532,22 +522,25 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 					else
 						port->sensor_type = SENSOR_NXT_I2C;
 				} else if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN5_LOW)) {
+					port->sensor_type = SENSOR_NXT_ANALOG;
 					if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN6_HIGH))
-						port->sensor_type = SENSOR_NXT_ANALOG;
+						port->sensor_type_id = NXT_ANALOG_SENSOR_TYPE_ID;
 					else
-						port->sensor_type = SENSOR_NXT_LIGHT;
+						port->sensor_type_id = NXT_LIGHT_SENSOR_TYPE_ID;
 				} else if (new_pin1_mv < PIN1_NEAR_GND)
 					port->sensor_type = SENSOR_NXT_COLOR;
 				else if (new_pin1_mv > PIN1_NEAR_5V) {
-					port->sensor_type = SENSOR_NXT_TOUCH;
+					port->sensor_type = SENSOR_NXT_ANALOG;
 					port->sensor_type_id = NXT_TOUCH_SENSOR_TYPE_ID;
 				} else if (new_pin1_mv > PIN1_TOUCH_LOW
 					 && new_pin1_mv < PIN1_TOUCH_HIGH) {
 					port->con_state = CON_STATE_TEST_NXT_TOUCH;
 					port->timer_loop_cnt = 0;
 					port->pin1_mv = new_pin1_mv;
-				} else
+				} else {
 					port->sensor_type = SENSOR_NXT_ANALOG;
+					port->sensor_type_id = NXT_ANALOG_SENSOR_TYPE_ID;
+				}
 			} else if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN1_LOADED)) {
 				port->con_state = CON_STATE_HAVE_EV3;
 				if (new_pin1_mv > PIN1_NEAR_PIN2)
@@ -578,14 +571,13 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 	case CON_STATE_TEST_NXT_TOUCH:
 		if (port->timer_loop_cnt >= SETTLE_CNT) {
 			port->con_state = CON_STATE_HAVE_NXT;
+			port->sensor_type = SENSOR_NXT_ANALOG;
 			new_pin1_mv = legoev3_analog_in_pin1_value(port->analog, port->id);
 			if (new_pin1_mv > (port->pin1_mv - PIN1_TOUCH_VAR) &&
 			    new_pin1_mv < (port->pin1_mv + PIN1_TOUCH_VAR))
-			{
-				port->sensor_type = SENSOR_NXT_TOUCH;
 				port->sensor_type_id = NXT_TOUCH_SENSOR_TYPE_ID;
-			} else
-				port->sensor_type = SENSOR_NXT_ANALOG;
+			else
+				port->sensor_type_id = NXT_ANALOG_SENSOR_TYPE_ID;
 		}
 		break;
 	case CON_STATE_HAVE_NXT:

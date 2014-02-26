@@ -157,7 +157,7 @@ static int __devexit nxt_light_sensor_remove(struct legoev3_port_device *sensor)
 
 static struct legoev3_port_device_id nxt_light_sensor_device_ids [] = {
 	{
-		.name = "nxt-light-sensor",
+		.name = "nxt-analog-sensor",
 		.type_id = NXT_LIGHT_SENSOR_TYPE_ID,
 	},
 	{  }
@@ -178,4 +178,4 @@ legoev3_port_driver(nxt_light_sensor_driver);
 MODULE_DESCRIPTION("NXT Light sensor device driver for LEGO Mindstorms EV3");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("legoev3:nxt-light-sensor");
+MODULE_ALIAS("legoev3:nxt-analog-sensor");

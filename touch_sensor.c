@@ -156,7 +156,7 @@ static int __devexit touch_sensor_remove(struct legoev3_port_device *sensor)
 
 static struct legoev3_port_device_id touch_sensor_device_ids [] = {
 	{
-		.name = "nxt-touch-sensor",
+		.name = "nxt-analog-sensor",
 		.type_id = NXT_TOUCH_SENSOR_TYPE_ID,
 	},
 	{
@@ -181,5 +181,5 @@ legoev3_port_driver(touch_sensor_driver);
 MODULE_DESCRIPTION("Touch sensor device driver for LEGO Mindstorms EV3");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("legoev3:nxt-touch-sensor");
+MODULE_ALIAS("legoev3:nxt-analog-sensor");
 MODULE_ALIAS("legoev3:ev3-analog-sensor");
