@@ -35,17 +35,21 @@ static struct msensor_mode_info
 nxt_analog_sensor_mode_info[NUM_NXT_ANALOG_SENSOR_MODES] = {
 	{
 		.name = "NXT-ANALOG-0",
+		.units = "V",
 		.raw_max = 5000,
 		.pct_max = 100,
 		.si_max = 5000,
+		.decimals = 3,
 		.data_sets = 1,
 		.data_type = MSENSOR_DATA_S32,
 	},
 	{
 		.name = "NXT-ANALOG-1",
+		.units = "V",
 		.raw_max = 5000,
 		.pct_max = 100,
 		.si_max = 5000,
+		.decimals = 3,
 		.data_sets = 1,
 		.data_type = MSENSOR_DATA_S32,
 	},
@@ -84,61 +88,6 @@ static void nxt_analog_sensor_cb(void *context)
 		ev3_input_port_get_pin1_mv(as->in_port);
 }
 
-#define nxt_analog_sensor_attr_funcs(_name)					\
-static ssize_t nxt_analog_sensor_show_##_name(struct device * dev,		\
-					      struct device_attribute *attr,	\
-					      char *buf)			\
-{										\
-	struct msensor_device *ms = to_msensor_device(dev);			\
-	struct nxt_analog_sensor_data *as =					\
-		container_of(ms, struct nxt_analog_sensor_data, ms);		\
-										\
-	return sprintf(buf, "%d\n", ms->mode_info[as->mode]._name);		\
-}										\
-										\
-static ssize_t nxt_analog_sensor_store_##_name(struct device * dev,		\
-					       struct device_attribute *attr,	\
-					       const char *buf, size_t count)	\
-{										\
-	struct msensor_device *ms = to_msensor_device(dev);			\
-	struct nxt_analog_sensor_data *as =					\
-		container_of(ms, struct nxt_analog_sensor_data, ms);		\
-	char *end;								\
-	long value = simple_strtol(buf, &end, 0);				\
-										\
-	if (end == buf || value > INT_MAX || value < INT_MIN)			\
-		return -EINVAL;							\
-	ms->mode_info[as->mode]._name = value;					\
-										\
-	return count;								\
-}
-
-nxt_analog_sensor_attr_funcs(raw_min)
-nxt_analog_sensor_attr_funcs(raw_max)
-nxt_analog_sensor_attr_funcs(si_min)
-nxt_analog_sensor_attr_funcs(si_max)
-
-DEVICE_ATTR(raw_min, S_IRUGO | S_IWUGO, nxt_analog_sensor_show_raw_min,
-	    nxt_analog_sensor_store_raw_min);
-DEVICE_ATTR(raw_max, S_IRUGO | S_IWUGO, nxt_analog_sensor_show_raw_max,
-	    nxt_analog_sensor_store_raw_max);
-DEVICE_ATTR(scaled_min, S_IRUGO | S_IWUGO, nxt_analog_sensor_show_si_min,
-	    nxt_analog_sensor_store_si_min);
-DEVICE_ATTR(scaled_max, S_IRUGO | S_IWUGO, nxt_analog_sensor_show_si_max,
-	    nxt_analog_sensor_store_si_max);
-
-struct attribute *nxt_analog_sensor_attrs[] = {
-	&dev_attr_raw_min.attr,
-	&dev_attr_raw_max.attr,
-	&dev_attr_scaled_min.attr,
-	&dev_attr_scaled_max.attr,
-	NULL
-};
-
-struct attribute_group nxt_analog_sensor_attr_grp = {
-	.attrs = nxt_analog_sensor_attrs,
-};
-
 static int __devinit nxt_analog_sensor_probe(struct legoev3_port_device *sensor)
 {
 	struct nxt_analog_sensor_data *as;
@@ -171,10 +120,6 @@ static int __devinit nxt_analog_sensor_probe(struct legoev3_port_device *sensor)
 	if (err)
 		goto err_register_msensor;
 
-	err = sysfs_create_group(&as->ms.dev.kobj, &nxt_analog_sensor_attr_grp);
-	if (err)
-		goto err_sysfs_create_group;
-
 	ev3_input_port_register_analog_cb(as->in_port, nxt_analog_sensor_cb, as);
 
 	err = dev_set_drvdata(&sensor->dev, as);
@@ -189,8 +134,6 @@ static int __devinit nxt_analog_sensor_probe(struct legoev3_port_device *sensor)
 	return 0;
 
 err_dev_set_drvdata:
-	sysfs_remove_group(&as->ms.dev.kobj, &nxt_analog_sensor_attr_grp);
-err_sysfs_create_group:
 	unregister_msensor(&as->ms);
 err_register_msensor:
 	kfree(as);
@@ -206,7 +149,6 @@ static int __devexit nxt_analog_sensor_remove(struct legoev3_port_device *sensor
 		 dev_name(&as->in_port->dev));
 	ev3_input_port_set_pin5_gpio(as->in_port, EV3_INPUT_PORT_GPIO_FLOAT);
 	ev3_input_port_register_analog_cb(as->in_port, NULL, NULL);
-	sysfs_remove_group(&as->ms.dev.kobj, &nxt_analog_sensor_attr_grp);
 	unregister_msensor(&as->ms);
 	dev_set_drvdata(&sensor->dev, NULL);
 	kfree(as);
