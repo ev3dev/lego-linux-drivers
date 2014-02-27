@@ -47,6 +47,15 @@ struct legoev3_ports_data {
 
 static struct legoev3_ports_data *legoev3_ports;
 
+static uint disable_in_port[NUM_EV3_PORT_IN];
+static int num_disabled_in_port;
+module_param_array(disable_in_port, uint, &num_disabled_in_port, 0);
+MODULE_PARM_DESC(disable_in_port, "Disables specified input ports. (1,2,3,4)");
+static uint disable_out_port[NUM_EV3_PORT_OUT];
+static int num_disabled_out_port;
+module_param_array(disable_out_port, uint, &num_disabled_out_port, 0);
+MODULE_PARM_DESC(disable_out_port, "Disables specified output ports. (1,2,3,4)");
+
 static ssize_t legoev3_show_device_type(struct device *dev,
 					struct device_attribute *attr,
 					char *buf)
@@ -281,11 +290,25 @@ int legoev3_register_input_ports(struct legoev3_port_device *ports[],
 				 struct ev3_input_port_platform_data data[],
 				 unsigned len)
 {
-	int err;
+	int err, j, id;
 	int i = 0;
+	bool skip;
 
 	do {
-		ports[i] = legoev3_port_device_register("in", data[i].id + 1,
+		skip = false;
+		id = data[i].id + 1;
+		for (j = 0; j < num_disabled_in_port; j++) {
+			if (disable_in_port[j] == id) {
+				skip = true;
+				break;
+			}
+		}
+		if (skip) {
+			dev_info(&legoev3_ports->pdev->dev,
+				"Input port in%d is disabled.\n", id);
+			continue;
+		}
+		ports[i] = legoev3_port_device_register("in", id,
 			&ev3_input_port_device_type, -1, &data[i],
 			sizeof(struct ev3_input_port_platform_data), NULL);
 		if (IS_ERR(ports[i])) {

@@ -623,11 +623,6 @@ static int __devinit ev3_input_port_probe(struct legoev3_port_device *pdev)
 	if (WARN(!pdata, "Platform data is required."))
 		return -EINVAL;
 
-	/* TODO: make a kernel option to disable port 1 when using serial port */
-	/* or find a way to auto-detect */
-	if (pdata->id == EV3_PORT_IN1)
-		return -EINVAL;
-
 	port = kzalloc(sizeof(struct ev3_input_port_data), GFP_KERNEL);
 	if (!port)
 		return -ENOMEM;
