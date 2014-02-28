@@ -175,9 +175,9 @@ void ev3_output_port_float(struct ev3_output_port_data *port)
 {
 	gpio_direction_output(port->gpio[GPIO_PIN1      ].gpio, 0);
 	gpio_direction_output(port->gpio[GPIO_PIN2      ].gpio, 0);
-	gpio_direction_output(port->gpio[GPIO_PIN5      ].gpio, 0);
-	gpio_direction_input( port->gpio[GPIO_PIN5_TACHO].gpio);
-	gpio_direction_input( port->gpio[GPIO_PIN6      ].gpio);
+	gpio_direction_input( port->gpio[GPIO_PIN5      ].gpio   );
+	gpio_direction_input( port->gpio[GPIO_PIN5_TACHO].gpio   );
+	gpio_direction_input( port->gpio[GPIO_PIN6      ].gpio   );
 }
 
 void ev3_output_port_register_motor(struct work_struct *work)
@@ -512,6 +512,7 @@ static int __devinit ev3_output_port_probe(struct legoev3_port_device *pdev)
 		err = ehrpwm_tb_set_prescalar_val(pwm, 0, 0);
 		err = ehrpwm_tb_config_sync(pwm,0,3);
 		err = ehrpwm_tb_set_counter_mode(pwm,3,1);
+
 	} else if (strncmp(pdata->pwm_dev_name, "ecap", 4) == 0) {
         }
 
@@ -527,7 +528,7 @@ static int __devinit ev3_output_port_probe(struct legoev3_port_device *pdev)
  		dev_err(&pdev->dev, "%s: Failed to set pwm frequency! (%d)\n",
  			__func__, err);
  		goto err_pwm_set_frequency;
- 	}
+	}
 
  	err = pwm_set_duty_percent(pwm, 0);
  	if (err) {

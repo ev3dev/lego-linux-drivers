@@ -934,19 +934,19 @@ static void ev3_tacho_motor_set_target_power(struct tacho_motor_device *tm, long
 	/* FIXME: Add code to set direction and power here! update the PWM registers! */
 	
         if (0 < target_power) {
-		gpio_direction_output(pdata->motor_dir0_gpio, 0);
+		gpio_direction_input( pdata->motor_dir0_gpio   );
 		gpio_direction_output(pdata->motor_dir1_gpio, 1);
-		err = pwm_set_duty_percent(pdata->pwm, target_power);
 	} else if (0 > target_power) {
 		gpio_direction_output(pdata->motor_dir0_gpio, 1);
-		gpio_direction_output(pdata->motor_dir1_gpio, 0);
-		err = pwm_set_duty_percent(pdata->pwm, -target_power);
+		gpio_direction_input( pdata->motor_dir1_gpio   );
+		target_power = -target_power;
 	} else {
 		/* FIXME: Add code to float or brake here depending on mode */
 		gpio_direction_output(pdata->motor_dir0_gpio, 0);
 		gpio_direction_output(pdata->motor_dir1_gpio, 0);
-		err = pwm_set_duty_percent(pdata->pwm, 0);
 	}
+
+	err = pwm_set_duty_percent(pdata->pwm, target_power);
 
  	if (err) {
  		dev_err(&ev3_tm->motor_port->dev, "%s: Failed to set pwm duty percent! (%d)\n",
