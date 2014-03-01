@@ -24,6 +24,8 @@
 #include <linux/legoev3/ev3_output_port.h>
 #include <linux/legoev3/tacho_motor_class.h>
 
+#include <mach/time.h>
+
 #include <asm/bug.h>
 
 // #define PIN6_NEAR_GND		250		/* 0.25V */
@@ -76,9 +78,6 @@ struct ev3_tacho_motor_data {
         unsigned tacho_samples[TACHO_SAMPLES];
         unsigned tacho_samples_head;
         unsigned tacho_samples_tail;
-
-        
-        unsigned long *TIMER64P3;
 
 	unsigned *samples_per_speed;
 	int	 *ramp_power_steps;
@@ -136,43 +135,6 @@ enum
   COAST,
 };
 
-/* TIMER64 register configuration */
-enum
-{
-  REVID       = 0,
-  EMUMGT      = 1,
-  GPINTGPEN   = 2,
-  GPDATGPDIR  = 3,
-  TIM12       = 4,
-  TIM34       = 5,
-  PRD12       = 6,
-  PRD34       = 7,
-  TCR         = 8,
-  TGCR        = 9,
-  WDTCR       = 10,
-  NOTUSED1    = 11,
-  NOTUSED2    = 12,
-  REL12       = 13,
-  REL34       = 14,
-  CAP12       = 15,
-  CAP34       = 16,
-  NOTUSED3    = 17,
-  NOTUSED4    = 18,
-  NOTUSED5    = 19,
-  NOTUSED6    = 20,
-  NOTUSED7    = 21,
-  NOTUSED8    = 22,
-  INTCTLSTAT  = 23,
-  CMP0        = 24,
-  CMP1        = 25,
-  CMP2        = 26,
-  CMP3        = 27,
-  CMP4        = 28,
-  CMP5        = 39,
-  CMP6        = 30,
-  CMP7        = 31,
-};
-
 enum
 {
   UNLIMITED_UNREG,
@@ -207,7 +169,7 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 
 	bool int_state = gpio_get_value(pdata->tacho_int_gpio);
 	bool dir_state = gpio_get_value(pdata->tacho_dir_gpio);
-	unsigned long timer = (((unsigned long *)(ev3_tm->TIMER64P3))[TIM34]) >> 8;
+	unsigned long timer = legoev3_hires_timer_read() >> 8;
 
 	unsigned next_sample;
 
@@ -255,12 +217,6 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 	else			
 		ev3_tm->irq_tacho--;
 
-//        pr_warning("Got an interrupt on gpio %d on port %s State %d %d Timer %lx tacho %d!\n", irq
-//							, dev_name(&ev3_tm->out_port->dev)
-//							, int_state
-//						        , dir_state
-//                                                        , timer
-//							, ev3_tm->irq_tacho );
 	return IRQ_HANDLED;
 }
 static int process_count = 0;
@@ -1008,8 +964,6 @@ static int __devinit ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 		goto dev_request_irq_fail;
 
         irq_set_irq_type(gpio_to_irq(pdata->tacho_int_gpio), IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING);
-
-        ev3_tm->TIMER64P3 = legoev3_port_remap_TIMER64P3();
 
 	/* Set up the output port status processing timer */
 

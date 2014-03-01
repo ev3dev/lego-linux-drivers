@@ -23,7 +23,6 @@
 #include <linux/workqueue.h>
 #include <linux/gpio.h>
 #include <linux/slab.h>
-// #include <linux/pwm/pwm.h>
 #include <linux/pwm/ehrpwm.h>
 #include <linux/legoev3/legoev3_analog.h>
 #include <linux/legoev3/legoev3_ports.h>
@@ -163,14 +162,6 @@ struct ev3_output_port_data {
  	struct legoev3_port_device *motor;
 };
 
-// int ev3_output_port_get_foo(struct legoev3_port_device *out_port)
-// {
-// 	struct ev3_output_port_data *port = dev_get_drvdata(&out_port->dev);
-// 
-// 	return 0;
-// }
-// EXPORT_SYMBOL_GPL(ev3_output_port_get_foo);
-
 void ev3_output_port_float(struct ev3_output_port_data *port)
 {
 	gpio_direction_output(port->gpio[GPIO_PIN1      ].gpio, 0);
@@ -187,8 +178,6 @@ void ev3_output_port_register_motor(struct work_struct *work)
 	struct legoev3_port_device *motor;
 	struct ev3_motor_platform_data pdata;
 
-        pr_warning("Registering a motor driver for type %d on port %d!\n", port->motor_type, port->id );
-	
 	if (port->motor_type == MOTOR_NONE
 	    || port->motor_type == MOTOR_ERR
 	    || port->motor_type >= NUM_MOTOR)
@@ -227,8 +216,6 @@ void ev3_output_port_unregister_motor(struct work_struct *work)
 {
 	struct ev3_output_port_data *port =
 			container_of(work, struct ev3_output_port_data, work);
-
-        pr_warning("Unregistering a motor driver on port %d!\n", port->id );
 
  	legoev3_port_device_unregister(port->motor);
 
@@ -456,22 +443,9 @@ static int __devinit ev3_output_port_probe(struct legoev3_port_device *pdev)
 	port->gpio[GPIO_PIN6].flags	= GPIOF_IN;
 	port->gpio[GPIO_PIN6].label	= "pin6";
 
-        pr_warning("GPIO_PIN1       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN1].gpio);
-        pr_warning("GPIO_PIN2       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN2].gpio);
-        pr_warning("GPIO_PIN5       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN5].gpio);
-        pr_warning("GPIO_PIN5_TACHO for port %d is: %d\n", port->id, port->gpio[GPIO_PIN5_TACHO].gpio);
-        pr_warning("GPIO_PIN6       for port %d is: %d\n", port->id, port->gpio[GPIO_PIN6].gpio);
-
 	err = gpio_request_array(port->gpio, ARRAY_SIZE(port->gpio));
 	if (err) {
 		dev_err(&pdev->dev, "Requesting GPIOs failed.\n");
-		goto gpio_request_array_fail;
- 	}
-
-        pr_warning("GPIO_PWM       for port %d is: %d\n", port->id, pdata->pwm_gpio);
-	err = davinci_cfg_reg(pdata->pwm_gpio);
-	if (err) {
-		dev_err(&pdev->dev, "Requesting PWM GPIOs failed.\n");
 		goto gpio_request_array_fail;
  	}
 
@@ -500,28 +474,35 @@ static int __devinit ev3_output_port_probe(struct legoev3_port_device *pdev)
    		goto err_pwm_request_byname;
    	}
 
-	/* FIXME: Separate platform and generic PWM setup code here */
+	/* Separate platform and generic PWM setup code here */
 
 	if (strncmp(pdata->pwm_dev_name, "ehrpwm", 6) == 0) {
    		dev_err(&pdev->dev, "%s: Setting up PWM '%s'! (%lx)\n",
    			__func__, pdata->pwm_dev_name, PTR_ERR(pwm));
 
-		err = ehrpwm_tb_set_phase(pwm,0);
-		err = ehrpwm_tb_set_counter(pwm,0);
-		err = ehrpwm_cmp_set_cmp_ctl(pwm, 0, 0, 0, 0);
-		err = ehrpwm_tb_set_prescalar_val(pwm, 0, 0);
-		err = ehrpwm_tb_config_sync(pwm,0,3);
-		err = ehrpwm_tb_set_counter_mode(pwm,3,1);
+		/* Add any custom setup needed by ehrpwm here */
+
+	 	err = pwm_set_polarity(pwm, 1);
+ 		if (err) {
+ 			dev_err(&pdev->dev, "%s: Failed to set pwm polarity! (%d)\n",
+ 				__func__, err);
+	 		goto err_pwm_set_polarity;
+	 	}
 
 	} else if (strncmp(pdata->pwm_dev_name, "ecap", 4) == 0) {
-        }
+   		dev_err(&pdev->dev, "%s: Setting up PWM '%s'! (%lx)\n",
+   			__func__, pdata->pwm_dev_name, PTR_ERR(pwm));
 
- 	err = pwm_set_polarity(pwm, 1);
- 	if (err) {
- 		dev_err(&pdev->dev, "%s: Failed to set pwm polarity! (%d)\n",
- 			__func__, err);
- 		goto err_pwm_set_polarity;
- 	}
+		/* Add any custom setup needed by ecap here */
+
+	 	err = pwm_set_polarity(pwm, 0);
+ 		if (err) {
+ 			dev_err(&pdev->dev, "%s: Failed to set pwm polarity! (%d)\n",
+ 				__func__, err);
+	 		goto err_pwm_set_polarity;
+	 	}
+
+        }
 
 	err = pwm_set_frequency(pwm, 10000);
  	if (err) {
@@ -536,6 +517,7 @@ static int __devinit ev3_output_port_probe(struct legoev3_port_device *pdev)
  			__func__, err);
  		goto err_pwm_set_duty_percent;
  	}
+
  	err = pwm_start(pwm);
  	if (err) {
  		dev_err(&pdev->dev, "%s: Failed to start pwm! (%d)\n",
@@ -547,9 +529,6 @@ static int __devinit ev3_output_port_probe(struct legoev3_port_device *pdev)
 
 	return 0;
 
-// 	pwm_release(pwm);
-// err_sysfs_create_group:
-// 	pwm_stop(pwm);
 err_pwm_start:
 err_pwm_set_duty_percent:
 err_pwm_set_frequency:
