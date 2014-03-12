@@ -85,13 +85,15 @@ struct ev3_tacho_motor_data {
 	unsigned counts_per_pulse;
 	unsigned dir_chg_samples;
 
+	/* FIXME - this should really just be tacho! And moved below target_xxx */
+
 	int irq_tacho;
 
 	/* FIXME - these need better names */
 
 	bool mutex;
 
-	/* FIXME - these need better names */
+	/* FIXME - these relate to the time setpoints, probably need renaming */
 
 	int time_cnt;
 	int time_inc;
@@ -103,14 +105,20 @@ struct ev3_tacho_motor_data {
 
 	int tacho_cnt_up;
 
+	int prg_stop_timer;
+
 	bool lock_ramp_down;
 	bool brake_after;
 
 	int state;
 
+	int target_state;
 	int target_speed;
 	int target_power;
         int target_direction;
+        int target_tacho;
+        int target_step;
+        int target_time;
 
 	int tacho_cnt;
 	int tacho_sensor;
@@ -119,6 +127,8 @@ struct ev3_tacho_motor_data {
 	int power;
         int speed;
         int direction;
+        int step;
+        int time;
 };
 
 // static    unsigned    AVG_TACHO_COUNTS[NO_OF_OUTPUT_PORTS]   = {2,2,2,2};
@@ -127,40 +137,6 @@ struct ev3_tacho_motor_data {
 #define  NON_INV   1
 #define  INV      -1
 
-enum
-{
-  FORWARD,
-  BACKWARD,
-  BRAKE,
-  COAST,
-};
-
-enum
-{
-  UNLIMITED_UNREG,
-  UNLIMITED_REG,
-  LIMITED_REG_STEPUP,
-  LIMITED_REG_STEPCONST,
-  LIMITED_REG_STEPDOWN,
-  LIMITED_UNREG_STEPUP,
-  LIMITED_UNREG_STEPCONST,
-  LIMITED_UNREG_STEPDOWN,
-  LIMITED_REG_TIMEUP,
-  LIMITED_REG_TIMECONST,
-  LIMITED_REG_TIMEDOWN,
-  LIMITED_UNREG_TIMEUP,
-  LIMITED_UNREG_TIMECONST,
-  LIMITED_UNREG_TIMEDOWN,
-  LIMITED_STEP_SYNC,
-  LIMITED_TURN_SYNC,
-  LIMITED_DIFF_TURN_SYNC,
-  SYNCED_SLAVE,
-  RAMP_DOWN_SYNC,
-  HOLD,
-  BRAKED,
-  STOP_MOTOR,
-  IDLE,
-};
 
 static irqreturn_t tacho_motor_isr(int irq, void *id)
 {
@@ -221,39 +197,74 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 }
 static int process_count = 0;
 
+static void ev3_tacho_motor_forward(struct ev3_motor_platform_data *pdata)
+{
+	gpio_direction_output(pdata->motor_dir0_gpio, 0);
+	gpio_direction_input( pdata->motor_dir1_gpio   );
+}
+static void ev3_tacho_motor_reverse(struct ev3_motor_platform_data *pdata)
+{
+	gpio_direction_input( pdata->motor_dir0_gpio   );
+	gpio_direction_output(pdata->motor_dir1_gpio, 1);
+}
+static void ev3_tacho_motor_brake(struct ev3_motor_platform_data *pdata)
+{
+	gpio_direction_output(pdata->motor_dir0_gpio, 1);
+	gpio_direction_output(pdata->motor_dir1_gpio, 1);
+}
+static void ev3_tacho_motor_coast(struct ev3_motor_platform_data *pdata)
+{
+	gpio_direction_output(pdata->motor_dir0_gpio, 0);
+	gpio_direction_output(pdata->motor_dir1_gpio, 0);
+}
+
 static int ev3_tacho_motor_calculate_speed(struct ev3_tacho_motor_data *ev3_tm)
 {
+#warning "ev3_tacho_motor_calculate_speed is not yet implemented!"
 	return 0;
 }
 static int ev3_tacho_motor_regulate_speed(struct ev3_tacho_motor_data *ev3_tm)
 {
+#warning "ev3_tacho_motor_regulate_speed is not yet implemented!"
 	return 0;
 }
 static int ev3_tacho_motor_set_power(struct ev3_tacho_motor_data *ev3_tm)
 {
+#warning "ev3_tacho_motor_set_power is not yet implemented!"
+	return 0;
+}
+static int ev3_tacho_motor_brake_motor(struct ev3_tacho_motor_data *ev3_tm)
+{
+#warning "ev3_tacho_motor_brake is not yet implemented!"
 	return 0;
 }
 static void ev3_tacho_motor_get_compare_counts( struct ev3_tacho_motor_data *ev3_tm, int *ramp_count, int *ramp_count_test )
 {
+#warning "ev3_tacho_motor_get_compare_counts is not yet implemented!"
 	*ramp_count      = 0;
 	*ramp_count_test = 0;
 }
 static bool ev3_tacho_motor_check_less_than_special( int v1, int v2, int v3 )
 {
+#warning "ev3_tacho_motor_check_less_than_special is not yet implemented!"
 	return 0;
 }
 static bool ev3_tacho_motor_step_speed_check_tacho_count_const( struct ev3_tacho_motor_data *ev3_tm, int tacho_cnt )
 {
+#warning "ev3_tacho_motor_step_speed_check_tacho_count_const is not yet implemented!"
 	return 0;
 }
 static bool ev3_tacho_motor_step_speed_check_tacho_count_down( struct ev3_tacho_motor_data *ev3_tm, int tacho_cnt )
 {
+#warning "ev3_tacho_motor_step_speed_check_tacho_count_down is not yet implemented!"
 	return 0;
 }
 static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer)
 {
  	struct ev3_tacho_motor_data *ev3_tm =
  			container_of(timer, struct ev3_tacho_motor_data, timer);
+
+	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
 
 	/* FIXME - these need better names */
 
@@ -792,36 +803,37 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 //           }
 //         }
 //         break;
-// 
-//         case STOP_MOTOR:
-//         {
-//           if (PrgStopTimer[No])
-//           {
-//             PrgStopTimer[No]--;
-//           }
-//           else
-//           {
-//             Motor[No].State        = IDLE;
-//             Motor[No].TargetState  = UNLIMITED_UNREG;
-//             SetCoast(No);
-//           }
-//         }
-//         break;
-// 
-//         case BRAKED:
-//         {
-//           BrakeMotor(No, Motor[No].TachoCnt);
-//         }
-//         break;
-// 
-//         case IDLE:
-//         { /* Intentionally left empty */
-//         }
-//         break;
-	default:
-//         { /* Intentionally left empty */
-//         }
-		break;
+ 
+         case STOP_MOTOR:
+         {
+           if (ev3_tm->prg_stop_timer)
+           {
+             ev3_tm->prg_stop_timer--;
+           }
+           else
+           {
+             ev3_tm->state        = IDLE;
+             ev3_tm->target_state = UNLIMITED_UNREG;
+
+             ev3_tacho_motor_coast(pdata);
+           }
+         }
+         break;
+ 
+         case BRAKED:
+         {
+           ev3_tacho_motor_brake_motor(ev3_tm);
+         }
+         break;
+ 
+         case IDLE:
+         { /* Intentionally left empty */
+         }
+         break;
+ 	default:
+         { /* Intentionally left empty */
+         }
+	break;
 	}
 
 	return HRTIMER_RESTART;
@@ -829,13 +841,7 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 
 
 	
-// static bool ev3_touch_sensor_pressed(struct touch_sensor_device *ts)
-// {
-// 	struct ev3_touch_sensor_data *ev3_ts =
-// 			container_of(ts, struct ev3_touch_sensor_data, ts);
-// 
-// 	return ev3_input_port_get_pin6_mv(ev3_ts->in_port) > PIN6_NEAR_GND;
-// }
+/* FIXME: All these getters and setters can be macrofied!! */
 
 static int ev3_tacho_motor_get_tacho(struct tacho_motor_device *tm)
 {
@@ -843,6 +849,14 @@ static int ev3_tacho_motor_get_tacho(struct tacho_motor_device *tm)
 			container_of(tm, struct ev3_tacho_motor_data, tm);
 
 	return ev3_tm->irq_tacho;
+}
+
+static int ev3_tacho_motor_get_step(struct tacho_motor_device *tm)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	return ev3_tm->step;
 }
 
 static int ev3_tacho_motor_get_direction(struct tacho_motor_device *tm)
@@ -869,6 +883,22 @@ static int ev3_tacho_motor_get_power(struct tacho_motor_device *tm)
 	return ev3_tm->power;
 }
 
+static int ev3_tacho_motor_get_time(struct tacho_motor_device *tm)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	return ev3_tm->time;
+}
+
+static int ev3_tacho_motor_get_state(struct tacho_motor_device *tm)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	return ev3_tm->state;
+}
+
 static int ev3_tacho_motor_get_target_power(struct tacho_motor_device *tm)
 {
 	struct ev3_tacho_motor_data *ev3_tm =
@@ -876,6 +906,7 @@ static int ev3_tacho_motor_get_target_power(struct tacho_motor_device *tm)
 
 	return ev3_tm->target_power;
 }
+
 static void ev3_tacho_motor_set_target_power(struct tacho_motor_device *tm, long target_power)
 {
 	struct ev3_tacho_motor_data *ev3_tm =
@@ -887,19 +918,16 @@ static void ev3_tacho_motor_set_target_power(struct tacho_motor_device *tm, long
 
 	ev3_tm->target_power = target_power;
 
-	/* FIXME: Add code to set direction and power here! update the PWM registers! */
+	/* FIXME: Move all this to the actual state handler!!! */
 	
         if (0 < target_power) {
-		gpio_direction_input( pdata->motor_dir0_gpio   );
-		gpio_direction_output(pdata->motor_dir1_gpio, 1);
+		ev3_tacho_motor_forward(pdata);
 	} else if (0 > target_power) {
-		gpio_direction_output(pdata->motor_dir0_gpio, 1);
-		gpio_direction_input( pdata->motor_dir1_gpio   );
+		ev3_tacho_motor_reverse(pdata);
 		target_power = -target_power;
 	} else {
 		/* FIXME: Add code to float or brake here depending on mode */
-		gpio_direction_output(pdata->motor_dir0_gpio, 0);
-		gpio_direction_output(pdata->motor_dir1_gpio, 0);
+		ev3_tacho_motor_coast(pdata);
 	}
 
 	err = pwm_set_duty_percent(pdata->pwm, target_power);
@@ -910,6 +938,91 @@ static void ev3_tacho_motor_set_target_power(struct tacho_motor_device *tm, long
  	}
  
 }
+
+static int ev3_tacho_motor_get_target_tacho(struct tacho_motor_device *tm)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	return ev3_tm->target_tacho;
+}
+
+static void ev3_tacho_motor_set_target_tacho(struct tacho_motor_device *tm, long target_tacho)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
+
+	int err;
+
+	ev3_tm->target_tacho = target_tacho;
+}
+
+static int ev3_tacho_motor_get_target_step(struct tacho_motor_device *tm)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	return ev3_tm->target_step;
+}
+
+static void ev3_tacho_motor_set_target_step(struct tacho_motor_device *tm, long target_step)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
+
+	int err;
+
+	ev3_tm->target_step = target_step;
+}
+
+static int ev3_tacho_motor_get_target_speed(struct tacho_motor_device *tm)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	return ev3_tm->target_speed;
+}
+
+static void ev3_tacho_motor_set_target_speed(struct tacho_motor_device *tm, long target_speed)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
+
+	int err;
+
+	ev3_tm->target_speed = target_speed;
+}
+
+static int ev3_tacho_motor_get_target_time(struct tacho_motor_device *tm)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	return ev3_tm->target_time;
+}
+
+static void ev3_tacho_motor_set_target_time(struct tacho_motor_device *tm, long target_time)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
+
+	int err;
+
+	ev3_tm->target_time = target_time;
+}
+
+
+
+
+
 
 
 static int __devinit ev3_tacho_motor_probe(struct legoev3_port_device *motor)
@@ -930,16 +1043,32 @@ static int __devinit ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 	ev3_tm->motor_port = motor;
 
         /* Set up motor specific initialization constants */
-        /* FIXME: These need to be motor specific later! */
+        /* FIXME: These need to be motor specific later!  */
+        /* Maybe a better way is to have this set up as a constant array that's memcpy'ed */
 
 	ev3_tm->tm.get_tacho     = ev3_tacho_motor_get_tacho;
 	ev3_tm->tm.get_direction = ev3_tacho_motor_get_direction;
 	ev3_tm->tm.get_speed     = ev3_tacho_motor_get_speed;
 	ev3_tm->tm.get_power     = ev3_tacho_motor_get_power;
+	ev3_tm->tm.get_time      = ev3_tacho_motor_get_time;
+	ev3_tm->tm.get_state     = ev3_tacho_motor_get_state;
 
 	ev3_tm->tm.get_target_power    = ev3_tacho_motor_get_target_power;
 	ev3_tm->tm.set_target_power    = ev3_tacho_motor_set_target_power;
 
+	ev3_tm->tm.get_target_tacho    = ev3_tacho_motor_get_target_tacho;
+	ev3_tm->tm.set_target_tacho    = ev3_tacho_motor_set_target_tacho;
+
+	ev3_tm->tm.get_target_step     = ev3_tacho_motor_get_target_step;
+	ev3_tm->tm.set_target_step     = ev3_tacho_motor_set_target_step;
+
+	ev3_tm->tm.get_target_speed    = ev3_tacho_motor_get_target_speed;
+	ev3_tm->tm.set_target_speed    = ev3_tacho_motor_set_target_speed;
+
+	ev3_tm->tm.get_target_time     = ev3_tacho_motor_get_target_time;
+	ev3_tm->tm.set_target_time     = ev3_tacho_motor_set_target_time;
+
+	ev3_tm->state             = IDLE;
 	ev3_tm->samples_per_speed = SamplesLargeMotor;
 	ev3_tm->counts_per_pulse  = COUNTS_PER_PULSE_LM;
 
