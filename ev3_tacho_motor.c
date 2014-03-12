@@ -98,7 +98,7 @@ struct ev3_tacho_motor_data {
 	int time_cnt;
 	int time_inc;
 
-	/* FIXME - these need better names */
+	/* FIXME - these relate to the ramp times, probbaly need renaming */
 
 	int ramp_up_factor;
 	int ramp_up_offset;
@@ -114,11 +114,14 @@ struct ev3_tacho_motor_data {
 
 	int target_state;
 	int target_speed;
+	int target_steer;
 	int target_power;
         int target_direction;
         int target_tacho;
         int target_step;
         int target_time;
+        int target_ramp_up_time;
+        int target_ramp_down_time;
 
 	int tacho_cnt;
 	int tacho_sensor;
@@ -999,6 +1002,26 @@ static void ev3_tacho_motor_set_target_speed(struct tacho_motor_device *tm, long
 	ev3_tm->target_speed = target_speed;
 }
 
+static int ev3_tacho_motor_get_target_steer(struct tacho_motor_device *tm)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	return ev3_tm->target_steer;
+}
+
+static void ev3_tacho_motor_set_target_steer(struct tacho_motor_device *tm, long target_steer)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
+
+	int err;
+
+	ev3_tm->target_steer = target_steer;
+}
+
 static int ev3_tacho_motor_get_target_time(struct tacho_motor_device *tm)
 {
 	struct ev3_tacho_motor_data *ev3_tm =
@@ -1019,10 +1042,45 @@ static void ev3_tacho_motor_set_target_time(struct tacho_motor_device *tm, long 
 	ev3_tm->target_time = target_time;
 }
 
+static int ev3_tacho_motor_get_target_ramp_up_time(struct tacho_motor_device *tm)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
 
+	return ev3_tm->target_ramp_up_time;
+}
 
+static void ev3_tacho_motor_set_target_ramp_up_time(struct tacho_motor_device *tm, long target_ramp_up_time)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
 
+	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
 
+	int err;
+
+	ev3_tm->target_ramp_up_time = target_ramp_up_time;
+}
+
+static int ev3_tacho_motor_get_target_ramp_down_time(struct tacho_motor_device *tm)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	return ev3_tm->target_ramp_down_time;
+}
+
+static void ev3_tacho_motor_set_target_ramp_down_time(struct tacho_motor_device *tm, long target_ramp_down_time)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
+
+	int err;
+
+	ev3_tm->target_ramp_down_time = target_ramp_down_time;
+}
 
 
 static int __devinit ev3_tacho_motor_probe(struct legoev3_port_device *motor)
@@ -1065,8 +1123,17 @@ static int __devinit ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 	ev3_tm->tm.get_target_speed    = ev3_tacho_motor_get_target_speed;
 	ev3_tm->tm.set_target_speed    = ev3_tacho_motor_set_target_speed;
 
+	ev3_tm->tm.get_target_steer    = ev3_tacho_motor_get_target_steer;
+	ev3_tm->tm.set_target_steer    = ev3_tacho_motor_set_target_steer;
+
 	ev3_tm->tm.get_target_time     = ev3_tacho_motor_get_target_time;
 	ev3_tm->tm.set_target_time     = ev3_tacho_motor_set_target_time;
+
+	ev3_tm->tm.get_target_ramp_up_time   = ev3_tacho_motor_get_target_ramp_up_time;
+	ev3_tm->tm.set_target_ramp_up_time   = ev3_tacho_motor_set_target_ramp_up_time;
+
+	ev3_tm->tm.get_target_ramp_down_time = ev3_tacho_motor_get_target_ramp_down_time;
+	ev3_tm->tm.set_target_ramp_down_time = ev3_tacho_motor_set_target_ramp_down_time;
 
 	ev3_tm->state             = IDLE;
 	ev3_tm->samples_per_speed = SamplesLargeMotor;

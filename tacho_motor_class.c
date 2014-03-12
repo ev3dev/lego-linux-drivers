@@ -197,6 +197,30 @@ static ssize_t tacho_motor_store_target_speed(struct device *dev, struct device_
         return size;
 }
 
+static ssize_t tacho_motor_show_target_steer(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->get_target_steer(tm));
+}
+
+static ssize_t tacho_motor_store_target_steer(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+        char *end;
+        long target_steer = simple_strtol(buf, &end, 0);
+
+	/* FIXME: Make these hardcoded values #defines */
+        if (end == buf || target_steer > 100 || target_steer < -100 )
+                return -EINVAL;
+
+        tm->set_target_steer(tm, target_steer);
+
+        /* Always return full write size even if we didn't consume all */
+        return size;
+}
+
 static ssize_t tacho_motor_show_target_time(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
@@ -221,6 +245,52 @@ static ssize_t tacho_motor_store_target_time(struct device *dev, struct device_a
         return size;
 }
 
+static ssize_t tacho_motor_show_target_ramp_up_time(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->get_target_ramp_up_time(tm));
+}
+
+static ssize_t tacho_motor_store_target_ramp_up_time(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+        char *end;
+        long target_ramp_up_time = simple_strtol(buf, &end, 0);
+
+	/* FIXME: Make these hardcoded values #defines */
+        if (end == buf) 
+                return -EINVAL;
+
+        tm->set_target_ramp_up_time(tm, target_ramp_up_time);
+
+        /* Always return full write size even if we didn't consume all */
+        return size;
+}
+static ssize_t tacho_motor_show_target_ramp_down_time(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->get_target_ramp_down_time(tm));
+}
+
+static ssize_t tacho_motor_store_target_ramp_down_time(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+        char *end;
+        long target_ramp_down_time = simple_strtol(buf, &end, 0);
+
+	/* FIXME: Make these hardcoded values #defines */
+        if (end == buf) 
+                return -EINVAL;
+
+        tm->set_target_ramp_down_time(tm, target_ramp_down_time);
+
+        /* Always return full write size even if we didn't consume all */
+        return size;
+}
 
 static struct device_attribute tacho_motor_class_dev_attrs[] = {
 	__ATTR(tacho,     S_IRUGO, tacho_motor_show_tacho,     NULL),
@@ -234,9 +304,11 @@ static struct device_attribute tacho_motor_class_dev_attrs[] = {
 	__ATTR(target_power,     S_IRUGO | S_IWUGO, tacho_motor_show_target_power, tacho_motor_store_target_power),
 	__ATTR(target_tacho,     S_IRUGO | S_IWUGO, tacho_motor_show_target_tacho, tacho_motor_store_target_tacho),
 	__ATTR(target_speed,     S_IRUGO | S_IWUGO, tacho_motor_show_target_speed, tacho_motor_store_target_speed),
+	__ATTR(target_steer,     S_IRUGO | S_IWUGO, tacho_motor_show_target_steer, tacho_motor_store_target_steer),
 	__ATTR(target_step,      S_IRUGO | S_IWUGO, tacho_motor_show_target_step,  tacho_motor_store_target_step),
-	__ATTR(target_time,      S_IRUGO | S_IWUGO, tacho_motor_show_target_time, tacho_motor_store_target_time),
-
+	__ATTR(target_time,      S_IRUGO | S_IWUGO, tacho_motor_show_target_time,  tacho_motor_store_target_time),
+	__ATTR(target_ramp_up_time,   S_IRUGO | S_IWUGO, tacho_motor_show_target_ramp_up_time,   tacho_motor_store_target_ramp_up_time),
+	__ATTR(target_ramp_down_time, S_IRUGO | S_IWUGO, tacho_motor_show_target_ramp_down_time, tacho_motor_store_target_ramp_down_time),
 	__ATTR_NULL
 };
 
