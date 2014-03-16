@@ -364,7 +364,7 @@ int legoev3_register_output_ports(struct legoev3_port_device *ports[],
 
 	do {
 		ports[i] = legoev3_port_device_register("out", data[i].id + 1,
-			&ev3_output_port_device_type, &data[i], -1,
+			&ev3_output_port_device_type, -1, &data[i],
 			sizeof(struct ev3_output_port_platform_data), NULL);
 		if (IS_ERR(ports[i])) {
 			err = PTR_ERR(ports[i]);
@@ -422,8 +422,6 @@ static int __devinit legoev3_ports_probe(struct platform_device *pdev)
 	}
 
 	return 0;
-
-err_pwm_request_byname:
 
 err_legoev3_register_output_ports:
 	for(i = 0; i < NUM_EV3_PORT_IN; i++)
