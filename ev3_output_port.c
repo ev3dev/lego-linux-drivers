@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2013-2014 Ralph Hempel <rhempel@hempeldesigngroup.com>
  *
- * Based on code that is:
+ * Based on input port driver code that is:
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *

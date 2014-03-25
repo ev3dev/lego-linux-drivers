@@ -28,8 +28,6 @@
 
 #include <asm/bug.h>
 
-// #define PIN6_NEAR_GND		250		/* 0.25V */
-
 #define TACHO_MOTOR_POLL_NS	(  2000000)	                /* 2 msec */
 
 #define   TACHO_SAMPLES           128
@@ -40,16 +38,43 @@
 #define   RAMP_FACTOR                   (1000)
 #define   MAX_SYNC_MOTORS               (2)
 
-#define   COUNTS_PER_PULSE_LM           12800L
-#define   COUNTS_PER_PULSE_MM           8100L
+// These are wrong, recalcualte for full 32 bit free running counter
+//
+// #define   COUNTS_PER_PULSE_LM           12800L
+// #define   COUNTS_PER_PULSE_MM           8100L
+
+/*
+ *
+ */
 
 enum
 {
-  SAMPLES_BELOW_SPEED_25  =  0,
-  SAMPLES_SPEED_25_50     =  1,
-  SAMPLES_SPEED_50_75     =  2,
-  SAMPLES_ABOVE_SPEED_75  =  3,
-  NO_OF_SAMPLE_STEPS      =  4
+  MOTOR_TYPE_0  = 0,
+  MOTOR_TYPE_1,
+  MOTOR_TYPE_2,
+  MOTOR_TYPE_3,
+  MOTOR_TYPE_4,
+  MOTOR_TYPE_5,
+  MOTOR_TYPE_6,
+  MOTOR_TYPE_TACHO,
+  MOTOR_TYPE_MINITACHO,
+  MOTOR_TYPE_NEWTACHO,
+  MOTOR_TYPE_10,
+  MOTOR_TYPE_11,
+  MOTOR_TYPE_12,
+  MOTOR_TYPE_13,
+  MOTOR_TYPE_14,
+  MOTOR_TYPE_15,
+  NO_OF_MOTOR_TYPES,
+};
+
+enum
+{
+  SAMPLES_PER_SPEED_BELOW_40 =  0,
+  SAMPLES_PER_SPEED_ABOVE_40 =  1,
+  SAMPLES_PER_SPEED_ABOVE_60 =  2,
+  SAMPLES_PER_SPEED_ABOVE_80 =  3,
+  NO_OF_SAMPLE_STEPS     =  4
 };
 
 
@@ -64,8 +89,6 @@ enum
  *  Medium motor reaction time is much faster than large motor due to smaller motor
  *  and smaller gearbox
  */
-static    unsigned    SamplesMediumMotor[NO_OF_SAMPLE_STEPS] = {2, 4,  8,  16};
-static    unsigned    SamplesLargeMotor[NO_OF_SAMPLE_STEPS]  = {4, 16, 32, 64};
 
 struct ev3_tacho_motor_data {
 	struct tacho_motor_device tm;
@@ -77,10 +100,11 @@ struct ev3_tacho_motor_data {
 
         unsigned tacho_samples[TACHO_SAMPLES];
         unsigned tacho_samples_head;
-        unsigned tacho_samples_tail;
 
-	unsigned *samples_per_speed;
-	int	 *ramp_power_steps;
+	bool got_new_sample;
+	
+	unsigned samples_per_speed;
+//	int	 *ramp_power_steps;
 	
 	unsigned counts_per_pulse;
 	unsigned dir_chg_samples;
@@ -93,22 +117,43 @@ struct ev3_tacho_motor_data {
 
 	bool mutex;
 
-	/* FIXME - these relate to the time setpoints, probably need renaming */
+	bool regulated;
+	int ramp_mode;
 
-	int time_cnt;
-	int time_inc;
+//	/* FIXME - these relate to the time setpoints, probably need renaming */
+//
+//	int time_cnt;
+//	int time_inc;
+//
+//	/* FIXME - these relate to the ramp times, probbaly need renaming */
+//
+//	int ramp_up_factor;
+//	int ramp_up_offset;
+//
+//	int tacho_cnt_up;
+//
+//	int prg_stop_timer;
+//
+//	bool lock_ramp_down;
+//	bool brake_after;
 
-	/* FIXME - these relate to the ramp times, probbaly need renaming */
+        struct {
+		int start;
+		int end;
+		int slope;
+	} ramp_up;
 
-	int ramp_up_factor;
-	int ramp_up_offset;
+        struct {
+		int start;
+		int end;
+		int slope;
+	} ramp_down;
 
-	int tacho_cnt_up;
-
-	int prg_stop_timer;
-
-	bool lock_ramp_down;
-	bool brake_after;
+	struct {
+		int setpoint;
+		int offset;
+		int count;	/* This must be set to either tacho or time increment! */
+	} ramp;
 
 	int state;
 
@@ -120,26 +165,87 @@ struct ev3_tacho_motor_data {
         int target_tacho;
         int target_step;
         int target_time;
+
         int target_ramp_up_time;
         int target_ramp_down_time;
 
 	int tacho_cnt;
+	int time_cnt;
+
 	int tacho_sensor;
 	int old_tacho_cnt;
-      
+
+	int motor_type;
+
 	int power;
         int speed;
         int direction;
         int step;
         int time;
 };
+// static    unsigned    SamplesMediumMotor[NO_OF_SAMPLE_STEPS] = {2, 4,  8,  16};
+// static    unsigned    SamplesLargeMotor[NO_OF_SAMPLE_STEPS]  = {4, 16, 32, 64};
+//
+//  TYPE_TACHO                    =   7,  //!< Device is a tacho motor
+//  TYPE_MINITACHO                =   8,  //!< Device is a mini tacho motor
+//  TYPE_NEWTACHO                 =   9,  //!< Device is a new tacho motor
+
+
+static unsigned SamplesPerSpeed[NO_OF_MOTOR_TYPES][NO_OF_SAMPLE_STEPS] = {
+	{  2,  2,  2,  2 } , /* Motor Type  0             */
+	{  2,  2,  2,  2 } , /* Motor Type  1             */
+	{  2,  2,  2,  2 } , /* Motor Type  2             */
+	{  2,  2,  2,  2 } , /* Motor Type  3             */
+	{  2,  2,  2,  2 } , /* Motor Type  4             */
+	{  2,  2,  2,  2 } , /* Motor Type  5             */
+	{  2,  2,  2,  2 } , /* Motor Type  6             */
+	{  4, 16, 32, 64 } , /* Motor Type  7 - TACHO     */
+	{  2,  4,  8, 16 } , /* Motor Type  8 - MINITACHO */
+	{  2,  2,  2,  2 } , /* Motor Type  9 - NEWTACHO  */
+	{  2,  2,  2,  2 } , /* Motor Type 10             */
+	{  2,  2,  2,  2 } , /* Motor Type 11             */
+	{  2,  2,  2,  2 } , /* Motor Type 12             */
+	{  2,  2,  2,  2 } , /* Motor Type 13             */
+	{  2,  2,  2,  2 } , /* Motor Type 14             */
+	{  2,  2,  2,  2 } , /* Motor Type 15             */
+};
+
+static unsigned CountsPerPulse[NO_OF_MOTOR_TYPES] = {
+	      0, /* Motor Type  0             */
+	      0, /* Motor Type  1             */
+	      0, /* Motor Type  2             */
+	      0, /* Motor Type  3             */
+	      0, /* Motor Type  4             */
+	      0, /* Motor Type  5             */
+	      0, /* Motor Type  6             */
+	3300000, /* Motor Type  7 - TACHO     */
+	2062500, /* Motor Type  8 - MINITACHO */
+	      0, /* Motor Type  9 - NEWTACHO  */
+	      0, /* Motor Type 10             */
+	      0, /* Motor Type 11             */
+	      0, /* Motor Type 12             */
+	      0, /* Motor Type 13             */
+	      0, /* Motor Type 14             */
+	      0, /* Motor Type 15             */
+};
+
+static void set_samples_per_speed( struct ev3_tacho_motor_data *ev3_tm, int speed ) {
+	if (speed > 80) {
+		ev3_tm->samples_per_speed = SamplesPerSpeed[ev3_tm->motor_type][SAMPLES_PER_SPEED_ABOVE_80];
+	} else if (speed > 60) {
+		ev3_tm->samples_per_speed = SamplesPerSpeed[ev3_tm->motor_type][SAMPLES_PER_SPEED_ABOVE_60];
+	} else if (speed > 40) {
+		ev3_tm->samples_per_speed = SamplesPerSpeed[ev3_tm->motor_type][SAMPLES_PER_SPEED_ABOVE_40];
+	} else {
+		ev3_tm->samples_per_speed = SamplesPerSpeed[ev3_tm->motor_type][SAMPLES_PER_SPEED_BELOW_40];
+	}
+}
 
 // static    unsigned    AVG_TACHO_COUNTS[NO_OF_OUTPUT_PORTS]   = {2,2,2,2};
 // static    unsigned    AVG_COUNTS[NO_OF_OUTPUT_PORTS]         = {(2 * COUNTS_PER_PULSE_LM),(2 * COUNTS_PER_PULSE_LM),(2 * COUNTS_PER_PULSE_LM),(2 * COUNTS_PER_PULSE_LM)};
 
 #define  NON_INV   1
 #define  INV      -1
-
 
 static irqreturn_t tacho_motor_isr(int irq, void *id)
 {
@@ -148,7 +254,7 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 
 	bool int_state = gpio_get_value(pdata->tacho_int_gpio);
 	bool dir_state = gpio_get_value(pdata->tacho_dir_gpio);
-	unsigned long timer = legoev3_hires_timer_read() >> 8;
+	unsigned long timer = legoev3_hires_timer_read();
 
 	unsigned next_sample;
 
@@ -165,7 +271,7 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 
 	if ((35 < ev3_tm->speed) || (-35 > ev3_tm->speed)) {
 
-		if (ev3_tm->dir_chg_samples < ev3_tm->samples_per_speed[SAMPLES_ABOVE_SPEED_75])
+		if (ev3_tm->dir_chg_samples < (TACHO_SAMPLES-1))
 			ev3_tm->dir_chg_samples++;
 
 	} else {
@@ -174,6 +280,7 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 	/  advantage of the fact that if state and dir match, then the motor
 	/  is turning FORWARD!
 	*/
+
 		if (int_state == dir_state)
 			next_direction = FORWARD;
 		else
@@ -182,9 +289,10 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 		/* If the saved and next direction states match, then update the dir_chg_sample count */
 
 		if (ev3_tm->direction == next_direction) {
-			if (ev3_tm->dir_chg_samples < ev3_tm->samples_per_speed[SAMPLES_ABOVE_SPEED_75])
+			if (ev3_tm->dir_chg_samples < (TACHO_SAMPLES-1))
 				ev3_tm->dir_chg_samples++;
 		} else {
+		        printk( "DirChg! %d %d \n", int_state, dir_state );
 			ev3_tm->dir_chg_samples = 0;
 		}
 
@@ -196,19 +304,21 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 	else			
 		ev3_tm->irq_tacho--;
 
+	ev3_tm->got_new_sample = true;
+
 	return IRQ_HANDLED;
 }
 static int process_count = 0;
 
 static void ev3_tacho_motor_forward(struct ev3_motor_platform_data *pdata)
 {
-	gpio_direction_output(pdata->motor_dir0_gpio, 0);
-	gpio_direction_input( pdata->motor_dir1_gpio   );
+	gpio_direction_input( pdata->motor_dir0_gpio   );
+	gpio_direction_output(pdata->motor_dir1_gpio, 1);
 }
 static void ev3_tacho_motor_reverse(struct ev3_motor_platform_data *pdata)
 {
-	gpio_direction_input( pdata->motor_dir0_gpio   );
-	gpio_direction_output(pdata->motor_dir1_gpio, 1);
+	gpio_direction_output(pdata->motor_dir0_gpio, 1);
+	gpio_direction_input( pdata->motor_dir1_gpio   );
 }
 static void ev3_tacho_motor_brake(struct ev3_motor_platform_data *pdata)
 {
@@ -221,47 +331,398 @@ static void ev3_tacho_motor_coast(struct ev3_motor_platform_data *pdata)
 	gpio_direction_output(pdata->motor_dir1_gpio, 0);
 }
 
-static int ev3_tacho_motor_calculate_speed(struct ev3_tacho_motor_data *ev3_tm)
+
+/*
+ *! \brief    calculate_speed
+ *
+ * NOTE: The comments are from the original LEGO source code, but the code
+ *       has been changed to reflect the per-motor data structures. 
+ *
+ * NOTE: The original LEGO code used the 24 most significant bits of the 
+ *       free-running P3 timer by dividing the values captured at every
+ *       interrupt edge by 256. Unfortunately, this results in having to 
+ *       mask off the 24 least significant bits in all subsequent calculations
+ *       that involve the captured values.
+ *
+ *       The reason is probably to keep most of the calculations within the
+ *       16 bit value size. This driver avoids that problem by simply scaling
+ *       the results when needed. The code and comments are updated to
+ *       reflect the change.
+ *
+ *  - Calculates the actual speed for a motor
+ *
+ *  - Returns true when a new speed has been calculated, false if otherwise
+ *
+ *  - Time is sampled every edge on the tacho
+ *      - Timer used is 64bit timer plus (P3) module (dual 32bit un-chained mode)
+ *      - 64bit timer is running 33Mhz (24Mhz (Osc) * 22 (Multiplier) / 2 (Post divider) / 2 (DIV2)) / 4 (T64 prescaler)
+ *
+ *  - Tacho counter is updated on every edge of the tacho INTx pin signal
+ *  - Time capture is updated on every edge of the tacho INTx pin signal
+ *
+ *  - Speed is calculated from the following parameters
+ *
+ *      - Time is measured edge to edge of the tacho interrupt pin. Average of time is always minimum 2 pulses
+ *        (1 high + 1 low period or 1 low + 1 high period) because the duty of the high and low period of the
+ *        tacho pulses are not always 50%.
+ *
+ *        - Average of the large motor
+ *          - Above speed 80 it is:          64 samples
+ *          - Between speed 60 - 80 it is:   32 samples
+ *          - Between speed 40 - 60 it is:   16 samples
+ *          - below speed 40 it is:           4 samples
+ *
+ *        - Average of the medium motor
+ *          - Above speed 80 it is:          16 samples
+ *          - Between speed 60 - 80 it is:    8 samples
+ *          - Between speed 40 - 60 it is:    4 samples
+ *          - below speed 40 it is:           2 sample
+ *
+ *      - Number of samples is always determined based on 1 sample meaning 1 low period or 1 high period,
+ *        this is to enable fast adoption to changes in speed. Medium motor has the critical timing because
+ *        it can change speed and direction very fast.
+ *
+ *      - Large Motor
+ *        - Maximum speed of the Large motor is approximately 2mS per tacho pulse (low + high period)
+ *          resulting in minimum timer value of: 2mS / (1/(33MHz)) = 66000 T64 timer ticks.
+ *          Because 1 sample is based on only half a period minimum speed is 66000/2 = 33000
+ *        - Minimum speed of the large motor is a factor of 100 less than max. speed
+ *          max. speed timer ticks * 100 => 66000 * 100 = 6,600,000 T64 timer ticks
+ *          Because 1 sample is based on only half a period minimum speed is 6,600,000/2 = 3,300,000.
+ *
+ *      - Medium Motor
+ *        - Maximum speed of the medium motor is approximately 1,25mS per tacho pulse (low + high period)
+ *          resulting in minimum timer value og: 1,25mS / (1/(33MHz)) = 41250 (approximately)
+ *          Because 1 sample is based on only half a period minimum speed is 41250/2 = 20625.
+ *        - Minimum speed of the medium motor is a factor of 100 less than max. speed
+ *          max. speed timer ticks * 100 => 41250 * 100 = 4,125,000 T64 timer ticks
+ *          Because 1 sample is based on only half a period minimum speed is 4,125,000/2 = 2,062,500.
+ *
+ *      - Actual speed is then calculated as:
+ *        - Large motor:
+ *          3,300,000 * number of samples / actual time elapsed for number of samples
+ *        - Medium motor:
+ *          2,062,500 * number of samples / actual time elapsed for number of samples
+ *
+ *  - Parameters:
+ *    - Input:
+ *      - No        : Motor output number
+ *      - *pSpeed   : Pointer to the speed value
+ *
+ *    - Output:
+ *      - Status    : Indication of new speed available or not
+ *  - Tacho pulse examples:
+ *
+ *
+ *    - Normal
+ *
+ *      ----       ------       ------       ------
+ *          |     |      |     |      |     |      |
+ *          |     |      |     |      |     |      |
+ *          -------      -------      -------      --- DIRx signal
+ *
+ *
+ *         ----       ------       ------       ------ INTx signal
+ *             |     |      |     |      |     |
+ *             |     |      |     |      |     |
+ *             -------      -------      -------
+ *
+ *             ^     ^      ^     ^      ^     ^
+ *             |     |      |     |      |     |
+ *             |   Timer    |   Timer    |   Timer
+ *             |     +      |     +      |     +
+ *             |  Counter   |  Counter   |  Counter
+ *             |            |            |
+ *           Timer        Timer        Timer
+ *             +            +            +
+ *          Counter      Counter      Counter
+ *
+ *
+ *
+ *    - Direction change
+ *
+ *      DirChgPtr variable is used to indicate how many timer samples have been sampled
+ *      since direction has been changed. DirChgPtr is set to 0 when tacho interrupt detects
+ *      direction change and then it is counted up for every timer sample. So when DirChgPtr
+ *      has the value of 2 then there must be 2 timer samples in the the same direction
+ *      available.
+ *
+ *      ----       ------       ------       ------       ---
+ *          |     |      |     |      |     |      |     |
+ *          |     |      |     |      |     |      |     |
+ *          -------      -------      -------      -------   DIRx signal
+ *
+ *
+ *       ------       -------------       ------       ------INTx signal
+ *             |     |             |     |      |     |
+ *             |     |             |     |      |     |
+ *             -------             -------      -------
+ *
+ *             ^     ^             ^     ^      ^     ^
+ *             |     |             |     |      |     |
+ *           Timer   |           Timer   |    Timer   |
+ *             +     |             +     |      +     |
+ *          Counter  |          Counter  |   Counter  |
+ *             +     |             +     |      +     |
+ *       DirChgPtr++ |       DirChgPtr=0 |DirChgPtr++ |
+ *                 Timer               Timer        Timer
+ *                   +                   +            +
+ *                Counter             Counter      Counter
+ *                   +                   +            +
+ *               DirChgPtr++         DirChgPtr++  DirChgPtr++
+ *
+ *
+ *
+ *
+ *      ----       ------             ------        ----
+ *          |     |      |           |      |      |
+ *          |     |      |           |      |      |
+ *          -------      -------------       -------          DIRx signal
+ *
+ *
+ *       ------       ------       ------       ------        INTx signal
+ *             |     |      |     |      |     |      |
+ *             |     |      |     |      |     |      |
+ *             -------      -------      -------       ----
+ *
+ *             ^     ^      ^     ^      ^     ^      ^
+ *             |     |      |     |      |     |      |
+ *           Timer   |    Timer   |    Timer   |    Timer
+ *             +     |      +     |      +     |      +
+ *          Counter  |   Counter  |   Counter  |   Counter
+ *             +     |      +     |      +     |      +
+ *        DirChgPtr++| DirChgPtr++| DirChgPtr++| DirChgPtr++
+ *                 Timer        Timer        Timer
+ *                   +            +            +
+ *                Counter      Counter      Counter
+ *                   +            +            +
+ *               DirChgPtr++  DirChgPtr=0  DirChgPtr++
+ *
+ */
+
+static bool calculate_speed(struct ev3_tacho_motor_data *ev3_tm)
 {
+	unsigned DiffIdx;
+	unsigned Diff;
+
+	int  speed;
+
+	bool speed_updated = false;
+
+	#warning "Don't run this if we're updating the ev3_tm in the isr!"
+
+//  Ptr     = TachoSamples[No].ArrayPtr;
+//
+//  if (Motor[No].DirChgPtr >= 1)
+//  {
+//    Diff = (((TachoSamples[No].TachoArray[Ptr])-(TachoSamples[No].TachoArray[((Ptr - 1) & (NO_OF_TACHO_SAMPLES - 1))])) & 0x00FFFFFF);
+//    if (Diff)
+//    {
+//      SETAvgTachoCount(No, (ULONG)((CountsPerPulse[No]/Diff) & 0x00FFFFFF));
+//    }
+//    else
+//    {
+//      SETAvgTachoCount(No, (ULONG)1);
+//    }
+//  }
+
+	/* Determine the approximate speed of the motor using the difference
+	 * in time between this tacho pulse and the previous pulse.
+	 *
+	 * The old code had a conditional that forced the difference to be at
+	 * least 1 by checking for the special case of a zero difference, which
+	 * would be almost impossible to acheive in practice.
+	 *
+	 * This version simply ORs a 1 into the LSB of the difference - now
+	 * that we're using the full 32 bit free running counter, the impact
+	 * on an actual speed calculation is insignificant, and it avoids the
+	 * issue with simply adding 1 in the obscure case that the difference
+	 * is 0xFFFFFFFF!
+	 *
+	 * Only do this estimated speed calculation if we've accumulated at
+	 * least two tacho pulses where the motor is turning in the same
+	 * direction!
+	 */
+
+	DiffIdx = ev3_tm->tacho_samples_head;
+
+//      printk("------------------------------------------\n");
+//      printk("DiffIdx -> %d\n", DiffIdx);
+//      printk("ChgSamples -> %d\n", ev3_tm->dir_chg_samples);
+
+	#warning "This should really be a boolean value that gets set at the ISR level"
+	#warning "Can/Should we change this to not set_samples_per_speed evry time we're called?"
+
+	if (ev3_tm->dir_chg_samples >= 1) {
+
+		Diff = ev3_tm->tacho_samples[DiffIdx] 
+				- ev3_tm->tacho_samples[(DiffIdx + TACHO_SAMPLES - 1) % TACHO_SAMPLES];
+
+		Diff |= 1;
+
+//              printk("Changed Dir! Diff-> %d\n", Diff);
+
+		set_samples_per_speed( ev3_tm, ev3_tm->counts_per_pulse / Diff );
+	}
+
+	/* Now get a better estimate of the motor speed by using the total
+	 * time used to accumulate the last n samples, where n is determined
+	 * by the first approximation to the speed.
+	 *
+	 * The new speed can only be updated if we have accumulated at least
+	 * as many samples as are required depending on the estimated speed
+	 * of the motor.
+	 *
+	 * If the speed cannot be updated, then we need to check if the speed
+	 * is 0!
+	 */
+
+//      printk("SamplesPerSpeed %d -> %d\n", ev3_tm->samples_per_speed, ev3_tm->dir_chg_samples );
+
+	if (ev3_tm->got_new_sample && (ev3_tm->dir_chg_samples >= ev3_tm->samples_per_speed) ) {
+
+		Diff = ev3_tm->tacho_samples[DiffIdx] 
+				- ev3_tm->tacho_samples[(DiffIdx + TACHO_SAMPLES - ev3_tm->samples_per_speed) % TACHO_SAMPLES];
+
+		Diff |= 1;
+
+//              printk("Enough Samples %d! Diff-> %d\n", ev3_tm->samples_per_speed, Diff);
+
+		speed = (ev3_tm->counts_per_pulse * ev3_tm->samples_per_speed) / Diff;
+
+		if (speed > MAX_SPEED)
+			speed = MAX_SPEED;
+
+		if (ev3_tm->direction == BACKWARD)
+			speed = -speed;
+
+		speed_updated = true;
+
+		ev3_tm->got_new_sample = false;
+
+	} else if ( ev3_tm->counts_per_pulse < (legoev3_hires_timer_read() - ev3_tm->tacho_samples[DiffIdx] ) ) {
+
+		ev3_tm->dir_chg_samples = 0;
+
+		speed = 0;
+
+		speed_updated = true;
+
+//              printk("Speed forced to 0\n");
+	}
+
+	if( speed_updated )
+		ev3_tm->speed = speed;
+//  Speed   = *pSpeed;    // Maintain old speed if not changed
+//  Tmp1    = TachoSamples[No].TachoArray[Ptr];
+//  Tmp2    = TachoSamples[No].TachoArray[((Ptr - AVG_TACHO_COUNTS[No]) & (NO_OF_TACHO_SAMPLES - 1))];
+//
+//  if ((Ptr != TachoSamples[No].ArrayPtrOld) && (Motor[No].DirChgPtr >= AVG_TACHO_COUNTS[No]))
+//  {
+//
+//    Status                        = true;
+//    TimeOutSpeed0[No]             = Tmp1;
+//    TachoSamples[No].ArrayPtrOld  = Ptr;
+//
+//    Diff = ((Tmp1-Tmp2) & 0x00FFFFFF);
+//    if (Diff)
+//    {
+//      Speed = (SWORD)((ULONG)(AVG_COUNTS[No])/(ULONG)Diff);
+//    }
+//    else
+//    {
+//      // Safety check
+//      Speed = 1;
+//    }
+//
+//    if (Speed > 100)
+//    {
+//      Speed = 100;
+//    }
+//
+//    if (BACKWARD == Motor[No].Direction)
+//    {
+//      Speed = 0 - Speed;
+//    }
+//  }
+//  else
+//  {
+//    // No new Values check for speed 0
+//    if ((CountsPerPulse[No]) < ((FREERunning24bittimer - TimeOutSpeed0[No]) & 0x00FFFFFF))
+//    {
+//      TimeOutSpeed0[No]   = FREERunning24bittimer;
+//      Speed               = 0;
+//      Motor[No].DirChgPtr = 0;
+//      Status              = true;
+//    }
+//  }
+//
+//  *pSpeed = (SBYTE)Speed;
+//
 #warning "ev3_tacho_motor_calculate_speed is not yet implemented!"
-	return 0;
+  return(speed_updated);
 }
+
+
+#define RAMP_SLOPE_FACTOR 10000
+
+#define RAMP_MODE_TIME  1
+#define RAMP_MODE_TACHO 2
+
+static int calculate_ramp_slope(int start, int end, int diff)
+{
+	/* Return a scaled ramp factor that represents the slope. Always use the
+	 * corresponding function to figure out the new value on the slope line!
+	 */
+
+	return( (diff * RAMP_SLOPE_FACTOR) / (end - start ) );
+}
+
+
 static int ev3_tacho_motor_regulate_speed(struct ev3_tacho_motor_data *ev3_tm)
 {
 #warning "ev3_tacho_motor_regulate_speed is not yet implemented!"
 	return 0;
 }
+
 static int ev3_tacho_motor_set_power(struct ev3_tacho_motor_data *ev3_tm)
 {
 #warning "ev3_tacho_motor_set_power is not yet implemented!"
 	return 0;
 }
-static int ev3_tacho_motor_brake_motor(struct ev3_tacho_motor_data *ev3_tm)
+// static int ev3_tacho_motor_brake_motor(struct ev3_tacho_motor_data *ev3_tm)
+// {
+// #warning "ev3_tacho_motor_brake is not yet implemented!"
+// 	return 0;
+// }
+// static void ev3_tacho_motor_get_compare_counts( struct ev3_tacho_motor_data *ev3_tm, int *ramp_count, int *ramp_count_test )
+// {
+// #warning "ev3_tacho_motor_get_compare_counts is not yet implemented!"
+// 	*ramp_count      = 0;
+// 	*ramp_count_test = 0;
+// }
+// static bool ev3_tacho_motor_check_less_than_special( int v1, int v2, int v3 )
+// {
+// #warning "ev3_tacho_motor_check_less_than_special is not yet implemented!"
+// 	return 0;
+// }
+// static bool ev3_tacho_motor_step_speed_check_tacho_count_const( struct ev3_tacho_motor_data *ev3_tm, int tacho_cnt )
+// {
+// #warning "ev3_tacho_motor_step_speed_check_tacho_count_const is not yet implemented!"
+// 	return 0;
+// }
+// static bool ev3_tacho_motor_step_speed_check_tacho_count_down( struct ev3_tacho_motor_data *ev3_tm, int tacho_cnt )
+// {
+// #warning "ev3_tacho_motor_step_speed_check_tacho_count_down is not yet implemented!"
+// 	return 0;
+// }
+
+/* Return a value from 0 to 100 representing the percentage of the ramp that is complete */
+static int calculate_ramp_progress(int start, int end, int diff)
 {
-#warning "ev3_tacho_motor_brake is not yet implemented!"
-	return 0;
+	return( (diff * 100) / (end - start ) );
 }
-static void ev3_tacho_motor_get_compare_counts( struct ev3_tacho_motor_data *ev3_tm, int *ramp_count, int *ramp_count_test )
-{
-#warning "ev3_tacho_motor_get_compare_counts is not yet implemented!"
-	*ramp_count      = 0;
-	*ramp_count_test = 0;
-}
-static bool ev3_tacho_motor_check_less_than_special( int v1, int v2, int v3 )
-{
-#warning "ev3_tacho_motor_check_less_than_special is not yet implemented!"
-	return 0;
-}
-static bool ev3_tacho_motor_step_speed_check_tacho_count_const( struct ev3_tacho_motor_data *ev3_tm, int tacho_cnt )
-{
-#warning "ev3_tacho_motor_step_speed_check_tacho_count_const is not yet implemented!"
-	return 0;
-}
-static bool ev3_tacho_motor_step_speed_check_tacho_count_down( struct ev3_tacho_motor_data *ev3_tm, int tacho_cnt )
-{
-#warning "ev3_tacho_motor_step_speed_check_tacho_count_down is not yet implemented!"
-	return 0;
-}
+
 static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer)
 {
  	struct ev3_tacho_motor_data *ev3_tm =
@@ -269,574 +730,217 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 
 	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
 
-	/* FIXME - these need better names */
+// 	/* FIXME - these need better names */
+// 
+// 	int tmp_tacho;
+// 	int tmp;
+// 
+ 	int speed;
+// 
+// 	/* These get use in the ramp modes */
+// 
+// 	bool ramp_complete;
+// 	int  ramp_count;
+// 	int  ramp_count_test;
 
-	int tmp_tacho;
-	int tmp;
+	int ramp_progress;
+	int setpoint;
 
-	int speed;
+	bool reprocess = true;
 
-	/* These get use in the ramp modes */
-
-	bool ramp_complete;
-	int  ramp_count;
-	int  ramp_count_test;
- 
  	hrtimer_forward_now(timer, ktime_set(0, TACHO_MOTOR_POLL_NS));
 
         /* Here's where the business end of things starts - update the tacho data that's
-        /   shared with the world
-        */
+         *   shared with the world
+         */
 
-	tmp_tacho = ev3_tm->irq_tacho;
-	tmp       = tmp_tacho - ev3_tm->old_tacho_cnt;
-
-	ev3_tm->tacho_cnt    += tmp;
-	ev3_tm->tacho_sensor += tmp;
-	ev3_tm->old_tacho_cnt = tmp_tacho;
-
-	ev3_tm->time_cnt += ev3_tm->time_inc;
-
-	/* Early exit from function if someone is reading the struct! */
-
-	if (ev3_tm->mutex )
-		return HRTIMER_RESTART;
+// 	tmp_tacho = ev3_tm->irq_tacho;
+// 	tmp       = tmp_tacho - ev3_tm->old_tacho_cnt;
+// 
+// 	ev3_tm->tacho_cnt    += tmp;
+// 	ev3_tm->tacho_sensor += tmp;
+// 	ev3_tm->old_tacho_cnt = tmp_tacho;
+// 
+// 	ev3_tm->time_cnt += ev3_tm->time_inc;
+// 
+// 	/* Early exit from function if someone is reading the struct! */
+// 
+// 	if (ev3_tm->mutex )
+// 		return HRTIMER_RESTART;
 
 	/* Continue with the actual calculations */
 
-	speed = ev3_tacho_motor_calculate_speed( ev3_tm );
+	speed = calculate_speed( ev3_tm );
 
-	switch (ev3_tm->state) {
+//	while ( reprocess ) {
+	while ( false ) {
 
-        case UNLIMITED_UNREG:
-		if (ev3_tm->target_power != ev3_tm->power ) {
-			ev3_tm->power = ev3_tm->target_power;
-			ev3_tacho_motor_set_power( ev3_tm );
-		}
+		/* Some cases (such as RAMP_XXX) may change the state of the
+		 * handler and require reprocessing. If so, they must set the
+		 * reprocess flag to force an extra evaluation
+		 */
 
-		ev3_tm->tacho_cnt = 0;
-		ev3_tm->time_cnt  = 0;
-		break;
+		reprocess = 0;	
 
-	case UNLIMITED_REG:
-		ev3_tacho_motor_regulate_speed( ev3_tm );
-
-		ev3_tm->tacho_cnt = 0;
-		ev3_tm->time_cnt  = 0;
-		break;
-
-	case LIMITED_REG_STEPUP:
-	          // Status used to check if ramp up has completed
-		ramp_complete = 0;
-
-		if (ev3_tm->ramp_power_steps != &ev3_tm->tacho_cnt)
-			ev3_tm->tacho_cnt = 0;
-		else	
-			ev3_tm->time_cnt = 0;
- 
-		ev3_tacho_motor_get_compare_counts( ev3_tm, &ramp_count, &ramp_count_test );
-
-		if (ev3_tacho_motor_check_less_than_special( ramp_count_test, ev3_tm->tacho_cnt_up, ev3_tm->target_direction ) && !ev3_tm->lock_ramp_down) {
-
-			ev3_tm->target_speed = ((ramp_count * ev3_tm->ramp_up_factor)/RAMP_FACTOR) + ev3_tm->ramp_up_offset;
-
-			if (ev3_tacho_motor_check_less_than_special( ev3_tm->target_speed, 6 * ev3_tm->target_direction, ev3_tm->target_direction ))
-				ev3_tm->target_speed = 6 * ev3_tm->target_direction;
-
-			ev3_tacho_motor_regulate_speed( ev3_tm );
-		} else {
-			if (ev3_tm->brake_after) {
-				ev3_tm->lock_ramp_down = 1;
-/* FIXME: Add ramp down to brake here */
-// Status = RampDownToBrake(No, StepCnt, Motor[No].TachoCntUp, Motor[No].Dir);
-
-			} else {
-				ramp_complete = 1;
+		switch (ev3_tm->state) {
+	
+	        case UNLIMITED_UNREG:
+			if (ev3_tm->target_power != ev3_tm->power ) {
+				ev3_tm->power = ev3_tm->target_power;
+				ev3_tacho_motor_set_power( ev3_tm );
 			}
-		}
-
-		if (ramp_complete && !ev3_tacho_motor_step_speed_check_tacho_count_const( ev3_tm, ev3_tm->tacho_cnt_up ))
-			ev3_tacho_motor_step_speed_check_tacho_count_down( ev3_tm, ev3_tm->tacho_cnt_up );
-
-		break;
-
-	case LIMITED_REG_STEPCONST:
-
-		if (ev3_tm->ramp_power_steps != &ev3_tm->tacho_cnt)
+	
+			#warning( "FIXME: Are these needed, or just cleanup in case someone gets sloppy?" );
 			ev3_tm->tacho_cnt = 0;
-		else	
-			ev3_tm->time_cnt = 0;
-
-		ev3_tacho_motor_get_compare_counts(ev3_tm, &ramp_count, &ramp_count_test);
-
-		if (ev3_tacho_motor_check_less_than_special( ramp_count_test, ev3_tm->tacho_cnt_up, ev3_tm->target_direction ) && !ev3_tm->lock_ramp_down) {
+			ev3_tm->time_cnt  = 0;
+			break;
+	
+		case UNLIMITED_REG:
 			ev3_tacho_motor_regulate_speed( ev3_tm );
-		} else {
-			if (ev3_tm->brake_after) {
-				ev3_tm->lock_ramp_down = 1;
-//               if (TRUE == RampDownToBrake(No, StepCnt, Motor[No].TachoCntConst, Motor[No].Dir))
-//               {
-//                 StepSpeedCheckTachoCntDown(No, Motor[No].TachoCntConst);
-//               }
-
-			} else {
-//               StepSpeedCheckTachoCntDown(No, Motor[No].TachoCntConst);
-			}
-		}
-
-		break;
-
-	case LIMITED_REG_STEPDOWN:
-		ramp_count = *ev3_tm->ramp_power_steps;
-
-		if (ev3_tm->ramp_power_steps != &ev3_tm->tacho_cnt)
+	
+			#warning( "FIXME: Are these needed, or just cleanup in case someone gets sloppy?" );
 			ev3_tm->tacho_cnt = 0;
-		else	
-			ev3_tm->time_cnt = 0;
+			ev3_tm->time_cnt  = 0;
+			break;
+	
+		/* The LIMITED_XXX functions have to handle the three phases (any of
+		 * which are optional) of a motor move operation. It is assumed that
+		 * when the run mode was set, the ramp factors were calculated.
+		 *
+		 * The LIMITED_XXX functions need to handle the following combinations:
+		 *
+		 * REGULATED_TIME    - Speed is regulated, ramping is time based
+		 * REGULATED_TACHO   - Speed is regulated, ramping is tacho based
+		 * UNREGULATED_TIME  - Speed is not regulated, ramping is time based
+		 * UNREGULATED_TACHO - Speed is not regulated, ramping is tacho based
+		 *
+		 * When ramping, the code needs to figure out which combination is in
+		 * use, and that's handled by a couple of booleans in the motor struct.
+		 *
+		 * Regardless of the direction of the ramp (up or down), the first part
+		 * of the sequence is ramping up, the tail end of the sequence is
+		 * ramping down.
+		 */
+	
+		case RAMP_UP:
+			/* Figure out if we're done ramping up - if yes set state to RAMP_CONST
+			 * and allow states to get reprocessed
+			 */
+	
+			if ( ev3_tm->ramp_up.end <= ev3_tm->ramp.count ) {
+				ev3_tm->state = RAMP_CONST;
+				reprocess = true;
+			} else {
+		
+				/* Figure out how far along we are in the ramp operation */
+				
+				ramp_progress = calculate_ramp_progress( ev3_tm->ramp_up.start, ev3_tm->ramp_up.end, ev3_tm->ramp.count );
+		
+				/* Now determine the new setpoint for the ramp */
+		
+				#warning( "Combine this check into the progress calc, rename to calculate_ramp_setpoint" );
+				setpoint = ev3_tm->ramp.offset + ev3_tm->ramp.setpoint;
+				/* Check the setpoint for minimum and maximum range, and adjust */
+				setpoint = setpoint + 0;
+		
+				/* Set either power or speed based on whether or not we're regulating */
+		
+				if (ev3_tm->regulated) {
+					ev3_tm->speed = setpoint;
+					ev3_tacho_motor_regulate_speed( ev3_tm );
+				} else {
+					ev3_tm->power = setpoint;
+					ev3_tacho_motor_set_power( ev3_tm );
+				}
+			}
+			break;
+	
+		case RAMP_CONST:
+			/* Figure out if we're done with the const section - if yes set state to RAMP_DOWN
+			 * and allow states to get reprocessed
+			 */
+	
+			if ( ev3_tm->ramp_down.start <= ev3_tm->ramp.count ) {
+				ev3_tm->state = RAMP_DOWN;
+				reprocess = true;
+			} else {
+				/* Figure out how far along we are in the ramp operation */
+			
+				switch (ev3_tm->ramp_mode) {
+	
+				case RAMP_MODE_TIME:
+			
+				case RAMP_MODE_TACHO:
 
-// 
-//           if (TRUE == CheckLessThanSpecial(StepCnt, Motor[No].TachoCntDown, Motor[No].Dir))
-//           {
-//             NewSpeed = Motor[No].TargetPower - ((StepCnt * (Motor[No].RampDownFactor))/ RAMP_FACTOR);
-//             if (TRUE == CheckLessThanSpecial((4 * Motor[No].Dir), NewSpeed, Motor[No].Dir))
-//             {
-//               Motor[No].TargetSpeed = NewSpeed;
-//             }
-//             dRegulateSpeed(No);
-//           }
-//           else
-//           {
-//             StepPowerStopMotor(No, Motor[No].TachoCntDown);
-//           }
-//         }
-		break;
-// 
-//         case LIMITED_UNREG_STEPUP:
-//         {
-// 
-//           UBYTE  Status;
-//           SLONG  StepCnt;
-//           SLONG  StepCntTst;
-// 
-//           // Status used to check if ramp up has completed
-//           Status  = FALSE;
-// 
-//           if (StepPowerSteps[No] != &(Motor[No].TachoCnt))
-//           {
-//             Motor[No].TachoCnt  =  0;
-//           }
-//           else
-//           {
-//             Motor[No].TimeCnt =  0;
-//           }
-// 
-//           GetCompareCounts(No, &StepCnt, &StepCntTst);
-// 
-//           if ((TRUE == CheckLessThanSpecial(StepCntTst, Motor[No].TachoCntUp, Motor[No].Dir)) && (FALSE == Motor[No].LockRampDown))
-//           {
-//             if (0 != Motor[No].Speed)
-//             {
-//               if (TRUE == CheckLessThanSpecial(Motor[No].Power, (StepCnt * (Motor[No].RampUpFactor))/*/RAMP_FACTOR*/, Motor[No].Dir))
-//               {
-//                 // if very slow ramp up then power could be calculated as 0 for a while
-//                 // avoid starting and stopping
-//                 Motor[No].Power = (StepCnt * (Motor[No].RampUpFactor))/RAMP_FACTOR;
-// 
-//               }
-// 
-//               if (TRUE == CheckLessThanSpecial(Motor[No].Power, 0, Motor[No].Dir))
-//               {
-//                 // Avoid motor turning the wrong way
-//                 Motor[No].Power = Motor[No].Power * -1;
-//               }
-//             }
-//             else
-//             {
-//               Motor[No].Power += (20 * Motor[No].Dir);
-//             }
-//             SetPower(No,Motor[No].Power);
-//           }
-//           else
-//           {
-//             // Done Stepping up
-//             Motor[No].LockRampDown = TRUE;
-//             if (TRUE == Motor[No].BrakeAfter)
-//             {
-//               Status = RampDownToBrake(No, StepCnt, Motor[No].TachoCntUp, Motor[No].Dir);
-//             }
-//             else
-//             {
-//               Status = TRUE;
-//             }
-//           }
-// 
-//           if (TRUE == Status)
-//           {
-//             // Ramp up completed check for next step
-//             if (FALSE == StepPowerCheckTachoCntConst(No, Motor[No].TachoCntUp))
-//             {
-//               StepPowerCheckTachoCntDown(No, Motor[No].TachoCntUp);
-//             }
-//           }
-//         }
-//         break;
-// 
-//         case LIMITED_UNREG_STEPCONST:
-//         {
-//           SLONG   StepCnt, StepCntTst;
-// 
-//           if (StepPowerSteps[No] != &(Motor[No].TachoCnt))
-//           {
-//             Motor[No].TachoCnt =  0;
-//           }
-//           else
-//           {
-//             Motor[No].TimeCnt  =  0;
-//           }
-// 
-//           GetCompareCounts(No, &StepCnt, &StepCntTst);
-// 
-//           if ((TRUE == CheckLessThanSpecial(StepCntTst, Motor[No].TachoCntConst, Motor[No].Dir)) && (FALSE == Motor[No].LockRampDown))
-//           {
-//           }
-//           else
-//           {
-//             if (TRUE == Motor[No].BrakeAfter)
-//             {
-// 
-//               Motor[No].LockRampDown = TRUE;
-//               if (TRUE == RampDownToBrake(No, StepCnt, Motor[No].TachoCntConst, Motor[No].Dir))
-//               {
-//                 StepPowerCheckTachoCntDown(No, Motor[No].TachoCntConst);
-//               }
-//             }
-//             else
-//             {
-//               StepPowerCheckTachoCntDown(No, Motor[No].TachoCntConst);
-//             }
-//           }
-//         }
-//         break;
-// 
-//         case LIMITED_UNREG_STEPDOWN:
-//         {
-//           SLONG   StepCnt;
-// 
-//           StepCnt = *StepPowerSteps[No];
-// 
-//           if (StepPowerSteps[No] != &(Motor[No].TachoCnt))
-//           {
-//             Motor[No].TachoCnt  =  0;
-//           }
-//           else
-//           {
-//             Motor[No].TimeCnt =  0;
-//           }
-// 
-//           if (TRUE == CheckLessThanSpecial(StepCnt, Motor[No].TachoCntDown, Motor[No].Dir))
-//           {
-//             if ((TRUE == CheckLessThanSpecial((2 * Motor[No].Dir), Motor[No].Speed, Motor[No].Dir)) && (FALSE == MinRegEnabled[No]))
-//             {
-//               if (TRUE == CheckLessThanSpecial((4 * Motor[No].Dir), (Motor[No].TargetPower - ((StepCnt * (Motor[No].RampDownFactor))/ RAMP_FACTOR)), Motor[No].Dir))
-//               {
-//                 Motor[No].Power = Motor[No].TargetPower - ((StepCnt * (Motor[No].RampDownFactor))/ RAMP_FACTOR);
-//               }
-//               SetPower(No,Motor[No].Power);
-//             }
-//             else
-//             {
-// 
-//               MinRegEnabled[No]     = TRUE;
-//               Motor[No].TargetSpeed = (2 * Motor[No].Dir);
-//               dRegulateSpeed(No);
-//             }
-//           }
-//           else
-//           {
-//             StepPowerStopMotor(No, Motor[No].TachoCntDown);
-//           }
-//         }
-//         break;
-// 
-//         case LIMITED_STEP_SYNC:
-//         {
-//           // Here motor are syncronized and supposed to drive straight
-// 
-//           UBYTE   Cnt;
-//           UBYTE   Status;
-//           SLONG   StepCnt;
-// 
-//           StepCnt = *StepPowerSteps[No];
-// 
-//           if (StepPowerSteps[No] != &(Motor[No].TachoCnt))
-//           {
-//             Motor[No].TachoCnt  =  0;
-//           }
-//           else
-//           {
-//             Motor[No].TimeCnt =  0;
-//           }
-// 
-//           Status  = FALSE;
-// 
-//           if ((Motor[SyncMNos[0]].Power > (MAX_PWM_CNT - 100)) || (Motor[SyncMNos[0]].Power < (-MAX_PWM_CNT + 100)))
-//           {
-//             // Regulation is stretched to the limit....... Checked in both directions
-//             Status = TRUE;
-//             if (TRUE == CheckLessThanSpecial((SLONG)(Motor[SyncMNos[0]].Speed), (SLONG)(Motor[SyncMNos[0]].TargetSpeed), Motor[SyncMNos[0]].Dir))
-//             {
-//               if (TRUE == CheckLessThanSpecial((SLONG)(Motor[SyncMNos[0]].Speed), (SLONG)(MaxSyncSpeed), Motor[SyncMNos[0]].Dir))
-//               {
-//                 // Check for running the same direction as target speed
-//                 if (((Motor[SyncMNos[0]].Speed <= 0) && (Motor[SyncMNos[0]].TargetSpeed <= 0)) ||
-//                     ((Motor[SyncMNos[0]].Speed >= 0) && (Motor[SyncMNos[0]].TargetSpeed >= 0)))
-//                 {
-//                   MaxSyncSpeed = Motor[SyncMNos[0]].Speed;
-//                 }
-//               }
-//             }
-//           }
-//           if ((Motor[SyncMNos[1]].Power > (MAX_PWM_CNT - 100)) || (Motor[SyncMNos[1]].Power < (-MAX_PWM_CNT + 100)))
-//           {
-//             // Regulation is stretched to the limit....... Checked in both directions
-//             Status = TRUE;
-//             if (TRUE == CheckLessThanSpecial((SLONG)(Motor[SyncMNos[1]].Speed), (SLONG)(Motor[SyncMNos[1]].TargetSpeed), (Motor[SyncMNos[0]].Dir * Motor[SyncMNos[1]].Dir)))
-//             {
-//               if (TRUE == CheckLessThanSpecial((SLONG)(Motor[SyncMNos[1]].Speed), (SLONG)(MaxSyncSpeed), (Motor[SyncMNos[0]].Dir * Motor[SyncMNos[1]].Dir)))
-//               {
-//                 // Check for running the same direction as target speed
-//                 if (((Motor[SyncMNos[1]].Speed <= 0) && (Motor[SyncMNos[1]].TargetSpeed <= 0)) ||
-//                     ((Motor[SyncMNos[1]].Speed >= 0) && (Motor[SyncMNos[1]].TargetSpeed >= 0)))
-//                 {
-//                   MaxSyncSpeed = Motor[SyncMNos[1]].Speed;
-//                 }
-//               }
-//             }
-//           }
-// 
-//           if (FALSE == Status)
-//           {
-//             if (TRUE == CheckLessThanSpecial((SLONG)(MaxSyncSpeed), Motor[SyncMNos[0]].TargetPower, Motor[SyncMNos[0]].Dir))
-//             {
-//               // TargetSpeed has been reduced but now there is room to increase
-//               IncSpeed(Motor[SyncMNos[0]].Dir, &MaxSyncSpeed);
-//             }
-//           }
-// 
-//           for (Cnt = 0; Cnt < MAX_SYNC_MOTORS; Cnt++)
-//           {
-//             //Update all motors to the max sync speed
-//             Motor[SyncMNos[Cnt]].TargetSpeed = MaxSyncSpeed;
-//           }
-// 
-//           if (TRUE == CheckLessThanSpecial(Motor[SyncMNos[1]].TachoCnt, Motor[SyncMNos[0]].TachoCnt, Motor[SyncMNos[0]].Dir))
-//           {
-//             DecSpeed(Motor[SyncMNos[0]].Dir, &(Motor[SyncMNos[0]].TargetSpeed));
-//           }
-// 
-//           if (TRUE == CheckLessThanSpecial(Motor[SyncMNos[0]].TachoCnt, Motor[SyncMNos[1]].TachoCnt, Motor[SyncMNos[0]].Dir))
-//           {
-//             DecSpeed(Motor[SyncMNos[0]].Dir, &(Motor[SyncMNos[1]].TargetSpeed));
-//           }
-// 
-//           dRegulateSpeed(SyncMNos[0]);
-//           dRegulateSpeed(SyncMNos[1]);
-// 
-//           CheckforEndOfSync();
-// 
-//         }
-//         break;
-//         case SYNCED_SLAVE:
-//         {
-//           if (StepPowerSteps[No] != &(Motor[No].TachoCnt))
-//           {
-//             Motor[No].TachoCnt  =  0;
-//           }
-//           else
-//           {
-//             Motor[No].TimeCnt =  0;
-//           }
-//         }
-//         break;
-//         case LIMITED_DIFF_TURN_SYNC:
-//         {
-//           UBYTE   Status;
-//           SLONG   StepCnt;
-// 
-//           StepCnt = *StepPowerSteps[No];
-// 
-//           if (StepPowerSteps[No] != &(Motor[No].TachoCnt))
-//           {
-//             Motor[No].TachoCnt  =  0;
-//           }
-//           else
-//           {
-//             Motor[No].TimeCnt =  0;
-//           }
-// 
-//           Status  = FALSE;
-// 
-//           if ((Motor[SyncMNos[0]].Power > (MAX_PWM_CNT - 100)) || (Motor[SyncMNos[0]].Power < (-MAX_PWM_CNT + 100)))
-//           {
-//             // Regulation is stretched to the limit....... in both directions
-//             Status = TRUE;
-//             if (TRUE == CheckLessThanSpecial((SLONG)(Motor[SyncMNos[0]].Speed), (SLONG)(Motor[SyncMNos[0]].TargetSpeed), Motor[SyncMNos[0]].Dir))
-//             {
-//               if (TRUE == CheckLessThanSpecial((SLONG)(Motor[SyncMNos[0]].Speed), (SLONG)(MaxSyncSpeed), Motor[SyncMNos[0]].Dir))
-//               {
-//                 // Check for running the same direction as target speed
-//                 if (((Motor[SyncMNos[0]].Speed <= 0) && (Motor[SyncMNos[0]].TargetSpeed <= 0)) ||
-//                     ((Motor[SyncMNos[0]].Speed >= 0) && (Motor[SyncMNos[0]].TargetSpeed >= 0)))
-//                 {
-//                   MaxSyncSpeed = Motor[SyncMNos[0]].Speed;
-//                 }
-//               }
-//             }
-//           }
-// 
-//           if ((Motor[SyncMNos[1]].Power > (MAX_PWM_CNT - 100)) || (Motor[SyncMNos[1]].Power < (-MAX_PWM_CNT + 100)))
-//           {
-//             // Regulation is stretched to the limit....... in both directions
-//             Status = TRUE;
-//             if (TRUE == CheckLessThanSpecial((SLONG)(Motor[SyncMNos[1]].Speed), (SLONG)(Motor[SyncMNos[1]].TargetSpeed), (Motor[SyncMNos[1]].Dir * Motor[SyncMNos[0]].Dir)))
-//             {
-//               if (TRUE == CheckLessThanSpecial((SLONG)((Motor[SyncMNos[1]].Speed * 100)/(Motor[SyncMNos[1]].TurnRatio * Motor[SyncMNos[1]].Dir)), (SLONG)(MaxSyncSpeed), Motor[SyncMNos[0]].Dir))
-//               {
-//                 if ((0 == Motor[SyncMNos[1]].TurnRatio) || (0 == Motor[SyncMNos[1]].Speed))
-//                 {
-//                   MaxSyncSpeed = 0;
-//                 }
-//                 else
-//                 {
-//                   // Check for running the same direction as target speed
-//                   if (((Motor[SyncMNos[1]].Speed <= 0) && (Motor[SyncMNos[1]].TargetSpeed <= 0)) ||
-//                       ((Motor[SyncMNos[1]].Speed >= 0) && (Motor[SyncMNos[1]].TargetSpeed >= 0)))
-//                   {
-//                     MaxSyncSpeed = ((Motor[SyncMNos[1]].Speed * 100)/Motor[SyncMNos[1]].TurnRatio) * Motor[SyncMNos[1]].Dir;
-//                   }
-//                 }
-//               }
-//             }
-//           }
-// 
-//           if (FALSE == Status)
-//           {
-//             if (TRUE == CheckLessThanSpecial((SLONG)(MaxSyncSpeed), Motor[SyncMNos[0]].TargetPower, Motor[SyncMNos[0]].Dir))
-//             {
-//               // TargetSpeed has been reduced but now there is room to increase
-//               IncSpeed(Motor[SyncMNos[0]].Dir, &MaxSyncSpeed);
-//             }
-//           }
-// 
-//           // Set the new
-//           Motor[SyncMNos[0]].TargetSpeed = MaxSyncSpeed;
-//           if ((0 == Motor[SyncMNos[1]].TurnRatio) || (0 == MaxSyncSpeed))
-//           {
-//             Motor[SyncMNos[1]].TargetSpeed = 0;
-//           }
-//           else
-//           {
-//             Motor[SyncMNos[1]].TargetSpeed = ((MaxSyncSpeed * Motor[SyncMNos[1]].TurnRatio)/100) * Motor[SyncMNos[1]].Dir;
-//           }
-// 
-//           if(0 != Motor[SyncMNos[1]].TurnRatio)
-//           {
-//             if (TRUE == CheckLessThanSpecial((((Motor[SyncMNos[1]].TachoCnt * 100)/Motor[SyncMNos[1]].TurnRatio) * Motor[SyncMNos[1]].Dir), Motor[SyncMNos[0]].TachoCnt, Motor[SyncMNos[0]].Dir))
-//             {
-//               DecSpeed(Motor[SyncMNos[0]].Dir, &(Motor[SyncMNos[0]].TargetSpeed));
-//             }
-//           }
-// 
-//           if(0 != Motor[SyncMNos[1]].TurnRatio)
-//           {
-//             if (TRUE == CheckLessThanSpecial(Motor[SyncMNos[0]].TachoCnt, ((Motor[SyncMNos[1]].TachoCnt * 100)/(Motor[SyncMNos[1]].TurnRatio) * Motor[SyncMNos[1]].Dir), Motor[SyncMNos[0]].Dir))
-//             {
-//               DecSpeed(Motor[SyncMNos[1]].Dir * Motor[SyncMNos[0]].Dir, &(Motor[SyncMNos[1]].TargetSpeed));
-//             }
-//           }
-// 
-//           dRegulateSpeed(SyncMNos[0]);
-//           dRegulateSpeed(SyncMNos[1]);
-// 
-//           CheckforEndOfSync();
-// 
-//         }
-//         break;
-// 
-//         case RAMP_DOWN_SYNC:
-//         {
-// 
-//           SLONG   Count0, Count1;
-// 
-//           if (StepPowerSteps[No] != &(Motor[No].TachoCnt))
-//           {
-//             Motor[No].TachoCnt = 0;
-//           }
-//           else
-//           {
-//             Motor[No].TimeCnt  = 0;
-//           }
-// 
-//           // Duration is either dependent on timer ticks or tacho counts
-//           GetSyncDurationCnt(&Count0, &Count1);
-// 
-//           if (TRUE == CheckLessThanSpecial(Count0, Motor[SyncMNos[0]].TachoCntConst, Motor[SyncMNos[0]].Dir))
-//           {
-// 
-//             RampDownToBrake(SyncMNos[0], Count0, Motor[SyncMNos[0]].TachoCntConst, Motor[SyncMNos[0]].Dir);
-// 
-//             if (StepPowerSteps[SyncMNos[0]] == TimerSteps[SyncMNos[0]])
-//             {
-//               // Needs to adjust second synchronised in time mode - both motor needs to run for the same
-//               // amount of time but not at the same speed
-//               RampDownToBrake(SyncMNos[1], ((Count1 * Motor[SyncMNos[1]].TurnRatio)/100),(( Motor[SyncMNos[1]].TachoCntConst * Motor[SyncMNos[1]].TurnRatio)/100), (Motor[SyncMNos[0]].Dir * Motor[SyncMNos[1]].Dir));
-//             }
-//             else
-//             {
-//               RampDownToBrake(SyncMNos[1], Count1, Motor[SyncMNos[1]].TachoCntConst, (Motor[SyncMNos[0]].Dir * Motor[SyncMNos[1]].Dir));
-//             }
-//           }
-//           else
-//           {
-//             MaxSyncSpeed                    = 0;
-//             Motor[SyncMNos[0]].TargetSpeed  = 0;
-//             Motor[SyncMNos[1]].TargetSpeed  = 0;
-//             StepPowerStopMotor(SyncMNos[0], Motor[SyncMNos[0]].TachoCntConst);
-//             StepPowerStopMotor(SyncMNos[1], Motor[SyncMNos[1]].TachoCntConst);
-//           }
-//         }
-//         break;
- 
-         case STOP_MOTOR:
-         {
-           if (ev3_tm->prg_stop_timer)
-           {
-             ev3_tm->prg_stop_timer--;
-           }
-           else
-           {
-             ev3_tm->state        = IDLE;
-             ev3_tm->target_state = UNLIMITED_UNREG;
-
-             ev3_tacho_motor_coast(pdata);
-           }
-         }
-         break;
- 
-         case BRAKED:
-         {
-           ev3_tacho_motor_brake_motor(ev3_tm);
-         }
-         break;
- 
-         case IDLE:
-         { /* Intentionally left empty */
-         }
-         break;
- 	default:
-         { /* Intentionally left empty */
-         }
-	break;
+				default: break;
+				}
+			}
+			break;
+	
+		case RAMP_DOWN:
+			/* Figure out if we're done ramping up - if yes then 
+			 * decide whether to brake, coast, or leave the motor
+			 * unchanged, and allow states to get reprocessed
+			 */
+	
+			if ( ev3_tm->ramp_down.end <= ev3_tm->ramp.count ) {
+#warning( "Decide whether to brake, coast, or do nothing here" )
+				reprocess = true;
+			} else {
+		
+				/* Figure out how far along we are in the ramp operation */
+				
+				ramp_progress = calculate_ramp_progress( ev3_tm->ramp_down.start, ev3_tm->ramp_down.end, ev3_tm->ramp.count );
+				/* Now determine the new setpoint for the ramp */
+		
+				#warning( "Combine this check into the progress calc, rename to calculate_ramp_setpoint" );
+				setpoint = ev3_tm->ramp.offset + ((ramp_progress * ev3_tm->ramp_down.slope)/RAMP_SLOPE_FACTOR);
+				/* Check the setpoint for minimum and maximum range, and adjust */
+				setpoint = setpoint + 0;
+		
+				/* Set either power or speed based on whether or not we're regulating */
+		
+				if (ev3_tm->regulated) {
+					ev3_tm->speed = setpoint;
+					ev3_tacho_motor_regulate_speed( ev3_tm );
+				} else {
+					ev3_tm->power = setpoint;
+					ev3_tacho_motor_set_power( ev3_tm );
+				}
+			}
+			break;
+	
+	//          case STOP_MOTOR:
+	//          {
+	//            if (ev3_tm->prg_stop_timer)
+	//            {
+	//              ev3_tm->prg_stop_timer--;
+	//            }
+	//            else
+	//            {
+	//              ev3_tm->state        = IDLE;
+	//              ev3_tm->target_state = UNLIMITED_UNREG;
+	// 
+	//              ev3_tacho_motor_coast(pdata);
+	//            }
+	//          }
+	//          break;
+	//  
+	//          case BRAKED:
+	//          {
+	//            ev3_tacho_motor_brake_motor(ev3_tm);
+	//          }
+	//          break;
+	//  
+	//          case IDLE:
+	//          { /* Intentionally left empty */
+	//          }
+	//          break;
+	  	default:
+	          { /* Intentionally left empty */
+	          }
+	 	break;
+	 	}
 	}
 
 	return HRTIMER_RESTART;
@@ -875,6 +979,7 @@ static int ev3_tacho_motor_get_speed(struct tacho_motor_device *tm)
 	struct ev3_tacho_motor_data *ev3_tm =
 			container_of(tm, struct ev3_tacho_motor_data, tm);
 
+	// return ev3_tm->speed;
 	return ev3_tm->speed;
 }
 
@@ -1100,6 +1205,8 @@ static int __devinit ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 	ev3_tm->out_port   = pdata->out_port;
 	ev3_tm->motor_port = motor;
 
+	ev3_tm->motor_type = MOTOR_TYPE_TACHO;
+
         /* Set up motor specific initialization constants */
         /* FIXME: These need to be motor specific later!  */
         /* Maybe a better way is to have this set up as a constant array that's memcpy'ed */
@@ -1136,8 +1243,8 @@ static int __devinit ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 	ev3_tm->tm.set_target_ramp_down_time = ev3_tacho_motor_set_target_ramp_down_time;
 
 	ev3_tm->state             = IDLE;
-	ev3_tm->samples_per_speed = SamplesLargeMotor;
-	ev3_tm->counts_per_pulse  = COUNTS_PER_PULSE_LM;
+	ev3_tm->samples_per_speed = SamplesPerSpeed[MOTOR_TYPE_TACHO][SAMPLES_PER_SPEED_BELOW_40];
+	ev3_tm->counts_per_pulse  = CountsPerPulse[MOTOR_TYPE_TACHO];
 
         /* FIXME: These need to be motor specific later! */
 
