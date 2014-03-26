@@ -155,6 +155,13 @@ struct ev3_tacho_motor_data {
 		int count;	/* This must be set to either tacho or time increment! */
 	} ramp;
 
+	struct {
+		int P;
+		int I;
+		int D;
+		int oldError;
+	} pid;
+
 	int state;
 
 	int target_state;
@@ -252,8 +259,8 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 	struct ev3_tacho_motor_data *ev3_tm = id;
 	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
 
-	bool int_state = gpio_get_value(pdata->tacho_int_gpio);
-	bool dir_state = gpio_get_value(pdata->tacho_dir_gpio);
+	bool int_state =  gpio_get_value(pdata->tacho_int_gpio);
+	bool dir_state = !gpio_get_value(pdata->tacho_dir_gpio);
 	unsigned long timer = legoev3_hires_timer_read();
 
 	unsigned next_sample;
@@ -312,13 +319,13 @@ static int process_count = 0;
 
 static void ev3_tacho_motor_forward(struct ev3_motor_platform_data *pdata)
 {
-	gpio_direction_input( pdata->motor_dir0_gpio   );
-	gpio_direction_output(pdata->motor_dir1_gpio, 1);
+	gpio_direction_output(pdata->motor_dir0_gpio, 1);
+	gpio_direction_input( pdata->motor_dir1_gpio   );
 }
 static void ev3_tacho_motor_reverse(struct ev3_motor_platform_data *pdata)
 {
-	gpio_direction_output(pdata->motor_dir0_gpio, 1);
-	gpio_direction_input( pdata->motor_dir1_gpio   );
+	gpio_direction_input( pdata->motor_dir0_gpio   );
+	gpio_direction_output(pdata->motor_dir1_gpio, 1);
 }
 static void ev3_tacho_motor_brake(struct ev3_motor_platform_data *pdata)
 {
@@ -331,6 +338,30 @@ static void ev3_tacho_motor_coast(struct ev3_motor_platform_data *pdata)
 	gpio_direction_output(pdata->motor_dir1_gpio, 0);
 }
 
+static int ev3_tacho_motor_set_power(struct ev3_tacho_motor_data *ev3_tm, int power)
+{
+	int err;
+	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
+
+        if (0 < power) {
+		ev3_tacho_motor_forward(pdata);
+	} else if (0 > power) {
+		ev3_tacho_motor_reverse(pdata);
+		power = -power;
+	} else {
+		/* FIXME: Add code to float or brake here depending on mode */
+		ev3_tacho_motor_coast(pdata);
+	}
+
+	err = pwm_set_duty_percent(pdata->pwm, power);
+
+ 	if (err) {
+ 		dev_err(&ev3_tm->motor_port->dev, "%s: Failed to set pwm duty percent! (%d)\n",
+ 			__func__, err);
+ 	}
+
+	return 0;
+}
 
 /*
  *! \brief    calculate_speed
@@ -511,21 +542,6 @@ static bool calculate_speed(struct ev3_tacho_motor_data *ev3_tm)
 
 	#warning "Don't run this if we're updating the ev3_tm in the isr!"
 
-//  Ptr     = TachoSamples[No].ArrayPtr;
-//
-//  if (Motor[No].DirChgPtr >= 1)
-//  {
-//    Diff = (((TachoSamples[No].TachoArray[Ptr])-(TachoSamples[No].TachoArray[((Ptr - 1) & (NO_OF_TACHO_SAMPLES - 1))])) & 0x00FFFFFF);
-//    if (Diff)
-//    {
-//      SETAvgTachoCount(No, (ULONG)((CountsPerPulse[No]/Diff) & 0x00FFFFFF));
-//    }
-//    else
-//    {
-//      SETAvgTachoCount(No, (ULONG)1);
-//    }
-//  }
-
 	/* Determine the approximate speed of the motor using the difference
 	 * in time between this tacho pulse and the previous pulse.
 	 *
@@ -546,10 +562,6 @@ static bool calculate_speed(struct ev3_tacho_motor_data *ev3_tm)
 
 	DiffIdx = ev3_tm->tacho_samples_head;
 
-//      printk("------------------------------------------\n");
-//      printk("DiffIdx -> %d\n", DiffIdx);
-//      printk("ChgSamples -> %d\n", ev3_tm->dir_chg_samples);
-
 	#warning "This should really be a boolean value that gets set at the ISR level"
 	#warning "Can/Should we change this to not set_samples_per_speed evry time we're called?"
 
@@ -559,8 +571,6 @@ static bool calculate_speed(struct ev3_tacho_motor_data *ev3_tm)
 				- ev3_tm->tacho_samples[(DiffIdx + TACHO_SAMPLES - 1) % TACHO_SAMPLES];
 
 		Diff |= 1;
-
-//              printk("Changed Dir! Diff-> %d\n", Diff);
 
 		set_samples_per_speed( ev3_tm, ev3_tm->counts_per_pulse / Diff );
 	}
@@ -577,8 +587,6 @@ static bool calculate_speed(struct ev3_tacho_motor_data *ev3_tm)
 	 * is 0!
 	 */
 
-//      printk("SamplesPerSpeed %d -> %d\n", ev3_tm->samples_per_speed, ev3_tm->dir_chg_samples );
-
 	if (ev3_tm->got_new_sample && (ev3_tm->dir_chg_samples >= ev3_tm->samples_per_speed) ) {
 
 		Diff = ev3_tm->tacho_samples[DiffIdx] 
@@ -586,9 +594,9 @@ static bool calculate_speed(struct ev3_tacho_motor_data *ev3_tm)
 
 		Diff |= 1;
 
-//              printk("Enough Samples %d! Diff-> %d\n", ev3_tm->samples_per_speed, Diff);
-
 		speed = (ev3_tm->counts_per_pulse * ev3_tm->samples_per_speed) / Diff;
+
+		/* And do some cleanup to limit the max and get direction right */
 
 		if (speed > MAX_SPEED)
 			speed = MAX_SPEED;
@@ -607,61 +615,53 @@ static bool calculate_speed(struct ev3_tacho_motor_data *ev3_tm)
 		speed = 0;
 
 		speed_updated = true;
-
-//              printk("Speed forced to 0\n");
 	}
 
 	if( speed_updated )
 		ev3_tm->speed = speed;
-//  Speed   = *pSpeed;    // Maintain old speed if not changed
-//  Tmp1    = TachoSamples[No].TachoArray[Ptr];
-//  Tmp2    = TachoSamples[No].TachoArray[((Ptr - AVG_TACHO_COUNTS[No]) & (NO_OF_TACHO_SAMPLES - 1))];
-//
-//  if ((Ptr != TachoSamples[No].ArrayPtrOld) && (Motor[No].DirChgPtr >= AVG_TACHO_COUNTS[No]))
-//  {
-//
-//    Status                        = true;
-//    TimeOutSpeed0[No]             = Tmp1;
-//    TachoSamples[No].ArrayPtrOld  = Ptr;
-//
-//    Diff = ((Tmp1-Tmp2) & 0x00FFFFFF);
-//    if (Diff)
-//    {
-//      Speed = (SWORD)((ULONG)(AVG_COUNTS[No])/(ULONG)Diff);
-//    }
-//    else
-//    {
-//      // Safety check
-//      Speed = 1;
-//    }
-//
-//    if (Speed > 100)
-//    {
-//      Speed = 100;
-//    }
-//
-//    if (BACKWARD == Motor[No].Direction)
-//    {
-//      Speed = 0 - Speed;
-//    }
-//  }
-//  else
-//  {
-//    // No new Values check for speed 0
-//    if ((CountsPerPulse[No]) < ((FREERunning24bittimer - TimeOutSpeed0[No]) & 0x00FFFFFF))
-//    {
-//      TimeOutSpeed0[No]   = FREERunning24bittimer;
-//      Speed               = 0;
-//      Motor[No].DirChgPtr = 0;
-//      Status              = true;
-//    }
-//  }
-//
-//  *pSpeed = (SBYTE)Speed;
-//
-#warning "ev3_tacho_motor_calculate_speed is not yet implemented!"
-  return(speed_updated);
+
+	return(speed_updated);
 }
+
+static void regulate_speed(struct ev3_tacho_motor_data *ev3_tm)
+{
+#warning "ev3_tacho_motor_regulate_speed is not yet implemented!"
+	int speed_error = ev3_tm->target_speed - ev3_tm->speed;;
+
+	if (MOTOR_TYPE_MINITACHO == ev3_tm->motor_type) {
+		ev3_tm->pid.P = speed_error * 4;
+		ev3_tm->pid.I = ((ev3_tm->pid.I * 9)/10) + (speed_error / 3);
+		ev3_tm->pid.D = (((speed_error - ev3_tm->pid.oldError) * 4)/2) * 40;
+	} else if (MOTOR_TYPE_TACHO == ev3_tm->motor_type) {
+		ev3_tm->pid.P = speed_error * 2;
+		ev3_tm->pid.I = ((ev3_tm->pid.I * 9)/10) + (speed_error / 3);
+		ev3_tm->pid.D = (((speed_error - ev3_tm->pid.oldError) * 4)/2) * 40;
+	} else {
+		/* This space intentionally left blank! */
+	}
+
+	ev3_tm->pid.oldError = speed_error;
+
+	ev3_tm->power += ((ev3_tm->pid.P + ev3_tm->pid.I + ev3_tm->pid.D));
+
+	/* Make sure power is within a reasonable range */
+
+	if (ev3_tm->power > MAX_PWM_CNT)
+		ev3_tm->power = MAX_PWM_CNT;
+
+	if (ev3_tm->power < -MAX_PWM_CNT)
+		ev3_tm->power = -MAX_PWM_CNT;
+
+	/* Make sure power is not fighting direction */
+	
+	if (0 > (ev3_tm->target_speed * ev3_tm->power) )
+		ev3_tm->power = 0;
+
+	ev3_tacho_motor_set_power(ev3_tm, (ev3_tm->power * 100) / MAX_PWM_CNT);
+
+//printk( "New Regulation Power is %d - %d\n", ev3_tm->power, (ev3_tm->power * 100) / MAX_PWM_CNT);
+}
+
 
 
 #define RAMP_SLOPE_FACTOR 10000
@@ -678,18 +678,6 @@ static int calculate_ramp_slope(int start, int end, int diff)
 	return( (diff * RAMP_SLOPE_FACTOR) / (end - start ) );
 }
 
-
-static int ev3_tacho_motor_regulate_speed(struct ev3_tacho_motor_data *ev3_tm)
-{
-#warning "ev3_tacho_motor_regulate_speed is not yet implemented!"
-	return 0;
-}
-
-static int ev3_tacho_motor_set_power(struct ev3_tacho_motor_data *ev3_tm)
-{
-#warning "ev3_tacho_motor_set_power is not yet implemented!"
-	return 0;
-}
 // static int ev3_tacho_motor_brake_motor(struct ev3_tacho_motor_data *ev3_tm)
 // {
 // #warning "ev3_tacho_motor_brake is not yet implemented!"
@@ -772,6 +760,8 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 
 	speed = calculate_speed( ev3_tm );
 
+	regulate_speed( ev3_tm );
+
 //	while ( reprocess ) {
 	while ( false ) {
 
@@ -787,7 +777,7 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 	        case UNLIMITED_UNREG:
 			if (ev3_tm->target_power != ev3_tm->power ) {
 				ev3_tm->power = ev3_tm->target_power;
-				ev3_tacho_motor_set_power( ev3_tm );
+				ev3_tacho_motor_set_power( ev3_tm, ev3_tm->power );
 			}
 	
 			#warning( "FIXME: Are these needed, or just cleanup in case someone gets sloppy?" );
@@ -796,7 +786,7 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 			break;
 	
 		case UNLIMITED_REG:
-			ev3_tacho_motor_regulate_speed( ev3_tm );
+			regulate_speed( ev3_tm );
 	
 			#warning( "FIXME: Are these needed, or just cleanup in case someone gets sloppy?" );
 			ev3_tm->tacho_cnt = 0;
@@ -847,10 +837,10 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 		
 				if (ev3_tm->regulated) {
 					ev3_tm->speed = setpoint;
-					ev3_tacho_motor_regulate_speed( ev3_tm );
+					regulate_speed( ev3_tm );
 				} else {
 					ev3_tm->power = setpoint;
-					ev3_tacho_motor_set_power( ev3_tm );
+					ev3_tacho_motor_set_power( ev3_tm, ev3_tm->power );
 				}
 			}
 			break;
@@ -902,10 +892,10 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 		
 				if (ev3_tm->regulated) {
 					ev3_tm->speed = setpoint;
-					ev3_tacho_motor_regulate_speed( ev3_tm );
+					regulate_speed( ev3_tm );
 				} else {
 					ev3_tm->power = setpoint;
-					ev3_tacho_motor_set_power( ev3_tm );
+					ev3_tacho_motor_set_power( ev3_tm, ev3_tm->power );
 				}
 			}
 			break;
@@ -987,6 +977,8 @@ static int ev3_tacho_motor_get_power(struct tacho_motor_device *tm)
 {
 	struct ev3_tacho_motor_data *ev3_tm =
 			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	regulate_speed( ev3_tm );
 
 	return ev3_tm->power;
 }
