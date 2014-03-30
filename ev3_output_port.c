@@ -58,8 +58,8 @@ enum gpio_index {
 	GPIO_PIN1,
 	GPIO_PIN2,
 	GPIO_PIN5,
-	GPIO_PIN5_TACHO,
-	GPIO_PIN6,
+	GPIO_PIN5_INT,
+	GPIO_PIN6_DIR,
 	NUM_GPIO
 };
 
@@ -155,11 +155,11 @@ struct ev3_output_port_data {
 
 void ev3_output_port_float(struct ev3_output_port_data *port)
 {
-	gpio_direction_output(port->gpio[GPIO_PIN1      ].gpio, 0);
-	gpio_direction_output(port->gpio[GPIO_PIN2      ].gpio, 0);
-	gpio_direction_input( port->gpio[GPIO_PIN5      ].gpio   );
-	gpio_direction_input( port->gpio[GPIO_PIN5_TACHO].gpio   );
-	gpio_direction_input( port->gpio[GPIO_PIN6      ].gpio   );
+	gpio_direction_output(port->gpio[GPIO_PIN1    ].gpio, 0);
+	gpio_direction_output(port->gpio[GPIO_PIN2    ].gpio, 0);
+	gpio_direction_input( port->gpio[GPIO_PIN5    ].gpio   );
+	gpio_direction_input( port->gpio[GPIO_PIN5_INT].gpio   );
+	gpio_direction_input( port->gpio[GPIO_PIN6_DIR].gpio   );
 }
 
 void ev3_output_port_register_motor(struct work_struct *work)
@@ -184,8 +184,8 @@ void ev3_output_port_register_motor(struct work_struct *work)
 
  	pdata.motor_dir0_gpio = port->gpio[GPIO_PIN1].gpio;
  	pdata.motor_dir1_gpio = port->gpio[GPIO_PIN2].gpio;
- 	pdata.tacho_int_gpio  = port->gpio[GPIO_PIN5_TACHO].gpio;
- 	pdata.tacho_dir_gpio  = port->gpio[GPIO_PIN6].gpio;
+ 	pdata.tacho_int_gpio  = port->gpio[GPIO_PIN5_INT].gpio;
+ 	pdata.tacho_dir_gpio  = port->gpio[GPIO_PIN6_DIR].gpio;
  	pdata.pwm             = port->pwm;
 	pdata.motor_type      = port->motor_type;
 
@@ -242,7 +242,7 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 	case CON_STATE_NO_DEV:
 		new_pin5_mv = legoev3_analog_out_pin5_value(port->analog, port->id);
 
-		if (gpio_get_value(port->gpio[GPIO_PIN6].gpio))
+		if (gpio_get_value(port->gpio[GPIO_PIN6_DIR].gpio))
 			new_pin_state_flags |= BIT(PIN_STATE_FLAG_PIN6_HIGH);
 		if ((new_pin5_mv < PIN5_BALANCE_LOW) || (new_pin5_mv > PIN5_BALANCE_HIGH))
 			new_pin_state_flags |= BIT(PIN_STATE_FLAG_PIN5_LOADED);
@@ -255,7 +255,7 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 		if (port->pin_state_flags && (port->timer_loop_cnt >= ADD_CNT)) {
 			port->pin5_float_mv = new_pin5_mv;
  			port->timer_loop_cnt = 0;
-			gpio_direction_output(port->gpio[GPIO_PIN6].gpio, 0);
+			gpio_direction_output(port->gpio[GPIO_PIN6_DIR].gpio, 0);
 			port->con_state = CON_STATE_PIN6_SETTLE;
 		}
 		break;
@@ -266,7 +266,7 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 		if (port->timer_loop_cnt >= SETTLE_CNT) {
 			port->pin5_low_mv = new_pin5_mv;
  			port->timer_loop_cnt = 0;
-			gpio_direction_input(port->gpio[GPIO_PIN6].gpio);
+			gpio_direction_input(port->gpio[GPIO_PIN6_DIR].gpio);
 			port->con_state = CON_STATE_CONNECTED;
 			}
 		break;
@@ -370,7 +370,7 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 
 		new_pin5_mv = legoev3_analog_out_pin5_value(port->analog, port->id);
 
-		if (gpio_get_value(port->gpio[GPIO_PIN6].gpio))
+		if (gpio_get_value(port->gpio[GPIO_PIN6_DIR].gpio))
  			port->timer_loop_cnt = 0;
 
 		if ((new_pin5_mv < PIN5_BALANCE_LOW) || (new_pin5_mv > PIN5_BALANCE_HIGH))
@@ -427,13 +427,13 @@ static int __devinit ev3_output_port_probe(struct legoev3_port_device *pdev)
 	port->gpio[GPIO_PIN5].flags	= GPIOF_IN;
 	port->gpio[GPIO_PIN5].label	= "pin5";
 
-	port->gpio[GPIO_PIN5_TACHO].gpio	= pdata->pin5_tacho_gpio;
-	port->gpio[GPIO_PIN5_TACHO].flags	= GPIOF_IN;
-	port->gpio[GPIO_PIN5_TACHO].label	= "pin5_tacho";
+	port->gpio[GPIO_PIN5_INT].gpio	= pdata->pin5_int_gpio;
+	port->gpio[GPIO_PIN5_INT].flags	= GPIOF_IN;
+	port->gpio[GPIO_PIN5_INT].label	= "pin5_tacho";
 
-	port->gpio[GPIO_PIN6].gpio	= pdata->pin6_gpio;
-	port->gpio[GPIO_PIN6].flags	= GPIOF_IN;
-	port->gpio[GPIO_PIN6].label	= "pin6";
+	port->gpio[GPIO_PIN6_DIR].gpio	= pdata->pin6_dir_gpio;
+	port->gpio[GPIO_PIN6_DIR].flags	= GPIOF_IN;
+	port->gpio[GPIO_PIN6_DIR].label	= "pin6";
 
 	err = gpio_request_array(port->gpio, ARRAY_SIZE(port->gpio));
 	if (err) {
