@@ -87,15 +87,6 @@ enum pin_state_flag {
 	NUM_PIN_STATE_FLAG
 };
 
-enum motor_type {
-	MOTOR_NONE,
-	MOTOR_NEWTACHO,
-	MOTOR_MINITACHO,
-	MOTOR_TACHO,
- 	MOTOR_ERR,
-	NUM_MOTOR
-};
-
 static struct attribute *legoev3_output_port_device_type_attrs[] = {
 	NULL
 };
@@ -196,6 +187,7 @@ void ev3_output_port_register_motor(struct work_struct *work)
  	pdata.tacho_int_gpio  = port->gpio[GPIO_PIN5_TACHO].gpio;
  	pdata.tacho_dir_gpio  = port->gpio[GPIO_PIN6].gpio;
  	pdata.pwm             = port->pwm;
+	pdata.motor_type      = port->motor_type;
 
  	motor = legoev3_port_device_register("motor", -1,
  				&ev3_motor_device_types[port->motor_type],
