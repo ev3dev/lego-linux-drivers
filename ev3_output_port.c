@@ -133,7 +133,7 @@ struct device_type ev3_motor_device_types[] = {
  *	state of the port's pins.
  * @pin5_float_mv: Used in the polling loop to track pin 5 voltage.
  * @pin5_low_mv: Used in the polling loop to track pin 5 voltage.
- * @motor_type: The type of sensor currently connected.
+ * @motor_type: The type of motor currently connected.
  * @motor: Pointer to the motor device that is connected to the output port.
  */
 struct ev3_output_port_data {
