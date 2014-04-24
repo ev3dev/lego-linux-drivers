@@ -560,6 +560,26 @@ void unregister_msensor(struct msensor_device *ms)
 }
 EXPORT_SYMBOL_GPL(unregister_msensor);
 
+static int msensor_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
+{
+	struct msensor_device *ms = to_msensor_device(dev);
+	int ret;
+
+	ret = add_uevent_var(env, "TYPEID=%d", ms->type_id);
+	if (ret) {
+		dev_err(dev, "failed to add uevent TYPEID\n");
+		return ret;
+	}
+
+	add_uevent_var(env, "PORT=%s", ms->port_name);
+	if (ret) {
+		dev_err(dev, "failed to add uevent PORT\n");
+		return ret;
+	}
+
+	return 0;
+}
+
 static char *msensor_devnode(struct device *dev, umode_t *mode)
 {
 	return kasprintf(GFP_KERNEL, "msensor/%s", dev_name(dev));
@@ -570,6 +590,7 @@ struct class msensor_class = {
 	.owner		= THIS_MODULE,
 	.dev_attrs	= msensor_device_attrs,
 	.dev_bin_attrs	= msensor_device_bin_attrs,
+	.dev_uevent	= msensor_dev_uevent,
 	.devnode	= msensor_devnode,
 };
 EXPORT_SYMBOL_GPL(msensor_class);
