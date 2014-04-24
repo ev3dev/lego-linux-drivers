@@ -132,6 +132,7 @@ enum legoev3_uart_info_flags {
  * @num_modes: The number of modes that the sensor has. (1-8)
  * @num_view_modes: Number of modes that can be used for data logging. (1-8)
  * @mode: The current mode.
+ * @new_mode: The mode requested by set_mode.
  * @raw_min: Min/max values are sent as float data types. This holds the value
  * 	until we read the number of decimal places needed to convert this
  * 	value to an integer.
@@ -161,8 +162,10 @@ struct legoev3_uart_port_data {
 	struct delayed_work change_bitrate_work;
 	struct hrtimer keep_alive_timer;
 	struct tasklet_struct keep_alive_tasklet;
+	struct completion set_mode_completion;
 	struct msensor_mode_info mode_info[MSENSOR_MODE_MAX + 1];
 	u8 mode;
+	u8 new_mode;
 	u32 raw_min;
 	u32 raw_max;
 	u32 pct_min;
@@ -260,6 +263,9 @@ int legoev3_uart_set_mode(void *context, const u8 mode)
 	if (mode >= port->ms.num_modes)
 		return -EINVAL;
 
+	if (!completion_done(&port->set_mode_completion))
+		return -EBUSY;
+
 	data[0] = legoev3_uart_set_msg_hdr(LEGOEV3_UART_MSG_TYPE_CMD,
 					   data_size - 2,
 					   LEGOEV3_UART_CMD_SELECT);
@@ -270,6 +276,13 @@ int legoev3_uart_set_mode(void *context, const u8 mode)
 	ret = tty->ops->write(tty, data, data_size);
 	if (ret < 0)
 		return ret;
+
+	port->new_mode = mode;
+	INIT_COMPLETION(port->set_mode_completion);
+	ret = wait_for_completion_timeout(&port->set_mode_completion,
+					  msecs_to_jiffies(300));
+	if (!ret)
+		return -ETIMEDOUT;
 
 	return 0;
 }
@@ -455,6 +468,7 @@ static int legoev3_uart_open(struct tty_struct *tty)
 	port->keep_alive_timer.function = legoev3_uart_keep_alive_timer_callback;
 	tasklet_init(&port->keep_alive_tasklet, legoev3_uart_send_keep_alive,
 		     (unsigned long)tty);
+	init_completion(&port->set_mode_completion);
 	tty->disc_data = port;
 
 	/* set baud rate and other port settings */
@@ -512,6 +526,8 @@ static void legoev3_uart_close(struct tty_struct *tty)
 	cancel_delayed_work_sync(&port->change_bitrate_work);
 	hrtimer_cancel(&port->keep_alive_timer);
 	tasklet_kill(&port->keep_alive_tasklet);
+	if (!completion_done(&port->set_mode_completion))
+		complete(&port->set_mode_completion);
 	tty->disc_data = NULL;
 	kfree(port);
 }
@@ -901,6 +917,9 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 				goto err_invalid_state;
 			}
 			port->mode = mode;
+			if (!completion_done(&port->set_mode_completion)
+			    && mode == port->new_mode)
+				complete(&port->set_mode_completion);
 			memcpy(port->mode_info[mode].raw_data,
 			       port->buffer + 1, msg_size - 2);
 			port->data_rec = 1;
