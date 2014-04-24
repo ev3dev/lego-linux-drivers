@@ -916,7 +916,14 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 				port->last_err = "Invalid mode received.";
 				goto err_invalid_state;
 			}
-			port->mode = mode;
+			if (mode != port->mode) {
+				if (mode == port->new_mode)
+					port->mode = mode;
+				else {
+					port->last_err = "Unexpected mode.";
+					goto err_invalid_state;
+				}
+			}
 			if (!completion_done(&port->set_mode_completion)
 			    && mode == port->new_mode)
 				complete(&port->set_mode_completion);
