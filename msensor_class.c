@@ -268,7 +268,8 @@ static ssize_t msensor_show_value(struct device *dev,
 	int mode = ms->get_mode(ms->context);
 	struct msensor_mode_info *mode_info = &ms->mode_info[mode];
 	long int value;
-	int index;
+	int index, dp;
+	int dp_factor = 1;
 
 	if (strlen(attr->attr.name) < 6)
 		return -ENXIO;
@@ -306,7 +307,11 @@ static ssize_t msensor_show_value(struct device *dev,
 		return -ENXIO;
 	}
 
-	value = (value - mode_info->raw_min)
+	dp = mode_info->decimals;
+	while (dp--)
+		dp_factor *= 10;
+
+	value = (value - mode_info->raw_min) * dp_factor
 		* (mode_info->si_max - mode_info->si_min)
 		/ (mode_info->raw_max - mode_info->raw_min)
 		+ mode_info->si_min;
