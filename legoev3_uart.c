@@ -839,23 +839,16 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 				}
 				switch (port->buffer[3]) {
 				case LEGOEV3_UART_DATA_8:
-					port->mode_info[mode].data_type =
-					(port->mode_info[mode].si_min < 0) ?
-						MSENSOR_DATA_S8 : MSENSOR_DATA_U8;
+					port->mode_info[mode].data_type = MSENSOR_DATA_S8;
 					break;
 				case LEGOEV3_UART_DATA_16:
-					port->mode_info[mode].data_type =
-					(port->mode_info[mode].si_min < 0) ?
-						MSENSOR_DATA_S16 : MSENSOR_DATA_U16;
+					port->mode_info[mode].data_type = MSENSOR_DATA_S16;
 					break;
 				case LEGOEV3_UART_DATA_32:
-					port->mode_info[mode].data_type =
-					(port->mode_info[mode].si_min < 0) ?
-						MSENSOR_DATA_S32 : MSENSOR_DATA_U32;
+					port->mode_info[mode].data_type = MSENSOR_DATA_S32;
 					break;
 				case LEGOEV3_UART_DATA_FLOAT:
-					port->mode_info[mode].data_type =
-						MSENSOR_DATA_FLOAT;
+					port->mode_info[mode].data_type = MSENSOR_DATA_FLOAT;
 					break;
 				default:
 					port->last_err = "Invalid data type.";
