@@ -594,7 +594,17 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 			port->last_err = "Receive buffer overrun.";
 			goto err_invalid_state;
 		}
-		port->buffer[port->write_ptr++] = cp[i++];
+		/*
+		 * Sometimes we receive data messages before the receive baud
+		 * rate has changed. The bad data is usually a single byte with
+		 * the value 0xFF, so we just ignore 0xFF if it is the first
+		 * byte in a message.
+		 */
+		if (port->write_ptr || cp[i] != 0xFF) {
+			port->buffer[port->write_ptr] = cp[i];
+			port->write_ptr++;
+		}
+		i++;
 	}
 
 	/*
