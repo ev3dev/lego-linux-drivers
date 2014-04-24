@@ -120,26 +120,36 @@ static ssize_t msensor_show_port_name(struct device *dev,
 	return snprintf(buf, MSENSOR_PORT_NAME_SIZE, "%s\n", ms->port_name);
 }
 
-static ssize_t msensor_show_mode(struct device *dev,
-				 struct device_attribute *attr,
-				 char *buf)
+static ssize_t msensor_show_modes(struct device *dev,
+				  struct device_attribute *attr,
+				  char *buf)
 {
 	struct msensor_device *ms = to_msensor_device(dev);
 	int i;
 	unsigned count = 0;
-	int mode = ms->get_mode(ms->context);
 
 	for (i = 0; i < ms->num_modes; i++) {
-		if (i == mode)
-			count += sprintf(buf + count, "[");
 		count += sprintf(buf + count, "%s", ms->mode_info[i].name);
-		if (i == mode)
-			count += sprintf(buf + count, "]");
 		count += sprintf(buf + count, "%c", ' ');
 	}
 	if (count == 0)
 		return -ENXIO;
 	buf[count - 1] = '\n';
+
+	return count;
+}
+
+static ssize_t msensor_show_mode(struct device *dev,
+				 struct device_attribute *attr,
+				 char *buf)
+{
+	struct msensor_device *ms = to_msensor_device(dev);
+	unsigned count = 0;
+
+	count += sprintf(buf, "%s\n",
+			 ms->mode_info[ms->get_mode(ms->context)].name);
+	if (count == 0)
+		return -ENXIO;
 
 	return count;
 }
@@ -434,6 +444,7 @@ static ssize_t msensor_write_bin_data(struct file *file ,struct kobject *kobj,
 static struct device_attribute msensor_device_attrs[] = {
 	__ATTR(type_id, S_IRUGO, msensor_show_type_id, NULL),
 	__ATTR(port_name, S_IRUGO, msensor_show_port_name, NULL),
+	__ATTR(modes, S_IRUGO | S_IWUGO, msensor_show_modes, NULL),
 	__ATTR(mode, S_IRUGO | S_IWUGO, msensor_show_mode, msensor_store_mode),
 	__ATTR(units, S_IRUGO, msensor_show_units, NULL),
 	__ATTR(dp, S_IRUGO, msensor_show_dp, NULL),
