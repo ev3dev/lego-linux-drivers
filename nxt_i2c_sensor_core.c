@@ -258,12 +258,22 @@ static int nxt_i2c_sensor_detect(struct i2c_client *client,
 	char vendor_id[NXT_I2C_ID_STR_LEN + 1] = { 0 };
 	char product_id[NXT_I2C_ID_STR_LEN + 1] = { 0 };
 	int ret, i;
+	int tries = 2;
 
 	if (!allow_autodetect)
 		return -ENODEV;
 
-	ret = i2c_smbus_read_i2c_block_data(client, NXT_I2C_VEND_ID_REG,
-					    NXT_I2C_ID_STR_LEN, vendor_id);
+	/*
+	 * Some sensors can fall asleep during boot, so we try reading twice
+	 * to make sure we wake them up.
+	 */
+	while (tries--) {
+		ret = i2c_smbus_read_i2c_block_data(client, NXT_I2C_VEND_ID_REG,
+						    NXT_I2C_ID_STR_LEN, vendor_id);
+		if (ret > 0 || !tries)
+			break;
+		msleep(1);
+	}
 	if (ret < 0)
 		return -ENODEV;
 
