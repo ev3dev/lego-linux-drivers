@@ -22,7 +22,7 @@ struct ev3_uart_host_data {
 	struct legoev3_port_device *in_port;
 };
 
-static int __devinit ev3_uart_host_probe(struct legoev3_port_device *host)
+static int ev3_uart_host_probe(struct legoev3_port_device *host)
 {
 	struct ev3_uart_host_data *ev3_uart;
 	struct ev3_sensor_platform_data *pdata = host->dev.platform_data;
@@ -57,7 +57,7 @@ err_ev3_input_port_enable_uart:
 	return err;
 }
 
-static int __devexit ev3_uart_host_remove(struct legoev3_port_device *host)
+static int ev3_uart_host_remove(struct legoev3_port_device *host)
 {
 	struct ev3_uart_host_data *ev3_uart = dev_get_drvdata(&host->dev);
 
@@ -70,7 +70,7 @@ static int __devexit ev3_uart_host_remove(struct legoev3_port_device *host)
 
 struct legoev3_port_driver ev3_uart_host_driver = {
 	.probe	= ev3_uart_host_probe,
-	.remove	= __devexit_p(ev3_uart_host_remove),
+	.remove	= ev3_uart_host_remove,
 	.driver = {
 		.name	= "ev3-uart-host",
 		.owner	= THIS_MODULE,

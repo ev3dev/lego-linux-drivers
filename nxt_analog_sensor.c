@@ -88,7 +88,7 @@ static void nxt_analog_sensor_cb(void *context)
 		ev3_input_port_get_pin1_mv(as->in_port);
 }
 
-static int __devinit nxt_analog_sensor_probe(struct legoev3_port_device *sensor)
+static int nxt_analog_sensor_probe(struct legoev3_port_device *sensor)
 {
 	struct nxt_analog_sensor_data *as;
 	struct ev3_sensor_platform_data *pdata = sensor->dev.platform_data;
@@ -141,7 +141,7 @@ err_register_msensor:
 	return err;
 }
 
-static int __devexit nxt_analog_sensor_remove(struct legoev3_port_device *sensor)
+static int nxt_analog_sensor_remove(struct legoev3_port_device *sensor)
 {
 	struct nxt_analog_sensor_data *as = dev_get_drvdata(&sensor->dev);
 
@@ -165,7 +165,7 @@ static struct legoev3_port_device_id nxt_light_sensor_device_ids [] = {
 
 struct legoev3_port_driver nxt_analog_sensor_driver = {
 	.probe	= nxt_analog_sensor_probe,
-	.remove	= __devexit_p(nxt_analog_sensor_remove),
+	.remove	= nxt_analog_sensor_remove,
 	.driver = {
 		.name	= "nxt-analog-sensor",
 		.owner	= THIS_MODULE,

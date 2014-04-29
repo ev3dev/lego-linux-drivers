@@ -88,7 +88,7 @@ static void nxt_light_sensor_cb(void *context)
 			ev3_input_port_get_pin1_mv(ts->in_port);
 }
 
-static int __devinit nxt_light_sensor_probe(struct legoev3_port_device *sensor)
+static int nxt_light_sensor_probe(struct legoev3_port_device *sensor)
 {
 	struct nxt_light_sensor_data *ls;
 	struct ev3_sensor_platform_data *pdata = sensor->dev.platform_data;
@@ -141,7 +141,7 @@ err_register_msensor:
 	return err;
 }
 
-static int __devexit nxt_light_sensor_remove(struct legoev3_port_device *sensor)
+static int nxt_light_sensor_remove(struct legoev3_port_device *sensor)
 {
 	struct nxt_light_sensor_data *ls = dev_get_drvdata(&sensor->dev);
 
@@ -165,7 +165,7 @@ static struct legoev3_port_device_id nxt_light_sensor_device_ids [] = {
 
 struct legoev3_port_driver nxt_light_sensor_driver = {
 	.probe	= nxt_light_sensor_probe,
-	.remove	= __devexit_p(nxt_light_sensor_remove),
+	.remove	= nxt_light_sensor_remove,
 	.driver = {
 		.name	= "nxt-light-sensor",
 		.owner	= THIS_MODULE,

@@ -25,7 +25,7 @@ struct ev3_uart_sensor_data {
 	struct msensor_device *pdata;
 };
 
-static int __devinit ev3_uart_sensor_probe(struct legoev3_port_device *pdev)
+static int ev3_uart_sensor_probe(struct legoev3_port_device *pdev)
 {
 	struct ev3_uart_sensor_data *sensor;
 	struct msensor_device *pdata = pdev->dev.platform_data;
@@ -56,7 +56,7 @@ dev_set_drvdata_fail:
 	return err;
 }
 
-static int __devexit ev3_uart_sensor_remove(struct legoev3_port_device *pdev)
+static int ev3_uart_sensor_remove(struct legoev3_port_device *pdev)
 {
 	struct ev3_uart_sensor_data *sensor = dev_get_drvdata(&pdev->dev);
 
@@ -72,7 +72,7 @@ static struct legoev3_port_device_id ev3_uart_ids[LEGOEV3_UART_TYPE_MAX + 1];
 
 struct legoev3_port_driver ev3_uart_sensor_driver = {
 	.probe		= ev3_uart_sensor_probe,
-	.remove		= __devexit_p(ev3_uart_sensor_remove),
+	.remove		= ev3_uart_sensor_remove,
 	.id_table	= ev3_uart_ids,
 	.driver = {
 		.name	= "ev3-uart-sensor",

@@ -381,7 +381,7 @@ err_legoev3_port_device_register:
 	return err;
 }
 
-static int __devinit legoev3_ports_probe(struct platform_device *pdev)
+static int legoev3_ports_probe(struct platform_device *pdev)
 {
 	struct legoev3_ports_data *ports;
 	int i = 0;
@@ -441,7 +441,7 @@ static int legoev3_bus_match_all (struct device *dev, void *data)
 	return 1;
 }
 
-static int __devexit legoev3_ports_remove(struct platform_device *pdev)
+static int legoev3_ports_remove(struct platform_device *pdev)
 {
 	struct device *dev;
 
@@ -462,7 +462,7 @@ static struct platform_driver legoev3_ports_driver = {
 		.owner	= THIS_MODULE,
 	},
 	.probe	= legoev3_ports_probe,
-	.remove	= __devexit_p(legoev3_ports_remove),
+	.remove	= legoev3_ports_remove,
 };
 
 module_platform_driver(legoev3_ports_driver);

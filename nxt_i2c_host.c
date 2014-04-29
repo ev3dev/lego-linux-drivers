@@ -29,7 +29,7 @@ struct nxt_i2c_host_data {
 	struct legoev3_port_device *in_port;
 };
 
-static int __devinit nxt_i2c_host_probe(struct legoev3_port_device *sensor)
+static int nxt_i2c_host_probe(struct legoev3_port_device *sensor)
 {
 	struct nxt_i2c_host_data *nxt_i2c;
 	struct ev3_sensor_platform_data *pdata = sensor->dev.platform_data;
@@ -62,7 +62,7 @@ register_i2c_sensor_fail:
 	return err;
 }
 
-static int __devexit nxt_i2c_host_remove(struct legoev3_port_device *sensor)
+static int nxt_i2c_host_remove(struct legoev3_port_device *sensor)
 {
 	struct nxt_i2c_host_data *nxt_i2c = dev_get_drvdata(&sensor->dev);
 
@@ -74,7 +74,7 @@ static int __devexit nxt_i2c_host_remove(struct legoev3_port_device *sensor)
 
 struct legoev3_port_driver nxt_i2c_host_driver = {
 	.probe	= nxt_i2c_host_probe,
-	.remove	= __devexit_p(nxt_i2c_host_remove),
+	.remove	= nxt_i2c_host_remove,
 	.driver = {
 		.name	= "nxt-i2c-host",
 		.owner	= THIS_MODULE,

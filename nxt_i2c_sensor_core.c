@@ -146,7 +146,7 @@ void nxt_i2c_sensor_poll_work(struct work_struct *work)
 				      msecs_to_jiffies(sensor->poll_ms));
 }
 
-static int __devinit nxt_i2c_sensor_probe(struct i2c_client *client,
+static int nxt_i2c_sensor_probe(struct i2c_client *client,
                                           const struct i2c_device_id *id)
 {
 	struct nxt_i2c_sensor_data *sensor;
@@ -240,7 +240,7 @@ err_register_msensor:
 	return err;
 }
 
-static int __devexit nxt_i2c_sensor_remove(struct i2c_client *client)
+static int nxt_i2c_sensor_remove(struct i2c_client *client)
 {
 	struct nxt_i2c_sensor_data *sensor = i2c_get_clientdata(client);
 
@@ -330,7 +330,7 @@ static struct i2c_driver nxt_i2c_sensor_driver = {
 	},
 	.id_table	= nxt_i2c_sensor_idtable,
 	.probe		= nxt_i2c_sensor_probe,
-	.remove		= __devexit_p(nxt_i2c_sensor_remove),
+	.remove		= nxt_i2c_sensor_remove,
 	.class		= I2C_CLASS_LEGOEV3,
 	.detect		= nxt_i2c_sensor_detect,
 	.address_list	= I2C_ADDRS(0x01, 0x02, 0x08, 0x0A),

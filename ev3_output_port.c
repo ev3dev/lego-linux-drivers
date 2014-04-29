@@ -23,7 +23,7 @@
 #include <linux/workqueue.h>
 #include <linux/gpio.h>
 #include <linux/slab.h>
-#include <linux/pwm/ehrpwm.h>
+#include <linux/pwm.h>
 #include <linux/legoev3/legoev3_analog.h>
 #include <linux/legoev3/legoev3_ports.h>
 #include <linux/legoev3/ev3_output_port.h>
@@ -250,7 +250,7 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
  		if (new_pin_state_flags != port->pin_state_flags) {
  			port->pin_state_flags = new_pin_state_flags;
  			port->timer_loop_cnt = 0;
-                }
+ 		}
 
 		if (port->pin_state_flags && (port->timer_loop_cnt >= ADD_CNT)) {
 			port->pin5_float_mv = new_pin5_mv;
@@ -334,7 +334,7 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
                 break;
 
 	case CON_STATE_PIN5_SETTLE:
-                // Update conection type, may need to force pin5 low to determine motor type
+                // Update connection type, may need to force pin5 low to determine motor type
 		if (port->timer_loop_cnt >= SETTLE_CNT) {
 			port->pin5_low_mv = legoev3_analog_out_pin5_value(port->analog, port->id);
  			port->timer_loop_cnt = 0;
@@ -392,7 +392,7 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 	return HRTIMER_RESTART;
 }
 
-static int __devinit ev3_output_port_probe(struct legoev3_port_device *pdev)
+static int ev3_output_port_probe(struct legoev3_port_device *pdev)
 {
  	struct ev3_output_port_data *port;
  	struct ev3_output_port_platform_data *pdata = pdev->dev.platform_data;
@@ -458,12 +458,12 @@ static int __devinit ev3_output_port_probe(struct legoev3_port_device *pdev)
 
 	/* Now get the PWM driver registered for this port */
 
- 	pwm = pwm_request_byname(pdata->pwm_dev_name, dev_name(&port->pdev->dev));
+ 	pwm = pwm_get(&port->pdev->dev, NULL);
    	if (IS_ERR(pwm)) {
    		dev_err(&pdev->dev, "%s: Could not request pwm device '%s'! (%ld)\n",
    			__func__, pdata->pwm_dev_name, PTR_ERR(pwm));
    		err = PTR_ERR(pwm);
-   		goto err_pwm_request_byname;
+   		goto err_pwm_get;
    	}
 
 	/* Separate platform and generic PWM setup code here */
@@ -491,26 +491,19 @@ static int __devinit ev3_output_port_probe(struct legoev3_port_device *pdev)
  		if (err) {
  			dev_err(&pdev->dev, "%s: Failed to set pwm polarity! (%d)\n",
  				__func__, err);
-	 		goto err_pwm_set_polarity;
-	 	}
+			goto err_pwm_set_polarity;
+		}
 
-        }
-
-	err = pwm_set_frequency(pwm, 10000);
- 	if (err) {
- 		dev_err(&pdev->dev, "%s: Failed to set pwm frequency! (%d)\n",
- 			__func__, err);
- 		goto err_pwm_set_frequency;
 	}
 
- 	err = pwm_set_duty_percent(pwm, 0);
+	err = pwm_config(pwm, 0, NSEC_PER_SEC / 10000);
  	if (err) {
- 		dev_err(&pdev->dev, "%s: Failed to set pwm duty percent! (%d)\n",
+ 		dev_err(&pdev->dev, "%s: Failed to set pwm duty percent and frequency! (%d)\n",
  			__func__, err);
- 		goto err_pwm_set_duty_percent;
- 	}
+ 		goto err_pwm_config;
+	}
 
- 	err = pwm_start(pwm);
+ 	err = pwm_enable(pwm);
  	if (err) {
  		dev_err(&pdev->dev, "%s: Failed to start pwm! (%d)\n",
  			__func__, err);
@@ -522,11 +515,10 @@ static int __devinit ev3_output_port_probe(struct legoev3_port_device *pdev)
 	return 0;
 
 err_pwm_start:
-err_pwm_set_duty_percent:
-err_pwm_set_frequency:
+err_pwm_config:
 err_pwm_set_polarity:
-	pwm_release(pwm);
-   err_pwm_request_byname:
+	pwm_put(pwm);
+   err_pwm_get:
 	hrtimer_cancel(&port->timer);
    dev_set_drvdata_fail:
  	gpio_free_array(port->gpio, ARRAY_SIZE(port->gpio));
@@ -538,12 +530,12 @@ err_pwm_set_polarity:
 	return err;
 }
 
-static int __devexit ev3_output_port_remove(struct legoev3_port_device *pdev)
+static int ev3_output_port_remove(struct legoev3_port_device *pdev)
 {
 	struct ev3_output_port_data *port = dev_get_drvdata(&pdev->dev);
 
- 	pwm_stop(port->pwm);
- 	pwm_release(port->pwm);
+ 	pwm_disable(port->pwm);
+ 	pwm_put(port->pwm);
 
 	hrtimer_cancel(&port->timer);
 	cancel_work_sync(&port->work);
@@ -562,7 +554,7 @@ static void ev3_output_port_shutdown(struct legoev3_port_device *pdev)
 {
  	struct ev3_output_port_data *port = dev_get_drvdata(&pdev->dev);
 
- 	pwm_stop(port->pwm);
+ 	pwm_disable(port->pwm);
 
  	hrtimer_cancel(&port->timer);
  	cancel_work_sync(&port->work);
@@ -570,7 +562,7 @@ static void ev3_output_port_shutdown(struct legoev3_port_device *pdev)
 
 struct legoev3_port_driver ev3_output_port_driver = {
   	.probe		= ev3_output_port_probe,
-	.remove		= __devexit_p(ev3_output_port_remove),
+	.remove		= ev3_output_port_remove,
 	.shutdown	= ev3_output_port_shutdown,
 	.driver = {
 		.name	= "ev3-output-port",

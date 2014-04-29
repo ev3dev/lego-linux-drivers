@@ -278,7 +278,7 @@ int legoev3_uart_set_mode(void *context, const u8 mode)
 		return ret;
 
 	port->new_mode = mode;
-	INIT_COMPLETION(port->set_mode_completion);
+	reinit_completion(&port->set_mode_completion);
 	ret = wait_for_completion_timeout(&port->set_mode_completion,
 					  msecs_to_jiffies(300));
 	if (!ret)
@@ -399,14 +399,14 @@ static void legoev3_uart_change_bitrate(struct work_struct *work)
 	struct legoev3_uart_port_data *port =
 		container_of(work, struct legoev3_uart_port_data,
 			     change_bitrate_work);
-	struct ktermios old_termios = *port->tty->termios;
+	struct ktermios old_termios = port->tty->termios;
 
 	tty_wait_until_sent(port->tty, 0);
-	mutex_lock(&port->tty->termios_mutex);
+	down_write(&port->tty->termios_rwsem);
 	tty_encode_baud_rate(port->tty, port->new_baud_rate, port->new_baud_rate);
 	if (port->tty->ops->set_termios)
 		port->tty->ops->set_termios(port->tty, &old_termios);
-	mutex_unlock(&port->tty->termios_mutex);
+	up_write(&port->tty->termios_rwsem);
 	if (port->info_done) {
 		hrtimer_start(&port->keep_alive_timer,
 			ktime_set(0, LEGOEV3_UART_DATA_KEEP_ALIVE_TIMEOUT / 2
@@ -446,7 +446,7 @@ enum hrtimer_restart legoev3_uart_keep_alive_timer_callback(struct hrtimer *time
 
 static int legoev3_uart_open(struct tty_struct *tty)
 {
-	struct ktermios old_termios = *tty->termios;
+	struct ktermios old_termios = tty->termios;
 	struct legoev3_uart_port_data *port;
 
 	port = kzalloc(sizeof(struct legoev3_uart_port_data), GFP_KERNEL);
@@ -470,8 +470,8 @@ static int legoev3_uart_open(struct tty_struct *tty)
 	tty->disc_data = port;
 
 	/* set baud rate and other port settings */
-	mutex_lock(&tty->termios_mutex);
-	tty->termios->c_iflag &=
+	down_write(&tty->termios_rwsem);
+	tty->termios.c_iflag &=
 		~(IGNBRK	/* disable ignore break */
 		| BRKINT	/* disable break causes interrupt */
 		| PARMRK	/* disable mark parity errors */
@@ -482,9 +482,9 @@ static int legoev3_uart_open(struct tty_struct *tty)
 		| IXON);	/* disable enable XON/XOFF flow control */
 
 	/* disable postprocess output characters */
-	tty->termios->c_oflag &= ~OPOST;
+	tty->termios.c_oflag &= ~OPOST;
 
-	tty->termios->c_lflag &=
+	tty->termios.c_lflag &=
 		~(ECHO		/* disable echo input characters */
 		| ECHONL	/* disable echo new line */
 		| ICANON	/* disable erase, kill, werase, and rprnt
@@ -494,13 +494,13 @@ static int legoev3_uart_open(struct tty_struct *tty)
 		| IEXTEN);	/* disable non-POSIX special characters */
 
 	/* 2400 baud, 8bits, no parity, 1 stop */
-	tty->termios->c_cflag = B2400 | CS8 | CREAD | HUPCL | CLOCAL;
+	tty->termios.c_cflag = B2400 | CS8 | CREAD | HUPCL | CLOCAL;
 	tty->ops->set_termios(tty, &old_termios);
 	tty->ops->tiocmset(tty, 0, ~0); /* clear all */
-	mutex_unlock(&tty->termios_mutex);
+	up_write(&tty->termios_rwsem);
 
 	tty->receive_room = 65536;
-	tty->low_latency = 1;
+	tty->port->low_latency = 1;
 
 	/* flush any existing data in the buffer */
 	if (tty->ldisc->ops->flush_buffer)

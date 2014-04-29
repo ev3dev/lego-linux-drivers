@@ -116,7 +116,7 @@ ssize_t tacho_motor_store_position(struct device *dev, struct device_attribute *
         char *end;
         long position = simple_strtol(buf, &end, 0);
 
-        if (*end == buf)
+        if (end == buf)
                 return -EINVAL;
 
         tm->fp->set_position(tm, position);
@@ -443,35 +443,48 @@ static ssize_t tacho_motor_store_reset(struct device *dev, struct device_attribu
         return size;
 }
 
-static struct device_attribute tacho_motor_class_dev_attrs[] = {
-	__ATTR(type,      		S_IRUGO | S_IWUGO, tacho_motor_show_type,		tacho_motor_store_type),
-	__ATTR(position,		S_IRUGO | S_IWUGO, tacho_motor_show_position,		tacho_motor_store_position),
 
-	__ATTR(speed,			S_IRUGO, 	   tacho_motor_show_speed,		NULL),
-	__ATTR(power,			S_IRUGO,	   tacho_motor_show_power,		NULL),
-	__ATTR(state,			S_IRUGO,	   tacho_motor_show_state,		NULL),
-	__ATTR(pulses_per_second,	S_IRUGO,	   tacho_motor_show_pulses_per_second,	NULL),
+DEVICE_ATTR(position,		S_IRUGO, 	   tacho_motor_show_position,		tacho_motor_store_position);
+DEVICE_ATTR(speed,		S_IRUGO, 	   tacho_motor_show_speed,		NULL);
+DEVICE_ATTR(power,		S_IRUGO,	   tacho_motor_show_power,		NULL);
+DEVICE_ATTR(state,		S_IRUGO,	   tacho_motor_show_state,		NULL);
+DEVICE_ATTR(pulses_per_second,	S_IRUGO,	   tacho_motor_show_pulses_per_second,	NULL);
+DEVICE_ATTR(speed_setpoint,	S_IRUGO | S_IWUGO, tacho_motor_show_speed_setpoint,	tacho_motor_store_speed_setpoint);
+DEVICE_ATTR(time_setpoint,	S_IRUGO | S_IWUGO, tacho_motor_show_time_setpoint,	tacho_motor_store_time_setpoint);
+DEVICE_ATTR(position_setpoint,	S_IRUGO | S_IWUGO, tacho_motor_show_position_setpoint,	tacho_motor_store_position_setpoint);
+DEVICE_ATTR(run_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_run_mode,		tacho_motor_store_run_mode);
+DEVICE_ATTR(regulation_mode,	S_IRUGO | S_IWUGO, tacho_motor_show_regulation_mode,	tacho_motor_store_regulation_mode);
+DEVICE_ATTR(brake_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_brake_mode,		tacho_motor_store_brake_mode);
+DEVICE_ATTR(hold_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_hold_mode,		tacho_motor_store_hold_mode);
+DEVICE_ATTR(position_mode,	S_IRUGO | S_IWUGO, tacho_motor_show_position_mode,	tacho_motor_store_position_mode);
+DEVICE_ATTR(polarity_mode,	S_IRUGO | S_IWUGO, tacho_motor_show_polarity_mode,	tacho_motor_store_polarity_mode);
+DEVICE_ATTR(ramp_up,		S_IRUGO | S_IWUGO, tacho_motor_show_ramp_up,		tacho_motor_store_ramp_up);
+DEVICE_ATTR(ramp_down,		S_IRUGO | S_IWUGO, tacho_motor_show_ramp_down,		tacho_motor_store_ramp_down);
+DEVICE_ATTR(run,		S_IRUGO | S_IWUGO, tacho_motor_show_run,		tacho_motor_store_run);
+DEVICE_ATTR(reset,		S_IWUGO,	   NULL,				tacho_motor_store_reset);
 
-	__ATTR(speed_setpoint,		S_IRUGO | S_IWUGO, tacho_motor_show_speed_setpoint,	tacho_motor_store_speed_setpoint),
-	__ATTR(time_setpoint,		S_IRUGO | S_IWUGO, tacho_motor_show_time_setpoint,	tacho_motor_store_time_setpoint),
-	__ATTR(position_setpoint,	S_IRUGO | S_IWUGO, tacho_motor_show_position_setpoint,	tacho_motor_store_position_setpoint),
-
-	__ATTR(run_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_run_mode,		tacho_motor_store_run_mode),
-	__ATTR(regulation_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_regulation_mode,	tacho_motor_store_regulation_mode),
-	__ATTR(brake_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_brake_mode,		tacho_motor_store_brake_mode),
-	__ATTR(hold_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_hold_mode,		tacho_motor_store_hold_mode),
-	__ATTR(position_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_position_mode,	tacho_motor_store_position_mode),
-	__ATTR(polarity_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_polarity_mode,	tacho_motor_store_polarity_mode),
-
-	__ATTR(ramp_up,			S_IRUGO | S_IWUGO, tacho_motor_show_ramp_up,		tacho_motor_store_ramp_up),
-	__ATTR(ramp_down,		S_IRUGO | S_IWUGO, tacho_motor_show_ramp_down,		tacho_motor_store_ramp_down),
-
-	__ATTR(run,			S_IRUGO | S_IWUGO, tacho_motor_show_run,		tacho_motor_store_run),
-
-	__ATTR(reset,				  S_IWUGO, NULL,				tacho_motor_store_reset),
-
-	__ATTR_NULL
+static struct attribute *tacho_motor_class_attrs[] = {
+	&dev_attr_position.attr,
+	&dev_attr_speed.attr,
+	&dev_attr_power.attr,
+	&dev_attr_state.attr,
+	&dev_attr_pulses_per_second.attr,
+	&dev_attr_speed_setpoint.attr,
+	&dev_attr_time_setpoint.attr,
+	&dev_attr_position_setpoint.attr,
+	&dev_attr_run_mode.attr,
+	&dev_attr_regulation_mode.attr,
+	&dev_attr_brake_mode.attr,
+	&dev_attr_hold_mode.attr,
+	&dev_attr_position_mode.attr,
+	&dev_attr_polarity_mode.attr,
+	&dev_attr_ramp_up.attr,
+	&dev_attr_ramp_down.attr,
+	&dev_attr_run.attr,
+	&dev_attr_reset.attr,
+	NULL
 };
+ATTRIBUTE_GROUPS(tacho_motor_class);
 
 static void tacho_motor_release(struct device *dev)
 {
@@ -505,12 +518,12 @@ static char *tacho_motor_devnode(struct device *dev, umode_t *mode)
 struct class tacho_motor_class = {
 	.name		= "tacho-motor",
 	.owner		= THIS_MODULE,
-	.dev_attrs	= tacho_motor_class_dev_attrs,
+	.dev_groups	= tacho_motor_class_groups,
 	.devnode	= tacho_motor_devnode,
 };
 EXPORT_SYMBOL_GPL(tacho_motor_class);
 
-static int __init tacho_motor_class_init(void)
+static int tacho_motor_class_init(void)
 {
 	int err;
 
@@ -524,7 +537,7 @@ static int __init tacho_motor_class_init(void)
 }
 module_init(tacho_motor_class_init);
 
-static void __exit tacho_motor_class_exit(void)
+static void tacho_motor_class_exit(void)
 {
 	class_unregister(&tacho_motor_class);
 }

@@ -31,8 +31,10 @@
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
-#include <linux/pwm/pwm.h>
+#include <linux/pwm.h>
 #include <linux/legoev3/legoev3_bluetooth.h>
+
+#define SLOW_CLOCK_PERIOD_NS (NSEC_PER_SEC / 32768)
 
 enum legoev3_bluetooth_gpios {
 	LEGOEV3_BT_GPIO_BT_ENA,
@@ -107,7 +109,7 @@ static struct attribute_group legoev3_bluetooth_attr_grp = {
 	.attrs = legoev3_bluetooth_attrs,
 };
 
-static int __devinit legoev3_bluetooth_probe(struct platform_device *pdev)
+static int legoev3_bluetooth_probe(struct platform_device *pdev)
 {
 	struct legoev3_bluetooth_device *btdev;
 	struct legoev3_bluetooth_platform_data *pdata;
@@ -149,7 +151,7 @@ static int __devinit legoev3_bluetooth_probe(struct platform_device *pdev)
 		goto err_gpio_request_array;
 	}
 
-	pwm = pwm_request_byname(pdata->clk_pwm_dev, "legoev3 bluetooth clock");
+	pwm = pwm_get(&pdev->dev, "legoev3 bluetooth clock");
 	if (IS_ERR(pwm)) {
 		dev_err(&pdev->dev, "%s: Could not request pwm device '%s'! (%ld)\n",
 			__func__, pdata->clk_pwm_dev, PTR_ERR(pwm));
@@ -162,19 +164,13 @@ static int __devinit legoev3_bluetooth_probe(struct platform_device *pdev)
 			__func__, err);
 		goto err_pwm_set_polarity;
 	}
-	err = pwm_set_frequency(pwm, 32768);
+	err = pwm_config(pwm, SLOW_CLOCK_PERIOD_NS / 2, SLOW_CLOCK_PERIOD_NS);
 	if (err) {
-		dev_err(&pdev->dev, "%s: Failed to set pwm frequency! (%d)\n",
+		dev_err(&pdev->dev, "%s: Failed to set pwm duty cycle and frequency! (%d)\n",
 			__func__, err);
-		goto err_pwm_set_frequency;
+		goto err_pwm_config;
 	}
-	err = pwm_set_duty_percent(pwm, 50);
-	if (err) {
-		dev_err(&pdev->dev, "%s: Failed to set pwm duty percent! (%d)\n",
-			__func__, err);
-		goto err_pwm_set_duty_percent;
-	}
-	err = pwm_start(pwm);
+	err = pwm_enable(pwm);
 	if (err) {
 		dev_err(&pdev->dev, "%s: Failed to start pwm! (%d)\n",
 			__func__, err);
@@ -192,12 +188,11 @@ static int __devinit legoev3_bluetooth_probe(struct platform_device *pdev)
 	return 0;
 
 err_sysfs_create_group:
-	pwm_stop(pwm);
+	pwm_disable(pwm);
 err_pwm_start:
-err_pwm_set_duty_percent:
-err_pwm_set_frequency:
+err_pwm_config:
 err_pwm_set_polarity:
-	pwm_release(pwm);
+	pwm_put(pwm);
 err_pwm_request_byname:
 	gpio_free_array(btdev->gpios, NUM_LEGOEV3_BT_GPIO);
 err_gpio_request_array:
@@ -206,15 +201,15 @@ err_gpio_request_array:
 	return err;
 }
 
-static int __devexit legoev3_bluetooth_remove(struct platform_device *pdev)
+static int legoev3_bluetooth_remove(struct platform_device *pdev)
 {
 	struct legoev3_bluetooth_device *btdev = platform_get_drvdata(pdev);
 
 	/* TODO: set gpios to turn off device */
 	sysfs_remove_group(&pdev->dev.kobj, &legoev3_bluetooth_attr_grp);
 	gpio_set_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio, 0);
-	pwm_stop(btdev->pwm);
-	pwm_release(btdev->pwm);
+	pwm_disable(btdev->pwm);
+	pwm_put(btdev->pwm);
 	gpio_free_array(btdev->gpios, NUM_LEGOEV3_BT_GPIO);
 	platform_set_drvdata(pdev, NULL);
 	kfree(btdev);
@@ -224,7 +219,7 @@ static int __devexit legoev3_bluetooth_remove(struct platform_device *pdev)
 
 struct platform_driver legoev3_bluetooth_driver = {
 	.probe	= legoev3_bluetooth_probe,
-	.remove	= __devexit_p(legoev3_bluetooth_remove),
+	.remove	= legoev3_bluetooth_remove,
 	.driver	= {
 		.name	= "legoev3-bluetooth",
 		.owner	= THIS_MODULE,

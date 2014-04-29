@@ -78,7 +78,7 @@ static void touch_sensor_ev3_cb(void *context)
 		ev3_input_port_get_pin6_mv(ts->in_port) > PIN6_NEAR_GND ? 1 : 0;
 }
 
-static int __devinit touch_sensor_probe(struct legoev3_port_device *sensor)
+static int touch_sensor_probe(struct legoev3_port_device *sensor)
 {
 	struct touch_sensor_data *ts;
 	struct ev3_sensor_platform_data *pdata = sensor->dev.platform_data;
@@ -141,7 +141,7 @@ err_register_msensor:
 	return err;
 }
 
-static int __devexit touch_sensor_remove(struct legoev3_port_device *sensor)
+static int touch_sensor_remove(struct legoev3_port_device *sensor)
 {
 	struct touch_sensor_data *ts = dev_get_drvdata(&sensor->dev);
 
@@ -168,7 +168,7 @@ static struct legoev3_port_device_id touch_sensor_device_ids [] = {
 
 struct legoev3_port_driver touch_sensor_driver = {
 	.probe	= touch_sensor_probe,
-	.remove	= __devexit_p(touch_sensor_remove),
+	.remove	= touch_sensor_remove,
 	.driver = {
 		.name	= "touch-sensor",
 		.owner	= THIS_MODULE,

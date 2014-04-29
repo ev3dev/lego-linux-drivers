@@ -446,38 +446,68 @@ static ssize_t msensor_write_bin_data(struct file *file ,struct kobject *kobj,
 	return ms->write_data(ms->context, buf, off, count);
 }
 
-static struct device_attribute msensor_device_attrs[] = {
-	__ATTR(type_id, S_IRUGO, msensor_show_type_id, NULL),
-	__ATTR(port_name, S_IRUGO, msensor_show_port_name, NULL),
-	__ATTR(modes, S_IRUGO | S_IWUGO, msensor_show_modes, NULL),
-	__ATTR(mode, S_IRUGO | S_IWUGO, msensor_show_mode, msensor_store_mode),
-	__ATTR(units, S_IRUGO, msensor_show_units, NULL),
-	__ATTR(dp, S_IRUGO, msensor_show_dp, NULL),
-	__ATTR(num_values, S_IRUGO, msensor_show_num_values, NULL),
-	__ATTR(bin_data_format, S_IRUGO, msensor_show_bin_data_format, NULL),
-	/*
-	 * Technically, it is possible to have 32 8-bit values from UART sensors
-	 * and 255 8-bit values from I2C sensors, but known UART sensors so far
-	 * have 8 data values or less and I2C sensors can arbitrarily be split
-	 * into multiple modes, so we only expose 8 values to prevent sysfs
-	 * overcrowding.
-	 */
-	__ATTR(value0, S_IRUGO , msensor_show_value, NULL),
-	__ATTR(value1, S_IRUGO , msensor_show_value, NULL),
-	__ATTR(value2, S_IRUGO , msensor_show_value, NULL),
-	__ATTR(value3, S_IRUGO , msensor_show_value, NULL),
-	__ATTR(value4, S_IRUGO , msensor_show_value, NULL),
-	__ATTR(value5, S_IRUGO , msensor_show_value, NULL),
-	__ATTR(value6, S_IRUGO , msensor_show_value, NULL),
-	__ATTR(value7, S_IRUGO , msensor_show_value, NULL),
-	__ATTR_NULL
+static DEVICE_ATTR(type_id, S_IRUGO, msensor_show_type_id, NULL);
+static DEVICE_ATTR(port_name, S_IRUGO, msensor_show_port_name, NULL);
+static DEVICE_ATTR(modes, S_IRUGO | S_IWUGO, msensor_show_modes, NULL);
+static DEVICE_ATTR(mode, S_IRUGO | S_IWUGO, msensor_show_mode, msensor_store_mode);
+static DEVICE_ATTR(units, S_IRUGO, msensor_show_units, NULL);
+static DEVICE_ATTR(dp, S_IRUGO, msensor_show_dp, NULL);
+static DEVICE_ATTR(num_values, S_IRUGO, msensor_show_num_values, NULL);
+static DEVICE_ATTR(bin_data_format, S_IRUGO, msensor_show_bin_data_format, NULL);
+/*
+ * Technically, it is possible to have 32 8-bit values from UART sensors
+ * and 255 8-bit values from I2C sensors, but known UART sensors so far
+ * have 8 data values or less and I2C sensors can arbitrarily be split
+ * into multiple modes, so we only expose 8 values to prevent sysfs
+ * overcrowding.
+ */
+static DEVICE_ATTR(value0, S_IRUGO , msensor_show_value, NULL);
+static DEVICE_ATTR(value1, S_IRUGO , msensor_show_value, NULL);
+static DEVICE_ATTR(value2, S_IRUGO , msensor_show_value, NULL);
+static DEVICE_ATTR(value3, S_IRUGO , msensor_show_value, NULL);
+static DEVICE_ATTR(value4, S_IRUGO , msensor_show_value, NULL);
+static DEVICE_ATTR(value5, S_IRUGO , msensor_show_value, NULL);
+static DEVICE_ATTR(value6, S_IRUGO , msensor_show_value, NULL);
+static DEVICE_ATTR(value7, S_IRUGO , msensor_show_value, NULL);
+
+static struct attribute *msensor_class_attrs[] = {
+	&dev_attr_type_id.attr,
+	&dev_attr_port_name.attr,
+	&dev_attr_modes.attr,
+	&dev_attr_mode.attr,
+	&dev_attr_units.attr,
+	&dev_attr_dp.attr,
+	&dev_attr_num_values.attr,
+	&dev_attr_bin_data_format.attr,
+	&dev_attr_value0.attr,
+	&dev_attr_value1.attr,
+	&dev_attr_value2.attr,
+	&dev_attr_value3.attr,
+	&dev_attr_value4.attr,
+	&dev_attr_value5.attr,
+	&dev_attr_value6.attr,
+	&dev_attr_value7.attr,
+	NULL
+};
+
+static BIN_ATTR(bin_data, S_IRUGO, msensor_read_bin_data,
+		msensor_write_bin_data, MSENSOR_RAW_DATA_SIZE);
+
+static struct bin_attribute *msensor_class_bin_attrs[] = {
+	&bin_attr_bin_data,
+	NULL
+};
+
+static const struct attribute_group msensor_class_group = {
+	.attrs		= msensor_class_attrs,
+	.bin_attrs	= msensor_class_bin_attrs,
 };
 
 static DEVICE_ATTR(poll_ms, S_IRUGO | S_IWUGO, msensor_show_poll_ms, msensor_store_poll_ms);
 static DEVICE_ATTR(fw_version, S_IRUGO , msensor_show_fw_version, NULL);
 static DEVICE_ATTR(i2c_addr, S_IRUGO , msensor_show_i2c_addr, NULL);
 
-struct attribute *msensor_optional_attrs[] = {
+struct attribute *msensor_class_optional_attrs[] = {
 	&dev_attr_poll_ms.attr,
 	&dev_attr_fw_version.attr,
 	&dev_attr_i2c_addr.attr,
@@ -500,22 +530,15 @@ static umode_t msensor_attr_is_visible (struct kobject *kobj,
 	return attr->mode;
 }
 
-static struct attribute_group msensor_optional_attr_grp = {
+static const struct attribute_group msensor_class_optional_group = {
 	.is_visible	= msensor_attr_is_visible,
-	.attrs		= msensor_optional_attrs,
+	.attrs		= msensor_class_optional_attrs,
 };
 
-static struct bin_attribute msensor_device_bin_attrs[] = {
-	{
-		.attr	= {
-			.name	= "bin_data",
-			.mode	= S_IRUGO,
-		},
-		.size	= MSENSOR_RAW_DATA_SIZE,
-		.read	= msensor_read_bin_data,
-		.write	= msensor_write_bin_data,
-	},
-	__ATTR_NULL
+static const struct attribute_group *msensor_class_groups[] = {
+	&msensor_class_group,
+	&msensor_class_optional_group,
+	NULL
 };
 
 static void msensor_release(struct device *dev)
@@ -540,12 +563,6 @@ int register_msensor(struct msensor_device *ms, struct device *parent)
 	if (err)
 		return err;
 
-	err = sysfs_create_group(&ms->dev.kobj, &msensor_optional_attr_grp);
-	if (err) {
-		device_unregister(&ms->dev);
-		return err;
-	}
-
 	dev_info(&ms->dev, "Mindstorms sensor registered.\n");
 
 	return 0;
@@ -555,7 +572,6 @@ EXPORT_SYMBOL_GPL(register_msensor);
 void unregister_msensor(struct msensor_device *ms)
 {
 	dev_info(&ms->dev, "Mindstorms sensor unregistered.\n");
-	sysfs_remove_group(&ms->dev.kobj, &msensor_optional_attr_grp);
 	device_unregister(&ms->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_msensor);
@@ -588,8 +604,7 @@ static char *msensor_devnode(struct device *dev, umode_t *mode)
 struct class msensor_class = {
 	.name		= "msensor",
 	.owner		= THIS_MODULE,
-	.dev_attrs	= msensor_device_attrs,
-	.dev_bin_attrs	= msensor_device_bin_attrs,
+	.dev_groups	= msensor_class_groups,
 	.dev_uevent	= msensor_dev_uevent,
 	.devnode	= msensor_devnode,
 };

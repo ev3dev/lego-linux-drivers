@@ -614,7 +614,7 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 	return HRTIMER_RESTART;
 }
 
-static int __devinit ev3_input_port_probe(struct legoev3_port_device *pdev)
+static int ev3_input_port_probe(struct legoev3_port_device *pdev)
 {
 	struct ev3_input_port_data *port;
 	struct ev3_input_port_platform_data *pdata = pdev->dev.platform_data;
@@ -697,7 +697,7 @@ request_legoev3_analog_fail:
 	return err;
 }
 
-static int __devexit ev3_input_port_remove(struct legoev3_port_device *pdev)
+static int ev3_input_port_remove(struct legoev3_port_device *pdev)
 {
 	struct ev3_input_port_data *port = dev_get_drvdata(&pdev->dev);
 
@@ -724,7 +724,7 @@ static void ev3_input_port_shutdown(struct legoev3_port_device *pdev)
 
 struct legoev3_port_driver ev3_input_port_driver = {
 	.probe		= ev3_input_port_probe,
-	.remove		= __devexit_p(ev3_input_port_remove),
+	.remove		= ev3_input_port_remove,
 	.shutdown	= ev3_input_port_shutdown,
 	.driver = {
 		.name	= "ev3-input-port",

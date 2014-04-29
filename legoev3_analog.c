@@ -516,7 +516,7 @@ void put_legoev3_analog(struct legoev3_analog_device *alg)
 }
 EXPORT_SYMBOL_GPL(put_legoev3_analog);
 
-static int __devinit legoev3_analog_probe(struct spi_device *spi)
+static int legoev3_analog_probe(struct spi_device *spi)
 {
 	struct legoev3_analog_device *alg = &legoev3_analog;
 	int err, i;
@@ -587,7 +587,7 @@ no_platform_data:
 	return err;
 }
 
-static int __devexit legoev3_analog_remove(struct spi_device *spi)
+static int legoev3_analog_remove(struct spi_device *spi)
 {
 	struct legoev3_analog_device *alg = spi_get_drvdata(spi);
 
@@ -605,7 +605,7 @@ struct spi_driver legoev3_analog_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = legoev3_analog_probe,
-	.remove = __devexit_p(legoev3_analog_remove),
+	.remove = legoev3_analog_remove,
 };
 EXPORT_SYMBOL_GPL(legoev3_analog_driver);
 module_spi_driver(legoev3_analog_driver);
