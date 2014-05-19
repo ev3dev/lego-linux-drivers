@@ -84,7 +84,7 @@ static void nxt_analog_sensor_cb(void *context)
 {
 	struct nxt_analog_sensor_data *as = context;
 
-	*(int*)as->mode_info[0].raw_data =
+	*(int*)as->mode_info[as->mode].raw_data =
 		ev3_input_port_get_pin1_mv(as->in_port);
 }
 
