@@ -147,7 +147,6 @@ struct ev3_tacho_motor_data {
 	long run_mode;
 	long regulation_mode;
 	long brake_mode;
-	long hold_mode;
 	long position_mode;
 	long polarity_mode;
 
@@ -418,7 +417,6 @@ static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
 	ev3_tm->run_mode		= RUN_FOREVER;
 	ev3_tm->regulation_mode		= REGULATION_OFF;
 	ev3_tm->brake_mode		= BRAKE_OFF;
-	ev3_tm->hold_mode		= HOLD_OFF;
 	ev3_tm->position_mode		= POSITION_ABSOLUTE;
 	ev3_tm->polarity_mode		= POLARITY_POSITIVE;
 	ev3_tm->ramp_up			= 0;
@@ -1109,9 +1107,6 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 			 * the value of irq_tacho in the HOLD mode - the current, real
 			 * tacho reading is ALWAYS tacho + irq_tacho!
 			 */
-			while (ev3_tm->irq_mutex) {
-				printk( "Waiting for IRQ update!\n" );
-			};
 
 //			printk( "STOP: ramp.setpoint %d tacho %d irq_tacho %d\n", ev3_tm->ramp.position_setpoint, ev3_tm->tacho, ev3_tm->irq_tacho);
 			if (ev3_tm->run_mode == RUN_POSITION) {
@@ -1152,11 +1147,11 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 no_run:
 	/* Note, we get here even if we're running - so we need to check
 	 * explicitly. These are some special cases to handle changes in the
-	 * hold_mode and brake_mode when the motor is not running!
+	 * brake_mode when the motor is not running!
 	 */
 
 	if (!ev3_tm->run) {
-		if (HOLD_ON == ev3_tm->hold_mode)
+		if (HOLD_ON == ev3_tm->brake_mode)
 			regulate_position(ev3_tm);
 
 		else if (BRAKE_ON == ev3_tm->brake_mode) 
@@ -1341,22 +1336,6 @@ static void ev3_tacho_motor_set_brake_mode(struct tacho_motor_device *tm, long b
 	ev3_tm->brake_mode = brake_mode;
 }
 
-static int ev3_tacho_motor_get_hold_mode(struct tacho_motor_device *tm)
-{
-	struct ev3_tacho_motor_data *ev3_tm =
-			container_of(tm, struct ev3_tacho_motor_data, tm);
-
-	return ev3_tm->hold_mode;
-}
-
-static void ev3_tacho_motor_set_hold_mode(struct tacho_motor_device *tm, long hold_mode)
-{
-	struct ev3_tacho_motor_data *ev3_tm =
-			container_of(tm, struct ev3_tacho_motor_data, tm);
-
-	ev3_tm->hold_mode = hold_mode;
-}
-
 static int ev3_tacho_motor_get_polarity_mode(struct tacho_motor_device *tm)
 {
 	struct ev3_tacho_motor_data *ev3_tm =
@@ -1502,9 +1481,6 @@ static const struct function_pointers fp = {
 
  	.get_brake_mode		= ev3_tacho_motor_get_brake_mode,
  	.set_brake_mode		= ev3_tacho_motor_set_brake_mode,
-
- 	.get_hold_mode		= ev3_tacho_motor_get_hold_mode,
- 	.set_hold_mode		= ev3_tacho_motor_set_hold_mode,
 
  	.get_position_mode	= ev3_tacho_motor_get_position_mode,
  	.set_position_mode	= ev3_tacho_motor_set_position_mode,

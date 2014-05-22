@@ -29,11 +29,7 @@ static struct tacho_motor_mode_item tacho_motor_regulation_modes[NUM_REGULATION_
 static struct tacho_motor_mode_item tacho_motor_brake_modes[NUM_BRAKE_MODES] = {
 	[BRAKE_OFF]     =  { "off" },
 	[BRAKE_ON]      =  { "on" },
-};
-
-static struct tacho_motor_mode_item tacho_motor_hold_modes[NUM_HOLD_MODES] = {
-	[HOLD_OFF]     =  { "off" },
-	[HOLD_ON]      =  { "on" },
+	[HOLD_ON]       =  { "hold" },
 };
 
 static struct tacho_motor_mode_item tacho_motor_position_modes[NUM_POSITION_MODES] = {
@@ -116,7 +112,7 @@ ssize_t tacho_motor_store_position(struct device *dev, struct device_attribute *
         char *end;
         long position = simple_strtol(buf, &end, 0);
 
-        if (*end == buf)
+        if (end == buf)
                 return -EINVAL;
 
         tm->fp->set_position(tm, position);
@@ -200,6 +196,22 @@ static ssize_t tacho_motor_store_regulation_mode(struct device *dev, struct devi
         return size;
 }
 
+static ssize_t tacho_motor_show_brake_modes(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        unsigned int i;
+
+	int size = 0;
+
+// struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	for (i=0; i<NUM_BRAKE_MODES; ++i)
+		size += sprintf(buf+size, "%s ", tacho_motor_brake_modes[i].name);
+
+	size += sprintf(buf+size, "\n");
+
+        return size;
+}
+
 static ssize_t tacho_motor_show_brake_mode(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
@@ -220,30 +232,6 @@ static ssize_t tacho_motor_store_brake_mode(struct device *dev, struct device_at
                 return -EINVAL;
 
         tm->fp->set_brake_mode(tm, i);
-
-        return size;
-}
-
-static ssize_t tacho_motor_show_hold_mode(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
-
-	return sprintf(buf, "%s\n", tacho_motor_hold_modes[tm->fp->get_hold_mode(tm)].name);
-}
-
-static ssize_t tacho_motor_store_hold_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
-
-        unsigned int i;
-
-	for (i=0; i<NUM_HOLD_MODES; ++i)
-		if (sysfs_streq(buf, tacho_motor_hold_modes[i].name)) break;
-
-	if (i >= NUM_HOLD_MODES)
-                return -EINVAL;
-
-        tm->fp->set_hold_mode(tm, i);
 
         return size;
 }
@@ -458,8 +446,8 @@ static struct device_attribute tacho_motor_class_dev_attrs[] = {
 
 	__ATTR(run_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_run_mode,		tacho_motor_store_run_mode),
 	__ATTR(regulation_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_regulation_mode,	tacho_motor_store_regulation_mode),
+	__ATTR(brake_modes,		S_IRUGO | S_IWUGO, tacho_motor_show_brake_modes,	NULL),
 	__ATTR(brake_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_brake_mode,		tacho_motor_store_brake_mode),
-	__ATTR(hold_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_hold_mode,		tacho_motor_store_hold_mode),
 	__ATTR(position_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_position_mode,	tacho_motor_store_position_mode),
 	__ATTR(polarity_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_polarity_mode,	tacho_motor_store_polarity_mode),
 
