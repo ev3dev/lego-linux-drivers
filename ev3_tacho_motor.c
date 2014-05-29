@@ -146,7 +146,7 @@ struct ev3_tacho_motor_data {
 
 	long run_mode;
 	long regulation_mode;
-	long brake_mode;
+	long stop_mode;
 	long position_mode;
 	long polarity_mode;
 
@@ -337,10 +337,12 @@ static void ev3_tacho_motor_set_power(struct ev3_tacho_motor_data *ev3_tm, int p
 	} else if (0 > power) {
 		ev3_tacho_motor_reverse(ev3_tm);
 	} else {
-		if (BRAKE_ON == ev3_tm->brake_mode)
-			ev3_tacho_motor_brake(ev3_tm);
-		else
+		if (STOP_COAST == ev3_tm->stop_mode)
 			ev3_tacho_motor_coast(ev3_tm);
+		else if (STOP_BRAKE == ev3_tm->stop_mode)
+			ev3_tacho_motor_brake(ev3_tm);
+		else if (STOP_HOLD == ev3_tm->stop_mode)
+			ev3_tacho_motor_brake(ev3_tm);
 	}
 
 	/* The power sets the duty cycle - 100% power == 100% duty cycle */
@@ -416,7 +418,7 @@ static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
 	ev3_tm->position_setpoint	= 0;
 	ev3_tm->run_mode		= RUN_FOREVER;
 	ev3_tm->regulation_mode		= REGULATION_OFF;
-	ev3_tm->brake_mode		= BRAKE_OFF;
+	ev3_tm->stop_mode		= STOP_COAST;
 	ev3_tm->position_mode		= POSITION_ABSOLUTE;
 	ev3_tm->polarity_mode		= POLARITY_POSITIVE;
 	ev3_tm->ramp_up			= 0;
@@ -1151,14 +1153,14 @@ no_run:
 	 */
 
 	if (!ev3_tm->run) {
-		if (HOLD_ON == ev3_tm->brake_mode)
-			regulate_position(ev3_tm);
+		if (STOP_COAST == ev3_tm->stop_mode)
+			ev3_tacho_motor_coast(ev3_tm);
 
-		else if (BRAKE_ON == ev3_tm->brake_mode) 
+		else if (STOP_BRAKE == ev3_tm->stop_mode) 
 			ev3_tacho_motor_brake(ev3_tm);
 
-		else if (BRAKE_OFF == ev3_tm->brake_mode)
-			ev3_tacho_motor_coast(ev3_tm);
+		else if (STOP_HOLD == ev3_tm->stop_mode)
+			regulate_position(ev3_tm);
 	}
 
 	return HRTIMER_RESTART;
@@ -1320,20 +1322,20 @@ static void ev3_tacho_motor_set_position_mode(struct tacho_motor_device *tm, lon
 	ev3_tm->position_mode = position_mode;
 }
 
-static int ev3_tacho_motor_get_brake_mode(struct tacho_motor_device *tm)
+static int ev3_tacho_motor_get_stop_mode(struct tacho_motor_device *tm)
 {
 	struct ev3_tacho_motor_data *ev3_tm =
 			container_of(tm, struct ev3_tacho_motor_data, tm);
 
-	return ev3_tm->brake_mode;
+	return ev3_tm->stop_mode;
 }
 
-static void ev3_tacho_motor_set_brake_mode(struct tacho_motor_device *tm, long brake_mode)
+static void ev3_tacho_motor_set_stop_mode(struct tacho_motor_device *tm, long stop_mode)
 {
 	struct ev3_tacho_motor_data *ev3_tm =
 			container_of(tm, struct ev3_tacho_motor_data, tm);
 
-	ev3_tm->brake_mode = brake_mode;
+	ev3_tm->stop_mode = stop_mode;
 }
 
 static int ev3_tacho_motor_get_polarity_mode(struct tacho_motor_device *tm)
@@ -1479,8 +1481,8 @@ static const struct function_pointers fp = {
  	.get_regulation_mode	= ev3_tacho_motor_get_regulation_mode,
  	.set_regulation_mode	= ev3_tacho_motor_set_regulation_mode,
 
- 	.get_brake_mode		= ev3_tacho_motor_get_brake_mode,
- 	.set_brake_mode		= ev3_tacho_motor_set_brake_mode,
+ 	.get_stop_mode		= ev3_tacho_motor_get_stop_mode,
+ 	.set_stop_mode		= ev3_tacho_motor_set_stop_mode,
 
  	.get_position_mode	= ev3_tacho_motor_get_position_mode,
  	.set_position_mode	= ev3_tacho_motor_set_position_mode,
