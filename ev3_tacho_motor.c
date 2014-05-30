@@ -140,6 +140,7 @@ struct ev3_tacho_motor_data {
 	int power;
 	int state;
 
+	long duty_cycle_sp;
 	long speed_setpoint;
 	long time_setpoint;
 	long position_setpoint;
@@ -413,6 +414,7 @@ static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
         ev3_tm->speed			= 0;
 	ev3_tm->power			= 0;
 	ev3_tm->state			= STATE_IDLE;
+	ev3_tm->duty_cycle_sp		= 0;
 	ev3_tm->speed_setpoint		= 0;
 	ev3_tm->time_setpoint		= 0;
 	ev3_tm->position_setpoint	= 0;
@@ -744,7 +746,7 @@ static void regulate_speed(struct ev3_tacho_motor_data *ev3_tm)
 static void update_motor_speed_or_power(struct ev3_tacho_motor_data *ev3_tm, int setpoint)
 {
 	if (REGULATION_OFF == ev3_tm->regulation_mode) {
-		ev3_tacho_motor_set_power( ev3_tm, setpoint );
+		ev3_tacho_motor_set_power( ev3_tm, (ev3_tm->duty_cycle_sp*setpoint)/100 );
 	} else {
 		ev3_tm->speed_reg_setpoint = setpoint;
 	}
@@ -872,7 +874,8 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 	
 	        case STATE_RUN_FOREVER:
 
-			update_motor_speed_or_power(ev3_tm, ev3_tm->speed_setpoint);
+			#warning "This needs to be a percentage of the target power"
+			update_motor_speed_or_power(ev3_tm, 100);
 			break;
 	
 		case STATE_SETUP_RAMP_TIME:
@@ -1242,6 +1245,22 @@ static int ev3_tacho_motor_get_pulses_per_second(struct tacho_motor_device *tm)
 	return ev3_tm->pulses_per_second;
 }
 
+static int ev3_tacho_motor_get_duty_cycle_sp(struct tacho_motor_device *tm)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	return ev3_tm->duty_cycle_sp;
+}
+
+static void ev3_tacho_motor_set_duty_cycle_sp(struct tacho_motor_device *tm, long duty_cycle_sp)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	ev3_tm->duty_cycle_sp = duty_cycle_sp;
+}
+
 static int ev3_tacho_motor_get_speed_setpoint(struct tacho_motor_device *tm)
 {
 	struct ev3_tacho_motor_data *ev3_tm =
@@ -1465,6 +1484,9 @@ static const struct function_pointers fp = {
 	.get_power		= ev3_tacho_motor_get_power,
 	.get_state		= ev3_tacho_motor_get_state,
 	.get_pulses_per_second	= ev3_tacho_motor_get_pulses_per_second,
+
+	.get_duty_cycle_sp	= ev3_tacho_motor_get_duty_cycle_sp,
+	.set_duty_cycle_sp	= ev3_tacho_motor_set_duty_cycle_sp,
 
 	.get_speed_setpoint	= ev3_tacho_motor_get_speed_setpoint,
 	.set_speed_setpoint	= ev3_tacho_motor_set_speed_setpoint,
