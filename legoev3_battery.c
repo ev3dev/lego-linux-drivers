@@ -20,8 +20,11 @@
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
 #include <linux/gpio.h>
+#include <linux/hrtimer.h>
 
 #include <mach/legoev3.h>
+
+#define LEGOEV3_BATTERY_CHARGE_TIME (NSEC_PER_SEC / 10)
 
 enum legoev3_battery_gpio {
 	LEGOEV3_BATTERY_GPIO_ADC,
@@ -29,23 +32,81 @@ enum legoev3_battery_gpio {
 	NUM_LEGOEV3_BATTERY_GPIO
 };
 
+/*
+ * struct legoev3_battery
+ * @psy: power supply class data structure
+ * @alg: pointer to A/DC device
+ * @status: charging/discharging
+ * @technology: li-ion or unknown (alkaline/NiMH/etc.)
+ * @gpio: gpios for battery type switch and A/DC input
+ * @max_V: max design voltage for given battery technology
+ * @min_V: min design voltage for given battery technology
+ * @capacity_mAh: rated capacity of battery in mAh
+ * @capacity_full_V: voltage level that indicates the bater is 100% full
+ * @current_charge_mAh: the estimated charge remaining in mAh
+ * @charge_timer: timer used to integrate current over time to estimate charge
+ */
 struct legoev3_battery {
 	struct power_supply psy;
 	struct legoev3_analog_device *alg;
 	int status;
 	int technology;
 	struct gpio gpio[NUM_LEGOEV3_BATTERY_GPIO];
-	int v_max;
-	int v_min;
+	int max_V;
+	int min_V;
+	int capacity_mAh;
+	int capacity_full_V;
+	int current_charge_mAh;
+	struct hrtimer charge_timer;
 };
+
+int legoev3_battery_get_voltage(struct legoev3_battery *bat)
+{
+	/* formula from official LEGO firmware */
+	return legoev3_analog_batt_volt_value(bat->alg) * 2000
+		 + legoev3_analog_batt_curr_value(bat->alg) * 1000 / 15 + 50000;
+}
+
+int legoev3_battery_get_current(struct legoev3_battery *bat)
+{
+	/* formula from official LEGO firmware */
+	return legoev3_analog_batt_curr_value(bat->alg) * 20000 / 15;
+}
+
+static enum hrtimer_restart
+legoev3_battery_charge_timer_handler(struct hrtimer *timer)
+{
+	struct legoev3_battery *bat =
+		container_of(timer, struct legoev3_battery, charge_timer);
+	long change;
+	int ret;
+
+	change = hrtimer_forward_now(&bat->charge_timer,
+				ktime_set(0, LEGOEV3_BATTERY_CHARGE_TIME));
+return HRTIMER_RESTART;
+	ret = legoev3_battery_get_voltage(bat);
+	if (ret > bat->capacity_full_V)
+		bat->current_charge_mAh = bat->capacity_mAh;
+	else {
+		ret = legoev3_battery_get_current(bat) / 1000;
+		if (ret > 0) {
+			change *= ret;
+			change *= LEGOEV3_BATTERY_CHARGE_TIME;
+			change *= 3600;
+			change /= 1000000;
+			bat->current_charge_mAh -= change;
+		}
+	}
+	return HRTIMER_RESTART;
+}
 
 static int legoev3_battery_get_property(struct power_supply *psy,
 					enum power_supply_property prop,
 					union power_supply_propval *val)
 {
 	int ret = 0;
-	struct legoev3_battery *bat = container_of(psy, struct legoev3_battery,
-						   psy);
+	struct legoev3_battery *bat =
+		container_of(psy, struct legoev3_battery, psy);
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_STATUS:
@@ -58,24 +119,28 @@ static int legoev3_battery_get_property(struct power_supply *psy,
 		val->intval = bat->technology;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
-		val->intval = bat->v_max;
+		val->intval = bat->max_V;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN:
-		val->intval = bat->v_min;
+		val->intval = bat->min_V;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		ret = legoev3_analog_batt_volt_value(bat->alg) * 2000
-		      + legoev3_analog_batt_curr_value(bat->alg) * 1000 / 15
-		      + 50000;
+		ret = legoev3_battery_get_voltage(bat);
 		if (ret < 0)
 			break;
 		val->intval = ret;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		ret = legoev3_analog_batt_curr_value(bat->alg) * 20000 / 15;
+		ret = legoev3_battery_get_current(bat);
 		if (ret < 0)
 			break;
 		val->intval = ret;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+		val->intval = bat->capacity_mAh;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_NOW:
+		val->intval = bat->current_charge_mAh;
 		break;
 	case POWER_SUPPLY_PROP_SCOPE:
 		val->intval = POWER_SUPPLY_SCOPE_SYSTEM;
@@ -95,6 +160,8 @@ static enum power_supply_property legoev3_battery_props[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
+	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
+	POWER_SUPPLY_PROP_CHARGE_NOW,
 	POWER_SUPPLY_PROP_SCOPE,
 };
 
@@ -146,20 +213,41 @@ static int __devinit legoev3_battery_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto gpio_get_value_fail;
 	else if (ret) {
-		bat->v_max = 7500000;
-		bat->v_min = 6200000;
+		/* average AA alkaline battery */
+		bat->max_V = 7500000;
+		bat->min_V = 6200000;
+		bat->capacity_mAh = 2000000; /* just guessing on capacity */
 	} else {
+		/* the official LEGO rechargable battery */
 		bat->technology = POWER_SUPPLY_TECHNOLOGY_LION;
-		bat->v_max = 7500000;
-		bat->v_min = 7100000;
+		bat->max_V = 7500000;
+		bat->min_V = 7100000;
+		/* LEGO education website says 2050mAh, schematic says 2200mAh */
+		bat->capacity_mAh = 2050000;
 	}
+	/*
+	 * according to the graphs in the hardware development kit, both types
+	 * of batteries spike at around 8V.
+	 */
+	bat->capacity_full_V = 8000000;
+	/* try to estimate inital battery capacity remaining */
+	bat->current_charge_mAh = bat->capacity_mAh;
+	// ret = legoev3_battery_get_voltage(bat);
+	// if (ret < bat->min_V)
+	// 	bat->current_charge_mAh = 0;
+	// else if (ret < bat->max_V)
+	// 	bat->current_charge_mAh *= (ret - bat->min_V)
+	// 		/ (bat->max_V - bat->min_V);
 
 	ret = power_supply_register(&pdev->dev, &bat->psy);
 	if (ret)
 		goto power_supply_register_fail;
 
 	platform_set_drvdata(pdev, bat);
-
+	hrtimer_init(&bat->charge_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	bat->charge_timer.function = legoev3_battery_charge_timer_handler;
+	hrtimer_start(&bat->charge_timer,
+		 ktime_set(0, LEGOEV3_BATTERY_CHARGE_TIME), HRTIMER_MODE_REL);
 	return 0;
 
 power_supply_register_fail:
@@ -178,6 +266,7 @@ static int __devexit legoev3_battery_remove(struct platform_device *pdev)
 {
 	struct legoev3_battery *bat= platform_get_drvdata(pdev);
 
+	hrtimer_cancel(&bat->charge_timer);
 	platform_set_drvdata(pdev, NULL);
 	power_supply_unregister(&bat->psy);
 	gpio_set_value(bat->gpio[LEGOEV3_BATTERY_GPIO_ADC].gpio, 0);
