@@ -328,6 +328,93 @@ static ssize_t tacho_motor_store_ramp_down(struct device *dev, struct device_att
         return size;
 }
 
+static ssize_t tacho_motor_show_speed_regulation_P(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->fp->get_speed_regulation_P(tm));
+}
+
+static ssize_t tacho_motor_store_speed_regulation_P(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+        char *end;
+        long speed_regulation_P = simple_strtol(buf, &end, 0);
+
+        if ((end == buf) || (speed_regulation_P < 0))
+                return -EINVAL;
+
+        tm->fp->set_speed_regulation_P(tm, speed_regulation_P);
+
+        return size;
+}
+
+static ssize_t tacho_motor_show_speed_regulation_I(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->fp->get_speed_regulation_I(tm));
+}
+
+static ssize_t tacho_motor_store_speed_regulation_I(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+        char *end;
+        long speed_regulation_I = simple_strtol(buf, &end, 0);
+
+        if ((end == buf) || (speed_regulation_I < 0))
+                return -EINVAL;
+
+        tm->fp->set_speed_regulation_I(tm, speed_regulation_I);
+
+        return size;
+}
+static ssize_t tacho_motor_show_speed_regulation_D(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->fp->get_speed_regulation_D(tm));
+}
+
+static ssize_t tacho_motor_store_speed_regulation_D(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+        char *end;
+        long speed_regulation_D = simple_strtol(buf, &end, 0);
+
+        if ((end == buf) || (speed_regulation_D < 0))
+                return -EINVAL;
+
+        tm->fp->set_speed_regulation_D(tm, speed_regulation_D);
+
+        return size;
+}
+
+static ssize_t tacho_motor_show_speed_regulation_K(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->fp->get_speed_regulation_K(tm));
+}
+
+static ssize_t tacho_motor_store_speed_regulation_K(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+        char *end;
+        long speed_regulation_K = simple_strtol(buf, &end, 0);
+
+        if ((end == buf) || (speed_regulation_K < 0))
+                return -EINVAL;
+
+        tm->fp->set_speed_regulation_K(tm, speed_regulation_K);
+
+        return size;
+}
+
 static ssize_t tacho_motor_show_duty_cycle_sp(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
@@ -364,7 +451,7 @@ static ssize_t tacho_motor_store_speed_setpoint(struct device *dev, struct devic
         char *end;
         long speed_setpoint = simple_strtol(buf, &end, 0);
 
-        if ((end == buf) || (speed_setpoint > 100) || (speed_setpoint < -100))
+        if ((end == buf) || (speed_setpoint > 2000) || (speed_setpoint < -2000))
                 return -EINVAL;
 
         tm->fp->set_speed_setpoint(tm, speed_setpoint);
@@ -476,6 +563,11 @@ static struct device_attribute tacho_motor_class_dev_attrs[] = {
 
 	__ATTR(ramp_up,			S_IRUGO | S_IWUGO, tacho_motor_show_ramp_up,		tacho_motor_store_ramp_up),
 	__ATTR(ramp_down,		S_IRUGO | S_IWUGO, tacho_motor_show_ramp_down,		tacho_motor_store_ramp_down),
+
+	__ATTR(speed_regulation_P,	S_IRUGO | S_IWUGO, tacho_motor_show_speed_regulation_P,	tacho_motor_store_speed_regulation_P),
+	__ATTR(speed_regulation_I,	S_IRUGO | S_IWUGO, tacho_motor_show_speed_regulation_I,	tacho_motor_store_speed_regulation_I),
+	__ATTR(speed_regulation_D,	S_IRUGO | S_IWUGO, tacho_motor_show_speed_regulation_D,	tacho_motor_store_speed_regulation_D),
+	__ATTR(speed_regulation_K,	S_IRUGO | S_IWUGO, tacho_motor_show_speed_regulation_K,	tacho_motor_store_speed_regulation_K),
 
 	__ATTR(run,			S_IRUGO | S_IWUGO, tacho_motor_show_run,		tacho_motor_store_run),
 
