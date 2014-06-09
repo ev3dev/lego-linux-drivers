@@ -120,25 +120,18 @@ ssize_t tacho_motor_store_position(struct device *dev, struct device_attribute *
         return size;
 }
 
-static ssize_t tacho_motor_show_speed(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
-
-	return sprintf(buf, "%d\n", tm->fp->get_speed(tm));
-}
-
-static ssize_t tacho_motor_show_power(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
-
-	return sprintf(buf, "%d\n", tm->fp->get_power(tm));
-}
-
 static ssize_t tacho_motor_show_state(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
 
 	return sprintf(buf, "%s\n", tacho_motor_state_items[tm->fp->get_state(tm)].name);
+}
+
+static ssize_t tacho_motor_show_duty_cycle(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->fp->get_duty_cycle(tm));
 }
 
 static ssize_t tacho_motor_show_pulses_per_second(struct device *dev, struct device_attribute *attr, char *buf)
@@ -544,9 +537,8 @@ static struct device_attribute tacho_motor_class_dev_attrs[] = {
 	__ATTR(type,      		S_IRUGO | S_IWUGO, tacho_motor_show_type,		tacho_motor_store_type),
 	__ATTR(position,		S_IRUGO | S_IWUGO, tacho_motor_show_position,		tacho_motor_store_position),
 
-	__ATTR(speed,			S_IRUGO, 	   tacho_motor_show_speed,		NULL),
-	__ATTR(power,			S_IRUGO,	   tacho_motor_show_power,		NULL),
 	__ATTR(state,			S_IRUGO,	   tacho_motor_show_state,		NULL),
+	__ATTR(duty_cycle,		S_IRUGO,	   tacho_motor_show_duty_cycle,		NULL),
 	__ATTR(pulses_per_second,	S_IRUGO,	   tacho_motor_show_pulses_per_second,	NULL),
 
 	__ATTR(duty_cycle_sp,		S_IRUGO | S_IWUGO, tacho_motor_show_duty_cycle_sp,	tacho_motor_store_duty_cycle_sp),

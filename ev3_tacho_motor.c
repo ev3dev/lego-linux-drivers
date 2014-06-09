@@ -454,7 +454,7 @@ static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
         ev3_tm->set_direction		= UNKNOWN;
 	ev3_tm->run			= 0;
 
-       ev3_tm->tacho			= 0;	
+	ev3_tm->tacho			= 0;	
 	ev3_tm->irq_tacho		= 0;
         ev3_tm->speed			= 0;
 	ev3_tm->power			= 0;
@@ -761,7 +761,18 @@ static void regulate_speed(struct ev3_tacho_motor_data *ev3_tm)
 	#warning "Implement an attribute set for PID constants that adjusts based on speed"
 
 	ev3_tm->pid.P = speed_error;
-	ev3_tm->pid.I = ev3_tm->pid.I + speed_error;
+
+        /* The integral term can get quite large if the speed setpoint is higher than the
+	 * maximum speed that the motor can get to. This can happen if the motor is heavily
+	 * loaded or if the setpoint is high and the battery voltage is low.
+	 *
+	 * To avoid the problem of "integral windup", we stop adding to the integral
+	 * term if its contribution alone would set the power level to 100%
+	 */
+
+	if (100 > abs((ev3_tm->pid.I * ev3_tm->pid.speed_regulation_I) / ev3_tm->pid.speed_regulation_K))
+		ev3_tm->pid.I = ev3_tm->pid.I + speed_error;
+
 	ev3_tm->pid.D = ev3_tm->pulses_per_second - ev3_tm->pid.prev_pulses_per_second;
 
 	ev3_tm->pid.prev_pulses_per_second = ev3_tm->pulses_per_second;
@@ -1126,7 +1137,7 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 
 				reprocess = true;
 			} else {
-				update_motor_speed_or_power(ev3_tm, ev3_tm->ramp.percent);
+//				update_motor_speed_or_power(ev3_tm, ev3_tm->ramp.percent);
 			}
 			break;
 
@@ -1176,6 +1187,10 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 //				ev3_tm->ramp.setpoint = ev3_tm->ramp.setpoint_sign * ((ev3_tm->ramp.down.end - ev3_tm->ramp.count) * 100) / ev3_tm->ramp_down;
 				ev3_tm->ramp.percent = ((ev3_tm->ramp.down.end - ev3_tm->ramp.count) * 100) / ev3_tm->ramp_down;
 
+//				if( 0 == (foo++ % 100) ) {
+//					printk( "Setting ramp percent to %d\n", ev3_tm->ramp.percent  );
+//				}
+
 				update_motor_speed_or_power(ev3_tm, ev3_tm->ramp.percent);
 			}
 			break;
@@ -1201,6 +1216,16 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 
 			ev3_tm->speed_reg_setpoint = 0;
 			ev3_tacho_motor_set_power( ev3_tm, 0 );
+
+			/* Reset the PID terms here to avoid having these terms influence the motor
+			 * operation at the beginning of the next sequence. The most common issue is
+			 * having some residual integral value briefly turn the motor on hard if
+			 * we're ramping up slowly
+			 */
+
+			ev3_tm->pid.P = 0;
+			ev3_tm->pid.I = 0;
+			ev3_tm->pid.D = 0;
 
 			reprocess     = true;
 			ev3_tm->state = STATE_IDLE;
@@ -1298,7 +1323,7 @@ static int ev3_tacho_motor_get_speed(struct tacho_motor_device *tm)
 	return ev3_tm->speed;
 }
 
-static int ev3_tacho_motor_get_power(struct tacho_motor_device *tm)
+static int ev3_tacho_motor_get_duty_cycle(struct tacho_motor_device *tm)
 {
 	struct ev3_tacho_motor_data *ev3_tm =
 			container_of(tm, struct ev3_tacho_motor_data, tm);
@@ -1621,9 +1646,8 @@ static const struct function_pointers fp = {
 	.get_position		= ev3_tacho_motor_get_position,
 	.set_position		= ev3_tacho_motor_set_position,
 
-	.get_speed		= ev3_tacho_motor_get_speed,
-	.get_power		= ev3_tacho_motor_get_power,
 	.get_state		= ev3_tacho_motor_get_state,
+	.get_duty_cycle		= ev3_tacho_motor_get_duty_cycle,
 	.get_pulses_per_second	= ev3_tacho_motor_get_pulses_per_second,
 
 	.get_duty_cycle_sp	= ev3_tacho_motor_get_duty_cycle_sp,
