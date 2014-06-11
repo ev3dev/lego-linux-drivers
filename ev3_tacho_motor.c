@@ -112,7 +112,7 @@ struct ev3_tacho_motor_data {
 
 		int percent;
 		int setpoint;
-		int setpoint_sign;
+		int direction;
 		int position_setpoint;
 		int offset;
 		int count;	/* This must be set to either tacho or time increment! */
@@ -384,8 +384,9 @@ static void ev3_tacho_motor_set_power(struct ev3_tacho_motor_data *ev3_tm, int p
 
 no_change_power:
 
-	/* Note, we get here all the time, we always do the assignment since
-	 * it does not hurt anything, and it's required because you can't goto
+	/* Note, we get here all the time, we always do the assignment otherwise
+	 * the careful work we did to limit the range of power is wasted when we
+	 * try to read it back! Also, it's required because you can't goto
 	 * the very end of a void function - who knew?
 	 */
 
@@ -416,7 +417,7 @@ static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
 	ev3_tm->ramp.down.end		= 0;
 	ev3_tm->ramp.percent		= 0;
 	ev3_tm->ramp.setpoint		= 0;
-	ev3_tm->ramp.setpoint_sign	= 0;
+	ev3_tm->ramp.direction		= 0;
 	ev3_tm->ramp.position_setpoint	= 0;
 	ev3_tm->ramp.offset		= 0;
 	ev3_tm->ramp.count		= 0;
@@ -706,6 +707,8 @@ static bool calculate_speed(struct ev3_tacho_motor_data *ev3_tm)
 
 //		speed = (ev3_tm->counts_per_pulse * ev3_tm->samples_per_speed) / Diff;
 
+		#warning "This should be based on the low level clcok rate
+
 		ev3_tm->pulses_per_second = (33000000 * ev3_tm->samples_per_speed) / Diff;
 
 //		/* And do some cleanup to limit the max and get direction right */
@@ -781,18 +784,6 @@ static void regulate_speed(struct ev3_tacho_motor_data *ev3_tm)
 		+ (ev3_tm->pid.I * ev3_tm->pid.speed_regulation_I)
 		+ (ev3_tm->pid.D * ev3_tm->pid.speed_regulation_D) ) / ev3_tm->pid.speed_regulation_K;
 
-//      if( 0 == (foo++ % 500) ) {
-        if( 0 ) {
-		printk( "RegulateSpeed: SP:%d E:%d P:%d I:%d D:%d Power:%d PPS:%d Type:%d\n", ev3_tm->speed_reg_setpoint
-									     , speed_error
-									     , ev3_tm->pid.P 
-									     , ev3_tm->pid.I 
-									     , ev3_tm->pid.D 
-									     , power
-									     , ev3_tm->pulses_per_second
-									     , ev3_tm->motor_type);
-	}
-
 	ev3_tacho_motor_set_power(ev3_tm, power);
 }
 
@@ -855,28 +846,43 @@ static void regulate_position(struct ev3_tacho_motor_data *ev3_tm)
 
 static void adjust_ramp_for_position(struct ev3_tacho_motor_data *ev3_tm)
 {
-	#warning "Power might not be the right thing to use here, but it's higher than speed for better margin"
-	#warning "We only do the calcs on start point if ew are NOT in ramp_down mode."
+	long ramp_down_time;
+	long ramp_down_distance;
 
-	long ramp_time     = ((abs(ev3_tm->power) * ev3_tm->ramp_down) / 100  );
-	long ramp_distance = ((ev3_tm->pulses_per_second * ramp_time)  / 2000 ); 
+	if( 0 != ev3_tm->speed_sp )
+		ramp_down_time  = ((ev3_tm->ramp_down * ev3_tm->speed_reg_setpoint) / (ev3_tm->speed_sp));
+	else
+		ramp_down_time  = ev3_tm->ramp_down;
 
-	/* If we're turning in the forward direction.... */
+	/* The adjustment for ramp distance is to take into account that we'll have trouble hitting
+	 * the position setpoint at low speeds...shorten the distance!
+	 */
 
-	if (ev3_tm->ramp.setpoint_sign > 0) {
+	ramp_down_distance = ((ev3_tm->pulses_per_second * ramp_down_time)  / ((2000 * 10)/10) ); 
 
-		if ((ev3_tm->ramp.position_setpoint - ramp_distance) <= (ev3_tm->tacho + ev3_tm->irq_tacho)) {
+	/* Depending on the direction we are turning, figure out if we're going to overshoot
+	 * the target position based on current speed. Note the calculation of ramp.down.end
+	 * is relative to the current ramp.count, and that the ramp.down.start is recalculated
+	 * backwards from the end so that the setpoint percentages work out properly!
+	 *
+	 * Remember, the timer callback function increments ramp.count by 2, so ramp.count
+	 * always represents milliseconds!
+	 */
+
+	if (ev3_tm->ramp.direction > 0) {
+
+		if ((ev3_tm->ramp.position_setpoint - ramp_down_distance) <= (ev3_tm->tacho + ev3_tm->irq_tacho)) {
 			ev3_tm->ramp.up.end     = ev3_tm->ramp.count;
-			ev3_tm->ramp.down.start = ev3_tm->ramp.count;
-			ev3_tm->ramp.down.end   = ev3_tm->ramp.down.start + (ramp_time/2);
+			ev3_tm->ramp.down.end   = ev3_tm->ramp.count + ramp_down_time;
+			ev3_tm->ramp.down.start = ev3_tm->ramp.down.end - ev3_tm->ramp_down;
 		}
 
 	} else {
 
-		if ((ev3_tm->ramp.position_setpoint + ramp_distance) >= (ev3_tm->tacho + ev3_tm->irq_tacho)) {
+		if ((ev3_tm->ramp.position_setpoint + ramp_down_distance) >= (ev3_tm->tacho + ev3_tm->irq_tacho)) {
 			ev3_tm->ramp.up.end     = ev3_tm->ramp.count;
-			ev3_tm->ramp.down.start = ev3_tm->ramp.count;
-			ev3_tm->ramp.down.end   = ev3_tm->ramp.down.start + (ramp_time/2);
+			ev3_tm->ramp.down.end   = ev3_tm->ramp.count + ramp_down_time;
+			ev3_tm->ramp.down.start = ev3_tm->ramp.down.end - ev3_tm->ramp_down;
 		}
 	}
 }
@@ -1019,13 +1025,13 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 			 * speed setpoint, we can estimate the time it will take
 			 * to ramp down as:
 			 *
-			 * ramp_time = ((speed_setpoint * ramp_down) / 100) msec
+			 * ramp_time = ((speed_setpoint * ramp_down) / MaxPulsesPerSec[ev3_tm->motor_type] ) msec
 			 *
 			 * The actual speed in pulses_per_sec can then be used
 			 * to estimate how far the motor will travel in that 
 			 * time as:
 			 *
-			 * ramp_distance = (( pulses_per_sec * ramp_time ) / (2 * 1000)) pulses
+			 * ramp_distance = (( pulses_per_sec * ramp_time ) / (1000)) pulses
 			 *
 			 * Now it's a simple matter to figure out if we're within
 			 * distance pulses of the desired endpoint, and then
@@ -1042,16 +1048,17 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 
 			#warning "These get recalculated in SETUP_RAMP_REGULATION - but it's OK"
 
-			ev3_tm->ramp.setpoint_sign = ((ev3_tm->ramp.position_setpoint >= (ev3_tm->tacho + ev3_tm->irq_tacho)) ? 1 : -1);
-			ev3_tm->ramp.setpoint      = ev3_tm->ramp.setpoint_sign * abs(ev3_tm->speed_sp);
+			ev3_tm->ramp.direction = ((ev3_tm->ramp.position_setpoint >= (ev3_tm->tacho + ev3_tm->irq_tacho)) ? 1 : -1);
+//			ev3_tm->ramp.setpoint      = ev3_tm->ramp.setpoint_sign * abs(ev3_tm->speed_sp);
 
 			ev3_tm->ramp.up.start   = 0;
-			ev3_tm->ramp.up.end     = ev3_tm->ramp.up.start + ((abs(ev3_tm->speed_sp) * ev3_tm->ramp_up) / 100);
+			ev3_tm->ramp.up.end     = ev3_tm->ramp.up.start + ((abs(ev3_tm->speed_sp) * ev3_tm->ramp_up) / MaxPulsesPerSec[ev3_tm->motor_type] );
 
+//			printk( "STATE_SETUP_RAMP_POSITION ramp.up.start=%d ramp.up.end=%d\n", ev3_tm->ramp.up.start, ev3_tm->ramp.up.end);
 			/* Set ramp_down start and end to a ridiculously large number - an hour of milliseconds */
 
-			ev3_tm->ramp.down.end   =  3600000;
-			ev3_tm->ramp.down.start =  3600000;
+			ev3_tm->ramp.down.end   =  60*60*1000;
+			ev3_tm->ramp.down.start =  60*60*1000;
 
 			ev3_tm->state = STATE_SETUP_RAMP_REGULATION;
 			reprocess = true;
@@ -1105,6 +1112,7 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 			}
 	
 			if ( ev3_tm->ramp.up.end <= ev3_tm->ramp.count ) {
+//				printk( "STATE_RAMP_CONST ramp.up.start=%d ramp.up.end=%d ramp.count=%d position=%d\n", ev3_tm->ramp.up.start, ev3_tm->ramp.up.end, ev3_tm->ramp.count, (ev3_tm->tacho + ev3_tm->irq_tacho));
 				ev3_tm->state = STATE_RAMP_CONST;
 				reprocess = true;
 //				printk( "Switching to STATE_RAMP_CONST @ %d\n", ev3_tm->ramp.count );
@@ -1131,6 +1139,7 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 					ev3_tm->state = STATE_RAMP_DOWN;
 //				printk( "Switching to STATE_RAMP_DOWN @ time %d\n", ev3_tm->ramp.count );
 				} else if ( RUN_POSITION == ev3_tm->run_mode ) {
+//					printk( "STATE_POSITION_RAMP_DOWN ramp.down.start=%d ramp.down.end=%d ramp.count=%d, position=%d\n", ev3_tm->ramp.down.start, ev3_tm->ramp.down.end, ev3_tm->ramp.count, (ev3_tm->tacho + ev3_tm->irq_tacho));
 					ev3_tm->state = STATE_POSITION_RAMP_DOWN;
 //				printk( "Switching to STATE_POSITION_RAMP_DOWN @ time/tacho %d/%d\n", ev3_tm->ramp.count, ev3_tm->irq_tacho );
 				}
@@ -1142,9 +1151,11 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 			break;
 
 		case STATE_POSITION_RAMP_DOWN:
-				ramp_time = ((abs(ev3_tm->power) * ev3_tm->ramp_down) / 100 );
+//				ramp_time = ((abs(ev3_tm->power) * ev3_tm->ramp_down) / 100 );
+
+				#warning "Maybe incorporate this into the adjust_ramp_for_position() function"
 	
-				if (ev3_tm->ramp.setpoint_sign > 0) {
+				if (ev3_tm->ramp.direction > 0) {
 
 					if (ev3_tm->ramp.position_setpoint <= (ev3_tm->tacho + ev3_tm->irq_tacho + (ev3_tm->power/4))) {
 						ev3_tm->ramp.down.end = ev3_tm->ramp.count;
@@ -1163,6 +1174,7 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 					}
 				}
 
+				ev3_tm->ramp.down.start = ev3_tm->ramp.down.end - ev3_tm->ramp_down;
 
 				/* NOTE: Intentional fallthrough to the STATE_RAMP_DOWN case
 				 *
@@ -1178,6 +1190,7 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 			 */
 	
 			if ( ev3_tm->ramp.down.end <= ev3_tm->ramp.count ) {
+//				printk( "STATE_STOP ramp.down.start=%d ramp.down.end=%d ramp.count=%d position=%d\n", ev3_tm->ramp.down.start, ev3_tm->ramp.down.end, ev3_tm->ramp.count, (ev3_tm->tacho + ev3_tm->irq_tacho));
 				ev3_tm->state = STATE_STOP;
 				reprocess = true;
 //				printk( "Switching to STOP @ time %d\n", ev3_tm->ramp.count );
@@ -1187,6 +1200,9 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 //				ev3_tm->ramp.setpoint = ev3_tm->ramp.setpoint_sign * ((ev3_tm->ramp.down.end - ev3_tm->ramp.count) * 100) / ev3_tm->ramp_down;
 				ev3_tm->ramp.percent = ((ev3_tm->ramp.down.end - ev3_tm->ramp.count) * 100) / ev3_tm->ramp_down;
 
+//				if ( RUN_POSITION == ev3_tm->run_mode )
+//					if (ev3_tm->ramp.percent < 30)
+//						ev3_tm->ramp.percent = 30;
 //				if( 0 == (foo++ % 100) ) {
 //					printk( "Setting ramp percent to %d\n", ev3_tm->ramp.percent  );
 //				}
