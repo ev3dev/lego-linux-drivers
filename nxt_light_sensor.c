@@ -36,22 +36,24 @@ nxt_light_sensor_mode_info[NUM_NXT_LIGHT_SENSOR_MODES] = {
 	{
 		.name = "NXT-REFLECT",
 		.units = "pct",
-		.raw_min = 3372,
-		.raw_max = 445,
+		.raw_min = 4116,
+		.raw_max = 543,
 		.pct_max = 100,
 		.si_max = 100,
+		.decimals = 1,
 		.data_sets = 1,
-		.data_type = MSENSOR_DATA_U16,
+		.data_type = MSENSOR_DATA_S32,
 	},
 	{
 		.name = "NXT-AMBIENT",
 		.units = "pct",
-		.raw_min = 3372,
-		.raw_max = 445,
+		.raw_min = 4164,
+		.raw_max = 773,
 		.pct_max = 100,
 		.si_max = 100,
+		.decimals = 1,
 		.data_sets = 1,
-		.data_type = MSENSOR_DATA_U16,
+		.data_type = MSENSOR_DATA_S32,
 	},
 };
 
@@ -82,10 +84,10 @@ static int nxt_light_sensor_set_mode(void *context, u8 mode)
 
 static void nxt_light_sensor_cb(void *context)
 {
-	struct nxt_light_sensor_data *ts = context;
+	struct nxt_light_sensor_data *ls = context;
 
-	*(int*)ts->mode_info[0].raw_data =
-			ev3_input_port_get_pin1_mv(ts->in_port);
+	*(int*)ls->mode_info[ls->mode].raw_data =
+			ev3_input_port_get_pin1_mv(ls->in_port);
 }
 
 static int nxt_light_sensor_probe(struct legoev3_port_device *sensor)

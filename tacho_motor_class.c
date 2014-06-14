@@ -26,14 +26,10 @@ static struct tacho_motor_mode_item tacho_motor_regulation_modes[NUM_REGULATION_
 	[REGULATION_ON]  =  { "on"  },
 };
 
-static struct tacho_motor_mode_item tacho_motor_brake_modes[NUM_BRAKE_MODES] = {
-	[BRAKE_OFF]     =  { "off" },
-	[BRAKE_ON]      =  { "on" },
-};
-
-static struct tacho_motor_mode_item tacho_motor_hold_modes[NUM_HOLD_MODES] = {
-	[HOLD_OFF]     =  { "off" },
-	[HOLD_ON]      =  { "on" },
+static struct tacho_motor_mode_item tacho_motor_stop_modes[NUM_STOP_MODES] = {
+	[STOP_COAST]     =  { "coast" },
+	[STOP_BRAKE]     =  { "brake" },
+	[STOP_HOLD]      =  { "hold" },
 };
 
 static struct tacho_motor_mode_item tacho_motor_position_modes[NUM_POSITION_MODES] = {
@@ -124,25 +120,18 @@ ssize_t tacho_motor_store_position(struct device *dev, struct device_attribute *
         return size;
 }
 
-static ssize_t tacho_motor_show_speed(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
-
-	return sprintf(buf, "%d\n", tm->fp->get_speed(tm));
-}
-
-static ssize_t tacho_motor_show_power(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
-
-	return sprintf(buf, "%d\n", tm->fp->get_power(tm));
-}
-
 static ssize_t tacho_motor_show_state(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
 
 	return sprintf(buf, "%s\n", tacho_motor_state_items[tm->fp->get_state(tm)].name);
+}
+
+static ssize_t tacho_motor_show_duty_cycle(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->fp->get_duty_cycle(tm));
 }
 
 static ssize_t tacho_motor_show_pulses_per_second(struct device *dev, struct device_attribute *attr, char *buf)
@@ -200,50 +189,42 @@ static ssize_t tacho_motor_store_regulation_mode(struct device *dev, struct devi
         return size;
 }
 
-static ssize_t tacho_motor_show_brake_mode(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t tacho_motor_show_stop_modes(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
-
-	return sprintf(buf, "%s\n", tacho_motor_brake_modes[tm->fp->get_brake_mode(tm)].name);
-}
-
-static ssize_t tacho_motor_store_brake_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
-
         unsigned int i;
 
-	for (i=0; i<NUM_BRAKE_MODES; ++i)
-		if (sysfs_streq( buf, tacho_motor_brake_modes[i].name)) break;
+	int size = 0;
 
-	if (i >= NUM_BRAKE_MODES)
-                return -EINVAL;
+// struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
 
-        tm->fp->set_brake_mode(tm, i);
+	for (i=0; i<NUM_STOP_MODES; ++i)
+		size += sprintf(buf+size, "%s ", tacho_motor_stop_modes[i].name);
+
+	size += sprintf(buf+size, "\n");
 
         return size;
 }
 
-static ssize_t tacho_motor_show_hold_mode(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t tacho_motor_show_stop_mode(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
 
-	return sprintf(buf, "%s\n", tacho_motor_hold_modes[tm->fp->get_hold_mode(tm)].name);
+	return sprintf(buf, "%s\n", tacho_motor_stop_modes[tm->fp->get_stop_mode(tm)].name);
 }
 
-static ssize_t tacho_motor_store_hold_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+static ssize_t tacho_motor_store_stop_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
 
         unsigned int i;
 
-	for (i=0; i<NUM_HOLD_MODES; ++i)
-		if (sysfs_streq(buf, tacho_motor_hold_modes[i].name)) break;
+	for (i=0; i<NUM_STOP_MODES; ++i)
+		if (sysfs_streq( buf, tacho_motor_stop_modes[i].name)) break;
 
-	if (i >= NUM_HOLD_MODES)
+	if (i >= NUM_STOP_MODES)
                 return -EINVAL;
 
-        tm->fp->set_hold_mode(tm, i);
+        tm->fp->set_stop_mode(tm, i);
 
         return size;
 }
@@ -340,6 +321,115 @@ static ssize_t tacho_motor_store_ramp_down(struct device *dev, struct device_att
         return size;
 }
 
+static ssize_t tacho_motor_show_speed_regulation_P(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->fp->get_speed_regulation_P(tm));
+}
+
+static ssize_t tacho_motor_store_speed_regulation_P(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+        char *end;
+        long speed_regulation_P = simple_strtol(buf, &end, 0);
+
+        if ((end == buf) || (speed_regulation_P < 0))
+                return -EINVAL;
+
+        tm->fp->set_speed_regulation_P(tm, speed_regulation_P);
+
+        return size;
+}
+
+static ssize_t tacho_motor_show_speed_regulation_I(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->fp->get_speed_regulation_I(tm));
+}
+
+static ssize_t tacho_motor_store_speed_regulation_I(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+        char *end;
+        long speed_regulation_I = simple_strtol(buf, &end, 0);
+
+        if ((end == buf) || (speed_regulation_I < 0))
+                return -EINVAL;
+
+        tm->fp->set_speed_regulation_I(tm, speed_regulation_I);
+
+        return size;
+}
+static ssize_t tacho_motor_show_speed_regulation_D(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->fp->get_speed_regulation_D(tm));
+}
+
+static ssize_t tacho_motor_store_speed_regulation_D(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+        char *end;
+        long speed_regulation_D = simple_strtol(buf, &end, 0);
+
+        if ((end == buf) || (speed_regulation_D < 0))
+                return -EINVAL;
+
+        tm->fp->set_speed_regulation_D(tm, speed_regulation_D);
+
+        return size;
+}
+
+static ssize_t tacho_motor_show_speed_regulation_K(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->fp->get_speed_regulation_K(tm));
+}
+
+static ssize_t tacho_motor_store_speed_regulation_K(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+        char *end;
+        long speed_regulation_K = simple_strtol(buf, &end, 0);
+
+        if ((end == buf) || (speed_regulation_K < 0))
+                return -EINVAL;
+
+        tm->fp->set_speed_regulation_K(tm, speed_regulation_K);
+
+        return size;
+}
+
+static ssize_t tacho_motor_show_duty_cycle_sp(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%d\n", tm->fp->get_duty_cycle_sp(tm));
+}
+
+static ssize_t tacho_motor_store_duty_cycle_sp(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+        char *end;
+        long duty_cycle_sp = simple_strtol(buf, &end, 0);
+
+        if ((end == buf) || (duty_cycle_sp > 100) || (duty_cycle_sp < -100))
+                return -EINVAL;
+
+        tm->fp->set_duty_cycle_sp(tm, duty_cycle_sp);
+
+        return size;
+}
+
 static ssize_t tacho_motor_show_speed_setpoint(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
@@ -354,7 +444,7 @@ static ssize_t tacho_motor_store_speed_setpoint(struct device *dev, struct devic
         char *end;
         long speed_setpoint = simple_strtol(buf, &end, 0);
 
-        if ((end == buf) || (speed_setpoint > 100) || (speed_setpoint < -100))
+        if ((end == buf) || (speed_setpoint > 2000) || (speed_setpoint < -2000))
                 return -EINVAL;
 
         tm->fp->set_speed_setpoint(tm, speed_setpoint);
@@ -443,43 +533,59 @@ static ssize_t tacho_motor_store_reset(struct device *dev, struct device_attribu
         return size;
 }
 
+DEVICE_ATTR(type, S_IRUGO | S_IWUGO, tacho_motor_show_type, tacho_motor_store_type);
+DEVICE_ATTR(position, S_IRUGO | S_IWUGO, tacho_motor_show_position, tacho_motor_store_position);
 
-DEVICE_ATTR(position,		S_IRUGO, 	   tacho_motor_show_position,		tacho_motor_store_position);
-DEVICE_ATTR(speed,		S_IRUGO, 	   tacho_motor_show_speed,		NULL);
-DEVICE_ATTR(power,		S_IRUGO,	   tacho_motor_show_power,		NULL);
-DEVICE_ATTR(state,		S_IRUGO,	   tacho_motor_show_state,		NULL);
-DEVICE_ATTR(pulses_per_second,	S_IRUGO,	   tacho_motor_show_pulses_per_second,	NULL);
-DEVICE_ATTR(speed_setpoint,	S_IRUGO | S_IWUGO, tacho_motor_show_speed_setpoint,	tacho_motor_store_speed_setpoint);
-DEVICE_ATTR(time_setpoint,	S_IRUGO | S_IWUGO, tacho_motor_show_time_setpoint,	tacho_motor_store_time_setpoint);
-DEVICE_ATTR(position_setpoint,	S_IRUGO | S_IWUGO, tacho_motor_show_position_setpoint,	tacho_motor_store_position_setpoint);
-DEVICE_ATTR(run_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_run_mode,		tacho_motor_store_run_mode);
-DEVICE_ATTR(regulation_mode,	S_IRUGO | S_IWUGO, tacho_motor_show_regulation_mode,	tacho_motor_store_regulation_mode);
-DEVICE_ATTR(brake_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_brake_mode,		tacho_motor_store_brake_mode);
-DEVICE_ATTR(hold_mode,		S_IRUGO | S_IWUGO, tacho_motor_show_hold_mode,		tacho_motor_store_hold_mode);
-DEVICE_ATTR(position_mode,	S_IRUGO | S_IWUGO, tacho_motor_show_position_mode,	tacho_motor_store_position_mode);
-DEVICE_ATTR(polarity_mode,	S_IRUGO | S_IWUGO, tacho_motor_show_polarity_mode,	tacho_motor_store_polarity_mode);
-DEVICE_ATTR(ramp_up,		S_IRUGO | S_IWUGO, tacho_motor_show_ramp_up,		tacho_motor_store_ramp_up);
-DEVICE_ATTR(ramp_down,		S_IRUGO | S_IWUGO, tacho_motor_show_ramp_down,		tacho_motor_store_ramp_down);
-DEVICE_ATTR(run,		S_IRUGO | S_IWUGO, tacho_motor_show_run,		tacho_motor_store_run);
-DEVICE_ATTR(reset,		S_IWUGO,	   NULL,				tacho_motor_store_reset);
+DEVICE_ATTR(state, S_IRUGO, tacho_motor_show_state, NULL);
+DEVICE_ATTR(duty_cycle, S_IRUGO, tacho_motor_show_duty_cycle, NULL);
+DEVICE_ATTR(pulses_per_second, S_IRUGO, tacho_motor_show_pulses_per_second, NULL);
+
+DEVICE_ATTR(duty_cycle_sp, S_IRUGO | S_IWUGO, tacho_motor_show_duty_cycle_sp, tacho_motor_store_duty_cycle_sp);
+DEVICE_ATTR(speed_setpoint, S_IRUGO | S_IWUGO, tacho_motor_show_speed_setpoint, tacho_motor_store_speed_setpoint);
+DEVICE_ATTR(time_setpoint, S_IRUGO | S_IWUGO, tacho_motor_show_time_setpoint, tacho_motor_store_time_setpoint);
+DEVICE_ATTR(position_setpoint, S_IRUGO | S_IWUGO, tacho_motor_show_position_setpoint, tacho_motor_store_position_setpoint);
+
+DEVICE_ATTR(run_mode, S_IRUGO | S_IWUGO, tacho_motor_show_run_mode, tacho_motor_store_run_mode);
+DEVICE_ATTR(regulation_mode, S_IRUGO | S_IWUGO, tacho_motor_show_regulation_mode, tacho_motor_store_regulation_mode);
+DEVICE_ATTR(stop_modes, S_IRUGO | S_IWUGO, tacho_motor_show_stop_modes, NULL);
+DEVICE_ATTR(stop_mode, S_IRUGO | S_IWUGO, tacho_motor_show_stop_mode, tacho_motor_store_stop_mode);
+DEVICE_ATTR(position_mode, S_IRUGO | S_IWUGO, tacho_motor_show_position_mode, tacho_motor_store_position_mode);
+DEVICE_ATTR(polarity_mode, S_IRUGO | S_IWUGO, tacho_motor_show_polarity_mode, tacho_motor_store_polarity_mode);
+
+DEVICE_ATTR(ramp_up, S_IRUGO | S_IWUGO, tacho_motor_show_ramp_up, tacho_motor_store_ramp_up);
+DEVICE_ATTR(ramp_down, S_IRUGO | S_IWUGO, tacho_motor_show_ramp_down, tacho_motor_store_ramp_down);
+
+DEVICE_ATTR(speed_regulation_P, S_IRUGO | S_IWUGO, tacho_motor_show_speed_regulation_P, tacho_motor_store_speed_regulation_P);
+DEVICE_ATTR(speed_regulation_I, S_IRUGO | S_IWUGO, tacho_motor_show_speed_regulation_I, tacho_motor_store_speed_regulation_I);
+DEVICE_ATTR(speed_regulation_D, S_IRUGO | S_IWUGO, tacho_motor_show_speed_regulation_D, tacho_motor_store_speed_regulation_D);
+DEVICE_ATTR(speed_regulation_K, S_IRUGO | S_IWUGO, tacho_motor_show_speed_regulation_K, tacho_motor_store_speed_regulation_K);
+
+DEVICE_ATTR(run, S_IRUGO | S_IWUGO, tacho_motor_show_run, tacho_motor_store_run);
+
+DEVICE_ATTR(reset, S_IWUGO, NULL, tacho_motor_store_reset);
 
 static struct attribute *tacho_motor_class_attrs[] = {
+	&dev_attr_type.attr,
 	&dev_attr_position.attr,
-	&dev_attr_speed.attr,
-	&dev_attr_power.attr,
 	&dev_attr_state.attr,
+	&dev_attr_duty_cycle.attr,
 	&dev_attr_pulses_per_second.attr,
+	&dev_attr_duty_cycle_sp.attr,
 	&dev_attr_speed_setpoint.attr,
 	&dev_attr_time_setpoint.attr,
 	&dev_attr_position_setpoint.attr,
 	&dev_attr_run_mode.attr,
 	&dev_attr_regulation_mode.attr,
-	&dev_attr_brake_mode.attr,
-	&dev_attr_hold_mode.attr,
+	&dev_attr_stop_modes.attr,
+	&dev_attr_stop_mode.attr,
 	&dev_attr_position_mode.attr,
 	&dev_attr_polarity_mode.attr,
 	&dev_attr_ramp_up.attr,
 	&dev_attr_ramp_down.attr,
+	&dev_attr_speed_regulation_P.attr,
+	&dev_attr_speed_regulation_I.attr,
+	&dev_attr_speed_regulation_D.attr,
+	&dev_attr_speed_regulation_K.attr,
 	&dev_attr_run.attr,
 	&dev_attr_reset.attr,
 	NULL

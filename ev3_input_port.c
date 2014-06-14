@@ -30,7 +30,7 @@
 #define ADD_CNT			35		/* 350 msec */
 #define REMOVE_CNT		10		/* 100 msec */
 
-#define PIN1_NEAR_5V		4800		/* 4.80V */
+#define PIN1_NEAR_5V		4900		/* 4.90V */
 #define PIN1_NEAR_PIN2		3100		/* 3.1V */
 #define PIN1_TOUCH_HIGH		950 		/* 0.95V */
 #define PIN1_TOUCH_LOW		850		/* 0.85V */

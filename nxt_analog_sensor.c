@@ -38,7 +38,7 @@ nxt_analog_sensor_mode_info[NUM_NXT_ANALOG_SENSOR_MODES] = {
 		.units = "V",
 		.raw_max = 5000,
 		.pct_max = 100,
-		.si_max = 5000,
+		.si_max = 5,
 		.decimals = 3,
 		.data_sets = 1,
 		.data_type = MSENSOR_DATA_S32,
@@ -48,7 +48,7 @@ nxt_analog_sensor_mode_info[NUM_NXT_ANALOG_SENSOR_MODES] = {
 		.units = "V",
 		.raw_max = 5000,
 		.pct_max = 100,
-		.si_max = 5000,
+		.si_max = 5,
 		.decimals = 3,
 		.data_sets = 1,
 		.data_type = MSENSOR_DATA_S32,
@@ -84,7 +84,7 @@ static void nxt_analog_sensor_cb(void *context)
 {
 	struct nxt_analog_sensor_data *as = context;
 
-	*(int*)as->mode_info[0].raw_data =
+	*(int*)as->mode_info[as->mode].raw_data =
 		ev3_input_port_get_pin1_mv(as->in_port);
 }
 
