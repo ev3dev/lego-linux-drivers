@@ -114,7 +114,7 @@ static int snd_legoev3_do_tone(struct snd_legoev3 *chip, int hz)
 		hz = TONE_MIN_HZ;
 	if (hz > TONE_MAX_HZ)
 		hz = TONE_MAX_HZ;
-	err = pwm_config(chip->pwm, chip->pwm->duty_cycle, NSEC_PER_SEC / hz);
+	err = pwm_config(chip->pwm, 0, NSEC_PER_SEC / hz);
 	if (err < 0)
 		return err;
 		
@@ -156,8 +156,8 @@ static enum hrtimer_restart snd_legoev3_cb_stop_tone(struct hrtimer *pTimer)
  * @output: frequency in Hz, 0 if no tone active
 */
 static ssize_t snd_legoev3_show_tone(struct device *dev,
-                                     struct device_attribute *attr,      
-                                     char *buf)
+				     struct device_attribute *attr,
+				     char *buf)
 {
 	struct snd_card *card = dev_get_drvdata(&to_platform_device(dev)->dev);
 	struct snd_legoev3 *chip = card->private_data;
@@ -166,7 +166,7 @@ static ssize_t snd_legoev3_show_tone(struct device *dev,
 	{
 		if (chip->tone_duration)
 			return snprintf(buf, PAGE_SIZE, "%lu %lu\n",
-			                chip->tone_frequency, chip->tone_duration);
+					chip->tone_frequency, chip->tone_duration);
 		else
 			return snprintf(buf, PAGE_SIZE, "%lu\n", chip->tone_frequency);
 	}
@@ -334,21 +334,6 @@ static void snd_legoev3_period_elapsed(void* data)
 	tasklet_schedule(&chip->pcm_period_tasklet);
 }
 
-/*
- * Only called when the ehrpwm interrupt is configured as regular IRQ and
- * not as a FIQ. In other words, this is for debugging (when assigned to IRQ)
- * and serves as a dummy callback during normal usage (when assigned to FIQ).
- */
-//static int snd_legoev3_et_callback(struct ehrpwm_pwm *ehrpwm, void *data)
-//{
-//	fiq_c_handler_t handler = get_fiq_c_handler();
-//
-//	if (handler)
-//		handler();
-//
-//	return 0;
-//}
-
 static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 {
 	struct snd_legoev3 *chip = snd_pcm_substream_chip(substream);
@@ -363,8 +348,6 @@ static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 		return err;
 
 	runtime->hw = snd_legoev3_playback_hw;
-//	err = ehrpwm_et_cb_register(chip->pwm, substream,
-//				    snd_legoev3_et_callback);
 	if (err < 0)
 		goto err_ehrpwm_et_cb_register;
 
@@ -397,7 +380,7 @@ static int snd_legoev3_pcm_playback_close(struct snd_pcm_substream *substream)
 }
 
 static int snd_legoev3_pcm_hw_params(struct snd_pcm_substream *substream,
-                                     struct snd_pcm_hw_params *hw_params)
+				     struct snd_pcm_hw_params *hw_params)
 {
 	return snd_pcm_lib_malloc_pages(substream, params_buffer_bytes(hw_params));
 }
@@ -410,32 +393,30 @@ static int snd_legoev3_pcm_hw_free(struct snd_pcm_substream *substream)
 static int snd_legoev3_pcm_prepare(struct snd_pcm_substream *substream)
 {
 	struct snd_legoev3 *chip = snd_pcm_substream_chip(substream);
-	int err, int_prd;
+	int err;
+	unsigned char int_period;
 
 	/* interrupt can occur on every 1st, 2nd or 3rd pwm pulse */
 	if (substream->runtime->rate > 32000)
-		int_prd = 1;
+		int_period = 1;
 	else if (substream->runtime->rate > 16000)
-		int_prd = 2;
+		int_period = 2;
 	else
-		int_prd = 3;
-	err = pwm_config(chip->pwm, chip->pwm->duty_cycle,
-			 NSEC_PER_SEC / (substream->runtime->rate * int_prd));
-	if (err < 0)
-		return err;
-	//err = ehrpwm_et_set_sel_evt(chip->pwm, ET_CTR_PRD, int_prd);
+		int_period = 3;
+	err = pwm_config(chip->pwm, 0,
+			 NSEC_PER_SEC / (substream->runtime->rate * int_period));
 	if (err < 0)
 		return err;
 
 	if (debug)
-        	printk(KERN_INFO "legoev3_pcm_prepare with sample rate=%d, factor=%d, ramp=%d\n",
-		       substream->runtime->rate, int_prd, ramp_ms);
+		dev_info(chip->card->dev,
+			 "legoev3_pcm_prepare with sample rate=%d, factor=%d, ramp=%d\n",
+			 substream->runtime->rate, int_period, ramp_ms);
 
 	gpio_set_value(chip->amp_gpio, 1);
 
-	// TODO: second argument is ticks, not ns.
-	legoev3_fiq_ehrpwm_prepare(substream, chip->pwm->period,
-				   chip->volume, snd_legoev3_period_elapsed, chip);
+	legoev3_fiq_ehrpwm_prepare(substream, chip->volume, int_period,
+				   snd_legoev3_period_elapsed, chip);
 
 	return 0;
 }
@@ -443,13 +424,13 @@ static int snd_legoev3_pcm_prepare(struct snd_pcm_substream *substream)
 static void snd_legoev3_pcm_stop(struct work_struct *work)
 {
 	struct snd_legoev3 *chip = container_of((struct delayed_work*)work,
-	                                        struct snd_legoev3, pcm_stop);
+						struct snd_legoev3, pcm_stop);
 
 	if (chip && !chip->pcm_stop_cancelled)
 	{
 		if (debug) printk(KERN_INFO "legoev3_pcm_stop\n");
 		pwm_disable(chip->pwm);
-		//ehrpwm_et_int_en_dis(chip->pwm, ET_DISABLE);
+		legoev3_fiq_ehrpwm_int_disable();
 		gpio_set_value(chip->amp_gpio, 0);
 	}
 }
@@ -464,7 +445,7 @@ static int snd_legoev3_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		chip->pcm_stop_cancelled = true;
 		cancel_delayed_work(&chip->pcm_stop);
 		legoev3_fiq_ehrpwm_ramp(substream, 1, ramp_ms);
-		//ehrpwm_et_int_en_dis(chip->pwm, ET_ENABLE);
+		legoev3_fiq_ehrpwm_int_enable();
 		pwm_enable(chip->pwm);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
@@ -679,18 +660,18 @@ static struct attribute_group snd_legoev3_attr_group = {
 
 /*--- platform sound device ---*/
 
-static int snd_legoev3_create(struct snd_card *card,
-                                        struct snd_legoev3_platform_data *pdata)
+static int snd_legoev3_create(struct snd_card *card, struct pwm_device *pwm,
+			      unsigned gpio)
 {
 	struct snd_legoev3 *chip  = card->private_data;
 	static struct snd_device_ops ops = { };
 	int err;
 
 	chip->card = card;
-	chip->pwm = pdata->pwm;
+	chip->pwm = pwm;
 	INIT_DELAYED_WORK(&chip->pcm_stop, snd_legoev3_pcm_stop);
 	chip->pcm_stop_cancelled = false;	
-	chip->amp_gpio = pdata->amp_gpio;
+	chip->amp_gpio = gpio;
 
 	err = snd_device_new(card, SNDRV_DEV_LOWLEVEL, chip, &ops);
 	if (err < 0)
@@ -711,10 +692,7 @@ static int snd_legoev3_init_ehrpwm(struct pwm_device *pwm)
 {
 	int err;
 
-	err = pwm_set_polarity(pwm, 0);
-	if (err < 0)
-		return err;
-	err = pwm_config(pwm, 0, pwm->period);
+	err = pwm_set_polarity(pwm, PWM_POLARITY_INVERSED);
 	if (err < 0)
 		return err;
 
@@ -725,23 +703,30 @@ static int snd_legoev3_probe(struct platform_device *pdev)
 {
 	struct snd_legoev3_platform_data *pdata;
 	struct snd_card *card;
+	struct pwm_device *pwm;
 	int err;
 
 	pdata = pdev->dev.platform_data;
-	if (!pdata || !pdata->pwm_dev_name || !pdata->amp_gpio)
+	if (!pdata)
 		return -ENXIO;
 
-	pdata->pwm = pwm_get(&pdev->dev, NULL);
-	if (IS_ERR(pdata->pwm))
-		return PTR_ERR(pdata->pwm);
+	pwm = pwm_get(&pdev->dev, NULL);
+	if (IS_ERR(pwm)) {
+		dev_err(&pdev->dev, "failed to get pwm!\n");
+		return PTR_ERR(pwm);
+	}
 
-	err = snd_legoev3_init_ehrpwm(pdata->pwm);
-	if (err < 0)
+	err = snd_legoev3_init_ehrpwm(pwm);
+	if (err < 0) {
+		dev_err(&pdev->dev, "failed to init pwm!\n");
 		goto err_snd_legoev3_init_ehrpwm;
+	}
 
 	err = gpio_request_one(pdata->amp_gpio, GPIOF_OUT_INIT_LOW, "snd_ena");
-	if (err)
+	if (err) {
+		dev_err(&pdev->dev, "failed to request gpio!\n");
 		goto err_gpio_request_one;
+	}
 
 	// configure maximal sample rate
 	if (max_sample_rate < 8000)
@@ -752,26 +737,34 @@ static int snd_legoev3_probe(struct platform_device *pdev)
 	snd_legoev3_playback_hw.rate_max = max_sample_rate;
 
 	err = snd_card_create(-1, "legoev3", THIS_MODULE,
-	                      sizeof(struct snd_legoev3), &card);
-	if (err < 0)
+			      sizeof(struct snd_legoev3), &card);
+	if (err < 0) {
+		dev_err(&pdev->dev, "failed to create sound card!\n");
 		goto err_snd_card_create;
+	}
 
-	err = snd_legoev3_create(card, pdata);
-	if (err < 0)
+	err = snd_legoev3_create(card, pwm, pdata->amp_gpio);
+	if (err < 0) {
+		dev_err(&pdev->dev, "failed to create sound device!\n");
 		goto err_snd_legoev3_create;
+	}
 
 	strcpy(card->driver, "legoev3");
 	strcpy(card->shortname, "LEGO Mindstorms EV3 speaker");
 	sprintf(card->longname, "%s connected to %s", card->shortname,
-	        pdata->pwm_dev_name);
+		dev_name(pwm->chip->dev));
 
 	err = snd_card_register(card);
-	if (err < 0)
+	if (err < 0) {
+		dev_err(&pdev->dev, "failed to register sound card!\n");
 		goto err_snd_card_register;
+	}
 
 	err = snd_legoev3_input_device_create(card);
-	if (err < 0)
+	if (err < 0) {
+		dev_err(&pdev->dev, "failed to create beep device!\n");
 		goto err_snd_legoev3_input_device_create;
+	}
 
 	dev_set_drvdata(&pdev->dev, card);
 
@@ -787,8 +780,7 @@ err_snd_card_create:
 	gpio_free(pdata->amp_gpio);
 err_gpio_request_one:
 err_snd_legoev3_init_ehrpwm:
-	pwm_put(pdata->pwm);
-	pdata->pwm = NULL;
+	pwm_put(pwm);
 	return err;
 }
 
@@ -808,16 +800,13 @@ static int snd_legoev3_remove(struct platform_device *pdev)
 	sysfs_remove_group(&pdev->dev.kobj, &snd_legoev3_attr_group);
 	input_unregister_device(chip->input_dev);
 	input_free_device(chip->input_dev);
+	pwm_put(chip->pwm);
 	snd_card_free(card);
 	dev_set_drvdata(&pdev->dev, NULL);
 	gpio_free(pdata->amp_gpio);
-	pwm_put(pdata->pwm);
-	pdata->pwm = NULL;
 
 	return 0;
 }
-
-/*--- module ---*/
 
 static struct platform_driver snd_legoev3_platform_driver = {
 	.driver = {
@@ -826,18 +815,7 @@ static struct platform_driver snd_legoev3_platform_driver = {
 	.probe = snd_legoev3_probe,
 	.remove = snd_legoev3_remove,
 };
-
-static int __init snd_legoev3_init(void)
-{
-	return platform_driver_register(&snd_legoev3_platform_driver);
-}
-module_init(snd_legoev3_init);
-
-static void __exit snd_legoev3_exit(void)
-{
-	platform_driver_unregister(&snd_legoev3_platform_driver);
-}
-module_exit(snd_legoev3_exit);
+module_platform_driver(snd_legoev3_platform_driver);
 
 MODULE_DESCRIPTION("LEGO Mindstorms EV3 speaker driver");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
