@@ -458,42 +458,19 @@ static int ev3_output_port_probe(struct legoev3_port_device *pdev)
 
 	/* Now get the PWM driver registered for this port */
 
- 	pwm = pwm_get(&port->pdev->dev, NULL);
-   	if (IS_ERR(pwm)) {
-   		dev_err(&pdev->dev, "%s: Could not request pwm device '%s'! (%ld)\n",
-   			__func__, pdata->pwm_dev_name, PTR_ERR(pwm));
-   		err = PTR_ERR(pwm);
-   		goto err_pwm_get;
-   	}
+	pwm = pwm_get(&port->pdev->dev, NULL);
+	if (IS_ERR(pwm)) {
+		dev_err(&pdev->dev, "%s: Could not get pwm! (%ld)\n",
+			__func__, PTR_ERR(pwm));
+		err = PTR_ERR(pwm);
+		goto err_pwm_get;
+	}
 
-	/* Separate platform and generic PWM setup code here */
-
-	if (strncmp(pdata->pwm_dev_name, "ehrpwm", 6) == 0) {
-   		dev_err(&pdev->dev, "%s: Setting up PWM '%s'! (%lx)\n",
-   			__func__, pdata->pwm_dev_name, PTR_ERR(pwm));
-
-		/* Add any custom setup needed by ehrpwm here */
-
-	 	err = pwm_set_polarity(pwm, 1);
- 		if (err) {
- 			dev_err(&pdev->dev, "%s: Failed to set pwm polarity! (%d)\n",
- 				__func__, err);
-	 		goto err_pwm_set_polarity;
-	 	}
-
-	} else if (strncmp(pdata->pwm_dev_name, "ecap", 4) == 0) {
-   		dev_err(&pdev->dev, "%s: Setting up PWM '%s'! (%lx)\n",
-   			__func__, pdata->pwm_dev_name, PTR_ERR(pwm));
-
-		/* Add any custom setup needed by ecap here */
-
-	 	err = pwm_set_polarity(pwm, 0);
- 		if (err) {
- 			dev_err(&pdev->dev, "%s: Failed to set pwm polarity! (%d)\n",
- 				__func__, err);
-			goto err_pwm_set_polarity;
-		}
-
+	err = pwm_set_polarity(pwm, PWM_POLARITY_INVERSED);
+	if (err) {
+		dev_err(&pdev->dev, "%s: Failed to set pwm polarity! (%d)\n",
+			__func__, err);
+		goto err_pwm_set_polarity;
 	}
 
 	err = pwm_config(pwm, 0, NSEC_PER_SEC / 10000);

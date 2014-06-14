@@ -18,7 +18,7 @@ config LEGOEV3_ANALOG
 config LEGOEV3_BLUETOOTH
 	tristate "On-board Bluetooth"
 	default y
-	depends on PWM && GPIOLIB
+	depends on PWM_TIECAP && GPIOLIB
 	help
 	  Select Y to enable on-board bluetooth on the LEGO Mindstorms EV3.
 
@@ -32,7 +32,7 @@ config LEGOEV3_DEV_PORTS
 config LEGOEV3_OUTPUT_PORT
 	tristate "Output port driver"
 	default y
-	depends on LEGOEV3_DEV_PORTS && LEGOEV3_ANALOG && GPIOLIB && PWM
+	depends on LEGOEV3_DEV_PORTS && LEGOEV3_ANALOG && GPIOLIB && PWM_TIECAP && PWM_TIEHRPWM
 	help
 	  Select Y to enable the driver for the EV3 output ports.
 

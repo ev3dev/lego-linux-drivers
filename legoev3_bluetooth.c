@@ -20,8 +20,6 @@
  *
  * The chip requires an external clock to function. This clock is generated
  * by one of the PWM devices on the AM1808 SoC.
- *
- * This also provides an interface similar to Device1 in d_bt.c from lms2012.
  * -----------------------------------------------------------------------------
  */
 
@@ -50,58 +48,45 @@ struct legoev3_bluetooth_device {
 	struct pwm_device *pwm;
 };
 
-static ssize_t legoev3_bluetooth_attr_show(struct device *dev,
-					   struct device_attribute *attr,
-					   char *buf)
+static ssize_t legoev3_bluetooth_enable_show(struct device *dev,
+					     struct device_attribute *attr,
+					     char *buf)
 {
 	struct legoev3_bluetooth_device *btdev = dev_get_drvdata(dev);
-	int gpio = -1;
 
-	if (!strcmp(attr->attr.name, "enabled"))
-		gpio = btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].gpio;
-	else if (!strcmp(attr->attr.name, "reset"))
-		gpio = btdev->gpios[LEGOEV3_BT_GPIO_PIC_RST].gpio;
-	else if (!strcmp(attr->attr.name, "cts"))
-		gpio = btdev->gpios[LEGOEV3_BT_GPIO_PIC_CTS].gpio;
-	else
-		return -EINVAL;
-
-	return sprintf(buf, "%d\n", !!gpio_get_value(gpio));
+	return sprintf(buf, "%d\n",
+		!!gpio_get_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio));
 }
 
-static ssize_t legoev3_bluetooth_attr_store(struct device *dev,
-					    struct device_attribute *attr,
-					    const char *buf, size_t count)
+static ssize_t legoev3_bluetooth_enable_store(struct device *dev,
+					      struct device_attribute *attr,
+					      const char *buf, size_t count)
 {
 	struct legoev3_bluetooth_device *btdev = dev_get_drvdata(dev);
-	int gpio = -1;
-	bool value;
+	bool enable, current_state;
 
-	if (!strcmp(attr->attr.name, "enabled"))
-		gpio = btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].gpio;
-	else if (!strcmp(attr->attr.name,"reset"))
-		gpio = btdev->gpios[LEGOEV3_BT_GPIO_PIC_RST].gpio;
+	if (strtobool(buf, &enable))
+		return -EINVAL;
+
+	current_state = gpio_get_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio);
+
+	if (enable == current_state)
+		return count;
+
+	if (enable)
+		pwm_enable(btdev->pwm);
 	else
-		return -EINVAL;
-
-	if (strtobool(buf, &value))
-		return -EINVAL;
-
-	gpio_set_value(gpio, value);
+		pwm_disable(btdev->pwm);
+	gpio_set_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio, enable);
 
 	return count;
 }
 
-static DEVICE_ATTR(enabled, S_IWUSR | S_IRUGO, legoev3_bluetooth_attr_show,
-		   legoev3_bluetooth_attr_store);
-static DEVICE_ATTR(reset, S_IWUSR | S_IRUGO, legoev3_bluetooth_attr_show,
-		   legoev3_bluetooth_attr_store);
-static DEVICE_ATTR(cts, S_IRUGO, legoev3_bluetooth_attr_show, NULL);
+static DEVICE_ATTR(enable, S_IWUSR | S_IRUGO, legoev3_bluetooth_enable_show,
+		   legoev3_bluetooth_enable_store);
 
 static struct attribute *legoev3_bluetooth_attrs[] = {
-	&dev_attr_enabled.attr,
-	&dev_attr_reset.attr,
-	&dev_attr_cts.attr,
+	&dev_attr_enable.attr,
 	NULL
 };
 
@@ -122,7 +107,8 @@ static int legoev3_bluetooth_probe(struct platform_device *pdev)
 	}
 	pdata = pdev->dev.platform_data;
 
-	btdev = kzalloc(sizeof(struct legoev3_bluetooth_device), GFP_KERNEL);
+	btdev = devm_kzalloc(&pdev->dev, sizeof(struct legoev3_bluetooth_device),
+			     GFP_KERNEL);
 	if (!btdev) {
 		dev_err(&pdev->dev, "%s: Could not allocate memory!\n",
 			__func__);
@@ -131,10 +117,14 @@ static int legoev3_bluetooth_probe(struct platform_device *pdev)
 
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio	= pdata->bt_ena_gpio;
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].flags	= GPIOF_OUT_INIT_LOW;
-	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].label	= "bluetooth enable";
+	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].label	= "bluetooth disable";
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_CLK_ENA].gpio	= pdata->bt_clk_ena_gpio;
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_CLK_ENA].flags	= GPIOF_IN;
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_CLK_ENA].label	= "bluetooth slow clock enable";
+	/*
+	 * PIC pins are not shown on schematics, but are used for "mode 2"
+	 * in LEGO firmware. Is this for apple device maybe? or is this unused?
+	 */
 	btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].gpio	= pdata->pic_ena_gpio;
 	btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].flags	= GPIOF_OUT_INIT_LOW;
 	btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].label	= "bt pic enable";
@@ -151,18 +141,12 @@ static int legoev3_bluetooth_probe(struct platform_device *pdev)
 		goto err_gpio_request_array;
 	}
 
-	pwm = pwm_get(&pdev->dev, "legoev3 bluetooth clock");
+	pwm = pwm_get(&pdev->dev, NULL);
 	if (IS_ERR(pwm)) {
-		dev_err(&pdev->dev, "%s: Could not request pwm device '%s'! (%ld)\n",
-			__func__, pdata->clk_pwm_dev, PTR_ERR(pwm));
+		dev_err(&pdev->dev, "%s: Could not get pwm! (%ld)\n",
+			__func__, PTR_ERR(pwm));
 		err = PTR_ERR(pwm);
 		goto err_pwm_request_byname;
-	}
-	err = pwm_set_polarity(pwm, 0);
-	if (err) {
-		dev_err(&pdev->dev, "%s: Failed to set pwm polarity! (%d)\n",
-			__func__, err);
-		goto err_pwm_set_polarity;
 	}
 	err = pwm_config(pwm, SLOW_CLOCK_PERIOD_NS / 2, SLOW_CLOCK_PERIOD_NS);
 	if (err) {
@@ -188,10 +172,10 @@ static int legoev3_bluetooth_probe(struct platform_device *pdev)
 	return 0;
 
 err_sysfs_create_group:
+	gpio_set_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio, 0);
 	pwm_disable(pwm);
 err_pwm_start:
 err_pwm_config:
-err_pwm_set_polarity:
 	pwm_put(pwm);
 err_pwm_request_byname:
 	gpio_free_array(btdev->gpios, NUM_LEGOEV3_BT_GPIO);
@@ -205,14 +189,14 @@ static int legoev3_bluetooth_remove(struct platform_device *pdev)
 {
 	struct legoev3_bluetooth_device *btdev = platform_get_drvdata(pdev);
 
-	/* TODO: set gpios to turn off device */
 	sysfs_remove_group(&pdev->dev.kobj, &legoev3_bluetooth_attr_grp);
-	gpio_set_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio, 0);
-	pwm_disable(btdev->pwm);
+	if (gpio_get_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio)) {
+		gpio_set_value(btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio, 0);
+		pwm_disable(btdev->pwm);
+	}
 	pwm_put(btdev->pwm);
 	gpio_free_array(btdev->gpios, NUM_LEGOEV3_BT_GPIO);
 	platform_set_drvdata(pdev, NULL);
-	kfree(btdev);
 
 	return 0;
 }
