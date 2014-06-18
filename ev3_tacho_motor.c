@@ -806,7 +806,7 @@ static void update_motor_speed_or_power(struct ev3_tacho_motor_data *ev3_tm, int
 	if (REGULATION_OFF == ev3_tm->regulation_mode) {
 		ev3_tacho_motor_set_power( ev3_tm, (ev3_tm->duty_cycle_sp * percent)/100 );
 	} else if (REGULATION_ON == ev3_tm->regulation_mode) {
-		ev3_tm->speed_reg_setpoint = ( (ev3_tm->speed_sp * percent)/100 );
+		ev3_tm->speed_reg_setpoint = ((ev3_tm->ramp.direction * abs(ev3_tm->speed_sp) * percent)/100);
 	}
 }
 
@@ -950,13 +950,19 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 
 			#warning "This needs to be a percentage of the target power or speed"
 			#warning "We may also want to put ramping on this function!"
-			update_motor_speed_or_power(ev3_tm, 100);
-			break;
+			#warning "Just fall through to set the ramp time. If ramp times are zero then start/stop is immediate!
+//			update_motor_speed_or_power(ev3_tm, 100);
+//			break;
 	
 		case STATE_SETUP_RAMP_TIME:
 //			ev3_tm->ramp.percent  = 0;
 			ev3_tm->ramp.up.start = 0;
 			ev3_tm->ramp.down.end = ev3_tm->time_setpoint;
+
+			/* In RUN_FOREVER mode, set the endpoint a long way out - an hour of milliseconds! */
+
+			if ((RUN_FOREVER == ev3_tm->run_mode))
+				ev3_tm->ramp.down.end = 60*60*1000;
 
 			/* The ramp.up.end and ramp.down.start points depend on whether or
 			 * not the regulation mode is on. If we're not regulated, then the
@@ -974,6 +980,8 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 				ev3_tm->ramp.down.start = ev3_tm->ramp.down.end - ((abs(ev3_tm->speed_sp) * ev3_tm->ramp_down) / MaxPulsesPerSec[ev3_tm->motor_type] );
 //				ev3_tm->ramp.setpoint   = ev3_tm->speed_sp;
 			}
+
+			ev3_tm->ramp.direction = (ev3_tm->speed_sp >= 0 ? 1 : -1);
 
 //			ev3_tm->ramp.setpoint_sign = (ev3_tm->ramp.setpoint > 0) ? 1 : -1;
 
@@ -1128,11 +1136,21 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 	
 		case STATE_RAMP_CONST:
 			/* Figure out if we're done with the const section - if yes set state to RAMP_DOWN
-			 * and allow states to get reprocessed
+			 * and allow states to get reprocessed. 
 			 */
+
 			if (ev3_tm->run_mode == RUN_POSITION) {
 				adjust_ramp_for_position(ev3_tm);
 			}
+
+			/*  Just push out the end point if we're in RUN_FOREVER mode
+			 */
+
+			if (ev3_tm->run_mode == RUN_FOREVER ) {
+				ev3_tm->ramp.down.end   = ev3_tm->ramp.count + (60*60*1000);
+				ev3_tm->ramp.down.start = ev3_tm->ramp.down.end - ev3_tm->ramp_down;
+			}
+
 	
 			if ( ev3_tm->ramp.down.start <= ev3_tm->ramp.count ) {
 				if ( RUN_TIME == ev3_tm->run_mode ) {
