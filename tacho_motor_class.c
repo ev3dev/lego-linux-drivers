@@ -605,6 +605,12 @@ static void tacho_motor_release(struct device *dev)
 {
 }
 
+void tacho_motor_notify_state_change(struct tacho_motor_device *tm)
+{
+	sysfs_notify(&tm->dev.kobj, NULL, "state");
+}
+EXPORT_SYMBOL_GPL(tacho_motor_notify_state_change);
+
 static unsigned tacho_motor_class_id = 0;
 
 int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
