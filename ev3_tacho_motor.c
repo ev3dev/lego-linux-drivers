@@ -908,7 +908,6 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
  			container_of(timer, struct ev3_tacho_motor_data, timer);
 
  	int speed;
-	int oldstate = ev3_tm->state;
 
 	bool reprocess = true;
 
@@ -1281,6 +1280,12 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 	          {
 //			if (abs(ev3_tm->speed) <= 3) {
 			ev3_tm->run        = 0;
+
+			/* Here's where we notify anyone blocked on the state attribute
+	                 * that we're done moving the motor
+	                 */
+
+			tacho_motor_notify_state_change(&ev3_tm->tm);
 	          }
 	          break;
 
@@ -1291,14 +1296,6 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 	 	break;
 	 	}
 	
-		/* Here's where we notify anyone blocked on the state attribute
-		 * that something has changed!
-		 */
-
-		if (oldstate != ev3_tm->state) {
-			tacho_motor_notify_state_change(&ev3_tm->tm);
-			oldstate = ev3_tm->state;
-		}
 	}
 
 	if (ev3_tm->run && (REGULATION_ON == ev3_tm->regulation_mode))

@@ -623,7 +623,7 @@ int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
 	tm->dev.release = tacho_motor_release;
 	tm->dev.parent = parent;
 	tm->dev.class = &tacho_motor_class;
-	dev_set_name(&tm->dev, "tacho_motor%d", tacho_motor_class_id++);
+	dev_set_name(&tm->dev, "tacho-motor%d", tacho_motor_class_id++);
 
 	err = device_register(&tm->dev);
 	if (err)
@@ -641,15 +641,30 @@ void unregister_tacho_motor(struct tacho_motor_device *tm)
 }
 EXPORT_SYMBOL_GPL(unregister_tacho_motor);
 
+static int tacho_motor_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+	int ret;
+
+	add_uevent_var(env, "PORT=%s", tm->port_name);
+	if (ret) {
+		dev_err(dev, "failed to add uevent PORT\n");
+		return ret;
+	}
+
+	return 0;
+}
+
 static char *tacho_motor_devnode(struct device *dev, umode_t *mode)
 {
-	return kasprintf(GFP_KERNEL, "tacho_motor/%s", dev_name(dev));
+	return kasprintf(GFP_KERNEL, "tacho-motor/%s", dev_name(dev));
 }
 
 struct class tacho_motor_class = {
 	.name		= "tacho-motor",
 	.owner		= THIS_MODULE,
 	.dev_attrs	= tacho_motor_class_dev_attrs,
+	.dev_uevent	= tacho_motor_dev_uevent,
 	.devnode	= tacho_motor_devnode,
 };
 EXPORT_SYMBOL_GPL(tacho_motor_class);
