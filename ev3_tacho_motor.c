@@ -749,6 +749,7 @@ static void regulate_speed(struct ev3_tacho_motor_data *ev3_tm)
 {
 	int power;
 	int speed_error;
+	int prevI;
 
 	/* Make sure speed_reg_setpoint is within a reasonable range */
 	
@@ -770,10 +771,16 @@ static void regulate_speed(struct ev3_tacho_motor_data *ev3_tm)
 	 *
 	 * To avoid the problem of "integral windup", we stop adding to the integral
 	 * term if its contribution alone would set the power level to 100%
+         *
+         * Earlier versions of this algorithm did not allow the pid.I component to change
+         * once it hit the 100% limit. This algorithm allows the change if the absolute
+         * value of the result is less than 100.
 	 */
 
-	if (100 > abs((ev3_tm->pid.I * ev3_tm->pid.speed_regulation_I) / ev3_tm->pid.speed_regulation_K))
-		ev3_tm->pid.I = ev3_tm->pid.I + speed_error;
+	ev3_tm->pid.I = ev3_tm->pid.I + speed_error;
+
+//	if (100 > abs((ev3_tm->pid.I * ev3_tm->pid.speed_regulation_I) / ev3_tm->pid.speed_regulation_K))
+//		ev3_tm->pid.I = prevI;
 
 	ev3_tm->pid.D = ev3_tm->pulses_per_second - ev3_tm->pid.prev_pulses_per_second;
 
@@ -782,6 +789,13 @@ static void regulate_speed(struct ev3_tacho_motor_data *ev3_tm)
 	power = ( (ev3_tm->pid.P * ev3_tm->pid.speed_regulation_P)
 		+ (ev3_tm->pid.I * ev3_tm->pid.speed_regulation_I)
 		+ (ev3_tm->pid.D * ev3_tm->pid.speed_regulation_D) ) / ev3_tm->pid.speed_regulation_K;
+
+        /* Subtract the speed error to avoid integral windup if the resulting power is
+         * more than 100%
+         */
+
+        if ( 100 < abs(power) )
+		ev3_tm->pid.I = ev3_tm->pid.I - speed_error;
 
 	ev3_tacho_motor_set_power(ev3_tm, power);
 }
@@ -805,8 +819,11 @@ static void update_motor_speed_or_power(struct ev3_tacho_motor_data *ev3_tm, int
 	if (REGULATION_OFF == ev3_tm->regulation_mode) {
 		ev3_tacho_motor_set_power( ev3_tm, (ev3_tm->duty_cycle_sp * percent)/100 );
 	} else if (REGULATION_ON == ev3_tm->regulation_mode) {
-		ev3_tm->speed_reg_sp = ev3_tm->ramp.direction * abs(((ev3_tm->pulses_per_second_sp) * percent)/100);
-	}
+		if ((RUN_POSITION == ev3_tm->run_mode))
+			ev3_tm->speed_reg_sp = ev3_tm->ramp.direction * abs(((ev3_tm->pulses_per_second_sp) * percent)/100);
+                else
+			ev3_tm->speed_reg_sp = (((ev3_tm->pulses_per_second_sp) * percent)/100);
+        }
 }
 
 static void regulate_position(struct ev3_tacho_motor_data *ev3_tm)
@@ -860,7 +877,7 @@ static void adjust_ramp_for_position(struct ev3_tacho_motor_data *ev3_tm)
 	 * the position setpoint at low speeds...shorten the distance!
 	 */
 
-	ramp_down_distance = abs(((ev3_tm->pulses_per_second * ramp_down_time) / ((2000 * 10)/7) )); 
+	ramp_down_distance = abs((ev3_tm->pulses_per_second * ramp_down_time * 7) / (2000 * 10) ); 
 
 	/* Depending on the direction we are turning, figure out if we're going to overshoot
 	 * the target position based on current speed. Note the calculation of ramp.down.end
@@ -1138,11 +1155,15 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 			}
 			// else {
 		
-				/* Figure out how far along we are in the ramp operation */
+			/* Figure out how far along we are in the ramp operation */
 				
-//				setpoint = ev3_tm->ramp.setpoint_sign * ((ev3_tm->ramp.count * 100) / ev3_tm->ramp_up);
+//			setpoint = ev3_tm->ramp.setpoint_sign * ((ev3_tm->ramp.count * 100) / ev3_tm->ramp_up);
+			if( 0 != ev3_tm->ramp_up_sp )
 				ev3_tm->ramp.percent = ((ev3_tm->ramp.count * 100) / ev3_tm->ramp_up_sp);
-				update_motor_speed_or_power(ev3_tm, ev3_tm->ramp.percent);
+			else
+				ev3_tm->ramp.percent = 100;
+
+			update_motor_speed_or_power(ev3_tm, ev3_tm->ramp.percent);
 //			}
 			break;
 	
@@ -1186,6 +1207,9 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 					reprocess = true;
 				}
 			}
+
+			update_motor_speed_or_power(ev3_tm, ev3_tm->ramp.percent);
+
 			break;
 
 		case STATE_POSITION_RAMP_DOWN:
@@ -1231,13 +1255,16 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 				ev3_tm->state = STATE_STOP;
 				reprocess = true;
 
-			} else {
+			} // else {
 				/* Figure out how far along we are in the ramp operation */
 				
+			if( 0 != ev3_tm->ramp_down_sp )
 				ev3_tm->ramp.percent = ((ev3_tm->ramp.down.end - ev3_tm->ramp.count) * 100) / ev3_tm->ramp_down_sp;
+			else
+				ev3_tm->ramp.percent = 0;
 
-				update_motor_speed_or_power(ev3_tm, ev3_tm->ramp.percent);
-			}
+			update_motor_speed_or_power(ev3_tm, ev3_tm->ramp.percent);
+		//	}
 			break;
 
 	
@@ -1851,7 +1878,7 @@ static int __devinit ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 	if (err)
 		goto dev_set_drvdata_fail;
 
-	dev_info(&motor->dev, "Tacho Motor connected to port %s gpio %d irq %d\n",
+	dev_info(&motor->dev, "A Tacho Motor connected to port %s gpio %d irq %d\n",
 		dev_name(&ev3_tm->out_port->dev),
                 pdata->tacho_int_gpio,
                 gpio_to_irq(pdata->tacho_int_gpio));
