@@ -82,7 +82,8 @@ struct ev3_tacho_motor_data {
 	struct legoev3_port_device *out_port;
 	struct legoev3_port_device *motor_port;
 
- 	struct hrtimer timer;
+	struct hrtimer timer;
+	struct work_struct notify_state_change_work;
 
         unsigned tacho_samples[TACHO_SAMPLES];
         unsigned tacho_samples_head;
@@ -1303,19 +1304,10 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 	          }
 	          break;
 
-	          case STATE_IDLE:
-	          {
-//			if (abs(ev3_tm->speed) <= 3) {
-			ev3_tm->run        = 0;
-
-			/* Here's where we notify anyone blocked on the state attribute
-	                 * that we're done moving the motor
-	                 */
-
-			tacho_motor_notify_state_change(&ev3_tm->tm);
-	          }
-	          break;
-
+		case STATE_IDLE:
+			ev3_tm->run = 0;
+			schedule_work(&ev3_tm->notify_state_change_work);
+			break;
 	  	default:
 	          { /* Intentionally left empty */
 //				printk( "UNHANDLED MOTOR STATE %d\n", ev3_tm->state );
@@ -1348,7 +1340,13 @@ no_run:
 	return HRTIMER_RESTART;
 }
 
-/* -------------------------------------------------------------------------- */
+static void ev3_tacho_motor_notify_state_change_work(struct work_struct *work)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+		container_of(work, struct ev3_tacho_motor_data, notify_state_change_work);
+
+	tacho_motor_notify_state_change(&ev3_tm->tm);
+}
 
 static int ev3_tacho_motor_get_type(struct tacho_motor_device *tm)
 {
@@ -1890,10 +1888,12 @@ static int __devinit ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 
         irq_set_irq_type(gpio_to_irq(pdata->tacho_int_gpio), IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING);
 
-	/* Set up the output port status processing timer */
-
 	hrtimer_init(&ev3_tm->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	ev3_tm->timer.function = ev3_tacho_motor_timer_callback;
+
+	INIT_WORK(&ev3_tm->notify_state_change_work,
+		  ev3_tacho_motor_notify_state_change_work);
+
 	hrtimer_start(&ev3_tm->timer, ktime_set(0, TACHO_MOTOR_POLL_NS),
 		      HRTIMER_MODE_REL);
 
@@ -1918,7 +1918,8 @@ static int __devexit ev3_tacho_motor_remove(struct legoev3_port_device *motor)
 	struct ev3_motor_platform_data *pdata = motor->dev.platform_data;
 	struct ev3_tacho_motor_data *ev3_tm = dev_get_drvdata(&motor->dev);
 
- 	hrtimer_cancel(&ev3_tm->timer);
+	hrtimer_cancel(&ev3_tm->timer);
+	cancel_work_sync(&ev3_tm->notify_state_change_work);
 
 	dev_info(&motor->dev, "Unregistering interrupt from gpio %d irq %d on port %s\n",
 		pdata->tacho_int_gpio,
