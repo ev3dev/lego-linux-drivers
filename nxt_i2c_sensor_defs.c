@@ -55,8 +55,6 @@
  * be manually initialized.
  *
  * Type ids come from sys/settings/typedata.rcf in LMS2012
- * This link will probably break eventually, but for easy access, try:
- * <http://python-ev3.org/types.html>
  */
 struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 	{
