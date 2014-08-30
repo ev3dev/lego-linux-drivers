@@ -872,19 +872,15 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 				port->mode_info[mode].decimals = port->buffer[5];
 				if (port->info_flags & LEGOEV3_UART_INFO_FLAG_INFO_RAW) {
 					port->mode_info[mode].raw_min =
-						msensor_ftoi(port->raw_min,
-							port->mode_info[mode].decimals);
+						msensor_ftoi(port->raw_min, 0);
 					port->mode_info[mode].raw_max =
-						msensor_ftoi(port->raw_max,
-							port->mode_info[mode].decimals);
+						msensor_ftoi(port->raw_max, 0);
 				}
 				if (port->info_flags & LEGOEV3_UART_INFO_FLAG_INFO_PCT) {
 					port->mode_info[mode].pct_min =
-						msensor_ftoi(port->pct_min,
-							port->mode_info[mode].decimals);
+						msensor_ftoi(port->pct_min, 0);
 					port->mode_info[mode].pct_max =
-						msensor_ftoi(port->pct_max,
-							port->mode_info[mode].decimals);
+						msensor_ftoi(port->pct_max, 0);
 				}
 				if (port->info_flags & LEGOEV3_UART_INFO_FLAG_INFO_SI) {
 					port->mode_info[mode].si_min =
@@ -896,11 +892,20 @@ static void legoev3_uart_receive_buf(struct tty_struct *tty,
 				}
 				if (port->mode)
 					port->mode--;
-				debug_pr("mode %d data_sets:%d, data_type:%d, figures:%d, decimals:%d\n",
-					mode, port->mode_info[mode].data_sets,
-					port->mode_info[mode].data_type,
-					port->mode_info[mode].figures,
-					port->mode_info[mode].decimals);
+				debug_pr("mode %d - data_sets:%d, data_type:%d, figures:%d, decimals:%d\n",
+					 mode, port->mode_info[mode].data_sets,
+					 port->mode_info[mode].data_type,
+					 port->mode_info[mode].figures,
+					 port->mode_info[mode].decimals);
+				debug_pr("raw_min: %d, raw_max: %d\n",
+					 port->mode_info[mode].raw_min,
+					 port->mode_info[mode].raw_max);
+				debug_pr("pct_min: %d, pct_max: %d\n",
+					 port->mode_info[mode].pct_min,
+					 port->mode_info[mode].pct_max);
+				debug_pr("si_min: %d, si_max: %d\n",
+					 port->mode_info[mode].si_min,
+					 port->mode_info[mode].si_max);
 				break;
 			}
 			break;

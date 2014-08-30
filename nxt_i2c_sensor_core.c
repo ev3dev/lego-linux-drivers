@@ -216,7 +216,6 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 			minfo->figures = 5;
 	}
 
-
 	INIT_DELAYED_WORK(&sensor->poll_work, nxt_i2c_sensor_poll_work);
 	if (default_poll_ms && default_poll_ms < NXT_I2C_MIN_POLL_MS)
 		default_poll_ms = NXT_I2C_MIN_POLL_MS;
@@ -229,6 +228,8 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 		goto err_register_msensor;
 	}
 
+	if (sensor->info.ms.type_id == 5) // NXT Ultrasonic Sensor
+		msleep (1);
 	nxt_i2c_sensor_set_mode(sensor, sensor->mode);
 
 	return 0;
@@ -303,7 +304,6 @@ static int nxt_i2c_sensor_detect(struct i2c_client *client,
 static struct i2c_device_id nxt_i2c_sensor_idtable[] = {
 	{ "nxt-i2c-sensor", 0 }, /* used by nxt_i2c_sensor_detect */
 	{ "lego-9846", 5 },
-	{ "lego-9749", 6 },
 	{ "ht-nis1070", 50 },
 	{ "ht-nbr1036", 51 },
 	{ "ht-nsk1042", 52 },
