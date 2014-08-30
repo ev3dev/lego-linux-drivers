@@ -289,8 +289,8 @@ static int nxt_i2c_sensor_detect(struct i2c_client *client,
 
 	for (i = 0; i < num_nxt_i2c_sensor_defs; i++)
 	{
-		if (!strcmp(nxt_i2c_sensor_defs[i].vendor_id, vendor_id)
-			&& !strcmp(nxt_i2c_sensor_defs[i].product_id, product_id))
+		if (!strcmp(nxt_i2c_sensor_defs[i].vendor_id, strim(vendor_id))
+			&& !strcmp(nxt_i2c_sensor_defs[i].product_id, strim(product_id)))
 		{
 			sprintf(info->type, "nxt-i2c-sensor");
 			info->platform_data = &nxt_i2c_sensor_defs[i];
