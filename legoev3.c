@@ -688,17 +688,6 @@ static int snd_legoev3_create(struct snd_card *card, struct pwm_device *pwm,
 	return 0;
 }
 
-static int snd_legoev3_init_ehrpwm(struct pwm_device *pwm)
-{
-	int err;
-
-	err = pwm_set_polarity(pwm, PWM_POLARITY_INVERSED);
-	if (err < 0)
-		return err;
-
-	return 0;
-}
-
 static int snd_legoev3_probe(struct platform_device *pdev)
 {
 	struct snd_legoev3_platform_data *pdata;
@@ -716,12 +705,6 @@ static int snd_legoev3_probe(struct platform_device *pdev)
 		return PTR_ERR(pwm);
 	}
 
-	err = snd_legoev3_init_ehrpwm(pwm);
-	if (err < 0) {
-		dev_err(&pdev->dev, "failed to init pwm!\n");
-		goto err_snd_legoev3_init_ehrpwm;
-	}
-
 	err = gpio_request_one(pdata->amp_gpio, GPIOF_OUT_INIT_LOW, "snd_ena");
 	if (err) {
 		dev_err(&pdev->dev, "failed to request gpio!\n");
@@ -736,11 +719,11 @@ static int snd_legoev3_probe(struct platform_device *pdev)
 	
 	snd_legoev3_playback_hw.rate_max = max_sample_rate;
 
-	err = snd_card_create(-1, "legoev3", THIS_MODULE,
-			      sizeof(struct snd_legoev3), &card);
+	err = snd_card_new(&pdev->dev, -1, "legoev3", THIS_MODULE,
+			   sizeof(struct snd_legoev3), &card);
 	if (err < 0) {
 		dev_err(&pdev->dev, "failed to create sound card!\n");
-		goto err_snd_card_create;
+		goto err_snd_card_new;
 	}
 
 	err = snd_legoev3_create(card, pwm, pdata->amp_gpio);
@@ -776,10 +759,9 @@ err_snd_legoev3_input_device_create:
 err_snd_card_register:
 err_snd_legoev3_create:
 	snd_card_free(card);
-err_snd_card_create:
+err_snd_card_new:
 	gpio_free(pdata->amp_gpio);
 err_gpio_request_one:
-err_snd_legoev3_init_ehrpwm:
 	pwm_put(pwm);
 	return err;
 }
