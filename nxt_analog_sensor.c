@@ -122,10 +122,7 @@ static int nxt_analog_sensor_probe(struct legoev3_port_device *sensor)
 
 	ev3_input_port_register_analog_cb(as->in_port, nxt_analog_sensor_cb, as);
 
-	err = dev_set_drvdata(&sensor->dev, as);
-	if (err)
-		goto err_dev_set_drvdata;
-
+	dev_set_drvdata(&sensor->dev, as);
 	nxt_analog_sensor_set_mode(as, 0);
 
 	dev_info(&sensor->dev, "Analog sensor connected to port %s\n",
@@ -133,8 +130,6 @@ static int nxt_analog_sensor_probe(struct legoev3_port_device *sensor)
 
 	return 0;
 
-err_dev_set_drvdata:
-	unregister_msensor(&as->ms);
 err_register_msensor:
 	kfree(as);
 

@@ -672,7 +672,7 @@ static int tacho_motor_dev_uevent(struct device *dev, struct kobj_uevent_env *en
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
 	int ret;
 
-	add_uevent_var(env, "PORT=%s", tm->port_name);
+	ret = add_uevent_var(env, "PORT=%s", tm->port_name);
 	if (ret) {
 		dev_err(dev, "failed to add uevent PORT\n");
 		return ret;

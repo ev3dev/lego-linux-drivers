@@ -562,7 +562,7 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 			}
 			port->timer_loop_cnt = 0;
 			if (port->sensor_type != SENSOR_ERR) {
-				PREPARE_WORK(&port->work, ev3_input_port_register_sensor);
+				INIT_WORK(&port->work, ev3_input_port_register_sensor);
 				schedule_work(&port->work);
 			}
 		}
@@ -605,7 +605,7 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 	    && port->timer_loop_cnt >= REMOVE_CNT && !work_busy(&port->work))
 	{
 		if (port->sensor) {
-			PREPARE_WORK(&port->work, ev3_input_port_unregister_sensor);
+			INIT_WORK(&port->work, ev3_input_port_unregister_sensor);
 			schedule_work(&port->work);
 		}
 		port->con_state = CON_STATE_INIT;
@@ -633,7 +633,7 @@ static int ev3_input_port_probe(struct legoev3_port_device *pdev)
 	if (IS_ERR(port->analog)) {
 		dev_err(&pdev->dev, "Could not get legoev3-analog device.\n");
 		err = PTR_ERR(port->analog);
-		goto request_legoev3_analog_fail;
+		goto err_request_legoev3_analog;
 	}
 
 	port->gpio[GPIO_PIN1].gpio	= pdata->pin1_gpio;
@@ -658,7 +658,7 @@ static int ev3_input_port_probe(struct legoev3_port_device *pdev)
 	err = gpio_request_array(port->gpio, ARRAY_SIZE(port->gpio));
 	if (err) {
 		dev_err(&pdev->dev, "Requesting GPIOs failed.\n");
-		goto gpio_request_array_fail;
+		goto err_gpio_request_array;
 	}
 
 	port->pin5_mux[PIN5_MUX_MODE_I2C] = pdata->i2c_pin_mux;
@@ -673,10 +673,7 @@ static int ev3_input_port_probe(struct legoev3_port_device *pdev)
 	port->i2c_pdev_info.data	= &port->i2c_data;
 	port->i2c_pdev_info.size_data	= sizeof(port->i2c_data);
 
-	err = dev_set_drvdata(&pdev->dev, port);
-	if (err)
-		goto dev_set_drvdata_fail;
-
+	dev_set_drvdata(&pdev->dev, port);
 	INIT_WORK(&port->work, NULL);
 
 	port->con_state = CON_STATE_INIT;
@@ -687,11 +684,9 @@ static int ev3_input_port_probe(struct legoev3_port_device *pdev)
 
 	return 0;
 
-dev_set_drvdata_fail:
-	gpio_free_array(port->gpio, ARRAY_SIZE(port->gpio));
-gpio_request_array_fail:
+err_gpio_request_array:
 	put_legoev3_analog(port->analog);
-request_legoev3_analog_fail:
+err_request_legoev3_analog:
 	kfree(port);
 
 	return err;

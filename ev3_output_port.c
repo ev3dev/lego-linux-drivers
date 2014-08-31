@@ -350,39 +350,35 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 				port->motor_type = MOTOR_TACHO;
 			}
 
-		        port->con_state = CON_STATE_DEVICE_CONNECTED;
+			port->con_state = CON_STATE_DEVICE_CONNECTED;
 		}
 
 		break;
 
- 	case CON_STATE_DEVICE_CONNECTED:
-
+	case CON_STATE_DEVICE_CONNECTED:
 		port->timer_loop_cnt = 0;
-		if (port->motor_type != MOTOR_ERR) {
-			PREPARE_WORK(&port->work, ev3_output_port_register_motor);
+		if (port->motor_type != MOTOR_ERR && !work_busy(&port->work)) {
+			INIT_WORK(&port->work, ev3_output_port_register_motor);
 			schedule_work(&port->work);
-                }
-		port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
-
+			port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+		}
 		break;
 
- 	case CON_STATE_WAITING_FOR_DISCONNECT:
-
+	case CON_STATE_WAITING_FOR_DISCONNECT:
 		new_pin5_mv = legoev3_analog_out_pin5_value(port->analog, port->id);
 
 		if (gpio_get_value(port->gpio[GPIO_PIN6_DIR].gpio))
- 			port->timer_loop_cnt = 0;
+			port->timer_loop_cnt = 0;
 
 		if ((new_pin5_mv < PIN5_BALANCE_LOW) || (new_pin5_mv > PIN5_BALANCE_HIGH))
- 			port->timer_loop_cnt = 0;
+			port->timer_loop_cnt = 0;
 
 		if ((port->timer_loop_cnt >= REMOVE_CNT) && !work_busy(&port->work) && (port->motor)) {
-			PREPARE_WORK(&port->work, ev3_output_port_unregister_motor);
+			INIT_WORK(&port->work, ev3_output_port_unregister_motor);
 			schedule_work(&port->work);
-
 			port->con_state = CON_STATE_INIT;
-                }
-                break;
+		}
+		break;
 
 	default:
 		port->con_state = CON_STATE_INIT;
@@ -394,9 +390,9 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 
 static int ev3_output_port_probe(struct legoev3_port_device *pdev)
 {
- 	struct ev3_output_port_data *port;
- 	struct ev3_output_port_platform_data *pdata = pdev->dev.platform_data;
-        struct pwm_device *pwm;
+	struct ev3_output_port_data *port;
+	struct ev3_output_port_platform_data *pdata = pdev->dev.platform_data;
+	struct pwm_device *pwm;
 	int err;
 
 	if (WARN(!pdata, "Platform data is required."))
@@ -408,11 +404,11 @@ static int ev3_output_port_probe(struct legoev3_port_device *pdev)
 
 	port->id = pdata->id;
 	port->pdev = pdev;
- 	port->analog = get_legoev3_analog();
+	port->analog = get_legoev3_analog();
 	if (IS_ERR(port->analog)) {
 		dev_err(&pdev->dev, "Could not get legoev3-analog device.\n");
 		err = PTR_ERR(port->analog);
-		goto request_legoev3_analog_fail;
+		goto err_request_legoev3_analog;
 	}
 
 	port->gpio[GPIO_PIN1].gpio	= pdata->pin1_gpio;
@@ -438,18 +434,15 @@ static int ev3_output_port_probe(struct legoev3_port_device *pdev)
 	err = gpio_request_array(port->gpio, ARRAY_SIZE(port->gpio));
 	if (err) {
 		dev_err(&pdev->dev, "Requesting GPIOs failed.\n");
-		goto gpio_request_array_fail;
- 	}
+		goto err_gpio_request_array;
+	}
 
- 	err = dev_set_drvdata(&pdev->dev, port);
-	if (err)
-		goto dev_set_drvdata_fail;
-
+	dev_set_drvdata(&pdev->dev, port);
 	INIT_WORK(&port->work, NULL);
- 
+
 	port->con_state = CON_STATE_INIT;
 
-        /* Set up the connect/disconnect poll timer */
+	/* Set up the connect/disconnect poll timer */
 
 	hrtimer_init(&port->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	port->timer.function = ev3_output_port_timer_callback;
@@ -464,13 +457,6 @@ static int ev3_output_port_probe(struct legoev3_port_device *pdev)
 			__func__, PTR_ERR(pwm));
 		err = PTR_ERR(pwm);
 		goto err_pwm_get;
-	}
-
-	err = pwm_set_polarity(pwm, PWM_POLARITY_INVERSED);
-	if (err) {
-		dev_err(&pdev->dev, "%s: Failed to set pwm polarity! (%d)\n",
-			__func__, err);
-		goto err_pwm_set_polarity;
 	}
 
 	err = pwm_config(pwm, 0, NSEC_PER_SEC / 10000);
@@ -493,15 +479,13 @@ static int ev3_output_port_probe(struct legoev3_port_device *pdev)
 
 err_pwm_start:
 err_pwm_config:
-err_pwm_set_polarity:
 	pwm_put(pwm);
-   err_pwm_get:
+err_pwm_get:
 	hrtimer_cancel(&port->timer);
-   dev_set_drvdata_fail:
- 	gpio_free_array(port->gpio, ARRAY_SIZE(port->gpio));
-   gpio_request_array_fail:
+	gpio_free_array(port->gpio, ARRAY_SIZE(port->gpio));
+err_gpio_request_array:
 	put_legoev3_analog(port->analog);
-   request_legoev3_analog_fail:
+err_request_legoev3_analog:
 	kfree(port);
 
 	return err;

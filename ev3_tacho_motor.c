@@ -1871,23 +1871,20 @@ static int ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 
 	err = register_tacho_motor(&ev3_tm->tm, &motor->dev);
 	if (err)
-		goto register_tacho_motor_fail;
+		goto err_register_tacho_motor;
 
-	err = dev_set_drvdata(&motor->dev, ev3_tm);
-	if (err)
-		goto dev_set_drvdata_fail;
+	dev_set_drvdata(&motor->dev, ev3_tm);
 
 	dev_info(&motor->dev, "A Tacho Motor connected to port %s gpio %d irq %d\n",
-		dev_name(&ev3_tm->out_port->dev),
-                pdata->tacho_int_gpio,
-                gpio_to_irq(pdata->tacho_int_gpio));
+		 dev_name(&ev3_tm->out_port->dev),
+		 pdata->tacho_int_gpio,
+		 gpio_to_irq(pdata->tacho_int_gpio));
 
-        // Here's where we set up the port pins on a per-port basis
-        
-        if(request_irq(gpio_to_irq(pdata->tacho_int_gpio), tacho_motor_isr, 0, dev_name(&ev3_tm->out_port->dev), ev3_tm ))
-		goto dev_request_irq_fail;
+	/* Here's where we set up the port pins on a per-port basis */
+	if(request_irq(gpio_to_irq(pdata->tacho_int_gpio), tacho_motor_isr, 0, dev_name(&ev3_tm->out_port->dev), ev3_tm ))
+		goto err_dev_request_irq;
 
-        irq_set_irq_type(gpio_to_irq(pdata->tacho_int_gpio), IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING);
+	irq_set_irq_type(gpio_to_irq(pdata->tacho_int_gpio), IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING);
 
 	hrtimer_init(&ev3_tm->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	ev3_tm->timer.function = ev3_tacho_motor_timer_callback;
@@ -1902,13 +1899,10 @@ static int ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 
 	return 0;
 
-dev_request_irq_fail:
+err_dev_request_irq:
 	dev_set_drvdata(&motor->dev, NULL);
-
-dev_set_drvdata_fail:
 	unregister_tacho_motor(&ev3_tm->tm);
-
-register_tacho_motor_fail:
+err_register_tacho_motor:
 	kfree(ev3_tm);
 
 	return err;

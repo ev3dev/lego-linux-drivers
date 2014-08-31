@@ -41,19 +41,10 @@ static int ev3_uart_sensor_probe(struct legoev3_port_device *pdev)
 	sensor->sensor = sensor;
 	sensor->pdata = pdata;
 
-	err = dev_set_drvdata(&pdev->dev, sensor);
-	if (err)
-		goto dev_set_drvdata_fail;
-
+	dev_set_drvdata(&pdev->dev, sensor);
 	dev_info(&pdev->dev, "Connected to port %s\n", "?");
-//		 dev_name(&sensor->in_port->dev));
 
 	return 0;
-
-dev_set_drvdata_fail:
-	kfree(sensor);
-
-	return err;
 }
 
 static int ev3_uart_sensor_remove(struct legoev3_port_device *pdev)
@@ -61,7 +52,6 @@ static int ev3_uart_sensor_remove(struct legoev3_port_device *pdev)
 	struct ev3_uart_sensor_data *sensor = dev_get_drvdata(&pdev->dev);
 
 	dev_info(&pdev->dev, "Removed from port %s\n", "?");
-//		 dev_name(&sensor->in_port->dev));
 
 	dev_set_drvdata(&pdev->dev, NULL);
 	kfree(sensor);

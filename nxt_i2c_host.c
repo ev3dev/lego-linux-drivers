@@ -46,17 +46,13 @@ static int nxt_i2c_host_probe(struct legoev3_port_device *sensor)
 
 	err = ev3_input_port_register_i2c(nxt_i2c->in_port, &sensor->dev);
 	if (err)
-		goto register_i2c_sensor_fail;
+		goto err_register_i2c_sensor;
 
-	err = dev_set_drvdata(&sensor->dev, nxt_i2c);
-	if (err)
-		goto dev_set_drvdata_fail;
+	dev_set_drvdata(&sensor->dev, nxt_i2c);
 
 	return 0;
 
-dev_set_drvdata_fail:
-	ev3_input_port_unregister_i2c(nxt_i2c->in_port);
-register_i2c_sensor_fail:
+err_register_i2c_sensor:
 	kfree(nxt_i2c);
 
 	return err;

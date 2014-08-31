@@ -123,16 +123,12 @@ static int touch_sensor_probe(struct legoev3_port_device *sensor)
 		goto err_unknown_type_id;
 	}
 
-	err = dev_set_drvdata(&sensor->dev, ts);
-	if (err)
-		goto err_dev_set_drvdata;
-
+	dev_set_drvdata(&sensor->dev, ts);
 	dev_info(&sensor->dev, "Touch sensor connected to port %s\n",
 		 dev_name(&ts->in_port->dev));
 
 	return 0;
 
-err_dev_set_drvdata:
 err_unknown_type_id:
 	unregister_msensor(&ts->ms);
 err_register_msensor:

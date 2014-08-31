@@ -496,11 +496,11 @@ static int legoev3_uart_open(struct tty_struct *tty)
 	/* 2400 baud, 8bits, no parity, 1 stop */
 	tty->termios.c_cflag = B2400 | CS8 | CREAD | HUPCL | CLOCAL;
 	tty->ops->set_termios(tty, &old_termios);
-	tty->ops->tiocmset(tty, 0, ~0); /* clear all */
 	up_write(&tty->termios_rwsem);
+	tty->ops->tiocmset(tty, 0, ~0); /* clear all */
 
 	tty->receive_room = 65536;
-	tty->port->low_latency = 1;
+	tty->port->low_latency = 1; // does not do anything since kernel 3.12
 
 	/* flush any existing data in the buffer */
 	if (tty->ldisc->ops->flush_buffer)
@@ -514,18 +514,18 @@ static void legoev3_uart_close(struct tty_struct *tty)
 {
 	struct legoev3_uart_port_data *port = tty->disc_data;
 
-	if (port->sensor) {
-		unregister_msensor(&port->ms);
-		legoev3_port_device_unregister(port->sensor);
-	}
-	if (port->in_port)
-		put_device(&port->in_port->dev);
 	cancel_delayed_work_sync(&port->send_ack_work);
 	cancel_work_sync(&port->change_bitrate_work);
 	hrtimer_cancel(&port->keep_alive_timer);
 	tasklet_kill(&port->keep_alive_tasklet);
 	if (!completion_done(&port->set_mode_completion))
 		complete(&port->set_mode_completion);
+	if (port->sensor) {
+		unregister_msensor(&port->ms);
+		legoev3_port_device_unregister(port->sensor);
+	}
+	if (port->in_port)
+		put_device(&port->in_port->dev);
 	tty->disc_data = NULL;
 	kfree(port);
 }

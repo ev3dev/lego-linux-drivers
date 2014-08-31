@@ -124,10 +124,7 @@ static int nxt_light_sensor_probe(struct legoev3_port_device *sensor)
 
 	ev3_input_port_register_analog_cb(ls->in_port, nxt_light_sensor_cb, ls);
 
-	err = dev_set_drvdata(&sensor->dev, ls);
-	if (err)
-		goto err_dev_set_drvdata;
-
+	dev_set_drvdata(&sensor->dev, ls);
 	nxt_light_sensor_set_mode(ls, 0);
 
 	dev_info(&sensor->dev, "Light sensor connected to port %s\n",
@@ -135,8 +132,6 @@ static int nxt_light_sensor_probe(struct legoev3_port_device *sensor)
 
 	return 0;
 
-err_dev_set_drvdata:
-	unregister_msensor(&ls->ms);
 err_register_msensor:
 	kfree(ls);
 

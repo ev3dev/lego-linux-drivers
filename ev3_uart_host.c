@@ -41,16 +41,11 @@ static int ev3_uart_host_probe(struct legoev3_port_device *host)
 	if (err)
 		goto err_ev3_input_port_enable_uart;
 
-	err = dev_set_drvdata(&host->dev, ev3_uart);
-	if (err)
-		goto err_dev_set_drvdata;
-
+	dev_set_drvdata(&host->dev, ev3_uart);
 	dev_info(&host->dev, "Started.\n");
 
 	return 0;
 
-err_dev_set_drvdata:
-	ev3_input_port_disable_uart(ev3_uart->in_port);
 err_ev3_input_port_enable_uart:
 	kfree(ev3_uart);
 
