@@ -147,12 +147,13 @@ void nxt_i2c_sensor_poll_work(struct work_struct *work)
 }
 
 static int nxt_i2c_sensor_probe(struct i2c_client *client,
-                                          const struct i2c_device_id *id)
+				const struct i2c_device_id *id)
 {
 	struct nxt_i2c_sensor_data *sensor;
 	struct i2c_legoev3_platform_data *apdata =
 					client->adapter->dev.platform_data;
 	struct nxt_i2c_sensor_info *sensor_info = NULL;
+	char version[NXT_I2C_ID_STR_LEN + 1] = { 0 };
 	int err, i;
 
 	if (WARN(!apdata, "Adapter platform data is required."))
@@ -197,8 +198,14 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 	sensor->info.ms.set_poll_ms = nxt_i2c_sensor_set_poll_ms;
 	sensor->info.ms.context = sensor;
 	i2c_smbus_read_i2c_block_data(client, NXT_I2C_FW_VER_REG,
-				      NXT_I2C_ID_STR_LEN,
-				      sensor->info.ms.fw_version);
+				      NXT_I2C_ID_STR_LEN, version);
+	/*
+	 * HiTechnic sensors have 0xfd before the version because of an early
+	 * bug in the NXT I2C code where register 0x00 could not be read
+	 * reliably. So, we just ignore it along with the whitespace.
+	 */
+	strncpy(sensor->info.ms.fw_version, strim(version[0] == 0xfd ?
+		(version + 1) : version), NXT_I2C_ID_STR_LEN);
 	sensor->info.ms.i2c_addr = client->addr;
 
 	for (i = 0; i < sensor->info.ms.num_modes; i++) {
