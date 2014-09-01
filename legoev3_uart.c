@@ -14,6 +14,7 @@
  */
 
 #include <linux/bitops.h>
+#include <linux/circ_buf.h>
 #include <linux/hrtimer.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
@@ -29,7 +30,9 @@
 #define debug_pr(fmt, ...) while(0) { }
 #endif
 
-#define LEGOEV3_UART_BUFFER_SIZE	256
+#define LEGOEV3_UART_BUFFER_SIZE	256 /* must be power of 2 for circ_buf macros */
+#define LEGOEV3_UART_MAX_DATA_SIZE	32
+#define LEGOEV3_UART_MAX_MESSAGE_SIZE	(LEGOEV3_UART_MAX_DATA_SIZE + 2)
 
 #define LEGOEV3_UART_MSG_TYPE_MASK	0xC0
 #define LEGOEV3_UART_CMD_SIZE(byte)	(1 << ((byte >> 3) & 0x7))
@@ -122,8 +125,12 @@ enum legoev3_uart_info_flags {
  * @tty: Pointer to the tty device that the sensor is connected to
  * @sensor: The real sensor device.
  * @in_port: The input port device associated with this tty.
+ * @ms: The msensor class structure for the sensor.
+ * @rx_data_tasklet: Takslet for proccessing the data received.
  * @send_ack_work: Used to send ACK after a delay.
  * @change_bitrate_work: Used to change the baud rate after a delay.
+ * @unregister_sensor_work: Used to unregister sensor if no data is received
+ * 	for a long time.
  * @keep_alive_timer: Sends a NACK every 100usec when a sensor is connected.
  * @keep_alive_tasklet: Does the actual sending of the NACK.
  * @mode_info: Array of information about each mode of the sensor
@@ -144,6 +151,7 @@ enum legoev3_uart_info_flags {
  * @info_flags: Flags indicating what information has already been read
  * 	from the sensor.
  * @buffer: Byte array to store received data in between receive_buf interrupts.
+ * @circ_buf: Circular buffer struct that points to buffer (above).
  * @write_ptr: The current position in the buffer.
  * @data_watchdog: Watchdog timer for receiving DATA messages.
  * @num_data_err: Number of bad reads when receiving DATA messages.
@@ -152,14 +160,18 @@ enum legoev3_uart_info_flags {
  * 	OK to start receiving DATA messages.
  * @data_rec: Flag that indicates that good DATA message has been received
  * 	since last watchdog timeout.
+ * @closing: Flag to indicate that we are closing the connection and any data
+ * 	received should be ignored.
  */
 struct legoev3_uart_port_data {
 	struct tty_struct *tty;
 	struct legoev3_port_device *sensor;
 	struct legoev3_port_device *in_port;
 	struct msensor_device ms;
+	struct work_struct rx_data_work;
 	struct delayed_work send_ack_work;
 	struct work_struct change_bitrate_work;
+	struct delayed_work unregister_sensor_work;
 	struct hrtimer keep_alive_timer;
 	struct tasklet_struct keep_alive_tasklet;
 	struct completion set_mode_completion;
@@ -175,12 +187,13 @@ struct legoev3_uart_port_data {
 	speed_t new_baud_rate;
 	long unsigned info_flags;
 	u8 buffer[LEGOEV3_UART_BUFFER_SIZE];
-	unsigned write_ptr;
+	struct circ_buf circ_buf;
 	char *last_err;
 	unsigned num_data_err;
 	unsigned synced:1;
 	unsigned info_done:1;
 	unsigned data_rec:1;
+	unsigned closing:1;
 };
 
 u8 legoev3_uart_set_msg_hdr(u8 type, const unsigned long size, u8 cmd)
@@ -280,7 +293,7 @@ int legoev3_uart_set_mode(void *context, const u8 mode)
 	port->new_mode = mode;
 	reinit_completion(&port->set_mode_completion);
 	ret = wait_for_completion_timeout(&port->set_mode_completion,
-					  msecs_to_jiffies(300));
+						msecs_to_jiffies(300));
 	if (!ret)
 		return -ETIMEDOUT;
 
@@ -291,14 +304,14 @@ static ssize_t legoev3_uart_write_data(void *context, char *data, loff_t off,
                                        size_t count)
 {
 	struct tty_struct *tty = context;
-	char uart_data[MSENSOR_RAW_DATA_SIZE + 2];
+	char uart_data[LEGOEV3_UART_MAX_MESSAGE_SIZE];
 	int size, i, err;
 
-	if (off != 0 || count > MSENSOR_RAW_DATA_SIZE)
+	if (off != 0 || count > LEGOEV3_UART_MAX_DATA_SIZE)
 		return -EINVAL;
 	if (count == 0)
 		return count;
-	memset(uart_data + 1, 0, MSENSOR_RAW_DATA_SIZE);
+	memset(uart_data + 1, 0, LEGOEV3_UART_MAX_DATA_SIZE);
 	memcpy(uart_data + 1, data, count);
 	if (count <= 2)
 		size = count;
@@ -345,6 +358,8 @@ static void legoev3_uart_send_ack(struct work_struct *work)
 	struct device *in_port_dev;
 	int err;
 
+	cancel_delayed_work_sync(&port->unregister_sensor_work);
+	legoev3_uart_write_byte(port->tty, LEGOEV3_UART_SYS_ACK);
 	if (!port->sensor && port->ms.type_id <= LEGOEV3_UART_TYPE_MAX) {
 		sensor = legoev3_port_device_register(
 				"ev3-uart-sensor",
@@ -382,15 +397,16 @@ static void legoev3_uart_send_ack(struct work_struct *work)
 			dev_err(port->tty->dev,
 				"Could not register UART sensor on tty %s",
 				port->tty->name);
-			legoev3_port_device_unregister(sensor);
 			port->sensor = NULL;
+			legoev3_port_device_unregister(sensor);
 			return;
 		}
+		schedule_delayed_work(&port->unregister_sensor_work,
+						msecs_to_jiffies(10000));
 	} else
 		dev_err(port->tty->dev, "Reconnected due to: %s\n",
 			port->last_err);
 
-	legoev3_uart_write_byte(port->tty, LEGOEV3_UART_SYS_ACK);
 	schedule_work(&port->change_bitrate_work);
 }
 
@@ -408,11 +424,25 @@ static void legoev3_uart_change_bitrate(struct work_struct *work)
 		port->tty->ops->set_termios(port->tty, &old_termios);
 	up_write(&port->tty->termios_rwsem);
 	if (port->info_done) {
-		hrtimer_start(&port->keep_alive_timer,
-			ktime_set(0, LEGOEV3_UART_DATA_KEEP_ALIVE_TIMEOUT / 2
-				     * 1000000),
-			HRTIMER_MODE_REL);
+		hrtimer_start(&port->keep_alive_timer, ktime_set(0, 1000000),
+							HRTIMER_MODE_REL);
 	}
+}
+
+static void legoev3_uart_unregister_sensor(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct legoev3_uart_port_data *port =
+		container_of(dwork, struct legoev3_uart_port_data, unregister_sensor_work);
+	struct legoev3_port_device *sensor = port->sensor;
+
+	if (sensor == NULL)
+		return;
+
+	port->sensor = NULL;
+	unregister_msensor(&port->ms);
+	memset(&port->ms, 0, sizeof(struct msensor_device));
+	legoev3_port_device_unregister(sensor);
 }
 
 static void legoev3_uart_send_keep_alive(unsigned long data)
@@ -444,6 +474,425 @@ enum hrtimer_restart legoev3_uart_keep_alive_timer_callback(struct hrtimer *time
 	return HRTIMER_RESTART;
 }
 
+static void legoev3_uart_handle_rx_data(struct work_struct *work)
+{
+	struct legoev3_uart_port_data *port =
+		container_of(work, struct legoev3_uart_port_data, rx_data_work);
+	struct circ_buf *cb = &port->circ_buf;
+	char message[LEGOEV3_UART_MAX_MESSAGE_SIZE + 2];
+	int count = CIRC_CNT(cb->head, cb->tail, LEGOEV3_UART_BUFFER_SIZE);
+	int i, speed, size_to_end;
+	u8 cmd, cmd2, type, mode, msg_type, msg_size, chksum;
+
+#ifdef DEBUG
+	printk("received: ");
+	for (i = 0; i < count; i++)
+		printk("0x%02x ", cb->buf[(cb->tail + i) % LEGOEV3_UART_BUFFER_SIZE]);
+#endif
+
+	/*
+	 * To get in sync with the data stream from the sensor, we look
+	 * for a valid TYPE command.
+	 */
+	while (!port->synced) {
+		if (count < 3)
+			return;
+		cmd = cb->buf[cb->tail];
+		cb->tail++;
+		if (cb->tail >= LEGOEV3_UART_BUFFER_SIZE)
+			cb->tail = 0;
+		count--;
+		if (cmd != (LEGOEV3_UART_MSG_TYPE_CMD | LEGOEV3_UART_CMD_TYPE))
+			continue;
+		type = cb->buf[cb->tail];
+		if (!type || type > LEGOEV3_UART_TYPE_MAX)
+			continue;
+		chksum = 0xFF ^ cmd ^ type;
+		if (cb->buf[(cb->tail + 1) % LEGOEV3_UART_BUFFER_SIZE] != chksum)
+			continue;
+		port->ms.num_modes = 1;
+		port->ms.num_view_modes = 1;
+		for (i = 0; i <= MSENSOR_MODE_MAX; i++)
+			port->mode_info[i] = legoev3_uart_default_mode_info;
+		port->ms.type_id = type;
+		port->info_flags = LEGOEV3_UART_INFO_FLAG_CMD_TYPE;
+		port->synced = 1;
+		port->info_done = 0;
+		port->data_rec = 0;
+		port->num_data_err = 0;
+		cb->tail = (cb->tail + 2) % LEGOEV3_UART_BUFFER_SIZE;
+		count -= 2;
+	}
+	if (!port->synced)
+		return;
+
+	while (count > 0)
+	{
+		/*
+		 * Sometimes we get 0xFF after switching baud rates, so just
+		 * ignore it.
+		 */
+		if (cb->buf[cb->tail] == 0xFF) {
+
+			cb->tail++;
+			if (cb->tail >= LEGOEV3_UART_BUFFER_SIZE)
+				cb->tail = 0;
+			count--;
+			continue;
+		}
+		msg_size = legoev3_uart_msg_size(cb->buf[cb->tail]);
+		if (msg_size > count)
+			break;
+		size_to_end = CIRC_CNT_TO_END(cb->head, cb->tail, LEGOEV3_UART_BUFFER_SIZE);
+		if (msg_size > size_to_end) {
+			memcpy(message, cb->buf + cb->tail, size_to_end);
+			memcpy(message + size_to_end, cb->buf, msg_size - size_to_end);
+			cb->tail = msg_size - size_to_end;
+		} else {
+			memcpy(message, cb->buf + cb->tail, msg_size);
+			cb->tail += msg_size;
+			if (cb->tail >= LEGOEV3_UART_BUFFER_SIZE)
+				cb->tail = 0;
+		}
+		count -= msg_size;
+#ifdef DEBUG
+		printk("processing: ");
+		for (i = 0; i < port->write_ptr; i++)
+			printk("0x%02x ", message[i]);
+		printk(" (%d)\n", port->write_ptr);
+		printk("msg_size:%d\n", msg_size);
+#endif
+		if (msg_size > LEGOEV3_UART_MAX_MESSAGE_SIZE) {
+			port->last_err = "Bad message size.";
+			goto err_invalid_state;
+		}
+		msg_type = message[0] & LEGOEV3_UART_MSG_TYPE_MASK;
+		cmd = message[0] & LEGOEV3_UART_MSG_CMD_MASK;
+		mode = cmd;
+		cmd2 = message[1];
+		if (msg_size > 1) {
+			chksum = 0xFF;
+			for (i = 0; i < msg_size - 1; i++)
+				chksum ^= message[i];
+			debug_pr("chksum:%d, actual:%d\n",
+			         chksum, message[msg_size - 1]);
+			/*
+			 * The LEGO EV3 color sensor (type 29) sends bad checksums
+			 * for RGB-RAW data (mode 4). The check here could be
+			 * improved if someone can find a pattern.
+			 */
+			if (chksum != message[msg_size - 1]
+			    && port->ms.type_id != 29 && message[0] != 0xDC)
+			{
+				port->last_err = "Bad checksum.";
+				if (port->info_done) {
+					port->num_data_err++;
+					goto err_bad_data_msg_checksum;
+				} else
+					goto err_invalid_state;
+			}
+		}
+		switch (msg_type) {
+		case LEGOEV3_UART_MSG_TYPE_SYS:
+			debug_pr("SYS:%d\n", message[0] & LEGOEV3_UART_MSG_CMD_MASK);
+			switch(cmd) {
+			case LEGOEV3_UART_SYS_SYNC:
+				/* IR sensor (type 33) sends checksum after SYNC */
+				if (msg_size > 1 && (cmd ^ cmd2) == 0xFF)
+					msg_size++;
+				break;
+			case LEGOEV3_UART_SYS_ACK:
+				if (!port->ms.num_modes) {
+					port->last_err = "Received ACK before all mode INFO.";
+					goto err_invalid_state;
+				}
+				if ((port->info_flags & LEGOEV3_UART_INFO_FLAG_REQUIRED)
+				    != LEGOEV3_UART_INFO_FLAG_REQUIRED)
+				{
+					port->last_err = "Did not receive all required INFO.";
+					goto err_invalid_state;
+				}
+				schedule_delayed_work(&port->send_ack_work,
+						      msecs_to_jiffies(LEGOEV3_UART_SEND_ACK_DELAY));
+				port->info_done = 1;
+				return;
+			}
+			break;
+		case LEGOEV3_UART_MSG_TYPE_CMD:
+			debug_pr("CMD:%d\n", cmd);
+			switch (cmd) {
+			case LEGOEV3_UART_CMD_MODES:
+				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_CMD_MODES,
+						     &port->info_flags))
+				{
+					port->last_err = "Received duplicate modes INFO.";
+					goto err_invalid_state;
+				}
+				if (!cmd2 || cmd2 > MSENSOR_MODE_MAX) {
+					port->last_err = "Number of modes is out of range.";
+					goto err_invalid_state;
+				}
+				port->ms.num_modes = cmd2 + 1;
+				if (msg_size > 3)
+					port->ms.num_view_modes = message[2] + 1;
+				else
+					port->ms.num_view_modes = port->ms.num_modes;
+				debug_pr("num_modes:%d, num_view_modes:%d\n",
+					 port->ms.num_modes, port->ms.num_view_modes);
+				break;
+			case LEGOEV3_UART_CMD_SPEED:
+				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_CMD_SPEED,
+						     &port->info_flags))
+				{
+					port->last_err = "Received duplicate speed INFO.";
+					goto err_invalid_state;
+				}
+				speed = *(int*)(message + 1);
+				if (speed < LEGOEV3_UART_SPEED_MIN
+				    || speed > LEGOEV3_UART_SPEED_MAX)
+				{
+					port->last_err = "Speed is out of range.";
+					goto err_invalid_state;
+				}
+				port->new_baud_rate = speed;
+				debug_pr("speed:%d\n", speed);
+				break;
+			default:
+				port->last_err = "Unknown command.";
+				goto err_invalid_state;
+			}
+			break;
+		case LEGOEV3_UART_MSG_TYPE_INFO:
+			debug_pr("INFO:%d, mode:%d\n", cmd2, mode);
+			switch (cmd2) {
+			case LEGOEV3_UART_INFO_NAME:
+				port->info_flags &= ~LEGOEV3_UART_INFO_FLAG_ALL_INFO;
+				if (message[2] < 'A' || message[2] > 'z') {
+					port->last_err = "Invalid name INFO.";
+					goto err_invalid_state;
+				}
+				/*
+				 * Name may not have null terminator and we
+				 * are done with the checksum at this point
+				 * so we are writing 0 over the checksum to
+				 * ensure a null terminator for the string
+				 * functions.
+				 */
+				message[msg_size - 1] = 0;
+				if (strlen(message + 2) > LEGOEV3_UART_MODE_NAME_SIZE) {
+					port->last_err = "Name is too long.";
+					goto err_invalid_state;
+				}
+				snprintf(port->mode_info[mode].name,
+				         LEGOEV3_UART_MODE_NAME_SIZE + 1, "%s",
+				         message + 2);
+				port->mode = mode;
+				port->info_flags |= LEGOEV3_UART_INFO_FLAG_INFO_NAME;
+				debug_pr("mode %d name:%s\n",
+				       mode, port->mode_info[mode].port_name);
+				break;
+			case LEGOEV3_UART_INFO_RAW:
+				if (port->mode != mode) {
+					port->last_err = "Received INFO for incorrect mode.";
+					goto err_invalid_state;
+				}
+				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_INFO_RAW,
+						     &port->info_flags))
+				{
+					port->last_err = "Received duplicate raw scaling INFO.";
+					goto err_invalid_state;
+				}
+				port->raw_min = *(u32 *)(message + 2);
+				port->raw_max = *(u32 *)(message + 6);
+				debug_pr("mode %d raw_min:%08x, raw_max:%08x\n",
+				       mode, port->mode_info[mode].raw_min,
+				       port->mode_info[mode].raw_max);
+				break;
+			case LEGOEV3_UART_INFO_PCT:
+				if (port->mode != mode) {
+					port->last_err = "Received INFO for incorrect mode.";
+					goto err_invalid_state;
+				}
+				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_INFO_PCT,
+						     &port->info_flags))
+				{
+					port->last_err = "Received duplicate percent scaling INFO.";
+					goto err_invalid_state;
+				}
+				port->pct_min = *(u32 *)(message + 2);
+				port->pct_max = *(u32 *)(message + 6);
+				debug_pr("mode %d pct_min:%08x, pct_max:%08x\n",
+				       mode, port->mode_info[mode].pct_min,
+				       port->mode_info[mode].pct_max);
+				break;
+			case LEGOEV3_UART_INFO_SI:
+				if (port->mode != mode) {
+					port->last_err = "Received INFO for incorrect mode.";
+					goto err_invalid_state;
+				}
+				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_INFO_SI,
+						     &port->info_flags))
+				{
+					port->last_err = "Received duplicate SI scaling INFO.";
+					goto err_invalid_state;
+				}
+				port->si_min = *(u32 *)(message + 2);
+				port->si_max = *(u32 *)(message + 6);
+				debug_pr("mode %d si_min:%08x, si_max:%08x\n",
+				       mode, port->mode_info[mode].si_min,
+				       port->mode_info[mode].si_max);
+				break;
+			case LEGOEV3_UART_INFO_UNITS:
+				if (port->mode != mode) {
+					port->last_err = "Received INFO for incorrect mode.";
+					goto err_invalid_state;
+				}
+				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_INFO_UNITS,
+						     &port->info_flags))
+				{
+					port->last_err = "Received duplicate SI units INFO.";
+					goto err_invalid_state;
+				}
+				/*
+				 * Units may not have null terminator and we
+				 * are done with the checksum at this point
+				 * so we are writing 0 over the checksum to
+				 * ensure a null terminator for the string
+				 * functions.
+				 */
+				message[msg_size - 1] = 0;
+				snprintf(port->mode_info[mode].units,
+					 MSENSOR_UNITS_SIZE + 1, "%s",
+					 message + 2);
+				debug_pr("mode %d units:%s\n",
+				       mode, port->mode_info[mode].units);
+				break;
+			case LEGOEV3_UART_INFO_FORMAT:
+				if (port->mode != mode) {
+					port->last_err = "Received INFO for incorrect mode.";
+					goto err_invalid_state;
+				}
+				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_INFO_FORMAT,
+						     &port->info_flags))
+				{
+					port->last_err = "Received duplicate format INFO.";
+					goto err_invalid_state;
+				}
+				port->mode_info[mode].data_sets = message[2];
+				if (!port->mode_info[mode].data_sets) {
+					port->last_err = "Invalid number of data sets.";
+					goto err_invalid_state;
+				}
+				if (msg_size < 7) {
+					port->last_err = "Invalid format message size.";
+					goto err_invalid_state;
+				}
+				if ((port->info_flags & LEGOEV3_UART_INFO_FLAG_REQUIRED)
+						!= LEGOEV3_UART_INFO_FLAG_REQUIRED) {
+					port->last_err = "Did not receive all required INFO.";
+					goto err_invalid_state;
+				}
+				switch (message[3]) {
+				case LEGOEV3_UART_DATA_8:
+					port->mode_info[mode].data_type = MSENSOR_DATA_S8;
+					break;
+				case LEGOEV3_UART_DATA_16:
+					port->mode_info[mode].data_type = MSENSOR_DATA_S16;
+					break;
+				case LEGOEV3_UART_DATA_32:
+					port->mode_info[mode].data_type = MSENSOR_DATA_S32;
+					break;
+				case LEGOEV3_UART_DATA_FLOAT:
+					port->mode_info[mode].data_type = MSENSOR_DATA_FLOAT;
+					break;
+				default:
+					port->last_err = "Invalid data type.";
+					goto err_invalid_state;
+				}
+				port->mode_info[mode].figures = message[4];
+				port->mode_info[mode].decimals = message[5];
+				if (port->info_flags & LEGOEV3_UART_INFO_FLAG_INFO_RAW) {
+					port->mode_info[mode].raw_min =
+						msensor_ftoi(port->raw_min, 0);
+					port->mode_info[mode].raw_max =
+						msensor_ftoi(port->raw_max, 0);
+				}
+				if (port->info_flags & LEGOEV3_UART_INFO_FLAG_INFO_PCT) {
+					port->mode_info[mode].pct_min =
+						msensor_ftoi(port->pct_min, 0);
+					port->mode_info[mode].pct_max =
+						msensor_ftoi(port->pct_max, 0);
+				}
+				if (port->info_flags & LEGOEV3_UART_INFO_FLAG_INFO_SI) {
+					port->mode_info[mode].si_min =
+						msensor_ftoi(port->si_min,
+							port->mode_info[mode].decimals);
+					port->mode_info[mode].si_max =
+						msensor_ftoi(port->si_max,
+							port->mode_info[mode].decimals);
+				}
+				if (port->mode)
+					port->mode--;
+				debug_pr("mode %d - data_sets:%d, data_type:%d, figures:%d, decimals:%d\n",
+					 mode, port->mode_info[mode].data_sets,
+					 port->mode_info[mode].data_type,
+					 port->mode_info[mode].figures,
+					 port->mode_info[mode].decimals);
+				debug_pr("raw_min: %d, raw_max: %d\n",
+					 port->mode_info[mode].raw_min,
+					 port->mode_info[mode].raw_max);
+				debug_pr("pct_min: %d, pct_max: %d\n",
+					 port->mode_info[mode].pct_min,
+					 port->mode_info[mode].pct_max);
+				debug_pr("si_min: %d, si_max: %d\n",
+					 port->mode_info[mode].si_min,
+					 port->mode_info[mode].si_max);
+				break;
+			}
+			break;
+		case LEGOEV3_UART_MSG_TYPE_DATA:
+			debug_pr("DATA:%d\n", message[0] & LEGOEV3_UART_MSG_CMD_MASK);
+			if (!port->info_done) {
+				port->last_err = "Received DATA before INFO was complete.";
+				goto err_invalid_state;
+			}
+			if (mode > MSENSOR_MODE_MAX) {
+				port->last_err = "Invalid mode received.";
+				goto err_invalid_state;
+			}
+			if (mode != port->mode) {
+				if (mode == port->new_mode)
+					port->mode = mode;
+				else {
+					port->last_err = "Unexpected mode.";
+					goto err_invalid_state;
+				}
+			}
+			if (!completion_done(&port->set_mode_completion)
+			    && mode == port->new_mode)
+				complete(&port->set_mode_completion);
+			memcpy(port->mode_info[mode].raw_data, message + 1, msg_size - 2);
+			port->data_rec = 1;
+			if (port->num_data_err)
+				port->num_data_err--;
+			break;
+		}
+err_bad_data_msg_checksum:
+		if (port->info_done && port->num_data_err > LEGOEV3_UART_MAX_DATA_ERR)
+			goto err_invalid_state;
+		count = CIRC_CNT(cb->head, cb->tail, LEGOEV3_UART_BUFFER_SIZE);
+		if (port->sensor)
+			mod_delayed_work(system_wq, &port->unregister_sensor_work,
+							msecs_to_jiffies(10000));
+	}
+	return;
+
+err_invalid_state:
+	port->synced = 0;
+	port->new_baud_rate = LEGOEV3_UART_SPEED_MIN;
+	schedule_work(&port->change_bitrate_work);
+}
+
 static int legoev3_uart_open(struct tty_struct *tty)
 {
 	struct ktermios old_termios = tty->termios;
@@ -460,8 +909,11 @@ static int legoev3_uart_open(struct tty_struct *tty)
 	port->ms.get_mode = legoev3_uart_get_mode;
 	port->ms.set_mode = legoev3_uart_set_mode;
 	port->ms.write_data = legoev3_uart_write_data;
+	port->circ_buf.buf = port->buffer;
+	INIT_WORK(&port->rx_data_work, legoev3_uart_handle_rx_data);
 	INIT_DELAYED_WORK(&port->send_ack_work, legoev3_uart_send_ack);
 	INIT_WORK(&port->change_bitrate_work, legoev3_uart_change_bitrate);
+	INIT_DELAYED_WORK(&port->unregister_sensor_work, legoev3_uart_unregister_sensor);
 	hrtimer_init(&port->keep_alive_timer, HRTIMER_BASE_MONOTONIC, HRTIMER_MODE_REL);
 	port->keep_alive_timer.function = legoev3_uart_keep_alive_timer_callback;
 	tasklet_init(&port->keep_alive_tasklet, legoev3_uart_send_keep_alive,
@@ -514,12 +966,15 @@ static void legoev3_uart_close(struct tty_struct *tty)
 {
 	struct legoev3_uart_port_data *port = tty->disc_data;
 
+	port->closing = true;
+	if (!completion_done(&port->set_mode_completion))
+		complete(&port->set_mode_completion);
+	cancel_work_sync(&port->rx_data_work);
 	cancel_delayed_work_sync(&port->send_ack_work);
 	cancel_work_sync(&port->change_bitrate_work);
 	hrtimer_cancel(&port->keep_alive_timer);
 	tasklet_kill(&port->keep_alive_tasklet);
-	if (!completion_done(&port->set_mode_completion))
-		complete(&port->set_mode_completion);
+	cancel_delayed_work_sync(&port->unregister_sensor_work);
 	if (port->sensor) {
 		unregister_msensor(&port->ms);
 		legoev3_port_device_unregister(port->sensor);
@@ -537,425 +992,30 @@ static int legoev3_uart_ioctl(struct tty_struct *tty, struct file *file,
 }
 
 static void legoev3_uart_receive_buf(struct tty_struct *tty,
-                                     const unsigned char *cp, char *fp,
-                                     int count)
+				     const unsigned char *cp, char *fp,
+				     int count)
 {
 	struct legoev3_uart_port_data *port = tty->disc_data;
-	int i = 0;
-	int j, speed;
-	u8 cmd, cmd2, type, mode, msg_type, msg_size, chksum;
+	struct circ_buf *cb = &port->circ_buf;
+	int size;
 
-#ifdef DEBUG
-	printk("received: ");
-	for (i = 0; i < count; i++)
-		printk("0x%02x ", cp[i]);
-	printk(" (%d)\n", count);
-	i=0;
-#endif
-
-	/*
-	 * To get in sync with the data stream from the sensor, we look
-	 * for a valid TYPE command.
-	 */
-	while (!port->synced) {
-		if (i + 2 >= count)
-			return;
-		cmd = cp[i++];
-		if (cmd != (LEGOEV3_UART_MSG_TYPE_CMD | LEGOEV3_UART_CMD_TYPE))
-			continue;
-		type = cp[i];
-		if (!type || type > LEGOEV3_UART_TYPE_MAX)
-			continue;
-		chksum = 0xFF ^ cmd ^ type;
-		if (cp[i + 1] != chksum)
-			continue;
-		port->ms.num_modes = 1;
-		port->ms.num_view_modes = 1;
-		for (j = 0; j <= MSENSOR_MODE_MAX; j++)
-			port->mode_info[j] = legoev3_uart_default_mode_info;
-		port->ms.type_id = type;
-		port->info_flags = LEGOEV3_UART_INFO_FLAG_CMD_TYPE;
-		port->synced = 1;
-		port->info_done = 0;
-		port->write_ptr = 0;
-		port->data_rec = 0;
-		port->num_data_err = 0;
-		i += 2;
-	}
-	if (!port->synced)
+	if (port->closing)
 		return;
 
-	/*
-	 * Once we are synced, we keep reading data until we have read
-	 * a complete command.
-	 */
-	while (i < count) {
-		if (port->write_ptr >= LEGOEV3_UART_BUFFER_SIZE) {
-			port->last_err = "Receive buffer overrun.";
-			goto err_invalid_state;
-		}
-		port->buffer[port->write_ptr++] = cp[i++];
+	if (count > CIRC_SPACE(cb->head, cb->tail, LEGOEV3_UART_BUFFER_SIZE))
+		return;
+
+	size = CIRC_SPACE_TO_END(cb->head, cb->tail, LEGOEV3_UART_BUFFER_SIZE);
+	if (count > size) {
+		memcpy(cb->buf + cb->head, cp, size);
+		memcpy(cb->buf, cp + size, count - size);
+		cb->head = count - size;
+	} else {
+		memcpy(cb->buf + cb->head, cp, count);
+		cb->head += count;
 	}
 
-	/*
-	 * Process all complete messages that have been received.
-	 */
-	while ((msg_size = legoev3_uart_msg_size(port->buffer[0]))
-	        <= port->write_ptr)
-	{
-#ifdef DEBUG
-		printk("processing: ");
-		for (i = 0; i < port->write_ptr; i++)
-			printk("0x%02x ", port->buffer[i]);
-		printk(" (%d)\n", port->write_ptr);
-		printk("msg_size:%d\n", msg_size);
-#endif
-		/*
-		 * The IR sensor sends 0xFF after SYNC (0x00). If these two
-		 * bytes get split between two interrupts, then it will throw
-		 * us off and prevent the sensor from being recognized. So,
-		 * if the first byte is 0xFF, we just ignore it and continue
-		 * with our loop.
-		 */
-		if (port->buffer[0] == 0xFF) {
-			msg_size = 1;
-			goto err_split_sync_checksum;
-		}
-		if (msg_size > MSENSOR_RAW_DATA_SIZE + 2) {
-			port->last_err = "Bad message size.";
-			goto err_invalid_state;
-		}
-		msg_type = port->buffer[0] & LEGOEV3_UART_MSG_TYPE_MASK;
-		cmd = port->buffer[0] & LEGOEV3_UART_MSG_CMD_MASK;
-		mode = cmd;
-		cmd2 = port->buffer[1];
-		if (msg_size > 1) {
-			chksum = 0xFF;
-			for (i = 0; i < msg_size - 1; i++)
-				chksum ^= port->buffer[i];
-			debug_pr("chksum:%d, actual:%d\n",
-			         chksum, port->buffer[msg_size - 1]);
-			/*
-			 * The LEGO EV3 color sensor (type 29) sends bad checksums
-			 * for RGB-RAW data (mode 4). The check here could be
-			 * improved if someone can find a pattern.
-			 */
-			if (chksum != port->buffer[msg_size - 1]
-			    && port->ms.type_id != 29 && port->buffer[0] != 0xDC)
-			{
-				port->last_err = "Bad checksum.";
-				if (port->info_done) {
-					port->num_data_err++;
-					goto err_bad_data_msg_checksum;
-				} else
-					goto err_invalid_state;
-			}
-		}
-		switch (msg_type) {
-		case LEGOEV3_UART_MSG_TYPE_SYS:
-			debug_pr("SYS:%d\n", port->buffer[0] & LEGOEV3_UART_MSG_CMD_MASK);
-			switch(cmd) {
-			case LEGOEV3_UART_SYS_SYNC:
-				/* IR sensor (type 33) sends checksum after SYNC */
-				if (msg_size > 1 && (cmd ^ cmd2) == 0xFF)
-					msg_size++;
-				break;
-			case LEGOEV3_UART_SYS_ACK:
-				if (!port->ms.num_modes) {
-					port->last_err = "Received ACK before all mode INFO.";
-					goto err_invalid_state;
-				}
-				if ((port->info_flags & LEGOEV3_UART_INFO_FLAG_REQUIRED)
-				    != LEGOEV3_UART_INFO_FLAG_REQUIRED)
-				{
-					port->last_err = "Did not receive all required INFO.";
-					goto err_invalid_state;
-				}
-				schedule_delayed_work(&port->send_ack_work,
-				                      msecs_to_jiffies(LEGOEV3_UART_SEND_ACK_DELAY));
-				port->info_done = 1;
-				break;
-			}
-			break;
-		case LEGOEV3_UART_MSG_TYPE_CMD:
-			debug_pr("CMD:%d\n", cmd);
-			switch (cmd) {
-			case LEGOEV3_UART_CMD_MODES:
-				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_CMD_MODES,
-						     &port->info_flags))
-				{
-					port->last_err = "Received duplicate modes INFO.";
-					goto err_invalid_state;
-				}
-				if (!cmd2 || cmd2 > MSENSOR_MODE_MAX) {
-					port->last_err = "Number of modes is out of range.";
-					goto err_invalid_state;
-				}
-				port->ms.num_modes = cmd2 + 1;
-				if (msg_size > 3)
-					port->ms.num_view_modes = port->buffer[2] + 1;
-				else
-					port->ms.num_view_modes = port->ms.num_modes;
-				debug_pr("num_modes:%d, num_view_modes:%d\n",
-					 port->ms.num_modes, port->ms.num_view_modes);
-				break;
-			case LEGOEV3_UART_CMD_SPEED:
-				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_CMD_SPEED,
-						     &port->info_flags))
-				{
-					port->last_err = "Received duplicate speed INFO.";
-					goto err_invalid_state;
-				}
-				speed = *(int*)(port->buffer + 1);
-				if (speed < LEGOEV3_UART_SPEED_MIN
-				    || speed > LEGOEV3_UART_SPEED_MAX)
-				{
-					port->last_err = "Speed is out of range.";
-					goto err_invalid_state;
-				}
-				port->new_baud_rate = speed;
-				debug_pr("speed:%d\n", speed);
-				break;
-			default:
-				port->last_err = "Unknown command.";
-				goto err_invalid_state;
-			}
-			break;
-		case LEGOEV3_UART_MSG_TYPE_INFO:
-			debug_pr("INFO:%d, mode:%d\n", cmd2, mode);
-			switch (cmd2) {
-			case LEGOEV3_UART_INFO_NAME:
-				port->info_flags &= ~LEGOEV3_UART_INFO_FLAG_ALL_INFO;
-				if (port->buffer[2] < 'A' || port->buffer[2] > 'z') {
-					port->last_err = "Invalid name INFO.";
-					goto err_invalid_state;
-				}
-				/*
-				 * Name may not have null terminator and we
-				 * are done with the checksum at this point
-				 * so we are writing 0 over the checksum to
-				 * ensure a null terminator for the string
-				 * functions.
-				 */
-				port->buffer[msg_size - 1] = 0;
-				if (strlen(port->buffer + 2) > LEGOEV3_UART_MODE_NAME_SIZE) {
-					port->last_err = "Name is too long.";
-					goto err_invalid_state;
-				}
-				snprintf(port->mode_info[mode].name,
-				         LEGOEV3_UART_MODE_NAME_SIZE + 1, "%s",
-				         port->buffer + 2);
-				port->mode = mode;
-				port->info_flags |= LEGOEV3_UART_INFO_FLAG_INFO_NAME;
-				debug_pr("mode %d name:%s\n",
-				       mode, port->mode_info[mode].port_name);
-				break;
-			case LEGOEV3_UART_INFO_RAW:
-				if (port->mode != mode) {
-					port->last_err = "Received INFO for incorrect mode.";
-					goto err_invalid_state;
-				}
-				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_INFO_RAW,
-						     &port->info_flags))
-				{
-					port->last_err = "Received duplicate raw scaling INFO.";
-					goto err_invalid_state;
-				}
-				port->raw_min = *(u32 *)(port->buffer + 2);
-				port->raw_max = *(u32 *)(port->buffer + 6);
-				debug_pr("mode %d raw_min:%08x, raw_max:%08x\n",
-				       mode, port->mode_info[mode].raw_min,
-				       port->mode_info[mode].raw_max);
-				break;
-			case LEGOEV3_UART_INFO_PCT:
-				if (port->mode != mode) {
-					port->last_err = "Received INFO for incorrect mode.";
-					goto err_invalid_state;
-				}
-				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_INFO_PCT,
-						     &port->info_flags))
-				{
-					port->last_err = "Received duplicate percent scaling INFO.";
-					goto err_invalid_state;
-				}
-				port->pct_min = *(u32 *)(port->buffer + 2);
-				port->pct_max = *(u32 *)(port->buffer + 6);
-				debug_pr("mode %d pct_min:%08x, pct_max:%08x\n",
-				       mode, port->mode_info[mode].pct_min,
-				       port->mode_info[mode].pct_max);
-				break;
-			case LEGOEV3_UART_INFO_SI:
-				if (port->mode != mode) {
-					port->last_err = "Received INFO for incorrect mode.";
-					goto err_invalid_state;
-				}
-				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_INFO_SI,
-						     &port->info_flags))
-				{
-					port->last_err = "Received duplicate SI scaling INFO.";
-					goto err_invalid_state;
-				}
-				port->si_min = *(u32 *)(port->buffer + 2);
-				port->si_max = *(u32 *)(port->buffer + 6);
-				debug_pr("mode %d si_min:%08x, si_max:%08x\n",
-				       mode, port->mode_info[mode].si_min,
-				       port->mode_info[mode].si_max);
-				break;
-			case LEGOEV3_UART_INFO_UNITS:
-				if (port->mode != mode) {
-					port->last_err = "Received INFO for incorrect mode.";
-					goto err_invalid_state;
-				}
-				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_INFO_UNITS,
-						     &port->info_flags))
-				{
-					port->last_err = "Received duplicate SI units INFO.";
-					goto err_invalid_state;
-				}
-				/*
-				 * Units may not have null terminator and we
-				 * are done with the checksum at this point
-				 * so we are writing 0 over the checksum to
-				 * ensure a null terminator for the string
-				 * functions.
-				 */
-				port->buffer[msg_size - 1] = 0;
-				snprintf(port->mode_info[mode].units,
-					 MSENSOR_UNITS_SIZE + 1, "%s",
-					 port->buffer + 2);
-				debug_pr("mode %d units:%s\n",
-				       mode, port->mode_info[mode].units);
-				break;
-			case LEGOEV3_UART_INFO_FORMAT:
-				if (port->mode != mode) {
-					port->last_err = "Received INFO for incorrect mode.";
-					goto err_invalid_state;
-				}
-				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_INFO_FORMAT,
-						     &port->info_flags))
-				{
-					port->last_err = "Received duplicate format INFO.";
-					goto err_invalid_state;
-				}
-				port->mode_info[mode].data_sets = port->buffer[2];
-				if (!port->mode_info[mode].data_sets) {
-					port->last_err = "Invalid number of data sets.";
-					goto err_invalid_state;
-				}
-				if (msg_size < 7) {
-					port->last_err = "Invalid format message size.";
-					goto err_invalid_state;
-				}
-				if ((port->info_flags & LEGOEV3_UART_INFO_FLAG_REQUIRED)
-						!= LEGOEV3_UART_INFO_FLAG_REQUIRED) {
-					port->last_err = "Did not receive all required INFO.";
-					goto err_invalid_state;
-				}
-				switch (port->buffer[3]) {
-				case LEGOEV3_UART_DATA_8:
-					port->mode_info[mode].data_type = MSENSOR_DATA_S8;
-					break;
-				case LEGOEV3_UART_DATA_16:
-					port->mode_info[mode].data_type = MSENSOR_DATA_S16;
-					break;
-				case LEGOEV3_UART_DATA_32:
-					port->mode_info[mode].data_type = MSENSOR_DATA_S32;
-					break;
-				case LEGOEV3_UART_DATA_FLOAT:
-					port->mode_info[mode].data_type = MSENSOR_DATA_FLOAT;
-					break;
-				default:
-					port->last_err = "Invalid data type.";
-					goto err_invalid_state;
-				}
-				port->mode_info[mode].figures = port->buffer[4];
-				port->mode_info[mode].decimals = port->buffer[5];
-				if (port->info_flags & LEGOEV3_UART_INFO_FLAG_INFO_RAW) {
-					port->mode_info[mode].raw_min =
-						msensor_ftoi(port->raw_min, 0);
-					port->mode_info[mode].raw_max =
-						msensor_ftoi(port->raw_max, 0);
-				}
-				if (port->info_flags & LEGOEV3_UART_INFO_FLAG_INFO_PCT) {
-					port->mode_info[mode].pct_min =
-						msensor_ftoi(port->pct_min, 0);
-					port->mode_info[mode].pct_max =
-						msensor_ftoi(port->pct_max, 0);
-				}
-				if (port->info_flags & LEGOEV3_UART_INFO_FLAG_INFO_SI) {
-					port->mode_info[mode].si_min =
-						msensor_ftoi(port->si_min,
-							port->mode_info[mode].decimals);
-					port->mode_info[mode].si_max =
-						msensor_ftoi(port->si_max,
-							port->mode_info[mode].decimals);
-				}
-				if (port->mode)
-					port->mode--;
-				debug_pr("mode %d - data_sets:%d, data_type:%d, figures:%d, decimals:%d\n",
-					 mode, port->mode_info[mode].data_sets,
-					 port->mode_info[mode].data_type,
-					 port->mode_info[mode].figures,
-					 port->mode_info[mode].decimals);
-				debug_pr("raw_min: %d, raw_max: %d\n",
-					 port->mode_info[mode].raw_min,
-					 port->mode_info[mode].raw_max);
-				debug_pr("pct_min: %d, pct_max: %d\n",
-					 port->mode_info[mode].pct_min,
-					 port->mode_info[mode].pct_max);
-				debug_pr("si_min: %d, si_max: %d\n",
-					 port->mode_info[mode].si_min,
-					 port->mode_info[mode].si_max);
-				break;
-			}
-			break;
-		case LEGOEV3_UART_MSG_TYPE_DATA:
-			debug_pr("DATA:%d\n", port->buffer[0] & LEGOEV3_UART_MSG_CMD_MASK);
-			if (!port->info_done) {
-				port->last_err = "Received DATA before INFO was complete.";
-				goto err_invalid_state;
-			}
-			if (mode > MSENSOR_MODE_MAX) {
-				port->last_err = "Invalid mode received.";
-				goto err_invalid_state;
-			}
-			if (mode != port->mode) {
-				if (mode == port->new_mode)
-					port->mode = mode;
-				else {
-					port->last_err = "Unexpected mode.";
-					goto err_invalid_state;
-				}
-			}
-			if (!completion_done(&port->set_mode_completion)
-			    && mode == port->new_mode)
-				complete(&port->set_mode_completion);
-			memcpy(port->mode_info[mode].raw_data,
-			       port->buffer + 1, msg_size - 2);
-			port->data_rec = 1;
-			if (port->num_data_err)
-				port->num_data_err--;
-			break;
-		}
-
-err_bad_data_msg_checksum:
-		if (port->info_done && port->num_data_err > LEGOEV3_UART_MAX_DATA_ERR)
-			goto err_invalid_state;
-err_split_sync_checksum:
-		/*
-		 * If there is leftover data, we move it to the beginning
-		 * of the buffer.
-		 */
-		for (i = 0; i + msg_size < port->write_ptr; i++)
-			port->buffer[i] = port->buffer[i + msg_size];
-		port->write_ptr = i;
-	}
-	return;
-
-err_invalid_state:
-	port->synced = 0;
-	port->new_baud_rate = LEGOEV3_UART_SPEED_MIN;
-	schedule_work(&port->change_bitrate_work);
+	schedule_work(&port->rx_data_work);
 }
 
 static void legoev3_uart_write_wakeup(struct tty_struct *tty)
