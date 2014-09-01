@@ -129,8 +129,6 @@ enum legoev3_uart_info_flags {
  * @rx_data_tasklet: Takslet for proccessing the data received.
  * @send_ack_work: Used to send ACK after a delay.
  * @change_bitrate_work: Used to change the baud rate after a delay.
- * @unregister_sensor_work: Used to unregister sensor if no data is received
- * 	for a long time.
  * @keep_alive_timer: Sends a NACK every 100usec when a sensor is connected.
  * @keep_alive_tasklet: Does the actual sending of the NACK.
  * @mode_info: Array of information about each mode of the sensor
@@ -171,7 +169,6 @@ struct legoev3_uart_port_data {
 	struct work_struct rx_data_work;
 	struct delayed_work send_ack_work;
 	struct work_struct change_bitrate_work;
-	struct delayed_work unregister_sensor_work;
 	struct hrtimer keep_alive_timer;
 	struct tasklet_struct keep_alive_tasklet;
 	struct completion set_mode_completion;
@@ -358,7 +355,6 @@ static void legoev3_uart_send_ack(struct work_struct *work)
 	struct device *in_port_dev;
 	int err;
 
-	cancel_delayed_work_sync(&port->unregister_sensor_work);
 	legoev3_uart_write_byte(port->tty, LEGOEV3_UART_SYS_ACK);
 	if (!port->sensor && port->ms.type_id <= LEGOEV3_UART_TYPE_MAX) {
 		sensor = legoev3_port_device_register(
@@ -401,8 +397,6 @@ static void legoev3_uart_send_ack(struct work_struct *work)
 			legoev3_port_device_unregister(sensor);
 			return;
 		}
-		schedule_delayed_work(&port->unregister_sensor_work,
-						msecs_to_jiffies(10000));
 	} else
 		dev_err(port->tty->dev, "Reconnected due to: %s\n",
 			port->last_err);
@@ -427,22 +421,6 @@ static void legoev3_uart_change_bitrate(struct work_struct *work)
 		hrtimer_start(&port->keep_alive_timer, ktime_set(0, 1000000),
 							HRTIMER_MODE_REL);
 	}
-}
-
-static void legoev3_uart_unregister_sensor(struct work_struct *work)
-{
-	struct delayed_work *dwork = to_delayed_work(work);
-	struct legoev3_uart_port_data *port =
-		container_of(dwork, struct legoev3_uart_port_data, unregister_sensor_work);
-	struct legoev3_port_device *sensor = port->sensor;
-
-	if (sensor == NULL)
-		return;
-
-	port->sensor = NULL;
-	unregister_msensor(&port->ms);
-	memset(&port->ms, 0, sizeof(struct msensor_device));
-	legoev3_port_device_unregister(sensor);
 }
 
 static void legoev3_uart_send_keep_alive(unsigned long data)
@@ -881,9 +859,6 @@ err_bad_data_msg_checksum:
 		if (port->info_done && port->num_data_err > LEGOEV3_UART_MAX_DATA_ERR)
 			goto err_invalid_state;
 		count = CIRC_CNT(cb->head, cb->tail, LEGOEV3_UART_BUFFER_SIZE);
-		if (port->sensor)
-			mod_delayed_work(system_wq, &port->unregister_sensor_work,
-							msecs_to_jiffies(10000));
 	}
 	return;
 
@@ -913,7 +888,6 @@ static int legoev3_uart_open(struct tty_struct *tty)
 	INIT_WORK(&port->rx_data_work, legoev3_uart_handle_rx_data);
 	INIT_DELAYED_WORK(&port->send_ack_work, legoev3_uart_send_ack);
 	INIT_WORK(&port->change_bitrate_work, legoev3_uart_change_bitrate);
-	INIT_DELAYED_WORK(&port->unregister_sensor_work, legoev3_uart_unregister_sensor);
 	hrtimer_init(&port->keep_alive_timer, HRTIMER_BASE_MONOTONIC, HRTIMER_MODE_REL);
 	port->keep_alive_timer.function = legoev3_uart_keep_alive_timer_callback;
 	tasklet_init(&port->keep_alive_tasklet, legoev3_uart_send_keep_alive,
@@ -974,7 +948,6 @@ static void legoev3_uart_close(struct tty_struct *tty)
 	cancel_work_sync(&port->change_bitrate_work);
 	hrtimer_cancel(&port->keep_alive_timer);
 	tasklet_kill(&port->keep_alive_tasklet);
-	cancel_delayed_work_sync(&port->unregister_sensor_work);
 	if (port->sensor) {
 		unregister_msensor(&port->ms);
 		legoev3_port_device_unregister(port->sensor);
