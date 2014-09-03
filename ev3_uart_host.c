@@ -19,7 +19,7 @@
 #include <linux/legoev3/ev3_input_port.h>
 
 struct ev3_uart_host_data {
-	struct legoev3_port_device *in_port;
+	struct legoev3_port *in_port;
 };
 
 static int ev3_uart_host_probe(struct legoev3_port_device *host)
@@ -63,7 +63,7 @@ static int ev3_uart_host_remove(struct legoev3_port_device *host)
 	return 0;
 }
 
-struct legoev3_port_driver ev3_uart_host_driver = {
+struct legoev3_port_device_driver ev3_uart_host_driver = {
 	.probe	= ev3_uart_host_probe,
 	.remove	= ev3_uart_host_remove,
 	.driver = {
@@ -71,7 +71,7 @@ struct legoev3_port_driver ev3_uart_host_driver = {
 		.owner	= THIS_MODULE,
 	},
 };
-legoev3_port_driver(ev3_uart_host_driver);
+legoev3_port_device_driver(ev3_uart_host_driver);
 
 MODULE_DESCRIPTION("EV3 UART host device driver for LEGO Mindstorms EV3");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");

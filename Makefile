@@ -28,4 +28,3 @@ obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= nxt_i2c_sensor.o
 # UART Sensors
 obj-$(CONFIG_LEGOEV3_UART_SENSORS)	+= legoev3_uart.o
 obj-$(CONFIG_LEGOEV3_UART_SENSORS)	+= ev3_uart_host.o
-#obj-$(CONFIG_LEGOEV3_UART_SENSORS)	+= ev3_uart_sensor.o

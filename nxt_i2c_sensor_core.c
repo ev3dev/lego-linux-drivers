@@ -43,7 +43,7 @@ MODULE_PARM_DESC(allow_autodetect, "Allow NXT I2C sensors to be automatically de
 
 struct nxt_i2c_sensor_data {
 	struct i2c_client *client;
-	struct legoev3_port_device *in_port;
+	struct legoev3_port *in_port;
 	struct nxt_i2c_sensor_info info;
 	struct delayed_work poll_work;
 	unsigned poll_ms;
@@ -71,7 +71,7 @@ static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
 	}
 
 	ev3_input_port_set_pin1_gpio(sensor->in_port,
-	                            sensor->info.i2c_mode_info[mode].pin1_state);
+				     sensor->info.i2c_mode_info[mode].pin1_state);
 	sensor->mode = mode;
 	schedule_delayed_work(&sensor->poll_work,
 			      msecs_to_jiffies(sensor->poll_ms));
@@ -80,7 +80,7 @@ static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
 }
 
 static ssize_t nxt_i2c_sensor_write_data(void *context, char *data, loff_t off,
-                                         size_t count)
+					 size_t count)
 {
 	struct nxt_i2c_sensor_data *sensor = context;
 	int err;

@@ -25,7 +25,7 @@
 #define NUM_NXT_LIGHT_SENSOR_MODES	2
 
 struct nxt_light_sensor_data {
-	struct legoev3_port_device *in_port;
+	struct legoev3_port *in_port;
 	struct msensor_device ms;
 	struct msensor_mode_info mode_info[NUM_NXT_LIGHT_SENSOR_MODES];
 	u8 mode;
@@ -160,7 +160,7 @@ static struct legoev3_port_device_id nxt_light_sensor_device_ids [] = {
 	{  }
 };
 
-struct legoev3_port_driver nxt_light_sensor_driver = {
+struct legoev3_port_device_driver nxt_light_sensor_driver = {
 	.probe	= nxt_light_sensor_probe,
 	.remove	= nxt_light_sensor_remove,
 	.driver = {
@@ -170,7 +170,7 @@ struct legoev3_port_driver nxt_light_sensor_driver = {
 	.id_table = nxt_light_sensor_device_ids,
 };
 EXPORT_SYMBOL_GPL(nxt_light_sensor_driver);
-legoev3_port_driver(nxt_light_sensor_driver);
+legoev3_port_device_driver(nxt_light_sensor_driver);
 
 MODULE_DESCRIPTION("NXT Light sensor device driver for LEGO Mindstorms EV3");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");

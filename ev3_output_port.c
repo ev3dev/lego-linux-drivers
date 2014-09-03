@@ -30,29 +30,29 @@
 
 #include <mach/mux.h>
  
-#define OUTPUT_PORT_POLL_NS	( 10000000)	                /* 10 msec */
-#define SETTLE_CNT		( 20000000/OUTPUT_PORT_POLL_NS)	/* 20 msec */
-#define ADD_CNT			(350000000/OUTPUT_PORT_POLL_NS) /* 350 msec */
-#define REMOVE_CNT		(100000000/OUTPUT_PORT_POLL_NS) /* 100 msec */
+#define OUTPUT_PORT_POLL_NS	10000000			/* 10 msec */
+#define SETTLE_CNT		(20000000/OUTPUT_PORT_POLL_NS)	/* 20 msec */
+#define ADD_CNT			(350000000/OUTPUT_PORT_POLL_NS)	/* 350 msec */
+#define REMOVE_CNT		(100000000/OUTPUT_PORT_POLL_NS)	/* 100 msec */
 
-#define   ADC_REF                       5000  //  [mV]  Maximum voltage that the A/D can read
+#define ADC_REF              5000 /* [mV] Maximum voltage that the A/D can read */
 
-#define   PIN5_IIC_HIGH                 3700  //  [mV]  values in between these limits means that
-#define   PIN5_IIC_LOW                  2800  //  [mV]    an old IIC sensor or color sensor is connected
+#define PIN5_IIC_HIGH        3700 /* [mV] values in between these limits means that */
+#define PIN5_IIC_LOW         2800 /* [mV] an old IIC sensor or color sensor is connected */
 
-#define   PIN5_MINITACHO_HIGH1          2000  //  [mV]  values in between these limits means that
-#define   PIN5_MINITACHO_LOW1           1600  //  [mV]    a mini tacho motor is pulling high when pin5 is pulling low
+#define PIN5_MINITACHO_HIGH1 2000 /* [mV] values in between these limits means that */
+#define PIN5_MINITACHO_LOW1  1600 /* [mV] a mini tacho motor is pulling high when pin5 is pulling low */
 
-#define   PIN5_BALANCE_HIGH             2600  //  [mV]  values in between these limits means that
-#define   PIN5_BALANCE_LOW              2400  //  [mV]    connection 5 is floating
+#define PIN5_BALANCE_HIGH    2600 /* [mV] values in between these limits means that */
+#define PIN5_BALANCE_LOW     2400 /* [mV] connection 5 is floating */
 
-#define   PIN5_LIGHT_HIGH                850  //  [mV]  values in between these limits means that
-#define   PIN5_LIGHT_LOW                 650  //  [mV]    an old light sensor is connected
+#define PIN5_LIGHT_HIGH       850 /* [mV] values in between these limits means that */
+#define PIN5_LIGHT_LOW        650 /* [mV] an old light sensor is connected */
 
-#define   PIN5_MINITACHO_HIGH2           450  //  [mV]  values in between these limits means that
-#define   PIN5_MINITACHO_LOW2            250  //  [mV]    a mini tacho motor is pulling low when pin5 floats
+#define PIN5_MINITACHO_HIGH2  450 /* [mV] values in between these limits means that */
+#define PIN5_MINITACHO_LOW2   250 /* [mV] a mini tacho motor is pulling low when pin5 floats */
 
-#define   PIN5_NEAR_GND                  100  //  [mV]  lower  values mean that connection 5 is shorted to ground
+#define PIN5_NEAR_GND         100 /* [mV] lower  values mean that connection 5 is shorted to ground */
 
 enum gpio_index {
 	GPIO_PIN1,
@@ -64,18 +64,18 @@ enum gpio_index {
 };
 
 enum connection_state {
-	CON_STATE_INIT,				/* Wait for motor to unregister, then
-							Set port to "float" state */
+	CON_STATE_INIT,				/* Wait for motor to unregister, then */
+						/* Set port to "float" state */
 	CON_STATE_INIT_SETTLE,			/* Wait for port to settle */
-	CON_STATE_NO_DEV,			/* No device present, wait until something
-							interesting happens on one or more
-							of the pins and a steady state is
- 							reached */
- 	CON_STATE_PIN6_SETTLE,			/* Pin6 to settle after changing state  */
- 	CON_STATE_CONNECTED,			/* We are ready to figure out what's connected */
- 	CON_STATE_PIN5_SETTLE,			/* Pin5 to settle after changing state  */
-        CON_STATE_DEVICE_CONNECTED,		/* We detected the connection of a device */
-        CON_STATE_WAITING_FOR_DISCONNECT,	/* We are waiting for disconnect */
+	CON_STATE_NO_DEV,			/* No device present, wait until something */
+						/* interesting happens on one or more */
+						/* of the pins and a steady state is */
+						/* reached */
+	CON_STATE_PIN6_SETTLE,			/* Pin6 to settle after changing state */
+	CON_STATE_CONNECTED,			/* We are ready to figure out what's connected */
+	CON_STATE_PIN5_SETTLE,			/* Pin5 to settle after changing state */
+	CON_STATE_DEVICE_CONNECTED,		/* We detected the connection of a device */
+	CON_STATE_WAITING_FOR_DISCONNECT,	/* We are waiting for disconnect */
 	NUM_CON_STATE
 };
 
@@ -119,7 +119,7 @@ struct device_type ev3_motor_device_types[] = {
 /**
  * struct ev3_output_port_data - Driver data for an output port on the EV3 brick
  * @id: Unique identifier for the port.
- * @pdev: Pointer to the legoev3_port_device that is bound to this instance.
+ * @out_port: Pointer to the legoev3_port that is bound to this instance.
  * @analog: pointer to the legoev3-analog device for accessing data from the
  *	analog/digital converter.
  * @pwm: Pointer to the pwm device that is bound to this port
@@ -138,342 +138,346 @@ struct device_type ev3_motor_device_types[] = {
  */
 struct ev3_output_port_data {
 	enum ev3_output_port_id id;
-	struct legoev3_port_device *pdev;
+	struct legoev3_port *out_port;
 	struct legoev3_analog_device *analog;
 	struct pwm_device *pwm;
- 	struct gpio gpio[NUM_GPIO];
- 	struct work_struct work;
- 	struct hrtimer timer;
- 	unsigned timer_loop_cnt;
- 	enum connection_state con_state;
- 	unsigned pin_state_flags:NUM_PIN_STATE_FLAG;
- 	unsigned pin5_float_mv;
- 	unsigned pin5_low_mv;
- 	enum motor_type motor_type;
- 	struct legoev3_port_device *motor;
+	struct gpio gpio[NUM_GPIO];
+	struct work_struct work;
+	struct hrtimer timer;
+	unsigned timer_loop_cnt;
+	enum connection_state con_state;
+	unsigned pin_state_flags:NUM_PIN_STATE_FLAG;
+	unsigned pin5_float_mv;
+	unsigned pin5_low_mv;
+	enum motor_type motor_type;
+	struct legoev3_port_device *motor;
 };
 
-void ev3_output_port_float(struct ev3_output_port_data *port)
+void ev3_output_port_float(struct ev3_output_port_data *data)
 {
-	gpio_direction_output(port->gpio[GPIO_PIN1    ].gpio, 0);
-	gpio_direction_output(port->gpio[GPIO_PIN2    ].gpio, 0);
-	gpio_direction_input( port->gpio[GPIO_PIN5    ].gpio   );
-	gpio_direction_input( port->gpio[GPIO_PIN5_INT].gpio   );
-	gpio_direction_input( port->gpio[GPIO_PIN6_DIR].gpio   );
+	gpio_direction_output(data->gpio[GPIO_PIN1].gpio, 0);
+	gpio_direction_output(data->gpio[GPIO_PIN2].gpio, 0);
+	gpio_direction_input(data->gpio[GPIO_PIN5].gpio);
+	gpio_direction_input(data->gpio[GPIO_PIN5_INT].gpio);
+	gpio_direction_input(data->gpio[GPIO_PIN6_DIR].gpio);
 }
 
 void ev3_output_port_register_motor(struct work_struct *work)
 {
-	struct ev3_output_port_data *port =
+	struct ev3_output_port_data *data =
 			container_of(work, struct ev3_output_port_data, work);
 	struct legoev3_port_device *motor;
 	struct ev3_motor_platform_data pdata;
 
-	if (port->motor_type == MOTOR_NONE
-	    || port->motor_type == MOTOR_ERR
-	    || port->motor_type >= NUM_MOTOR)
+	if (data->motor_type == MOTOR_NONE
+	    || data->motor_type == MOTOR_ERR
+	    || data->motor_type >= NUM_MOTOR)
 	{
-		dev_err(&port->pdev->dev, "Trying to register an invalid motor on %s.\n",
-			dev_name(&port->pdev->dev));
+		dev_err(&data->out_port->dev, "Trying to register an invalid motor on %s.\n",
+			dev_name(&data->out_port->dev));
 		return;
 	}
 
-        /* Fill in the motor platform data struct */
+	/* Fill in the motor platform data struct */
 
- 	pdata.out_port  = port->pdev;
+	pdata.out_port = data->out_port;
 
- 	pdata.motor_dir0_gpio = port->gpio[GPIO_PIN1].gpio;
- 	pdata.motor_dir1_gpio = port->gpio[GPIO_PIN2].gpio;
- 	pdata.tacho_int_gpio  = port->gpio[GPIO_PIN5_INT].gpio;
- 	pdata.tacho_dir_gpio  = port->gpio[GPIO_PIN6_DIR].gpio;
- 	pdata.pwm             = port->pwm;
-	pdata.motor_type      = port->motor_type;
+	pdata.motor_dir0_gpio = data->gpio[GPIO_PIN1].gpio;
+	pdata.motor_dir1_gpio = data->gpio[GPIO_PIN2].gpio;
+	pdata.tacho_int_gpio  = data->gpio[GPIO_PIN5_INT].gpio;
+	pdata.tacho_dir_gpio  = data->gpio[GPIO_PIN6_DIR].gpio;
+	pdata.pwm             = data->pwm;
+	pdata.motor_type      = data->motor_type;
 
- 	motor = legoev3_port_device_register("motor", -1,
- 				&ev3_motor_device_types[port->motor_type], -1,
- 				&pdata, sizeof(struct ev3_motor_platform_data),
- 				&port->pdev->dev);
- 	if (IS_ERR(motor)) {
- 		dev_err(&port->pdev->dev, "Could not register motor on port %s.\n",
- 			dev_name(&port->pdev->dev));
+	motor = legoev3_port_device_register("motor", /* TODO add actual type id here instead of -1 */
+				&ev3_motor_device_types[data->motor_type], -1,
+				&pdata, sizeof(struct ev3_motor_platform_data),
+				data->out_port);
+	if (IS_ERR(motor)) {
+		dev_err(&data->out_port->dev, "Could not register motor on port %s.\n",
+			dev_name(&data->out_port->dev));
 		return;
- 	}
- 
-	port->motor = motor;
+	}
+
+	data->motor = motor;
 
 	return;
 }
 
 void ev3_output_port_unregister_motor(struct work_struct *work)
 {
-	struct ev3_output_port_data *port =
+	struct ev3_output_port_data *data =
 			container_of(work, struct ev3_output_port_data, work);
 
- 	legoev3_port_device_unregister(port->motor);
-
-	port->motor = NULL;
+	legoev3_port_device_unregister(data->motor);
+	data->motor = NULL;
 }
 
 static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer)
 {
- 	struct ev3_output_port_data *port =
- 			container_of(timer, struct ev3_output_port_data, timer);
- 	unsigned new_pin_state_flags = 0;
- 	unsigned new_pin5_mv = 0;
- 
- 	hrtimer_forward_now(timer, ktime_set(0, OUTPUT_PORT_POLL_NS));
- 	port->timer_loop_cnt++;
+	struct ev3_output_port_data *data =
+			container_of(timer, struct ev3_output_port_data, timer);
+	unsigned new_pin_state_flags = 0;
+	unsigned new_pin5_mv = 0;
 
-	switch(port->con_state) {
+	hrtimer_forward_now(timer, ktime_set(0, OUTPUT_PORT_POLL_NS));
+	data->timer_loop_cnt++;
+
+	switch(data->con_state) {
 	case CON_STATE_INIT:
-		if (!port->motor) {
-			ev3_output_port_float(port);
-			port->timer_loop_cnt = 0;
-			port->motor_type = MOTOR_NONE;
-			port->con_state = CON_STATE_INIT_SETTLE;
+		if (!data->motor) {
+			ev3_output_port_float(data);
+			data->timer_loop_cnt = 0;
+			data->motor_type = MOTOR_NONE;
+			data->con_state = CON_STATE_INIT_SETTLE;
 		}
 		break;
 	case CON_STATE_INIT_SETTLE:
-		if (port->timer_loop_cnt >= SETTLE_CNT) {
-			port->timer_loop_cnt = 0;
-			port->con_state = CON_STATE_NO_DEV;
+		if (data->timer_loop_cnt >= SETTLE_CNT) {
+			data->timer_loop_cnt = 0;
+			data->con_state = CON_STATE_NO_DEV;
 		}
 		break;
 	case CON_STATE_NO_DEV:
-		new_pin5_mv = legoev3_analog_out_pin5_value(port->analog, port->id);
+		new_pin5_mv = legoev3_analog_out_pin5_value(data->analog, data->id);
 
-		if (gpio_get_value(port->gpio[GPIO_PIN6_DIR].gpio))
+		if (gpio_get_value(data->gpio[GPIO_PIN6_DIR].gpio))
 			new_pin_state_flags |= BIT(PIN_STATE_FLAG_PIN6_HIGH);
 		if ((new_pin5_mv < PIN5_BALANCE_LOW) || (new_pin5_mv > PIN5_BALANCE_HIGH))
 			new_pin_state_flags |= BIT(PIN_STATE_FLAG_PIN5_LOADED);
 
- 		if (new_pin_state_flags != port->pin_state_flags) {
- 			port->pin_state_flags = new_pin_state_flags;
- 			port->timer_loop_cnt = 0;
- 		}
+		if (new_pin_state_flags != data->pin_state_flags) {
+			data->pin_state_flags = new_pin_state_flags;
+			data->timer_loop_cnt = 0;
+		}
 
-		if (port->pin_state_flags && (port->timer_loop_cnt >= ADD_CNT)) {
-			port->pin5_float_mv = new_pin5_mv;
- 			port->timer_loop_cnt = 0;
-			gpio_direction_output(port->gpio[GPIO_PIN6_DIR].gpio, 0);
-			port->con_state = CON_STATE_PIN6_SETTLE;
+		if (data->pin_state_flags && (data->timer_loop_cnt >= ADD_CNT)) {
+			data->pin5_float_mv = new_pin5_mv;
+			data->timer_loop_cnt = 0;
+			gpio_direction_output(data->gpio[GPIO_PIN6_DIR].gpio, 0);
+			data->con_state = CON_STATE_PIN6_SETTLE;
 		}
 		break;
 
 	case CON_STATE_PIN6_SETTLE:
-		new_pin5_mv = legoev3_analog_out_pin5_value(port->analog, port->id);
+		new_pin5_mv = legoev3_analog_out_pin5_value(data->analog, data->id);
 
-		if (port->timer_loop_cnt >= SETTLE_CNT) {
-			port->pin5_low_mv = new_pin5_mv;
- 			port->timer_loop_cnt = 0;
-			gpio_direction_input(port->gpio[GPIO_PIN6_DIR].gpio);
-			port->con_state = CON_STATE_CONNECTED;
+		if (data->timer_loop_cnt >= SETTLE_CNT) {
+			data->pin5_low_mv = new_pin5_mv;
+			data->timer_loop_cnt = 0;
+			gpio_direction_input(data->gpio[GPIO_PIN6_DIR].gpio);
+			data->con_state = CON_STATE_CONNECTED;
 			}
 		break;
 
- 	case CON_STATE_CONNECTED:
+	case CON_STATE_CONNECTED:
+		/*
+		 * Make a temporary variable that we can use to determine the relative
+		 * difference between pin5_float_mv and pin5_low_mv
+		 */
+		new_pin5_mv = ADC_REF + data->pin5_float_mv - data->pin5_low_mv;
 
-                // Make a temporary variable that we can use to determine the relative
-                // difference between pin5_float_mv and pin5_low_mv
-
-		new_pin5_mv = ADC_REF + port->pin5_float_mv - port->pin5_low_mv;
-
-                if ((new_pin5_mv > (ADC_REF - 50)) && (new_pin5_mv < (ADC_REF + 50))) {
+		if ((new_pin5_mv > (ADC_REF - 50)) && (new_pin5_mv < (ADC_REF + 50))) {
 			// The pin5 values are the same, let's see what we have!
 
-			if ((port->pin5_float_mv >= PIN5_BALANCE_LOW) && (port->pin5_float_mv <= PIN5_BALANCE_HIGH) && (port->pin_state_flags & (0x01 << PIN_STATE_FLAG_PIN6_HIGH))) {
-				// NXT TOUCH SENSOR, NXT SOUND SENSOR or NEW UART SENSOR
-				port->motor_type = MOTOR_ERR;
-				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+			if ((data->pin5_float_mv >= PIN5_BALANCE_LOW)
+				&& (data->pin5_float_mv <= PIN5_BALANCE_HIGH)
+				&& (data->pin_state_flags & (0x01 << PIN_STATE_FLAG_PIN6_HIGH)))
+			{
+				/* NXT TOUCH SENSOR, NXT SOUND SENSOR or NEW UART SENSOR */
+				data->motor_type = MOTOR_ERR;
+				data->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
 
-			} else if (port->pin5_float_mv < PIN5_NEAR_GND) {
-				// NEW DUMB SENSOR
-				port->motor_type = MOTOR_ERR;
-				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+			} else if (data->pin5_float_mv < PIN5_NEAR_GND) {
+				/* NEW DUMB SENSOR */
+				data->motor_type = MOTOR_ERR;
+				data->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
 
-			} else if ((port->pin5_float_mv >= PIN5_LIGHT_LOW) && (port->pin5_float_mv  <= PIN5_LIGHT_HIGH)) {
-				// NXT LIGHT SENSOR
-				port->motor_type = MOTOR_ERR;
-				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+			} else if ((data->pin5_float_mv >= PIN5_LIGHT_LOW)
+				&& (data->pin5_float_mv <= PIN5_LIGHT_HIGH))
+			{
+				/* NXT LIGHT SENSOR */
+				data->motor_type = MOTOR_ERR;
+				data->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
 
-			} else if ((port->pin5_float_mv >= PIN5_IIC_LOW) && (port->pin5_float_mv <= PIN5_IIC_HIGH)) {
-				// NXT IIC SENSOR
-				port->motor_type = MOTOR_ERR;
-				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+			} else if ((data->pin5_float_mv >= PIN5_IIC_LOW)
+				&& (data->pin5_float_mv <= PIN5_IIC_HIGH))
+			{
+				/* NXT IIC SENSOR */
+				data->motor_type = MOTOR_ERR;
+				data->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
 
-			} else if (port->pin5_float_mv < PIN5_BALANCE_LOW) {
+			} else if (data->pin5_float_mv < PIN5_BALANCE_LOW) {
 
-				if (port->pin5_float_mv > PIN5_MINITACHO_HIGH2) {
-					port->motor_type = MOTOR_NEWTACHO;
+				if (data->pin5_float_mv > PIN5_MINITACHO_HIGH2) {
+					data->motor_type = MOTOR_NEWTACHO;
 
-				} else if (port->pin5_float_mv > PIN5_MINITACHO_LOW2) {
-					port->motor_type = MOTOR_MINITACHO;
+				} else if (data->pin5_float_mv > PIN5_MINITACHO_LOW2) {
+					data->motor_type = MOTOR_MINITACHO;
 
 				} else {
-					port->motor_type = MOTOR_TACHO;
+					data->motor_type = MOTOR_TACHO;
 
 				}
 
-				port->con_state = CON_STATE_DEVICE_CONNECTED;
+				data->con_state = CON_STATE_DEVICE_CONNECTED;
 
 			} else {
-				gpio_direction_output(port->gpio[GPIO_PIN5].gpio, 1);
-				port->timer_loop_cnt = 0;
-				port->con_state        =  CON_STATE_PIN5_SETTLE;
+				gpio_direction_output(data->gpio[GPIO_PIN5].gpio, 1);
+				data->timer_loop_cnt = 0;
+				data->con_state = CON_STATE_PIN5_SETTLE;
 			}
 
-		// Value5Float is NOT equal to Value5Low
-		} else if ((port->pin5_float_mv > PIN5_NEAR_GND) && (port->pin5_float_mv < PIN5_BALANCE_LOW)) {
-				// NEW ACTUATOR
-				port->motor_type = MOTOR_ERR;
-				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+		/* Value5Float is NOT equal to Value5Low */
+		} else if ((data->pin5_float_mv > PIN5_NEAR_GND)
+			&& (data->pin5_float_mv < PIN5_BALANCE_LOW))
+		{
+			/* NEW ACTUATOR */
+			data->motor_type = MOTOR_ERR;
+			data->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
 		} else {
-				port->motor_type = MOTOR_ERR;
-				port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+			data->motor_type = MOTOR_ERR;
+			data->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
 		}
-                break;
+		break;
 
 	case CON_STATE_PIN5_SETTLE:
-                // Update connection type, may need to force pin5 low to determine motor type
-		if (port->timer_loop_cnt >= SETTLE_CNT) {
-			port->pin5_low_mv = legoev3_analog_out_pin5_value(port->analog, port->id);
- 			port->timer_loop_cnt = 0;
-			gpio_direction_output(port->gpio[GPIO_PIN5].gpio, 0);
+		/* Update connection type, may need to force pin5 low to determine motor type */
+		if (data->timer_loop_cnt >= SETTLE_CNT) {
+			data->pin5_low_mv = legoev3_analog_out_pin5_value(data->analog, data->id);
+			data->timer_loop_cnt = 0;
+			gpio_direction_output(data->gpio[GPIO_PIN5].gpio, 0);
 
-			if (port->pin5_low_mv  < PIN5_MINITACHO_LOW1) {
-				port->motor_type = MOTOR_ERR;
+			if (data->pin5_low_mv < PIN5_MINITACHO_LOW1)
+				data->motor_type = MOTOR_ERR;
+			else if (data->pin5_low_mv < PIN5_MINITACHO_HIGH1)
+				data->motor_type = MOTOR_MINITACHO;
+			else
+				data->motor_type = MOTOR_TACHO;
 
-			} else if (port->pin5_low_mv  < PIN5_MINITACHO_HIGH1) {
-				port->motor_type = MOTOR_MINITACHO;
-
-			} else {
-				port->motor_type = MOTOR_TACHO;
-			}
-
-			port->con_state = CON_STATE_DEVICE_CONNECTED;
+			data->con_state = CON_STATE_DEVICE_CONNECTED;
 		}
-
 		break;
 
 	case CON_STATE_DEVICE_CONNECTED:
-		port->timer_loop_cnt = 0;
-		if (port->motor_type != MOTOR_ERR && !work_busy(&port->work)) {
-			INIT_WORK(&port->work, ev3_output_port_register_motor);
-			schedule_work(&port->work);
-			port->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
+		data->timer_loop_cnt = 0;
+		if (data->motor_type != MOTOR_ERR && !work_busy(&data->work)) {
+			INIT_WORK(&data->work, ev3_output_port_register_motor);
+			schedule_work(&data->work);
+			data->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
 		}
 		break;
 
 	case CON_STATE_WAITING_FOR_DISCONNECT:
-		new_pin5_mv = legoev3_analog_out_pin5_value(port->analog, port->id);
+		new_pin5_mv = legoev3_analog_out_pin5_value(data->analog, data->id);
 
-		if (gpio_get_value(port->gpio[GPIO_PIN6_DIR].gpio))
-			port->timer_loop_cnt = 0;
+		if (gpio_get_value(data->gpio[GPIO_PIN6_DIR].gpio))
+			data->timer_loop_cnt = 0;
 
 		if ((new_pin5_mv < PIN5_BALANCE_LOW) || (new_pin5_mv > PIN5_BALANCE_HIGH))
-			port->timer_loop_cnt = 0;
+			data->timer_loop_cnt = 0;
 
-		if ((port->timer_loop_cnt >= REMOVE_CNT) && !work_busy(&port->work) && (port->motor)) {
-			INIT_WORK(&port->work, ev3_output_port_unregister_motor);
-			schedule_work(&port->work);
-			port->con_state = CON_STATE_INIT;
+		if ((data->timer_loop_cnt >= REMOVE_CNT) && !work_busy(&data->work) && data) {
+			INIT_WORK(&data->work, ev3_output_port_unregister_motor);
+			schedule_work(&data->work);
+			data->con_state = CON_STATE_INIT;
 		}
 		break;
 
 	default:
-		port->con_state = CON_STATE_INIT;
+		data->con_state = CON_STATE_INIT;
 		break;
 	}
 
 	return HRTIMER_RESTART;
 }
 
-static int ev3_output_port_probe(struct legoev3_port_device *pdev)
+static int ev3_output_port_probe(struct legoev3_port *port)
 {
-	struct ev3_output_port_data *port;
-	struct ev3_output_port_platform_data *pdata = pdev->dev.platform_data;
+	struct ev3_output_port_data *data;
+	struct ev3_output_port_platform_data *pdata = port->dev.platform_data;
 	struct pwm_device *pwm;
 	int err;
 
 	if (WARN(!pdata, "Platform data is required."))
 		return -EINVAL;
 
-	port = kzalloc(sizeof(struct ev3_output_port_data), GFP_KERNEL);
-	if (!port)
+	data = kzalloc(sizeof(struct ev3_output_port_data), GFP_KERNEL);
+	if (!data)
 		return -ENOMEM;
 
-	port->id = pdata->id;
-	port->pdev = pdev;
-	port->analog = get_legoev3_analog();
-	if (IS_ERR(port->analog)) {
-		dev_err(&pdev->dev, "Could not get legoev3-analog device.\n");
-		err = PTR_ERR(port->analog);
+	data->id = pdata->id;
+	data->out_port = port;
+	data->analog = get_legoev3_analog();
+	if (IS_ERR(data->analog)) {
+		dev_err(&port->dev, "Could not get legoev3-analog device.\n");
+		err = PTR_ERR(data->analog);
 		goto err_request_legoev3_analog;
 	}
 
-	port->gpio[GPIO_PIN1].gpio	= pdata->pin1_gpio;
-	port->gpio[GPIO_PIN1].flags	= GPIOF_IN;
-	port->gpio[GPIO_PIN1].label	= "pin1";
+	data->gpio[GPIO_PIN1].gpio	= pdata->pin1_gpio;
+	data->gpio[GPIO_PIN1].flags	= GPIOF_IN;
+	data->gpio[GPIO_PIN1].label	= "pin1";
 
-	port->gpio[GPIO_PIN2].gpio	= pdata->pin2_gpio;
-	port->gpio[GPIO_PIN2].flags	= GPIOF_IN;
-	port->gpio[GPIO_PIN2].label	= "pin2";
+	data->gpio[GPIO_PIN2].gpio	= pdata->pin2_gpio;
+	data->gpio[GPIO_PIN2].flags	= GPIOF_IN;
+	data->gpio[GPIO_PIN2].label	= "pin2";
 
-	port->gpio[GPIO_PIN5].gpio	= pdata->pin5_gpio;
-	port->gpio[GPIO_PIN5].flags	= GPIOF_IN;
-	port->gpio[GPIO_PIN5].label	= "pin5";
+	data->gpio[GPIO_PIN5].gpio	= pdata->pin5_gpio;
+	data->gpio[GPIO_PIN5].flags	= GPIOF_IN;
+	data->gpio[GPIO_PIN5].label	= "pin5";
 
-	port->gpio[GPIO_PIN5_INT].gpio	= pdata->pin5_int_gpio;
-	port->gpio[GPIO_PIN5_INT].flags	= GPIOF_IN;
-	port->gpio[GPIO_PIN5_INT].label	= "pin5_tacho";
+	data->gpio[GPIO_PIN5_INT].gpio	= pdata->pin5_int_gpio;
+	data->gpio[GPIO_PIN5_INT].flags	= GPIOF_IN;
+	data->gpio[GPIO_PIN5_INT].label	= "pin5_tacho";
 
-	port->gpio[GPIO_PIN6_DIR].gpio	= pdata->pin6_dir_gpio;
-	port->gpio[GPIO_PIN6_DIR].flags	= GPIOF_IN;
-	port->gpio[GPIO_PIN6_DIR].label	= "pin6";
+	data->gpio[GPIO_PIN6_DIR].gpio	= pdata->pin6_dir_gpio;
+	data->gpio[GPIO_PIN6_DIR].flags	= GPIOF_IN;
+	data->gpio[GPIO_PIN6_DIR].label	= "pin6";
 
-	err = gpio_request_array(port->gpio, ARRAY_SIZE(port->gpio));
+	err = gpio_request_array(data->gpio, ARRAY_SIZE(data->gpio));
 	if (err) {
-		dev_err(&pdev->dev, "Requesting GPIOs failed.\n");
+		dev_err(&port->dev, "Requesting GPIOs failed.\n");
 		goto err_gpio_request_array;
 	}
 
-	dev_set_drvdata(&pdev->dev, port);
-	INIT_WORK(&port->work, NULL);
+	dev_set_drvdata(&port->dev, data);
+	INIT_WORK(&data->work, NULL);
 
-	port->con_state = CON_STATE_INIT;
+	data->con_state = CON_STATE_INIT;
 
 	/* Set up the connect/disconnect poll timer */
 
-	hrtimer_init(&port->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	port->timer.function = ev3_output_port_timer_callback;
-	hrtimer_start(&port->timer, ktime_set(0, OUTPUT_PORT_POLL_NS),
+	hrtimer_init(&data->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	data->timer.function = ev3_output_port_timer_callback;
+	hrtimer_start(&data->timer, ktime_set(0, OUTPUT_PORT_POLL_NS),
 		      HRTIMER_MODE_REL);
 
 	/* Now get the PWM driver registered for this port */
 
-	pwm = pwm_get(&port->pdev->dev, NULL);
+	pwm = pwm_get(&data->out_port->dev, NULL);
 	if (IS_ERR(pwm)) {
-		dev_err(&pdev->dev, "%s: Could not get pwm! (%ld)\n",
+		dev_err(&port->dev, "%s: Could not get pwm! (%ld)\n",
 			__func__, PTR_ERR(pwm));
 		err = PTR_ERR(pwm);
 		goto err_pwm_get;
 	}
 
 	err = pwm_config(pwm, 0, NSEC_PER_SEC / 10000);
- 	if (err) {
- 		dev_err(&pdev->dev, "%s: Failed to set pwm duty percent and frequency! (%d)\n",
- 			__func__, err);
- 		goto err_pwm_config;
+	if (err) {
+		dev_err(&port->dev, "%s: Failed to set pwm duty percent and frequency! (%d)\n",
+			__func__, err);
+		goto err_pwm_config;
 	}
 
- 	err = pwm_enable(pwm);
- 	if (err) {
- 		dev_err(&pdev->dev, "%s: Failed to start pwm! (%d)\n",
- 			__func__, err);
- 		goto err_pwm_start;
- 	}
+	err = pwm_enable(pwm);
+	if (err) {
+		dev_err(&port->dev, "%s: Failed to start pwm! (%d)\n",
+			__func__, err);
+		goto err_pwm_start;
+	}
 
-	port->pwm = pwm;
+	data->pwm = pwm;
 
 	return 0;
 
@@ -481,48 +485,48 @@ err_pwm_start:
 err_pwm_config:
 	pwm_put(pwm);
 err_pwm_get:
-	hrtimer_cancel(&port->timer);
-	gpio_free_array(port->gpio, ARRAY_SIZE(port->gpio));
+	hrtimer_cancel(&data->timer);
+	gpio_free_array(data->gpio, ARRAY_SIZE(data->gpio));
 err_gpio_request_array:
-	put_legoev3_analog(port->analog);
+	put_legoev3_analog(data->analog);
 err_request_legoev3_analog:
-	kfree(port);
+	kfree(data);
 
 	return err;
 }
 
-static int ev3_output_port_remove(struct legoev3_port_device *pdev)
+static int ev3_output_port_remove(struct legoev3_port *port)
 {
-	struct ev3_output_port_data *port = dev_get_drvdata(&pdev->dev);
+	struct ev3_output_port_data *data = dev_get_drvdata(&port->dev);
 
- 	pwm_disable(port->pwm);
- 	pwm_put(port->pwm);
+	pwm_disable(data->pwm);
+	pwm_put(data->pwm);
 
-	hrtimer_cancel(&port->timer);
-	cancel_work_sync(&port->work);
-	if (port->motor)
-		legoev3_port_device_unregister(port->motor);
-	ev3_output_port_float(port);
-	gpio_free_array(port->gpio, ARRAY_SIZE(port->gpio));
-	put_legoev3_analog(port->analog);
-	dev_set_drvdata(&pdev->dev, NULL);
-	kfree(port);
+	hrtimer_cancel(&data->timer);
+	cancel_work_sync(&data->work);
+	if (data->motor)
+		legoev3_port_device_unregister(data->motor);
+	ev3_output_port_float(data);
+	gpio_free_array(data->gpio, ARRAY_SIZE(data->gpio));
+	put_legoev3_analog(data->analog);
+	dev_set_drvdata(&port->dev, NULL);
+	kfree(data);
 
 	return 0;
 }
 
-static void ev3_output_port_shutdown(struct legoev3_port_device *pdev)
+static void ev3_output_port_shutdown(struct legoev3_port *port)
 {
- 	struct ev3_output_port_data *port = dev_get_drvdata(&pdev->dev);
+	struct ev3_output_port_data *data = dev_get_drvdata(&port->dev);
 
- 	pwm_disable(port->pwm);
+	pwm_disable(data->pwm);
 
- 	hrtimer_cancel(&port->timer);
- 	cancel_work_sync(&port->work);
+	hrtimer_cancel(&data->timer);
+	cancel_work_sync(&data->work);
 }
 
 struct legoev3_port_driver ev3_output_port_driver = {
-  	.probe		= ev3_output_port_probe,
+	.probe		= ev3_output_port_probe,
 	.remove		= ev3_output_port_remove,
 	.shutdown	= ev3_output_port_shutdown,
 	.driver = {

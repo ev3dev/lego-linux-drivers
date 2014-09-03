@@ -26,7 +26,7 @@
 #include <linux/legoev3/ev3_input_port.h>
 
 struct nxt_i2c_host_data {
-	struct legoev3_port_device *in_port;
+	struct legoev3_port *in_port;
 };
 
 static int nxt_i2c_host_probe(struct legoev3_port_device *sensor)
@@ -68,7 +68,7 @@ static int nxt_i2c_host_remove(struct legoev3_port_device *sensor)
 	return 0;
 }
 
-struct legoev3_port_driver nxt_i2c_host_driver = {
+struct legoev3_port_device_driver nxt_i2c_host_driver = {
 	.probe	= nxt_i2c_host_probe,
 	.remove	= nxt_i2c_host_remove,
 	.driver = {
@@ -77,7 +77,7 @@ struct legoev3_port_driver nxt_i2c_host_driver = {
 	},
 };
 EXPORT_SYMBOL_GPL(nxt_i2c_host_driver);
-legoev3_port_driver(nxt_i2c_host_driver);
+legoev3_port_device_driver(nxt_i2c_host_driver);
 
 MODULE_DESCRIPTION("NXT I2C host driver for LEGO Mindstorms EV3");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");

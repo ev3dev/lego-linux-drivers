@@ -27,7 +27,7 @@
 #define PIN6_NEAR_GND		250		/* 0.25V */
 
 struct touch_sensor_data {
-	struct legoev3_port_device *in_port;
+	struct legoev3_port *in_port;
 	struct msensor_device ms;
 	struct msensor_mode_info mode_info[NUM_TOUCH_SENSOR_MODES];
 	u8 mode;
@@ -162,7 +162,7 @@ static struct legoev3_port_device_id touch_sensor_device_ids [] = {
 	{  }
 };
 
-struct legoev3_port_driver touch_sensor_driver = {
+struct legoev3_port_device_driver touch_sensor_driver = {
 	.probe	= touch_sensor_probe,
 	.remove	= touch_sensor_remove,
 	.driver = {
@@ -172,7 +172,7 @@ struct legoev3_port_driver touch_sensor_driver = {
 	.id_table = touch_sensor_device_ids,
 };
 EXPORT_SYMBOL_GPL(touch_sensor_driver);
-legoev3_port_driver(touch_sensor_driver);
+legoev3_port_device_driver(touch_sensor_driver);
 
 MODULE_DESCRIPTION("Touch sensor device driver for LEGO Mindstorms EV3");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");

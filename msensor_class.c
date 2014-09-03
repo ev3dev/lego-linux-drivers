@@ -443,7 +443,7 @@ static ssize_t msensor_write_bin_data(struct file *file ,struct kobject *kobj,
 
 static DEVICE_ATTR(type_id, S_IRUGO, msensor_show_type_id, NULL);
 static DEVICE_ATTR(port_name, S_IRUGO, msensor_show_port_name, NULL);
-static DEVICE_ATTR(modes, S_IRUGO | S_IWUGO, msensor_show_modes, NULL);
+static DEVICE_ATTR(modes, S_IRUGO, msensor_show_modes, NULL);
 static DEVICE_ATTR(mode, S_IRUGO | S_IWUGO, msensor_show_mode, msensor_store_mode);
 static DEVICE_ATTR(units, S_IRUGO, msensor_show_units, NULL);
 static DEVICE_ATTR(dp, S_IRUGO, msensor_show_dp, NULL);

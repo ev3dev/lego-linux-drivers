@@ -1921,7 +1921,7 @@ static int ev3_tacho_motor_remove(struct legoev3_port_device *motor)
 		gpio_to_irq(pdata->tacho_int_gpio),
 		dev_name(&ev3_tm->out_port->dev));
 
-        free_irq(gpio_to_irq(pdata->tacho_int_gpio), ev3_tm);
+	free_irq(gpio_to_irq(pdata->tacho_int_gpio), ev3_tm);
 
 	dev_info(&motor->dev, "Tacho motor removed from port %s\n",
 		 dev_name(&ev3_tm->out_port->dev));
@@ -1931,7 +1931,7 @@ static int ev3_tacho_motor_remove(struct legoev3_port_device *motor)
 	return 0;
 }
 
-struct legoev3_port_driver ev3_tacho_motor_driver = {
+struct legoev3_port_device_driver ev3_tacho_motor_driver = {
 	.probe	= ev3_tacho_motor_probe,
 	.remove	= ev3_tacho_motor_remove,
 	.driver = {
@@ -1940,7 +1940,7 @@ struct legoev3_port_driver ev3_tacho_motor_driver = {
 	},
 };
 EXPORT_SYMBOL_GPL(ev3_tacho_motor_driver);
-legoev3_port_driver(ev3_tacho_motor_driver);
+legoev3_port_device_driver(ev3_tacho_motor_driver);
 
 MODULE_DESCRIPTION("EV3 tacho motor driver for LEGO Mindstorms EV3");
 MODULE_AUTHOR("Ralph Hempel <rhempel@hempeldesigngroup.com>");
