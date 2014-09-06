@@ -565,37 +565,37 @@ static ssize_t tacho_motor_store_reset(struct device *dev, struct device_attribu
 }
 
 DEVICE_ATTR(port_name, S_IRUGO, tacho_motor_show_port_name, NULL);
-DEVICE_ATTR(type, S_IRUGO | S_IWUGO, tacho_motor_show_type, tacho_motor_store_type);
-DEVICE_ATTR(position, S_IRUGO | S_IWUGO, tacho_motor_show_position, tacho_motor_store_position);
+DEVICE_ATTR(type, S_IRUGO | S_IWUSR, tacho_motor_show_type, tacho_motor_store_type);
+DEVICE_ATTR(position, S_IRUGO | S_IWUSR, tacho_motor_show_position, tacho_motor_store_position);
 
 DEVICE_ATTR(state, S_IRUGO, tacho_motor_show_state, NULL);
 DEVICE_ATTR(duty_cycle, S_IRUGO, tacho_motor_show_duty_cycle, NULL);
 DEVICE_ATTR(pulses_per_second, S_IRUGO, tacho_motor_show_pulses_per_second, NULL);
 
-DEVICE_ATTR(duty_cycle_sp, S_IRUGO | S_IWUGO, tacho_motor_show_duty_cycle_sp, tacho_motor_store_duty_cycle_sp);
-DEVICE_ATTR(pulses_per_second_sp, S_IRUGO | S_IWUGO, tacho_motor_show_pulses_per_second_sp, tacho_motor_store_pulses_per_second_sp);
-DEVICE_ATTR(time_sp, S_IRUGO | S_IWUGO, tacho_motor_show_time_sp, tacho_motor_store_time_sp);
-DEVICE_ATTR(position_sp, S_IRUGO | S_IWUGO, tacho_motor_show_position_sp, tacho_motor_store_position_sp);
+DEVICE_ATTR(duty_cycle_sp, S_IRUGO | S_IWUSR, tacho_motor_show_duty_cycle_sp, tacho_motor_store_duty_cycle_sp);
+DEVICE_ATTR(pulses_per_second_sp, S_IRUGO | S_IWUSR, tacho_motor_show_pulses_per_second_sp, tacho_motor_store_pulses_per_second_sp);
+DEVICE_ATTR(time_sp, S_IRUGO | S_IWUSR, tacho_motor_show_time_sp, tacho_motor_store_time_sp);
+DEVICE_ATTR(position_sp, S_IRUGO | S_IWUSR, tacho_motor_show_position_sp, tacho_motor_store_position_sp);
 
-DEVICE_ATTR(run_mode, S_IRUGO | S_IWUGO, tacho_motor_show_run_mode, tacho_motor_store_run_mode);
-DEVICE_ATTR(regulation_mode, S_IRUGO | S_IWUGO, tacho_motor_show_regulation_mode, tacho_motor_store_regulation_mode);
-DEVICE_ATTR(stop_modes, S_IRUGO | S_IWUGO, tacho_motor_show_stop_modes, NULL);
-DEVICE_ATTR(stop_mode, S_IRUGO | S_IWUGO, tacho_motor_show_stop_mode, tacho_motor_store_stop_mode);
-DEVICE_ATTR(position_mode, S_IRUGO | S_IWUGO, tacho_motor_show_position_mode, tacho_motor_store_position_mode);
-DEVICE_ATTR(polarity_mode, S_IRUGO | S_IWUGO, tacho_motor_show_polarity_mode, tacho_motor_store_polarity_mode);
+DEVICE_ATTR(run_mode, S_IRUGO | S_IWUSR, tacho_motor_show_run_mode, tacho_motor_store_run_mode);
+DEVICE_ATTR(regulation_mode, S_IRUGO | S_IWUSR, tacho_motor_show_regulation_mode, tacho_motor_store_regulation_mode);
+DEVICE_ATTR(stop_modes, S_IRUGO | S_IWUSR, tacho_motor_show_stop_modes, NULL);
+DEVICE_ATTR(stop_mode, S_IRUGO | S_IWUSR, tacho_motor_show_stop_mode, tacho_motor_store_stop_mode);
+DEVICE_ATTR(position_mode, S_IRUGO | S_IWUSR, tacho_motor_show_position_mode, tacho_motor_store_position_mode);
+DEVICE_ATTR(polarity_mode, S_IRUGO | S_IWUSR, tacho_motor_show_polarity_mode, tacho_motor_store_polarity_mode);
 
-DEVICE_ATTR(ramp_up_sp, S_IRUGO | S_IWUGO, tacho_motor_show_ramp_up_sp, tacho_motor_store_ramp_up_sp);
-DEVICE_ATTR(ramp_down_sp, S_IRUGO | S_IWUGO, tacho_motor_show_ramp_down_sp, tacho_motor_store_ramp_down_sp);
+DEVICE_ATTR(ramp_up_sp, S_IRUGO | S_IWUSR, tacho_motor_show_ramp_up_sp, tacho_motor_store_ramp_up_sp);
+DEVICE_ATTR(ramp_down_sp, S_IRUGO | S_IWUSR, tacho_motor_show_ramp_down_sp, tacho_motor_store_ramp_down_sp);
 
-DEVICE_ATTR(speed_regulation_P, S_IRUGO | S_IWUGO, tacho_motor_show_speed_regulation_P, tacho_motor_store_speed_regulation_P);
-DEVICE_ATTR(speed_regulation_I, S_IRUGO | S_IWUGO, tacho_motor_show_speed_regulation_I, tacho_motor_store_speed_regulation_I);
-DEVICE_ATTR(speed_regulation_D, S_IRUGO | S_IWUGO, tacho_motor_show_speed_regulation_D, tacho_motor_store_speed_regulation_D);
-DEVICE_ATTR(speed_regulation_K, S_IRUGO | S_IWUGO, tacho_motor_show_speed_regulation_K, tacho_motor_store_speed_regulation_K);
+DEVICE_ATTR(speed_regulation_P, S_IRUGO | S_IWUSR, tacho_motor_show_speed_regulation_P, tacho_motor_store_speed_regulation_P);
+DEVICE_ATTR(speed_regulation_I, S_IRUGO | S_IWUSR, tacho_motor_show_speed_regulation_I, tacho_motor_store_speed_regulation_I);
+DEVICE_ATTR(speed_regulation_D, S_IRUGO | S_IWUSR, tacho_motor_show_speed_regulation_D, tacho_motor_store_speed_regulation_D);
+DEVICE_ATTR(speed_regulation_K, S_IRUGO | S_IWUSR, tacho_motor_show_speed_regulation_K, tacho_motor_store_speed_regulation_K);
 
-DEVICE_ATTR(run, S_IRUGO | S_IWUGO, tacho_motor_show_run, tacho_motor_store_run);
-DEVICE_ATTR(estop, S_IRUGO | S_IWUGO, tacho_motor_show_estop, tacho_motor_store_estop);
+DEVICE_ATTR(run, S_IRUGO | S_IWUSR, tacho_motor_show_run, tacho_motor_store_run);
+DEVICE_ATTR(estop, S_IRUGO | S_IWUSR, tacho_motor_show_estop, tacho_motor_store_estop);
 
-DEVICE_ATTR(reset, S_IWUGO, NULL, tacho_motor_store_reset);
+DEVICE_ATTR(reset, S_IWUSR, NULL, tacho_motor_store_reset);
 
 static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_port_name.attr,
