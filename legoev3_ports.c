@@ -494,11 +494,25 @@ int legoev3_register_output_ports(struct legoev3_port *ports[],
 				 struct ev3_output_port_platform_data data[],
 				 unsigned len)
 {
-	int err;
+	int err, id, j;
 	int i = 0;
+	bool skip;
 
 	do {
-		ports[i] = legoev3_port_register("out", data[i].id + 1,
+		skip = false;
+		id = data[i].id + 1;
+		for (j = 0; j < num_disabled_out_port; j++) {
+			if (disable_out_port[j] == id) {
+				skip = true;
+				break;
+			}
+		}
+		if (skip) {
+			dev_info(&legoev3_ports->pdev->dev,
+				"Output port out%c is disabled.\n", 'A' + id - 1);
+			continue;
+		}
+		ports[i] = legoev3_port_register("out", id,
 			&ev3_output_port_device_type, &data[i],
 			sizeof(struct ev3_output_port_platform_data));
 		if (IS_ERR(ports[i])) {
