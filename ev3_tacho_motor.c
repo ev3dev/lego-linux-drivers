@@ -1893,17 +1893,10 @@ static int ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 
 	dev_set_drvdata(&motor->dev, ev3_tm);
 
-<<<<<<< HEAD
-	dev_info(&motor->dev, "Tacho Motor connected to port %s gpio %d irq %d\n",
-		dev_name(&ev3_tm->out_port->dev),
-                pdata->tacho_int_gpio,
-                gpio_to_irq(pdata->tacho_int_gpio));
-=======
 	dev_info(&motor->dev, "A Tacho Motor connected to port %s gpio %d irq %d\n",
 		 dev_name(&ev3_tm->out_port->dev),
 		 pdata->tacho_int_gpio,
 		 gpio_to_irq(pdata->tacho_int_gpio));
->>>>>>> 0bdeed29aa2c567bbbc2f61a869008a998080b07
 
 	/* Here's where we set up the port pins on a per-port basis */
 	if(request_irq(gpio_to_irq(pdata->tacho_int_gpio), tacho_motor_isr, 0, dev_name(&ev3_tm->out_port->dev), ev3_tm ))
