@@ -44,8 +44,10 @@ static struct tacho_motor_mode_item tacho_motor_run_modes[NUM_RUN_MODES] = {
 };
 
 static struct tacho_motor_mode_item tacho_motor_polarity_modes[NUM_POLARITY_MODES] = {
-	[POLARITY_POSITIVE]	=  { "positive"  },
-	[POLARITY_NEGATIVE]	=  { "negative"  },
+	[POLARITY_POSITIVE]		=  { "positive"  },
+	[POLARITY_NEGATIVE_POSITION]	=  { "negative_position"   },
+	[POLARITY_NEGATIVE_DUTY_CYCLE]	=  { "negative_duty_cycle" },
+	[POLARITY_NEGATIVE]		=  { "negative"  },
 };
 
 struct tacho_motor_type_item {
@@ -278,7 +280,7 @@ static ssize_t tacho_motor_store_polarity_mode(struct device *dev, struct device
 	for (i=0; i<NUM_POLARITY_MODES; ++i)
 		if (sysfs_streq(buf, tacho_motor_polarity_modes[i].name)) break;
 
-	if (i >= NUM_RUN_MODES)
+	if (i >= NUM_POLARITY_MODES)
                 return -EINVAL;
 
         tm->fp->set_polarity_mode(tm, i);

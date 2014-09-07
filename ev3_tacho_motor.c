@@ -265,14 +265,18 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 	/* Update the tacho count and motor direction for low speed, taking
 	 * advantage of the fact that if state and dir match, then the motor
 	 * is turning FORWARD!
-	*/
+	 */
 
-		if (int_state == dir_state)
-			next_direction = FORWARD;
-		else
-			next_direction = REVERSE;
-
-		/* If the saved and next direction states match, then update the dir_chg_sample count */
+		switch (ev3_tm->polarity_mode) {
+		case POLARITY_POSITIVE:
+		case POLARITY_NEGATIVE_DUTY_CYCLE:	next_direction = (int_state == dir_state) ? FORWARD : REVERSE;
+							break;
+		case POLARITY_NEGATIVE_POSITION: 
+		case POLARITY_NEGATIVE:			next_direction = (int_state == dir_state) ? REVERSE : FORWARD;
+							break;
+		}
+	
+                /* If the saved and next direction states match, then update the dir_chg_sample count */
 
 		if (ev3_tm->run_direction == next_direction) {
 			if (ev3_tm->dir_chg_samples < (TACHO_SAMPLES-1))
@@ -361,9 +365,23 @@ static void ev3_tacho_motor_set_power(struct ev3_tacho_motor_data *ev3_tm, int p
 	}
 
         if (0 < power) {
-		ev3_tacho_motor_forward(ev3_tm);
+		switch (ev3_tm->polarity_mode) {
+		case POLARITY_POSITIVE:
+		case POLARITY_NEGATIVE_POSITION:	ev3_tacho_motor_forward(ev3_tm);
+							break;
+		case POLARITY_NEGATIVE_DUTY_CYCLE:	
+		case POLARITY_NEGATIVE:			ev3_tacho_motor_reverse(ev3_tm);
+							break;
+		}
 	} else if (0 > power) {
-		ev3_tacho_motor_reverse(ev3_tm);
+		switch (ev3_tm->polarity_mode) {
+		case POLARITY_POSITIVE:
+		case POLARITY_NEGATIVE_POSITION:	ev3_tacho_motor_reverse(ev3_tm);
+							break;
+		case POLARITY_NEGATIVE_DUTY_CYCLE:	
+		case POLARITY_NEGATIVE:			ev3_tacho_motor_forward(ev3_tm);
+							break;
+		}
 	} else {
 		if (STOP_COAST == ev3_tm->stop_mode)
 			ev3_tacho_motor_coast(ev3_tm);
@@ -1875,10 +1893,17 @@ static int ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 
 	dev_set_drvdata(&motor->dev, ev3_tm);
 
+<<<<<<< HEAD
+	dev_info(&motor->dev, "Tacho Motor connected to port %s gpio %d irq %d\n",
+		dev_name(&ev3_tm->out_port->dev),
+                pdata->tacho_int_gpio,
+                gpio_to_irq(pdata->tacho_int_gpio));
+=======
 	dev_info(&motor->dev, "A Tacho Motor connected to port %s gpio %d irq %d\n",
 		 dev_name(&ev3_tm->out_port->dev),
 		 pdata->tacho_int_gpio,
 		 gpio_to_irq(pdata->tacho_int_gpio));
+>>>>>>> 0bdeed29aa2c567bbbc2f61a869008a998080b07
 
 	/* Here's where we set up the port pins on a per-port basis */
 	if(request_irq(gpio_to_irq(pdata->tacho_int_gpio), tacho_motor_isr, 0, dev_name(&ev3_tm->out_port->dev), ev3_tm ))
