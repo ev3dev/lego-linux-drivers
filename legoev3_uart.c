@@ -440,6 +440,12 @@ enum hrtimer_restart legoev3_uart_keep_alive_timer_callback(struct hrtimer *time
 	if (!port->data_rec) {
 		port->last_err = "No data since last keep-alive.";
 		port->num_data_err++;
+		if (port->num_data_err > LEGOEV3_UART_MAX_DATA_ERR) {
+			port->synced = 0;
+			port->new_baud_rate = LEGOEV3_UART_SPEED_MIN;
+			schedule_work(&port->change_bitrate_work);
+			return HRTIMER_NORESTART;
+		}
 	}
 	port->data_rec = 0;
 
@@ -857,8 +863,6 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 			break;
 		}
 err_bad_data_msg_checksum:
-		if (port->info_done && port->num_data_err > LEGOEV3_UART_MAX_DATA_ERR)
-			goto err_invalid_state;
 		count = CIRC_CNT(cb->head, cb->tail, LEGOEV3_UART_BUFFER_SIZE);
 	}
 	return;
