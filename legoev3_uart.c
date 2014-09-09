@@ -143,7 +143,6 @@ enum legoev3_uart_info_flags {
  * @keep_alive_timer: Sends a NACK every 100usec when a sensor is connected.
  * @keep_alive_tasklet: Does the actual sending of the NACK.
  * @mode_info: Array of information about each mode of the sensor
- * @type: The type of sensor that we are connected to. *
  * @num_modes: The number of modes that the sensor has. (1-8)
  * @num_view_modes: Number of modes that can be used for data logging. (1-8)
  * @mode: The current mode.
@@ -292,8 +291,10 @@ int legoev3_uart_set_mode(void *context, const u8 mode)
 	reinit_completion(&port->set_mode_completion);
 	ret = wait_for_completion_timeout(&port->set_mode_completion,
 						msecs_to_jiffies(300));
-	if (!ret)
+	if (!ret) {
+		port->set_mode_completion.done++;
 		return -ETIMEDOUT;
+	}
 
 	return 0;
 }
