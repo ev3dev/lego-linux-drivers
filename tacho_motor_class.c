@@ -44,10 +44,13 @@ static struct tacho_motor_mode_item tacho_motor_run_modes[NUM_RUN_MODES] = {
 };
 
 static struct tacho_motor_mode_item tacho_motor_polarity_modes[NUM_POLARITY_MODES] = {
-	[POLARITY_POSITIVE]		=  { "positive"  },
-	[POLARITY_NEGATIVE_POSITION]	=  { "negative_position"   },
-	[POLARITY_NEGATIVE_DUTY_CYCLE]	=  { "negative_duty_cycle" },
-	[POLARITY_NEGATIVE]		=  { "negative"  },
+	[POLARITY_NORMAL]	=  { "normal"  },
+	[POLARITY_INVERTED]	=  { "inverted"  },
+};
+
+static struct tacho_motor_mode_item tacho_motor_encoder_modes[NUM_ENCODER_MODES] = {
+	[ENCODER_NORMAL]	=  { "normal"  },
+	[ENCODER_INVERTED]	=  { "inverted"  },
 };
 
 struct tacho_motor_type_item {
@@ -284,6 +287,30 @@ static ssize_t tacho_motor_store_polarity_mode(struct device *dev, struct device
                 return -EINVAL;
 
         tm->fp->set_polarity_mode(tm, i);
+
+        return size;
+}
+
+static ssize_t tacho_motor_show_encoder_mode(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	return sprintf(buf, "%s\n", tacho_motor_encoder_modes[tm->fp->get_encoder_mode(tm)].name);
+}
+
+static ssize_t tacho_motor_store_encoder_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+        unsigned int i;
+
+	for (i=0; i<NUM_ENCODER_MODES; ++i)
+		if (sysfs_streq(buf, tacho_motor_encoder_modes[i].name)) break;
+
+	if (i >= NUM_ENCODER_MODES)
+                return -EINVAL;
+
+        tm->fp->set_encoder_mode(tm, i);
 
         return size;
 }
@@ -585,6 +612,7 @@ DEVICE_ATTR(stop_modes, S_IRUGO | S_IWUSR, tacho_motor_show_stop_modes, NULL);
 DEVICE_ATTR(stop_mode, S_IRUGO | S_IWUSR, tacho_motor_show_stop_mode, tacho_motor_store_stop_mode);
 DEVICE_ATTR(position_mode, S_IRUGO | S_IWUSR, tacho_motor_show_position_mode, tacho_motor_store_position_mode);
 DEVICE_ATTR(polarity_mode, S_IRUGO | S_IWUSR, tacho_motor_show_polarity_mode, tacho_motor_store_polarity_mode);
+DEVICE_ATTR(encoder_mode, S_IRUGO | S_IWUSR, tacho_motor_show_encoder_mode, tacho_motor_store_encoder_mode);
 
 DEVICE_ATTR(ramp_up_sp, S_IRUGO | S_IWUSR, tacho_motor_show_ramp_up_sp, tacho_motor_store_ramp_up_sp);
 DEVICE_ATTR(ramp_down_sp, S_IRUGO | S_IWUSR, tacho_motor_show_ramp_down_sp, tacho_motor_store_ramp_down_sp);
@@ -616,6 +644,7 @@ static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_stop_mode.attr,
 	&dev_attr_position_mode.attr,
 	&dev_attr_polarity_mode.attr,
+	&dev_attr_encoder_mode.attr,
 	&dev_attr_ramp_up_sp.attr,
 	&dev_attr_ramp_down_sp.attr,
 	&dev_attr_speed_regulation_P.attr,
