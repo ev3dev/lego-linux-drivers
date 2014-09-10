@@ -161,6 +161,7 @@ struct ev3_tacho_motor_data {
 	long stop_mode;
 	long position_mode;
 	long polarity_mode;
+	long encoder_mode;
 };
 
 static const int SamplesPerSpeed[NO_OF_MOTOR_TYPES][NO_OF_SAMPLE_STEPS] = {
@@ -265,15 +266,33 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 	/* Update the tacho count and motor direction for low speed, taking
 	 * advantage of the fact that if state and dir match, then the motor
 	 * is turning FORWARD!
+	 *
+	 * We also look after the polarity_mode and encoder_mode here as follows:
+	 *
+	 * polarity_mode | encoder_mode | next_direction
+	 * --------------+--------------+---------------
+	 *   normal      |    normal    | normal
+	 *   normal      |    inverted  | inverted
+	 *   inverted    |    normal    | inverted
+	 *   inverted    |    inverted  | normal
+	 *
+	 * Yes, this could be compressed into a clever set of conditionals that 
+	 * results in only two assignments, but it's clearer to write nested
+	 * if statements in this case - it looks a lot more like the truth table
 	 */
 
-		switch (ev3_tm->polarity_mode) {
-		case POLARITY_POSITIVE:
-		case POLARITY_NEGATIVE_DUTY_CYCLE:	next_direction = (int_state == dir_state) ? FORWARD : REVERSE;
-							break;
-		case POLARITY_NEGATIVE_POSITION: 
-		case POLARITY_NEGATIVE:			next_direction = (int_state == dir_state) ? REVERSE : FORWARD;
-							break;
+		if (POLARITY_NORMAL == ev3_tm->polarity_mode) {
+			if (ENCODER_NORMAL == ev3_tm->encoder_mode) {
+				next_direction = (int_state == dir_state) ? FORWARD : REVERSE;
+			} else {
+				next_direction = (int_state == dir_state) ? REVERSE : FORWARD;
+			}
+		} else {
+			if (ENCODER_NORMAL == ev3_tm->encoder_mode) {
+				next_direction = (int_state == dir_state) ? REVERSE : FORWARD;
+			} else {
+				next_direction = (int_state == dir_state) ? FORWARD : REVERSE;
+			}
 		}
 	
                 /* If the saved and next direction states match, then update the dir_chg_sample count */
@@ -365,23 +384,19 @@ static void ev3_tacho_motor_set_power(struct ev3_tacho_motor_data *ev3_tm, int p
 	}
 
         if (0 < power) {
-		switch (ev3_tm->polarity_mode) {
-		case POLARITY_POSITIVE:
-		case POLARITY_NEGATIVE_POSITION:	ev3_tacho_motor_forward(ev3_tm);
-							break;
-		case POLARITY_NEGATIVE_DUTY_CYCLE:	
-		case POLARITY_NEGATIVE:			ev3_tacho_motor_reverse(ev3_tm);
-							break;
+		if (POLARITY_NORMAL == ev3_tm->polarity_mode) {
+			ev3_tacho_motor_forward(ev3_tm);
+		} else {
+			ev3_tacho_motor_reverse(ev3_tm);
 		}
+
 	} else if (0 > power) {
-		switch (ev3_tm->polarity_mode) {
-		case POLARITY_POSITIVE:
-		case POLARITY_NEGATIVE_POSITION:	ev3_tacho_motor_reverse(ev3_tm);
-							break;
-		case POLARITY_NEGATIVE_DUTY_CYCLE:	
-		case POLARITY_NEGATIVE:			ev3_tacho_motor_forward(ev3_tm);
-							break;
+		if (POLARITY_NORMAL == ev3_tm->polarity_mode) {
+			ev3_tacho_motor_reverse(ev3_tm);
+		} else {
+			ev3_tacho_motor_forward(ev3_tm);
 		}
+
 	} else {
 		if (STOP_COAST == ev3_tm->stop_mode)
 			ev3_tacho_motor_coast(ev3_tm);
@@ -492,7 +507,8 @@ static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
 	ev3_tm->regulation_mode	= REGULATION_OFF;
 	ev3_tm->stop_mode	= STOP_COAST;
 	ev3_tm->position_mode	= POSITION_ABSOLUTE;
-	ev3_tm->polarity_mode	= POLARITY_POSITIVE;
+	ev3_tm->polarity_mode	= POLARITY_NORMAL;
+	ev3_tm->encoder_mode	= ENCODER_NORMAL;
 };
 
 /*
@@ -879,8 +895,6 @@ static void regulate_position(struct ev3_tacho_motor_data *ev3_tm)
 
 	ev3_tacho_motor_set_power(ev3_tm, power);
 }
-
-static int foo = 0;
 
 static void adjust_ramp_for_position(struct ev3_tacho_motor_data *ev3_tm)
 {
@@ -1563,6 +1577,22 @@ static void ev3_tacho_motor_set_polarity_mode(struct tacho_motor_device *tm, lon
 	ev3_tm->polarity_mode = polarity_mode;
 }
 
+static int ev3_tacho_motor_get_encoder_mode(struct tacho_motor_device *tm)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	return ev3_tm->encoder_mode;
+}
+
+static void ev3_tacho_motor_set_encoder_mode(struct tacho_motor_device *tm, long encoder_mode)
+{
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(tm, struct ev3_tacho_motor_data, tm);
+
+	ev3_tm->encoder_mode = encoder_mode;
+}
+
 static int ev3_tacho_motor_get_ramp_up_sp(struct tacho_motor_device *tm)
 {
 	struct ev3_tacho_motor_data *ev3_tm =
@@ -1838,6 +1868,9 @@ static const struct function_pointers fp = {
  	.get_polarity_mode	  = ev3_tacho_motor_get_polarity_mode,
  	.set_polarity_mode	  = ev3_tacho_motor_set_polarity_mode,
 
+ 	.get_encoder_mode	  = ev3_tacho_motor_get_encoder_mode,
+ 	.set_encoder_mode	  = ev3_tacho_motor_set_encoder_mode,
+
  	.get_ramp_up_sp		  = ev3_tacho_motor_get_ramp_up_sp,
  	.set_ramp_up_sp		  = ev3_tacho_motor_set_ramp_up_sp,
 
@@ -1893,17 +1926,10 @@ static int ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 
 	dev_set_drvdata(&motor->dev, ev3_tm);
 
-<<<<<<< HEAD
 	dev_info(&motor->dev, "Tacho Motor connected to port %s gpio %d irq %d\n",
-		dev_name(&ev3_tm->out_port->dev),
-                pdata->tacho_int_gpio,
-                gpio_to_irq(pdata->tacho_int_gpio));
-=======
-	dev_info(&motor->dev, "A Tacho Motor connected to port %s gpio %d irq %d\n",
 		 dev_name(&ev3_tm->out_port->dev),
 		 pdata->tacho_int_gpio,
 		 gpio_to_irq(pdata->tacho_int_gpio));
->>>>>>> 0bdeed29aa2c567bbbc2f61a869008a998080b07
 
 	/* Here's where we set up the port pins on a per-port basis */
 	if(request_irq(gpio_to_irq(pdata->tacho_int_gpio), tacho_motor_isr, 0, dev_name(&ev3_tm->out_port->dev), ev3_tm ))
