@@ -143,7 +143,6 @@ enum legoev3_uart_info_flags {
  * @keep_alive_timer: Sends a NACK every 100usec when a sensor is connected.
  * @keep_alive_tasklet: Does the actual sending of the NACK.
  * @mode_info: Array of information about each mode of the sensor
- * @type: The type of sensor that we are connected to. *
  * @num_modes: The number of modes that the sensor has. (1-8)
  * @num_view_modes: Number of modes that can be used for data logging. (1-8)
  * @mode: The current mode.
@@ -292,8 +291,10 @@ int legoev3_uart_set_mode(void *context, const u8 mode)
 	reinit_completion(&port->set_mode_completion);
 	ret = wait_for_completion_timeout(&port->set_mode_completion,
 						msecs_to_jiffies(300));
-	if (!ret)
+	if (!ret) {
+		port->set_mode_completion.done++;
 		return -ETIMEDOUT;
+	}
 
 	return 0;
 }
@@ -439,6 +440,12 @@ enum hrtimer_restart legoev3_uart_keep_alive_timer_callback(struct hrtimer *time
 	if (!port->data_rec) {
 		port->last_err = "No data since last keep-alive.";
 		port->num_data_err++;
+		if (port->num_data_err > LEGOEV3_UART_MAX_DATA_ERR) {
+			port->synced = 0;
+			port->new_baud_rate = LEGOEV3_UART_SPEED_MIN;
+			schedule_work(&port->change_bitrate_work);
+			return HRTIMER_NORESTART;
+		}
 	}
 	port->data_rec = 0;
 
@@ -856,8 +863,6 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 			break;
 		}
 err_bad_data_msg_checksum:
-		if (port->info_done && port->num_data_err > LEGOEV3_UART_MAX_DATA_ERR)
-			goto err_invalid_state;
 		count = CIRC_CNT(cb->head, cb->tail, LEGOEV3_UART_BUFFER_SIZE);
 	}
 	return;
