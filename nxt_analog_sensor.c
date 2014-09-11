@@ -150,7 +150,7 @@ static int nxt_analog_sensor_remove(struct legoev3_port_device *sensor)
 	return 0;
 }
 
-static struct legoev3_port_device_id nxt_light_sensor_device_ids [] = {
+static struct legoev3_port_device_id nxt_analog_sensor_device_ids [] = {
 	{
 		.name = "nxt-analog-sensor",
 		.type_id = NXT_ANALOG_SENSOR_TYPE_ID,
@@ -165,7 +165,7 @@ struct legoev3_port_device_driver nxt_analog_sensor_driver = {
 		.name	= "nxt-analog-sensor",
 		.owner	= THIS_MODULE,
 	},
-	.id_table = nxt_light_sensor_device_ids,
+	.id_table = nxt_analog_sensor_device_ids,
 };
 EXPORT_SYMBOL_GPL(nxt_analog_sensor_driver);
 legoev3_port_device_driver(nxt_analog_sensor_driver);
