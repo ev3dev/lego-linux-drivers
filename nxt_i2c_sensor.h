@@ -16,6 +16,7 @@
 #ifndef NXT_I2C_SENSOR_H_
 #define NXT_I2C_SENSOR_H_
 
+#include <linux/legoev3/ev3_input_port.h>
 #include <linux/legoev3/msensor_class.h>
 
 #define NXT_I2C_ID_STR_LEN 8
@@ -51,7 +52,25 @@ struct nxt_i2c_sensor_info {
 	struct nxt_i2c_sensor_mode_info i2c_mode_info[MSENSOR_MODE_MAX + 1];
 };
 
+enum nxt_i2c_sensor_types {
+	UNKNOWN_SENSOR,
+	LEGO_NXT_ULTRASONIC_SENSOR,
+	LEGO_POWER_STORAGE_SENSOR,
+	HT_NXT_PIR_SENSOR,
+	HT_NXT_BAROMETRIC_SENSOR,
+	HT_NXT_IR_SEEKER_SENSOR_V2,
+	HT_COLOR_SENSOR_V2,
+	HT_NXT_COLOR_SENSOR,
+	HT_NXT_ANGLE_SENSOR,
+	HT_NXT_COMPASS_SENSOR,
+	HT_NXT_IR_RECIEIVER_SENSOR,
+	HT_NXT_ACCELERATION_TILT_SENSOR,
+	HT_NXT_IR_LINK_SENSOR,
+	HT_NXT_SUPER_PRO_SENSOR,
+	MS_LIGHT_SENSOR_ARRAY,
+	NUM_NXT_I2C_SENSORS
+};
+
 extern struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[];
-extern const int num_nxt_i2c_sensor_defs;
 
 #endif /* NXT_I2C_SENSOR_H_ */

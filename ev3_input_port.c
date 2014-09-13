@@ -54,23 +54,45 @@
 #define PIN1_ID_14		2826	/* 3rd party */
 #define PIN1_ID_VAR		50	/* IDs can be +/- 50mV */
 
+enum sensor_type_id {
+	SENSOR_TYPE_ID_NXT_TOUCH,
+	SENSOR_TYPE_ID_NXT_LIGHT,
+	SENSOR_TYPE_ID_NXT_ANALOG,
+	SENSOR_TYPE_ID_NXT_COLOR,
+	SENSOR_TYPE_ID_EV3_ANALOG_01,
+	SENSOR_TYPE_ID_EV3_TOUCH,
+	SENSOR_TYPE_ID_EV3_ANALOG_03,
+	SENSOR_TYPE_ID_EV3_ANALOG_04,
+	SENSOR_TYPE_ID_EV3_ANALOG_05,
+	SENSOR_TYPE_ID_EV3_ANALOG_06,
+	SENSOR_TYPE_ID_EV3_ANALOG_07,
+	SENSOR_TYPE_ID_EV3_ANALOG_08,
+	SENSOR_TYPE_ID_EV3_ANALOG_09,
+	SENSOR_TYPE_ID_EV3_ANALOG_10,
+	SENSOR_TYPE_ID_EV3_ANALOG_11,
+	SENSOR_TYPE_ID_EV3_ANALOG_12,
+	SENSOR_TYPE_ID_EV3_ANALOG_13,
+	SENSOR_TYPE_ID_EV3_ANALOG_14,
+	SENSOR_TYPE_ID_UNKNOWN,
+};
+
 /* resistor ids for EV3 analog sensor devices */
 enum ev3_analog_sensor_res_id {
-	EV3_IN_DEV_ID_01,
-	EV3_IN_DEV_ID_02,
-	EV3_IN_DEV_ID_03,
-	EV3_IN_DEV_ID_04,
-	EV3_IN_DEV_ID_05,
-	EV3_IN_DEV_ID_06,
-	EV3_IN_DEV_ID_07,
-	EV3_IN_DEV_ID_08,
-	EV3_IN_DEV_ID_09,
-	EV3_IN_DEV_ID_10,
-	EV3_IN_DEV_ID_11,
-	EV3_IN_DEV_ID_12,
-	EV3_IN_DEV_ID_13,
-	EV3_IN_DEV_ID_14,
-	NUM_EV3_IN_DEV_ID,
+	EV3_RESISTOR_ID_01,
+	EV3_RESISTOR_ID_02,
+	EV3_RESISTOR_ID_03,
+	EV3_RESISTOR_ID_04,
+	EV3_RESISTOR_ID_05,
+	EV3_RESISTOR_ID_06,
+	EV3_RESISTOR_ID_07,
+	EV3_RESISTOR_ID_08,
+	EV3_RESISTOR_ID_09,
+	EV3_RESISTOR_ID_10,
+	EV3_RESISTOR_ID_11,
+	EV3_RESISTOR_ID_12,
+	EV3_RESISTOR_ID_13,
+	EV3_RESISTOR_ID_14,
+	NUM_EV3_RESISTOR_ID,
 };
 
 struct ev3_analog_sensor_info {
@@ -79,74 +101,74 @@ struct ev3_analog_sensor_info {
 	int max_mv;
 };
 
-static struct ev3_analog_sensor_info ev3_analog_sensor_infos[NUM_EV3_IN_DEV_ID] = {
-	[EV3_IN_DEV_ID_01] = {
-		.type_id = 15,
+static struct ev3_analog_sensor_info ev3_analog_sensor_infos[] = {
+	[EV3_RESISTOR_ID_01] = {
+		.type_id = SENSOR_TYPE_ID_EV3_ANALOG_01,
 		.min_mv = PIN1_ID_01 - PIN1_ID_VAR,
 		.max_mv = PIN1_ID_01 + PIN1_ID_VAR,
 	},
-	[EV3_IN_DEV_ID_02] = {
-		.type_id = 16,
+	[EV3_RESISTOR_ID_02] = {
+		.type_id = SENSOR_TYPE_ID_EV3_TOUCH,
 		.min_mv = PIN1_ID_02 - PIN1_ID_VAR,
 		.max_mv = PIN1_ID_02 + PIN1_ID_VAR,
 	},
-	[EV3_IN_DEV_ID_03] = {
-		.type_id = 17,
+	[EV3_RESISTOR_ID_03] = {
+		.type_id = SENSOR_TYPE_ID_EV3_ANALOG_03,
 		.min_mv = PIN1_ID_03 - PIN1_ID_VAR,
 		.max_mv = PIN1_ID_03 + PIN1_ID_VAR,
 	},
-	[EV3_IN_DEV_ID_04] = {
-		.type_id = 18,
+	[EV3_RESISTOR_ID_04] = {
+		.type_id = SENSOR_TYPE_ID_EV3_ANALOG_04,
 		.min_mv = PIN1_ID_04 - PIN1_ID_VAR,
 		.max_mv = PIN1_ID_04 + PIN1_ID_VAR,
 	},
-	[EV3_IN_DEV_ID_05] = {
-		.type_id = 19,
+	[EV3_RESISTOR_ID_05] = {
+		.type_id = SENSOR_TYPE_ID_EV3_ANALOG_05,
 		.min_mv = PIN1_ID_05 - PIN1_ID_VAR,
 		.max_mv = PIN1_ID_05 + PIN1_ID_VAR,
 	},
-	[EV3_IN_DEV_ID_06] = {
-		.type_id = 20,
+	[EV3_RESISTOR_ID_06] = {
+		.type_id = SENSOR_TYPE_ID_EV3_ANALOG_06,
 		.min_mv = PIN1_ID_06 - PIN1_ID_VAR,
 		.max_mv = PIN1_ID_06 + PIN1_ID_VAR,
 	},
-	[EV3_IN_DEV_ID_07] = {
-		.type_id = 21,
+	[EV3_RESISTOR_ID_07] = {
+		.type_id = SENSOR_TYPE_ID_EV3_ANALOG_07,
 		.min_mv = PIN1_ID_07 - PIN1_ID_VAR,
 		.max_mv = PIN1_ID_07 + PIN1_ID_VAR,
 	},
-	[EV3_IN_DEV_ID_08] = {
-		.type_id = 22,
+	[EV3_RESISTOR_ID_08] = {
+		.type_id = SENSOR_TYPE_ID_EV3_ANALOG_08,
 		.min_mv = PIN1_ID_08 - PIN1_ID_VAR,
 		.max_mv = PIN1_ID_08 + PIN1_ID_VAR,
 	},
-	[EV3_IN_DEV_ID_09] = {
-		.type_id = 23,
+	[EV3_RESISTOR_ID_09] = {
+		.type_id = SENSOR_TYPE_ID_EV3_ANALOG_09,
 		.min_mv = PIN1_ID_09 - PIN1_ID_VAR,
 		.max_mv = PIN1_ID_09 + PIN1_ID_VAR,
 	},
-	[EV3_IN_DEV_ID_10] = {
-		.type_id = 24,
+	[EV3_RESISTOR_ID_10] = {
+		.type_id = SENSOR_TYPE_ID_EV3_ANALOG_10,
 		.min_mv = PIN1_ID_10 - PIN1_ID_VAR,
 		.max_mv = PIN1_ID_10 + PIN1_ID_VAR,
 	},
-	[EV3_IN_DEV_ID_11] = {
-		.type_id = 25,
+	[EV3_RESISTOR_ID_11] = {
+		.type_id = SENSOR_TYPE_ID_EV3_ANALOG_11,
 		.min_mv = PIN1_ID_11 - PIN1_ID_VAR,
 		.max_mv = PIN1_ID_11 + PIN1_ID_VAR,
 	},
-	[EV3_IN_DEV_ID_12] = {
-		.type_id = 26,
+	[EV3_RESISTOR_ID_12] = {
+		.type_id = SENSOR_TYPE_ID_EV3_ANALOG_12,
 		.min_mv = PIN1_ID_12 - PIN1_ID_VAR,
 		.max_mv = PIN1_ID_12 + PIN1_ID_VAR,
 	},
-	[EV3_IN_DEV_ID_13] = {
-		.type_id = 27,
+	[EV3_RESISTOR_ID_13] = {
+		.type_id = SENSOR_TYPE_ID_EV3_ANALOG_13,
 		.min_mv = PIN1_ID_13 - PIN1_ID_VAR,
 		.max_mv = PIN1_ID_13 + PIN1_ID_VAR,
 	},
-	[EV3_IN_DEV_ID_14] = {
-		.type_id = 28,
+	[EV3_RESISTOR_ID_14] = {
+		.type_id = SENSOR_TYPE_ID_EV3_ANALOG_14,
 		.min_mv = PIN1_ID_14 - PIN1_ID_VAR,
 		.max_mv = PIN1_ID_14 + PIN1_ID_VAR,
 	},
@@ -158,7 +180,7 @@ static struct ev3_analog_sensor_info ev3_analog_sensor_infos[NUM_EV3_IN_DEV_ID] 
  */
 unsigned to_ev3_analog_sensor_type_id(int mv)
 {
-	enum ev3_analog_sensor_res_id res_id = NUM_EV3_IN_DEV_ID;
+	enum ev3_analog_sensor_res_id res_id = NUM_EV3_RESISTOR_ID;
 
 	while (res_id--) {
 		if (mv >= ev3_analog_sensor_infos[res_id].min_mv
@@ -166,7 +188,7 @@ unsigned to_ev3_analog_sensor_type_id(int mv)
 			return ev3_analog_sensor_infos[res_id].type_id;
 	}
 
-	return LEGOEV3_TYPE_ID_UNKNOWN;
+	return SENSOR_TYPE_ID_UNKNOWN;
 }
 
 enum gpio_index {
@@ -228,14 +250,14 @@ const struct attribute_group *ev3_sensor_device_type_attr_groups[] = {
 	NULL
 };
 
-struct device_type ev3_sensor_device_types[] = {
+struct device_type ev3_sensor_host_device_types[] = {
 	[SENSOR_NXT_ANALOG] = {
-		.name	= "nxt-analog-sensor",
+		.name	= "nxt-analog-host",
 		.groups	= ev3_sensor_device_type_attr_groups,
 		.uevent = legoev3_port_device_uevent,
 	},
 	[SENSOR_NXT_COLOR] = {
-		.name	= "nxt-color-sensor",
+		.name	= "nxt-color-host",
 		.groups	= ev3_sensor_device_type_attr_groups,
 		.uevent = legoev3_port_device_uevent,
 	},
@@ -245,7 +267,7 @@ struct device_type ev3_sensor_device_types[] = {
 		.uevent = legoev3_port_device_uevent,
 	},
 	[SENSOR_EV3_ANALOG] = {
-		.name	= "ev3-analog-sensor",
+		.name	= "ev3-analog-host",
 		.groups	= ev3_sensor_device_type_attr_groups,
 		.uevent = legoev3_port_device_uevent,
 	},
@@ -255,7 +277,27 @@ struct device_type ev3_sensor_device_types[] = {
 		.uevent = legoev3_port_device_uevent,
 	},
 };
-
+const char *ev3_input_port_sensor_table[] = {
+	[SENSOR_TYPE_ID_NXT_TOUCH]	= "nxt-touch",
+	[SENSOR_TYPE_ID_NXT_LIGHT]	= "nxt-light",
+	[SENSOR_TYPE_ID_NXT_ANALOG]	= "nxt-analog",
+	[SENSOR_TYPE_ID_NXT_COLOR]	= "nxt-color",
+	[SENSOR_TYPE_ID_EV3_ANALOG_01]	= "ev3-analog",
+	[SENSOR_TYPE_ID_EV3_TOUCH]	= "ev3-touch",
+	[SENSOR_TYPE_ID_EV3_ANALOG_03]	= "ev3-analog",
+	[SENSOR_TYPE_ID_EV3_ANALOG_04]	= "ev3-analog",
+	[SENSOR_TYPE_ID_EV3_ANALOG_05]	= "ev3-analog",
+	[SENSOR_TYPE_ID_EV3_ANALOG_06]	= "ev3-analog",
+	[SENSOR_TYPE_ID_EV3_ANALOG_07]	= "ev3-analog",
+	[SENSOR_TYPE_ID_EV3_ANALOG_08]	= "ev3-analog",
+	[SENSOR_TYPE_ID_EV3_ANALOG_09]	= "ev3-analog",
+	[SENSOR_TYPE_ID_EV3_ANALOG_10]	= "ev3-analog",
+	[SENSOR_TYPE_ID_EV3_ANALOG_11]	= "ev3-analog",
+	[SENSOR_TYPE_ID_EV3_ANALOG_12]	= "ev3-analog",
+	[SENSOR_TYPE_ID_EV3_ANALOG_13]	= "ev3-analog",
+	[SENSOR_TYPE_ID_EV3_ANALOG_14]	= "ev3-analog",
+	[SENSOR_TYPE_ID_UNKNOWN]	= NULL,
+};
 /**
  * struct ev3_input_port_data - Driver data for an input port on the EV3 brick
  * @id: Unique identifier for the port.
@@ -430,12 +472,12 @@ void ev3_input_port_float(struct ev3_input_port_data *data)
 	gpio_direction_output(data->gpio[GPIO_BUF_ENA].gpio, 1); /* active low */
 }
 
-void ev3_input_port_register_sensor(struct work_struct *work)
+void ev3_input_port_register_host(struct work_struct *work)
 {
 	struct ev3_input_port_data *data =
 			container_of(work, struct ev3_input_port_data, work);
-	struct legoev3_port_device *sensor;
-	struct ev3_sensor_platform_data pdata;
+	struct legoev3_port_device *host;
+	struct ev3_analog_host_platform_data pdata;
 
 	if (data->sensor_type == SENSOR_NONE
 	    || data->sensor_type == SENSOR_ERR
@@ -450,25 +492,24 @@ void ev3_input_port_register_sensor(struct work_struct *work)
 	if (data->sensor_type == SENSOR_NXT_I2C)
 		msleep(1000);
 
-	pdata.in_port = data->in_port;
-	sensor = legoev3_port_device_register(
-		ev3_sensor_device_types[data->sensor_type].name,
-		&ev3_sensor_device_types[data->sensor_type],
-		data->sensor_type_id,
-		&pdata, sizeof(struct ev3_sensor_platform_data),
+	pdata.inital_sensor = ev3_input_port_sensor_table[data->sensor_type_id];
+	host = legoev3_port_device_register(
+		ev3_sensor_host_device_types[data->sensor_type].name,
+		&ev3_sensor_host_device_types[data->sensor_type],
+		&pdata, sizeof(struct ev3_analog_host_platform_data),
 		data->in_port);
-	if (IS_ERR(sensor)) {
+	if (IS_ERR(host)) {
 		dev_err(&data->in_port->dev, "Could not register sensor on port %s.\n",
 			dev_name(&data->in_port->dev));
 		return;
 	}
 
-	data->sensor = sensor;
+	data->sensor = host;
 
 	return;
 }
 
-void ev3_input_port_unregister_sensor(struct work_struct *work)
+void ev3_input_port_unregister_host(struct work_struct *work)
 {
 	struct ev3_input_port_data *data =
 			container_of(work, struct ev3_input_port_data, work);
@@ -493,7 +534,7 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 			ev3_input_port_float(data);
 			data->timer_loop_cnt = 0;
 			data->sensor_type = SENSOR_NONE;
-			data->sensor_type_id = -1;
+			data->sensor_type_id = SENSOR_TYPE_ID_UNKNOWN;
 			data->con_state = CON_STATE_INIT_SETTLE;
 		}
 		break;
@@ -529,14 +570,14 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 				} else if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN5_LOW)) {
 					data->sensor_type = SENSOR_NXT_ANALOG;
 					if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN6_HIGH))
-						data->sensor_type_id = NXT_ANALOG_SENSOR_TYPE_ID;
+						data->sensor_type_id = SENSOR_TYPE_ID_NXT_ANALOG;
 					else
-						data->sensor_type_id = NXT_LIGHT_SENSOR_TYPE_ID;
+						data->sensor_type_id = SENSOR_TYPE_ID_NXT_LIGHT;
 				} else if (new_pin1_mv < PIN1_NEAR_GND)
 					data->sensor_type = SENSOR_NXT_COLOR;
 				else if (new_pin1_mv > PIN1_NEAR_5V) {
 					data->sensor_type = SENSOR_NXT_ANALOG;
-					data->sensor_type_id = NXT_TOUCH_SENSOR_TYPE_ID;
+					data->sensor_type_id = SENSOR_TYPE_ID_NXT_TOUCH;
 				} else if (new_pin1_mv > PIN1_TOUCH_LOW
 					 && new_pin1_mv < PIN1_TOUCH_HIGH) {
 					data->con_state = CON_STATE_TEST_NXT_TOUCH;
@@ -544,7 +585,7 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 					data->pin1_mv = new_pin1_mv;
 				} else {
 					data->sensor_type = SENSOR_NXT_ANALOG;
-					data->sensor_type_id = NXT_ANALOG_SENSOR_TYPE_ID;
+					data->sensor_type_id = SENSOR_TYPE_ID_NXT_ANALOG;
 				}
 			} else if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN1_LOADED)) {
 				data->con_state = CON_STATE_HAVE_EV3;
@@ -555,7 +596,7 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 				else {
 					data->sensor_type = SENSOR_EV3_ANALOG;
 					data->sensor_type_id = to_ev3_analog_sensor_type_id(new_pin1_mv);
-					if (data->sensor_type_id == LEGOEV3_TYPE_ID_UNKNOWN)
+					if (data->sensor_type_id == SENSOR_TYPE_ID_UNKNOWN)
 						data->sensor_type = SENSOR_ERR;
 				}
 			} else if (new_pin_state_flags & BIT(PIN_STATE_FLAG_PIN6_HIGH)) {
@@ -567,7 +608,7 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 			}
 			data->timer_loop_cnt = 0;
 			if (data->sensor_type != SENSOR_ERR) {
-				INIT_WORK(&data->work, ev3_input_port_register_sensor);
+				INIT_WORK(&data->work, ev3_input_port_register_host);
 				schedule_work(&data->work);
 			}
 		}
@@ -580,9 +621,9 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 			new_pin1_mv = legoev3_analog_in_pin1_value(data->analog, data->id);
 			if (new_pin1_mv > (data->pin1_mv - PIN1_TOUCH_VAR) &&
 			    new_pin1_mv < (data->pin1_mv + PIN1_TOUCH_VAR))
-				data->sensor_type_id = NXT_TOUCH_SENSOR_TYPE_ID;
+				data->sensor_type_id = SENSOR_TYPE_ID_NXT_TOUCH;
 			else
-				data->sensor_type_id = NXT_ANALOG_SENSOR_TYPE_ID;
+				data->sensor_type_id = SENSOR_TYPE_ID_NXT_ANALOG;
 		}
 		break;
 	case CON_STATE_HAVE_NXT:
@@ -610,7 +651,7 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 	    && data->timer_loop_cnt >= REMOVE_CNT && !work_busy(&data->work))
 	{
 		if (data->sensor) {
-			INIT_WORK(&data->work, ev3_input_port_unregister_sensor);
+			INIT_WORK(&data->work, ev3_input_port_unregister_host);
 			schedule_work(&data->work);
 		}
 		data->con_state = CON_STATE_INIT;

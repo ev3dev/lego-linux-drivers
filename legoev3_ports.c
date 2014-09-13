@@ -64,18 +64,13 @@ static ssize_t legoev3_port_device_show_port_name(struct device *dev,
 {
 	struct legoev3_port_device *pdev = to_legoev3_port_device(dev);
 
-	return snprintf(buf, LEGOEV3_PORT_NAME_SIZE, "%s\n", pdev->port_name);
+	return snprintf(buf, LEGOEV3_PORT_NAME_SIZE, "%s\n", dev_name(&pdev->port->dev));
 }
 
 static ssize_t legoev3_port_device_show_device_type(struct device *dev,
 						    struct device_attribute *attr,
 						    char *buf)
 {
-	struct legoev3_port_device *pdev = to_legoev3_port_device(dev);
-
-	if (pdev->type_id >= 0)
-		return sprintf(buf, "%s:%d\n", dev->type->name, pdev->type_id);
-
 	return sprintf(buf, "%s\n", dev->type->name);
 }
 
@@ -200,7 +195,7 @@ int legoev3_port_device_uevent(struct device *dev,
 	struct legoev3_port_device *pdev = to_legoev3_port_device(dev);
 	int err;
 
-	err = add_uevent_var(env, "PORT=%s", pdev->port_name);
+	err = add_uevent_var(env, "PORT=%s", dev_name(&pdev->port->dev));
 	if (err)
 		return err;
 
@@ -220,13 +215,12 @@ static void legoev3_port_device_release (struct device *dev)
  * legoev3_port_device_register - Register a new device on the legoev3 port bus.
  * @name: The name of the device.
  * @type: The type of device (required).
- * @type_id: The EV3 sensor type or -1 for non-EV3 sensors.
  * @platform_data: Device specific data that depends on the device type.
  * @port: The port the device is attached to.
  */
 struct legoev3_port_device
 *legoev3_port_device_register(const char *name, struct device_type *type,
-			      int type_id, void *platform_data,
+			      void *platform_data,
 			      size_t platform_data_size,
 			      struct legoev3_port *port)
 {
@@ -242,9 +236,8 @@ struct legoev3_port_device
 		return ERR_PTR(-ENOMEM);
 
 	strncpy(pdev->name, name, LEGOEV3_PORT_NAME_SIZE);
-	strncpy(pdev->port_name, dev_name(&port->dev), LEGOEV3_PORT_NAME_SIZE);
+	pdev->port = port;
 	pdev->id = -1;
-	pdev->type_id = type_id;
 	device_initialize(&pdev->dev);
 	pdev->dev.type = type;
 	pdev->dev.bus = &legoev3_bus_type;
@@ -259,7 +252,7 @@ struct legoev3_port_device
 		pdev->dev.platform_data = pdata;
 	}
 	pdev->dev.parent = &port->dev;
-	err = dev_set_name(&pdev->dev, "%s:%s", pdev->port_name, pdev->name);
+	err = dev_set_name(&pdev->dev, "%s:%s", dev_name(&pdev->port->dev), pdev->name);
 	if (err < 0) {
 		dev_err(&pdev->dev, "Could not set name.\n");
 		goto err_dev_set_name;
@@ -390,24 +383,24 @@ static int legoev3_bus_match(struct device *dev, struct device_driver *drv)
 	struct legoev3_port_device_driver *pdevdrv;
 	const struct legoev3_port_device_id *pdevid;
 
-	/* special matching for port devices since they can have a type id */
+	/* special matching for port devices since they can have a table */
 	if (drv->probe == legoev3_port_device_driver_probe) {
 		pdev = to_legoev3_port_device(dev);
 		pdevdrv = to_legoev3_port_device_driver(drv);
 		pdevid = pdevdrv->id_table;
 
-		if (pdev->type_id < 0 && !strcmp(dev->type->name, drv->name))
-			return 1;
-
-		while (pdevid->name && pdevid->name[0]) {
-			if (pdev->type_id == pdevid->type_id
-					&& !strcmp(dev->type->name, pdevid->name))
-				return 1;
-			pdevid++;
+		if (pdevid) {
+			while (pdevid->name[0]) {
+				if (!strcmp(pdev->name, pdevid->name)) {
+					pdev->entry_id = pdevid;
+					return 1;
+				}
+				pdevid++;
+			}
 		}
-		return 0;
+		return !strcmp(pdev->name, drv->name);
 	}
-	/* otherwise regular name matching */
+	/* otherwise regular name matching using type name */
 	return !strcmp(dev->type->name, drv->name);
 }
 

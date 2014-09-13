@@ -25,46 +25,21 @@
 #include <linux/legoev3/legoev3_ports.h>
 #include <linux/legoev3/ev3_input_port.h>
 
-struct nxt_i2c_host_data {
-	struct legoev3_port *in_port;
-};
-
-static int nxt_i2c_host_probe(struct legoev3_port_device *sensor)
+static int nxt_i2c_host_probe(struct legoev3_port_device *host)
 {
-	struct nxt_i2c_host_data *nxt_i2c;
-	struct ev3_sensor_platform_data *pdata = sensor->dev.platform_data;
 	int err;
 
-	if (WARN_ON(!pdata))
-		return -EINVAL;
-
-	nxt_i2c = kzalloc(sizeof(struct nxt_i2c_host_data), GFP_KERNEL);
-	if (!nxt_i2c)
-		return -ENOMEM;
-
-	nxt_i2c->in_port = pdata->in_port;
-
-	err = ev3_input_port_register_i2c(nxt_i2c->in_port, &sensor->dev);
+	err = ev3_input_port_register_i2c(host->port, &host->dev);
 	if (err)
-		goto err_register_i2c_sensor;
-
-	dev_set_drvdata(&sensor->dev, nxt_i2c);
+		return err;
 
 	return 0;
-
-err_register_i2c_sensor:
-	kfree(nxt_i2c);
-
-	return err;
 }
 
-static int nxt_i2c_host_remove(struct legoev3_port_device *sensor)
+static int nxt_i2c_host_remove(struct legoev3_port_device *host)
 {
-	struct nxt_i2c_host_data *nxt_i2c = dev_get_drvdata(&sensor->dev);
+	ev3_input_port_unregister_i2c(host->port);
 
-	ev3_input_port_unregister_i2c(nxt_i2c->in_port);
-	dev_set_drvdata(&sensor->dev, NULL);
-	kfree(nxt_i2c);
 	return 0;
 }
 

@@ -1,7 +1,7 @@
 /*
  * Measurement sensor device class for LEGO Mindstorms EV3
  *
- * Copyright (C) 2013 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -102,22 +102,20 @@ u32 msensor_itof(int i, unsigned dp)
 }
 EXPORT_SYMBOL_GPL(msensor_itof);
 
-static ssize_t msensor_show_type_id(struct device *dev,
-				    struct device_attribute *attr,
-				    char *buf)
+static ssize_t msensor_show_name(struct device *dev,
+				 struct device_attribute *attr,  char *buf)
 {
 	struct msensor_device *ms = to_msensor_device(dev);
 
-	return sprintf(buf, "%d\n", ms->type_id);
+	return snprintf(buf, MSENSOR_NAME_SIZE, "%s\n", ms->name);
 }
 
 static ssize_t msensor_show_port_name(struct device *dev,
-				      struct device_attribute *attr,
-				      char *buf)
+				      struct device_attribute *attr, char *buf)
 {
 	struct msensor_device *ms = to_msensor_device(dev);
 
-	return snprintf(buf, MSENSOR_PORT_NAME_SIZE, "%s\n", ms->port_name);
+	return snprintf(buf, MSENSOR_NAME_SIZE, "%s\n", ms->port_name);
 }
 
 static ssize_t msensor_show_modes(struct device *dev,
@@ -400,13 +398,13 @@ static ssize_t msensor_show_fw_version(struct device *dev,
 	return snprintf(buf, MSENSOR_FW_VERSION_SIZE, "%s\n", ms->fw_version);
 }
 
-static ssize_t msensor_show_i2c_addr(struct device *dev,
+static ssize_t msensor_show_address(struct device *dev,
 				    struct device_attribute *attr,
 				    char *buf)
 {
 	struct msensor_device *ms = to_msensor_device(dev);
 
-	return sprintf(buf, "0x%02x\n", ms->i2c_addr);
+	return sprintf(buf, "0x%02x\n", ms->address);
 }
 
 static ssize_t msensor_read_bin_data(struct file *file, struct kobject *kobj,
@@ -441,8 +439,9 @@ static ssize_t msensor_write_bin_data(struct file *file ,struct kobject *kobj,
 	return ms->write_data(ms->context, buf, off, count);
 }
 
-static DEVICE_ATTR(type_id, S_IRUGO, msensor_show_type_id, NULL);
+static DEVICE_ATTR(name, S_IRUGO, msensor_show_name, NULL);
 static DEVICE_ATTR(port_name, S_IRUGO, msensor_show_port_name, NULL);
+static DEVICE_ATTR(address, S_IRUGO , msensor_show_address, NULL);
 static DEVICE_ATTR(modes, S_IRUGO, msensor_show_modes, NULL);
 static DEVICE_ATTR(mode, S_IRUGO | S_IWUSR, msensor_show_mode, msensor_store_mode);
 static DEVICE_ATTR(units, S_IRUGO, msensor_show_units, NULL);
@@ -451,7 +450,7 @@ static DEVICE_ATTR(num_values, S_IRUGO, msensor_show_num_values, NULL);
 static DEVICE_ATTR(bin_data_format, S_IRUGO, msensor_show_bin_data_format, NULL);
 /*
  * Technically, it is possible to have 32 8-bit values from UART sensors
- * and 255 8-bit values from I2C sensors, but known UART sensors so far
+ * and >200 8-bit values from I2C sensors, but known UART sensors so far
  * have 8 data values or less and I2C sensors can arbitrarily be split
  * into multiple modes, so we only expose 8 values to prevent sysfs
  * overcrowding.
@@ -466,8 +465,9 @@ static DEVICE_ATTR(value6, S_IRUGO , msensor_show_value, NULL);
 static DEVICE_ATTR(value7, S_IRUGO , msensor_show_value, NULL);
 
 static struct attribute *msensor_class_attrs[] = {
-	&dev_attr_type_id.attr,
+	&dev_attr_name.attr,
 	&dev_attr_port_name.attr,
+	&dev_attr_address.attr,
 	&dev_attr_modes.attr,
 	&dev_attr_mode.attr,
 	&dev_attr_units.attr,
@@ -500,12 +500,10 @@ static const struct attribute_group msensor_class_group = {
 
 static DEVICE_ATTR(poll_ms, S_IRUGO | S_IWUSR, msensor_show_poll_ms, msensor_store_poll_ms);
 static DEVICE_ATTR(fw_version, S_IRUGO , msensor_show_fw_version, NULL);
-static DEVICE_ATTR(i2c_addr, S_IRUGO , msensor_show_i2c_addr, NULL);
 
 struct attribute *msensor_class_optional_attrs[] = {
 	&dev_attr_poll_ms.attr,
 	&dev_attr_fw_version.attr,
-	&dev_attr_i2c_addr.attr,
 	NULL
 };
 
@@ -519,8 +517,6 @@ static umode_t msensor_attr_is_visible (struct kobject *kobj,
 		return (ms->get_poll_ms || ms->set_poll_ms) ? attr->mode : 0;
 	if (attr == &dev_attr_fw_version.attr)
 		return ms->fw_version[0] ? attr->mode : 0;
-	if (attr == &dev_attr_i2c_addr.attr)
-		return ms->i2c_addr ? attr->mode : 0;
 
 	return attr->mode;
 }
@@ -576,15 +572,21 @@ static int msensor_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
 	struct msensor_device *ms = to_msensor_device(dev);
 	int ret;
 
-	ret = add_uevent_var(env, "TYPEID=%d", ms->type_id);
+	ret = add_uevent_var(env, "NAME=%s", ms->name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent TYPEID\n");
+		dev_err(dev, "failed to add uevent DEVNAME\n");
 		return ret;
 	}
 
 	add_uevent_var(env, "PORT=%s", ms->port_name);
 	if (ret) {
 		dev_err(dev, "failed to add uevent PORT\n");
+		return ret;
+	}
+
+	add_uevent_var(env, "ADDRESS=0x%02x", ms->address);
+	if (ret) {
+		dev_err(dev, "failed to add uevent ADDRESS\n");
 		return ret;
 	}
 

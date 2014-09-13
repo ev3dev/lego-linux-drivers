@@ -18,48 +18,23 @@
 #include <linux/legoev3/legoev3_ports.h>
 #include <linux/legoev3/ev3_input_port.h>
 
-struct ev3_uart_host_data {
-	struct legoev3_port *in_port;
-};
-
 static int ev3_uart_host_probe(struct legoev3_port_device *host)
 {
-	struct ev3_uart_host_data *ev3_uart;
-	struct ev3_sensor_platform_data *pdata = host->dev.platform_data;
 	int err;
 
-	if (WARN_ON(!pdata))
-		return -EINVAL;
-
-	ev3_uart = kzalloc(sizeof(struct ev3_uart_host_data), GFP_KERNEL);
-	if (!ev3_uart)
-		return -ENOMEM;
-
-	ev3_uart->in_port = pdata->in_port;
-
-	err = ev3_input_port_enable_uart(ev3_uart->in_port);
+	err = ev3_input_port_enable_uart(host->port);
 	if (err)
-		goto err_ev3_input_port_enable_uart;
+		return err;
 
-	dev_set_drvdata(&host->dev, ev3_uart);
 	dev_info(&host->dev, "Started.\n");
 
 	return 0;
-
-err_ev3_input_port_enable_uart:
-	kfree(ev3_uart);
-
-	return err;
 }
 
 static int ev3_uart_host_remove(struct legoev3_port_device *host)
 {
-	struct ev3_uart_host_data *ev3_uart = dev_get_drvdata(&host->dev);
-
 	dev_info(&host->dev, "Stopped.\n");
-	ev3_input_port_disable_uart(ev3_uart->in_port);
-	dev_set_drvdata(&host->dev, NULL);
-	kfree(ev3_uart);
+	ev3_input_port_disable_uart(host->port);
 	return 0;
 }
 

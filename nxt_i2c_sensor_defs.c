@@ -13,9 +13,6 @@
  * GNU General Public License for more details.
  */
 
-#include <linux/export.h>
-#include <linux/legoev3/ev3_input_port.h>
-
 #include "nxt_i2c_sensor.h"
 
 /**
@@ -24,7 +21,6 @@
  * Required values:
  * - vendor_id
  * - product_id
- * - ms.type_id
  * - ms.num_modes
  * - mode_info.ms_mode_info.name
  * - i2c_mode_info.read_data_reg
@@ -57,10 +53,9 @@
  * Type ids come from sys/settings/typedata.rcf in LMS2012
  */
 struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
-	{
+	[UNKNOWN_SENSOR] = {
 		.vendor_id	= "UNKNOWN",
 		.product_id	= "unknown",
-		.ms.type_id	= 100,
 		.ms.num_modes	= 3,
 		.ms_mode_info	= {
 			[0] = {
@@ -87,10 +82,9 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
-	{
+	[LEGO_NXT_ULTRASONIC_SENSOR] = {
 		.vendor_id	= "LEGO",
 		.product_id	= "Sonar",
-		.ms.type_id	= 5,
 		.ms.num_modes	= 5,
 		.ms_mode_info	= {
 			[0] = {
@@ -152,10 +146,9 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
-	{
+	[LEGO_POWER_STORAGE_SENSOR] = {
 		.vendor_id	= "LEGO",
 		.product_id	= "", /* LMS2012 fakes this with "Store." */
-		.ms.type_id	= 99,
 		.ms.num_modes	= 8,
 		.ms_mode_info	= {
 			[0] = {
@@ -249,10 +242,9 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
-	{
+	[HT_NXT_PIR_SENSOR] = {
 		.vendor_id	= "HITECHNC",
 		.product_id	= "PIR",
-		.ms.type_id	= 50,
 		.ms.num_modes	= 1,
 		.ms_mode_info	= {
 			[0] = {
@@ -269,10 +261,9 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
-	{
+	[HT_NXT_BAROMETRIC_SENSOR] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "Barometr",
-		.ms.type_id	= 51,
 		.ms.num_modes	= 2,
 		.ms_mode_info	= {
 			[0] = {
@@ -300,10 +291,9 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
-	{
+	[HT_NXT_IR_SEEKER_SENSOR_V2] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "NewIRDir",
-		.ms.type_id	= 52,
 		.ms.num_modes	= 4,
 		.ms_mode_info	= {
 			[0] = {
@@ -340,10 +330,9 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
-	{
+	[HT_COLOR_SENSOR_V2] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "Color",
-		.ms.type_id	= 53,
 		.ms.num_modes	= 7,
 		.ms_mode_info	= {
 			[0] = {
@@ -407,10 +396,9 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
-	{
+	[HT_NXT_COLOR_SENSOR] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "ColorPD",
-		.ms.type_id	= 54,
 		.ms.num_modes	= 8,
 		.ms_mode_info	= {
 			[0] = {
@@ -482,10 +470,9 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
-	{
+	[HT_NXT_ANGLE_SENSOR] = {
 		.vendor_id	= "HITECHNC",
 		.product_id	= "AnglSnsr",
-		.ms.type_id	= 55,
 		.ms.num_modes	= 4,
 		.ms_mode_info	= {
 			[0] = {
@@ -537,10 +524,9 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
-	{
+	[HT_NXT_COMPASS_SENSOR] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "Compass",
-		.ms.type_id	= 56,
 		.ms.num_modes	= 1,
 		.ms_mode_info	= {
 			[0] = {
@@ -557,10 +543,9 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
-	{
+	[HT_NXT_IR_RECIEIVER_SENSOR] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "IRRecv",
-		.ms.type_id	= 57,
 		.ms.num_modes	= 2,
 		.ms_mode_info	= {
 			[0] = {
@@ -584,10 +569,9 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
-	{
+	[HT_NXT_ACCELERATION_TILT_SENSOR] = {
 		.vendor_id	= "HITECHNC",
 		.product_id	= "Accel.",
-		.ms.type_id	= 58,
 		.ms.num_modes	= 2,
 		.ms_mode_info	= {
 			[0] = {
@@ -607,10 +591,9 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
-	{
+	[HT_NXT_IR_LINK_SENSOR] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "IRLink",
-		.ms.type_id	= 59,
 		.ms.num_modes	= 1,
 		.ms_mode_info	= {
 			[0] = {
@@ -623,10 +606,9 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
-	{
+	[HT_NXT_SUPER_PRO_SENSOR] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "SuperPro",
-		.ms.type_id	= 60,
 		.ms.num_modes	= 5,
 		.ms_mode_info	= {
 			[0] = {
@@ -685,10 +667,9 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
-	{
+	[MS_LIGHT_SENSOR_ARRAY] = {
 		.vendor_id	= "mndsnsrs",
 		.product_id	= "LSArray",
-		.ms.type_id	= 157,
 		.ms.num_modes	= 2,
 		.ms_mode_info	= {
 			[0] = {
@@ -716,6 +697,3 @@ struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		},
 	},
 };
-EXPORT_SYMBOL_GPL(nxt_i2c_sensor_defs);
-
-const int num_nxt_i2c_sensor_defs = ARRAY_SIZE(nxt_i2c_sensor_defs);

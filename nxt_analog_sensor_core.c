@@ -22,38 +22,15 @@
 
 #include <asm/bug.h>
 
-#define NUM_NXT_ANALOG_SENSOR_MODES	2
+#include "nxt_analog_sensor.h"
 
-struct nxt_analog_sensor_data {
-	struct legoev3_port *in_port;
-	struct msensor_device ms;
-	struct msensor_mode_info mode_info[NUM_NXT_ANALOG_SENSOR_MODES];
-	u8 mode;
-};
+static void nxt_analog_sensor_cb(void *context)
+{
+	struct nxt_analog_sensor_data *as = context;
 
-static struct msensor_mode_info
-nxt_analog_sensor_mode_info[NUM_NXT_ANALOG_SENSOR_MODES] = {
-	{
-		.name = "NXT-ANALOG-0",
-		.units = "V",
-		.raw_max = 5000,
-		.pct_max = 100,
-		.si_max = 5000,
-		.decimals = 3,
-		.data_sets = 1,
-		.data_type = MSENSOR_DATA_S32,
-	},
-	{
-		.name = "NXT-ANALOG-1",
-		.units = "V",
-		.raw_max = 5000,
-		.pct_max = 100,
-		.si_max = 5000,
-		.decimals = 3,
-		.data_sets = 1,
-		.data_type = MSENSOR_DATA_S32,
-	},
-};
+	*(int*)as->info.ms_mode_info[as->mode].raw_data =
+					ev3_input_port_get_pin1_mv(as->in_port);
+}
 
 static u8 nxt_analog_sensor_get_mode(void *context)
 {
@@ -66,61 +43,50 @@ static int nxt_analog_sensor_set_mode(void *context, u8 mode)
 {
 	struct nxt_analog_sensor_data *as = context;
 
-	if (mode >= NUM_NXT_ANALOG_SENSOR_MODES)
+	if (mode >= as->info.num_modes)
 		return -EINVAL;
 
-	if (mode == 0)
-		ev3_input_port_set_pin5_gpio(as->in_port,
-					     EV3_INPUT_PORT_GPIO_FLOAT);
+	ev3_input_port_set_pin5_gpio(as->in_port,
+				as->info.analog_mode_info[mode].pin5_state);
+	if (as->info.analog_mode_info[mode].analog_cb)
+		ev3_input_port_register_analog_cb(as->in_port,
+				as->info.analog_mode_info[mode].analog_cb, as);
 	else
-		ev3_input_port_set_pin5_gpio(as->in_port,
-					     EV3_INPUT_PORT_GPIO_HIGH);
+		ev3_input_port_register_analog_cb(as->in_port,
+						  nxt_analog_sensor_cb, as);
 	as->mode = mode;
 
 	return 0;
 }
 
-static void nxt_analog_sensor_cb(void *context)
-{
-	struct nxt_analog_sensor_data *as = context;
-
-	*(int*)as->mode_info[as->mode].raw_data =
-		ev3_input_port_get_pin1_mv(as->in_port);
-}
-
 static int nxt_analog_sensor_probe(struct legoev3_port_device *sensor)
 {
 	struct nxt_analog_sensor_data *as;
-	struct ev3_sensor_platform_data *pdata = sensor->dev.platform_data;
 	int err;
 
-	if (WARN_ON(!pdata))
+	if (WARN_ON(!sensor->entry_id))
 		return -EINVAL;
 
 	as = kzalloc(sizeof(struct nxt_analog_sensor_data), GFP_KERNEL);
 	if (!as)
 		return -ENOMEM;
 
-	as->in_port = pdata->in_port;
+	as->in_port = sensor->port;
 
-	as->ms.type_id		= sensor->type_id;
-	strncpy(as->ms.port_name, dev_name(&pdata->in_port->dev),
-	        MSENSOR_PORT_NAME_SIZE);
-	as->ms.num_modes	= NUM_NXT_ANALOG_SENSOR_MODES;
-	as->ms.num_view_modes	= 1;
-	as->ms.mode_info	= as->mode_info;
+	strncpy(as->ms.name, dev_name(&sensor->dev), MSENSOR_NAME_SIZE);
+	strncpy(as->ms.port_name, dev_name(&as->in_port->dev),
+		MSENSOR_NAME_SIZE);
+	as->ms.mode_info	= as->info.ms_mode_info;
 	as->ms.get_mode		= nxt_analog_sensor_get_mode;
 	as->ms.set_mode		= nxt_analog_sensor_set_mode;
 	as->ms.context		= as;
 
-	memcpy(as->mode_info, nxt_analog_sensor_mode_info,
-	       sizeof(struct msensor_mode_info) * NUM_NXT_ANALOG_SENSOR_MODES);
+	memcpy(&as->info, &nxt_analog_sensor_defs[sensor->entry_id->driver_data],
+	       sizeof(struct nxt_analog_sensor_info));
 
 	err = register_msensor(&as->ms, &sensor->dev);
 	if (err)
 		goto err_register_msensor;
-
-	ev3_input_port_register_analog_cb(as->in_port, nxt_analog_sensor_cb, as);
 
 	dev_set_drvdata(&sensor->dev, as);
 	nxt_analog_sensor_set_mode(as, 0);
@@ -152,11 +118,60 @@ static int nxt_analog_sensor_remove(struct legoev3_port_device *sensor)
 
 static struct legoev3_port_device_id nxt_analog_sensor_device_ids [] = {
 	{
-		.name = "nxt-analog-sensor",
-		.type_id = NXT_ANALOG_SENSOR_TYPE_ID,
+		.name = "nxt-analog",
+		.driver_data = GENERIC_NXT_ANALOG_SENSOR,
+	},
+	{
+		.name = "nxt-touch",
+		.driver_data = LEGO_NXT_TOUCH_SENSOR,
+	},
+	{
+		.name = "nxt-light",
+		.driver_data = LEGO_NXT_LIGHT_SENSOR,
+	},
+	{
+		.name = "nxt-sound",
+		.driver_data = LEGO_NXT_SOUND_SENSOR,
+	},
+	{
+		.name = "ht-neo1048",
+		.driver_data = HT_EOPD_SENSOR,
+	},
+	{
+		.name = "ht-nfs1074",
+		.driver_data = HT_FORCE_SENSOR,
+	},
+	{
+		.name = "ht-nyg1044",
+		.driver_data = HT_GYRO_SENSOR,
+	},
+	{
+		.name = "ht-nms1035",
+		.driver_data = HT_MAGNETIC_SENSOR,
+	},
+	{
+		.name = "ms-touch-mux",
+		.driver_data = MS_TOUCH_SENSOR_MUX,
 	},
 	{  }
 };
+
+/**
+ * Returns 0 if the name is valid or -EINVAL if not.
+ */
+int nxt_analog_sensor_assert_valid_name(const char* name)
+{
+	struct legoev3_port_device_id *id = nxt_analog_sensor_device_ids;
+
+	while (id->name[0]) {
+		if (!strcmp(name, id->name))
+			return 0;
+		id++;
+	}
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL_GPL(nxt_analog_sensor_assert_valid_name);
 
 struct legoev3_port_device_driver nxt_analog_sensor_driver = {
 	.probe	= nxt_analog_sensor_probe,

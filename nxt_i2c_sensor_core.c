@@ -46,6 +46,7 @@ struct nxt_i2c_sensor_data {
 	struct legoev3_port *in_port;
 	struct nxt_i2c_sensor_info info;
 	struct delayed_work poll_work;
+	enum nxt_i2c_sensor_types type;
 	unsigned poll_ms;
 	u8 mode;
 };
@@ -162,18 +163,13 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 		return -EINVAL;
 
 	/*
-	 * If a sensor was manually specified, look up the info in sensor defs.
+	 * If a sensor was manually specified, lookup the info in the table.
 	 * Otherwise, if a sensor was automatically detected, then the info
 	 * is already in the client platform data.
 	 */
-	if (id->driver_data) {
-		for (i = 0; i < num_nxt_i2c_sensor_defs; i++) {
-			if (id->driver_data == nxt_i2c_sensor_defs[i].ms.type_id) {
-				sensor_info = &nxt_i2c_sensor_defs[i];
-				break;
-			}
-		}
-	} else
+	if (id->driver_data)
+		sensor_info = &nxt_i2c_sensor_defs[id->driver_data];
+	else
 		sensor_info = client->dev.platform_data;
 	if (WARN(!sensor_info, "Sensor info is missing."))
 		return -EINVAL;
@@ -187,7 +183,7 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 	memcpy(&sensor->info, sensor_info, sizeof(struct nxt_i2c_sensor_info));
 
 	strncpy(sensor->info.ms.port_name, dev_name(&sensor->in_port->dev),
-		MSENSOR_PORT_NAME_SIZE);
+		MSENSOR_NAME_SIZE);
 	if (!sensor->info.ms.num_view_modes)
 		sensor->info.ms.num_view_modes = 1;
 	sensor->info.ms.mode_info = sensor->info.ms_mode_info;
@@ -206,7 +202,7 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 	 */
 	strncpy(sensor->info.ms.fw_version, strim(version[0] == 0xfd ?
 		(version + 1) : version), NXT_I2C_ID_STR_LEN);
-	sensor->info.ms.i2c_addr = client->addr;
+	sensor->info.ms.address = client->addr;
 
 	for (i = 0; i < sensor->info.ms.num_modes; i++) {
 		struct msensor_mode_info *minfo = &sensor->info.ms_mode_info[i];
@@ -235,7 +231,7 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 		goto err_register_msensor;
 	}
 
-	if (sensor->info.ms.type_id == 5) // NXT Ultrasonic Sensor
+	if (sensor->type == LEGO_NXT_ULTRASONIC_SENSOR)
 		msleep (1);
 	nxt_i2c_sensor_set_mode(sensor, sensor->mode);
 
@@ -295,7 +291,7 @@ static int nxt_i2c_sensor_detect(struct i2c_client *client,
 	if (ret < 0)
 		return -ENODEV;
 
-	for (i = 0; i < num_nxt_i2c_sensor_defs; i++)
+	for (i = 0; i < NUM_NXT_I2C_SENSORS; i++)
 	{
 		if (!strcmp(nxt_i2c_sensor_defs[i].vendor_id, strim(vendor_id))
 			&& !strcmp(nxt_i2c_sensor_defs[i].product_id, strim(product_id)))

@@ -16,9 +16,12 @@ obj-$(CONFIG_LEGOEV3_TACHO_MOTORS)	+= ev3_tacho_motor.o
 obj-$(CONFIG_LEGOEV3_MSENSORS)		+= msensor_class.o
 
 # Analog sensors
-obj-$(CONFIG_LEGOEV3_TOUCH_SENSORS)	+= touch_sensor.o
-obj-$(CONFIG_NXT_LIGHT_SENSOR)		+= nxt_light_sensor.o
-obj-$(CONFIG_NXT_ANALOG_SENSOR)		+= nxt_analog_sensor.o
+obj-$(CONFIG_NXT_ANALOG_SENSORS)	+= nxt_analog_host.o
+nxt_analog_sensor-objs := nxt_analog_sensor_core.o nxt_analog_sensor_defs.o
+obj-$(CONFIG_NXT_ANALOG_SENSORS)	+= nxt_analog_sensor.o
+obj-$(CONFIG_EV3_ANALOG_SENSORS)	+= ev3_analog_host.o
+ev3_analog_sensor-objs := ev3_analog_sensor_core.o ev3_analog_sensor_defs.o
+obj-$(CONFIG_EV3_ANALOG_SENSORS)	+= ev3_analog_sensor.o
 
 # I2C Sensors
 obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= nxt_i2c_host.o

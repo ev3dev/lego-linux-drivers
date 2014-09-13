@@ -51,26 +51,19 @@ config LEGOEV3_MSENSORS
 	  device class interface for most types of sensors (UART sensors,
 	  LEGO-approved I2C sensors and analog sensors).
 
-config LEGOEV3_TOUCH_SENSORS
-	tristate "Touch sensors"
+config NXT_ANALOG_SENSORS
+	tristate "NXT analog sensor support"
 	default y
 	depends on LEGOEV3_INPUT_PORT && LEGOEV3_MSENSORS
 	help
-	  Select Y to enable the driver for the NXT and EV3 touch sensors.
+	  Select Y to enable support for NXT analog sensors.
 
-config NXT_LIGHT_SENSOR
-	tristate "NXT Light Sensor driver"
+config EV3_ANALOG_SENSORS
+	tristate "EV3 analog sensor support"
 	default y
 	depends on LEGOEV3_INPUT_PORT && LEGOEV3_MSENSORS
 	help
-	  Select Y to enable the driver for the LEGO NXT Light sensors.
-
-config NXT_ANALOG_SENSOR
-	tristate "NXT analog Sensor driver"
-	default y
-	depends on LEGOEV3_INPUT_PORT && LEGOEV3_MSENSORS
-	help
-	  Select Y to enable a generic driver for the NXT analog sensors.
+	  Select Y to enable support for EV3 analog sensors.
 
 config LEGOEV3_I2C_SENSORS
 	tristate "I2C sensor support"
