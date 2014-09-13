@@ -173,12 +173,42 @@ int nxt_analog_sensor_assert_valid_name(const char* name)
 }
 EXPORT_SYMBOL_GPL(nxt_analog_sensor_assert_valid_name);
 
+static ssize_t sensor_names_show(struct device_driver *driver, char *buf)
+{
+	struct legoev3_port_device_id *id = nxt_analog_sensor_device_ids;
+	ssize_t total = 0;
+	int size;
+
+	while (id->name[0]) {
+		size = sprintf(buf, "%s ", id->name);
+		total += size;
+		buf += size;
+		id++;
+	}
+	buf--;
+	buf[0] = '\n';
+	buf[1] = 0;
+	total++;
+
+	return total;
+}
+
+DRIVER_ATTR_RO(sensor_names);
+
+static struct attribute *nxt_analog_sensor_names_attrs[] = {
+	&driver_attr_sensor_names.attr,
+	NULL,
+};
+
+ATTRIBUTE_GROUPS(nxt_analog_sensor_names);
+
 struct legoev3_port_device_driver nxt_analog_sensor_driver = {
 	.probe	= nxt_analog_sensor_probe,
 	.remove	= nxt_analog_sensor_remove,
 	.driver = {
 		.name	= "nxt-analog-sensor",
 		.owner	= THIS_MODULE,
+		.groups	= nxt_analog_sensor_names_groups,
 	},
 	.id_table = nxt_analog_sensor_device_ids,
 };
