@@ -25,23 +25,10 @@ config LEGOEV3_BLUETOOTH
 config LEGOEV3_DEV_PORTS
 	tristate "Support for devices connected to the EV3 ports"
 	default y
+	depends on LEGOEV3_ANALOG && GPIOLIB && PWM_TIECAP && PWM_TIEHRPWM
 	help
 	  Select Y to provide support for devices that plug into the input
 	  and output ports of the EV3.
-
-config LEGOEV3_OUTPUT_PORT
-	tristate "Output port driver"
-	default y
-	depends on LEGOEV3_DEV_PORTS && LEGOEV3_ANALOG && GPIOLIB && PWM_TIECAP && PWM_TIEHRPWM
-	help
-	  Select Y to enable the driver for the EV3 output ports.
-
-config LEGOEV3_INPUT_PORT
-	tristate "Input port driver"
-	default y
-	depends on LEGOEV3_DEV_PORTS && LEGOEV3_ANALOG && GPIOLIB
-	help
-	  Select Y to enable the driver for the EV3 input ports.
 
 config LEGOEV3_MSENSORS
 	tristate "Mindstorms sensors support"
@@ -54,35 +41,35 @@ config LEGOEV3_MSENSORS
 config NXT_ANALOG_SENSORS
 	tristate "NXT analog sensor support"
 	default y
-	depends on LEGOEV3_INPUT_PORT && LEGOEV3_MSENSORS
+	depends on LEGOEV3_DEV_PORTS && LEGOEV3_MSENSORS
 	help
 	  Select Y to enable support for NXT analog sensors.
 
 config EV3_ANALOG_SENSORS
 	tristate "EV3 analog sensor support"
 	default y
-	depends on LEGOEV3_INPUT_PORT && LEGOEV3_MSENSORS
+	depends on LEGOEV3_DEV_PORTS && LEGOEV3_MSENSORS
 	help
 	  Select Y to enable support for EV3 analog sensors.
 
 config LEGOEV3_I2C_SENSORS
 	tristate "I2C sensor support"
 	default y
-	depends on LEGOEV3_INPUT_PORT && I2C_LEGOEV3 && LEGOEV3_MSENSORS
+	depends on LEGOEV3_DEV_PORTS && I2C_LEGOEV3 && LEGOEV3_MSENSORS
 	help
 	  Select Y to enable support for NXT I2C sensors.
 
 config LEGOEV3_UART_SENSORS
 	tristate "EV3 UART sensor support"
 	default y
-	depends on LEGOEV3_INPUT_PORT && SERIAL_SUART_OMAPL_PRU && LEGOEV3_MSENSORS
+	depends on LEGOEV3_DEV_PORTS && SERIAL_SUART_OMAPL_PRU && LEGOEV3_MSENSORS
 	help
 	  Select Y to enable support for EV3 UART sensors.
 
 config LEGOEV3_MOTORS
 	tristate "EV3 motor suppport"
 	default y
-	depends on LEGOEV3_OUTPUT_PORT
+	depends on LEGOEV3_DEV_PORTS
 	help
 	  Select Y to enable support for EV3 motors. Provides a common device
 	  class interface for LEGO EV3 and NXT compatible motors.

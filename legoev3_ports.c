@@ -422,14 +422,17 @@ static ssize_t modalias_show(struct device *dev,
 	return sprintf(buf, "legoev3:%s\n", dev->type->name);
 }
 
-static struct device_attribute legoev3_dev_attrs[] = {
-	__ATTR_RO(modalias),
-	__ATTR_NULL
+DEVICE_ATTR_RO(modalias);
+
+static struct attribute *legoev3_bus_dev_attrs[] = {
+	&dev_attr_modalias.attr,
+	NULL
 };
+ATTRIBUTE_GROUPS(legoev3_bus_dev);
 
 struct bus_type legoev3_bus_type = {
 	.name		= "legoev3",
-	.dev_attrs	= legoev3_dev_attrs,
+	.dev_groups	= legoev3_bus_dev_groups,
 	.match		= legoev3_bus_match,
 	.uevent		= legoev3_bus_uevent,
 };
