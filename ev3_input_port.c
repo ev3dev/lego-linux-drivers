@@ -384,24 +384,22 @@ struct ev3_input_port_data {
 	enum ev3_input_port_mode mode;
 };
 
-int ev3_input_port_get_pin1_mv(struct legoev3_port *in_port)
+static int ev3_input_port_get_pin1_mv(struct legoev3_port *in_port)
 {
 	struct ev3_input_port_data *data = dev_get_drvdata(&in_port->dev);
 
 	return legoev3_analog_in_pin1_value(data->analog, data->id);
 }
-EXPORT_SYMBOL_GPL(ev3_input_port_get_pin1_mv);
 
-int ev3_input_port_get_pin6_mv(struct legoev3_port *in_port)
+static int ev3_input_port_get_pin6_mv(struct legoev3_port *in_port)
 {
 	struct ev3_input_port_data *data = dev_get_drvdata(&in_port->dev);
 
 	return legoev3_analog_in_pin6_value(data->analog, data->id);
 }
-EXPORT_SYMBOL_GPL(ev3_input_port_get_pin6_mv);
 
-void ev3_input_port_set_gpio(struct legoev3_port *in_port, unsigned pin,
-			     enum ev3_input_port_gpio_state state)
+static void ev3_input_port_set_gpio(struct legoev3_port *in_port, unsigned pin,
+				    enum ev3_input_port_gpio_state state)
 {
 	struct ev3_input_port_data *data = dev_get_drvdata(&in_port->dev);
 
@@ -412,30 +410,27 @@ void ev3_input_port_set_gpio(struct legoev3_port *in_port, unsigned pin,
 				      state == EV3_INPUT_PORT_GPIO_HIGH);
 }
 
-void ev3_input_port_set_pin1_gpio(struct legoev3_port *in_port,
-				  enum ev3_input_port_gpio_state state)
+static void ev3_input_port_set_pin1_gpio(struct legoev3_port *in_port,
+					 enum ev3_input_port_gpio_state state)
 {
 	ev3_input_port_set_gpio(in_port, GPIO_PIN1, state);
 }
-EXPORT_SYMBOL_GPL(ev3_input_port_set_pin1_gpio);
 
-void ev3_input_port_set_pin5_gpio(struct legoev3_port *in_port,
-				  enum ev3_input_port_gpio_state state)
+static void ev3_input_port_set_pin5_gpio(struct legoev3_port *in_port,
+					 enum ev3_input_port_gpio_state state)
 {
 	ev3_input_port_set_gpio(in_port, GPIO_PIN5, state);
 }
-EXPORT_SYMBOL_GPL(ev3_input_port_set_pin5_gpio);
 
-void ev3_input_port_register_analog_cb(struct legoev3_port *in_port,
-				       legoev3_analog_cb_func_t function,
-				       void *context)
+static void ev3_input_port_register_analog_cb(struct legoev3_port *in_port,
+					      legoev3_analog_cb_func_t function,
+					      void *context)
 {
 	struct ev3_input_port_data *data = dev_get_drvdata(&in_port->dev);
 
 	legoev3_analog_register_in_cb(data->analog, data->id,
 				      function, context);
 }
-EXPORT_SYMBOL_GPL(ev3_input_port_register_analog_cb);
 
 int ev3_input_port_register_i2c(struct legoev3_port *in_port,
 				struct device *parent)
@@ -899,6 +894,12 @@ static int ev3_input_port_probe(struct legoev3_port *port)
 	err = sysfs_create_groups(&port->dev.kobj, ev3_input_port_groups);
 	if (err)
 		goto err_sysfs_create_groups;
+
+	port->in_ops.get_pin1_mv = ev3_input_port_get_pin1_mv;
+	port->in_ops.get_pin6_mv = ev3_input_port_get_pin6_mv;
+	port->in_ops.set_pin1_gpio = ev3_input_port_set_pin1_gpio;
+	port->in_ops.set_pin5_gpio = ev3_input_port_set_pin5_gpio;
+	port->in_ops.register_analog_cb = ev3_input_port_register_analog_cb;
 
 	data->id = pdata->id;
 	data->in_port = port;

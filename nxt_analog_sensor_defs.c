@@ -24,7 +24,7 @@ static void nxt_touch_sensor_cb(void *context)
 	 * 5V (5000) is pressed.
 	 */
 	as->ms.mode_info[as->mode].raw_data[0] =
-		ev3_input_port_get_pin1_mv(as->in_port) < 4800 ? 1 : 0;
+		as->in_port->in_ops.get_pin1_mv(as->in_port) < 4800 ? 1 : 0;
 }
 
 static void ht_eopd_sensor_cb(void *context)
@@ -35,7 +35,7 @@ static void ht_eopd_sensor_cb(void *context)
 	/*
 	 * To make the sensor value linear, we have to take the square root
 	 */
-	pin1_mv = ev3_input_port_get_pin1_mv(as->in_port) * 2;
+	pin1_mv = as->in_port->in_ops.get_pin1_mv(as->in_port) * 2;
 	as->ms.mode_info[as->mode].raw_data[0] = (u8)int_sqrt(pin1_mv);
 }
 
@@ -62,7 +62,7 @@ static void ms_touch_mux_cb(void *context)
 	u8 sensor2 = 0;
 	u8 sensor3 = 0;
 
-	pin1_mv = ev3_input_port_get_pin1_mv(as->in_port);
+	pin1_mv = as->in_port->in_ops.get_pin1_mv(as->in_port);
 	if (pin1_mv >= MS_TOUCH_MUX_L1 && pin1_mv < MS_TOUCH_MUX_H1) {
 		sensor1 = 1;
 	} else if (pin1_mv >= MS_TOUCH_MUX_L2 && pin1_mv < MS_TOUCH_MUX_H2) {

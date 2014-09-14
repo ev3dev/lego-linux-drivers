@@ -29,7 +29,7 @@ static void ev3_analog_sensor_cb(void *context)
 	struct ev3_analog_sensor_data *as = context;
 
 	*(int*)as->info.ms_mode_info[as->mode].raw_data =
-					ev3_input_port_get_pin6_mv(as->in_port);
+				as->in_port->in_ops.get_pin6_mv(as->in_port);
 }
 
 static u8 ev3_analog_sensor_get_mode(void *context)
@@ -46,13 +46,13 @@ static int ev3_analog_sensor_set_mode(void *context, u8 mode)
 	if (mode >= as->info.num_modes)
 		return -EINVAL;
 
-	ev3_input_port_set_pin5_gpio(as->in_port,
+	as->in_port->in_ops.set_pin5_gpio(as->in_port,
 				as->info.analog_mode_info[mode].pin5_state);
 	if (as->info.analog_mode_info[mode].analog_cb)
-		ev3_input_port_register_analog_cb(as->in_port,
+		as->in_port->in_ops.register_analog_cb(as->in_port,
 				as->info.analog_mode_info[mode].analog_cb, as);
 	else
-		ev3_input_port_register_analog_cb(as->in_port,
+		as->in_port->in_ops.register_analog_cb(as->in_port,
 						  ev3_analog_sensor_cb, as);
 	as->mode = mode;
 
@@ -108,8 +108,8 @@ static int ev3_analog_sensor_remove(struct legoev3_port_device *sensor)
 
 	dev_info(&sensor->dev, "Analog sensor removed from port %s\n",
 		 dev_name(&as->in_port->dev));
-	ev3_input_port_set_pin5_gpio(as->in_port, EV3_INPUT_PORT_GPIO_FLOAT);
-	ev3_input_port_register_analog_cb(as->in_port, NULL, NULL);
+	as->in_port->in_ops.set_pin5_gpio(as->in_port, EV3_INPUT_PORT_GPIO_FLOAT);
+	as->in_port->in_ops.register_analog_cb(as->in_port, NULL, NULL);
 	unregister_msensor(&as->ms);
 	dev_set_drvdata(&sensor->dev, NULL);
 	kfree(as);

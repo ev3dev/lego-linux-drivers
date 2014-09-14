@@ -20,7 +20,7 @@ static void ev3_touch_sensor_cb(void *context)
 	struct ev3_analog_sensor_data *as = context;
 
 	as->info.ms_mode_info[0].raw_data[0] =
-		ev3_input_port_get_pin6_mv(as->in_port) > 250 ? 1 : 0;
+		as->in_port->in_ops.get_pin6_mv(as->in_port) > 250 ? 1 : 0;
 }
 
 struct ev3_analog_sensor_info ev3_analog_sensor_defs[] = {

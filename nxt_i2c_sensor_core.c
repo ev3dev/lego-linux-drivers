@@ -71,8 +71,8 @@ static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
 			return err;
 	}
 
-	ev3_input_port_set_pin1_gpio(sensor->in_port,
-				     sensor->info.i2c_mode_info[mode].pin1_state);
+	sensor->in_port->in_ops.set_pin1_gpio(sensor->in_port,
+				sensor->info.i2c_mode_info[mode].pin1_state);
 	sensor->mode = mode;
 	schedule_delayed_work(&sensor->poll_work,
 			      msecs_to_jiffies(sensor->poll_ms));
