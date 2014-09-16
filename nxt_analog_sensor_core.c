@@ -73,16 +73,16 @@ static int nxt_analog_sensor_probe(struct legoev3_port_device *sensor)
 
 	as->in_port = sensor->port;
 
+	memcpy(&as->info, &nxt_analog_sensor_defs[sensor->entry_id->driver_data],
+	       sizeof(struct nxt_analog_sensor_info));
 	strncpy(as->ms.name, dev_name(&sensor->dev), MSENSOR_NAME_SIZE);
 	strncpy(as->ms.port_name, dev_name(&as->in_port->dev),
 		MSENSOR_NAME_SIZE);
+	as->ms.num_modes	= as->info.num_modes;
 	as->ms.mode_info	= as->info.ms_mode_info;
 	as->ms.get_mode		= nxt_analog_sensor_get_mode;
 	as->ms.set_mode		= nxt_analog_sensor_set_mode;
 	as->ms.context		= as;
-
-	memcpy(&as->info, &nxt_analog_sensor_defs[sensor->entry_id->driver_data],
-	       sizeof(struct nxt_analog_sensor_info));
 
 	err = register_msensor(&as->ms, &sensor->dev);
 	if (err)
