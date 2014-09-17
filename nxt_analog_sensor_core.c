@@ -91,9 +91,6 @@ static int nxt_analog_sensor_probe(struct legoev3_port_device *sensor)
 	dev_set_drvdata(&sensor->dev, as);
 	nxt_analog_sensor_set_mode(as, 0);
 
-	dev_info(&sensor->dev, "Analog sensor connected to port %s\n",
-		 dev_name(&as->in_port->dev));
-
 	return 0;
 
 err_register_msensor:
@@ -106,8 +103,6 @@ static int nxt_analog_sensor_remove(struct legoev3_port_device *sensor)
 {
 	struct nxt_analog_sensor_data *as = dev_get_drvdata(&sensor->dev);
 
-	dev_info(&sensor->dev, "Analog sensor removed from port %s\n",
-		 dev_name(&as->in_port->dev));
 	as->in_port->in_ops.set_pin5_gpio(as->in_port, EV3_INPUT_PORT_GPIO_FLOAT);
 	as->in_port->in_ops.register_analog_cb(as->in_port, NULL, NULL);
 	unregister_msensor(&as->ms);
@@ -122,56 +117,39 @@ static struct legoev3_port_device_id nxt_analog_sensor_device_ids [] = {
 		.driver_data = GENERIC_NXT_ANALOG_SENSOR,
 	},
 	{
-		.name = "nxt-touch",
+		.name = "lego-nxt-touch",
 		.driver_data = LEGO_NXT_TOUCH_SENSOR,
 	},
 	{
-		.name = "nxt-light",
+		.name = "lego-nxt-light",
 		.driver_data = LEGO_NXT_LIGHT_SENSOR,
 	},
 	{
-		.name = "nxt-sound",
+		.name = "lego-nxt-sound",
 		.driver_data = LEGO_NXT_SOUND_SENSOR,
 	},
 	{
-		.name = "ht-neo1048",
+		.name = "ht-nxt-eopd",
 		.driver_data = HT_EOPD_SENSOR,
 	},
 	{
-		.name = "ht-nfs1074",
+		.name = "ht-nxt-force",
 		.driver_data = HT_FORCE_SENSOR,
 	},
 	{
-		.name = "ht-nyg1044",
+		.name = "ht-nxt-gyro",
 		.driver_data = HT_GYRO_SENSOR,
 	},
 	{
-		.name = "ht-nms1035",
+		.name = "ht-nxt-mag",
 		.driver_data = HT_MAGNETIC_SENSOR,
 	},
 	{
-		.name = "ms-touch-mux",
+		.name = "ms-nxt-touch-mux",
 		.driver_data = MS_TOUCH_SENSOR_MUX,
 	},
 	{  }
 };
-
-/**
- * Returns 0 if the name is valid or -EINVAL if not.
- */
-int nxt_analog_sensor_assert_valid_name(const char* name)
-{
-	struct legoev3_port_device_id *id = nxt_analog_sensor_device_ids;
-
-	while (id->name[0]) {
-		if (!strcmp(name, id->name))
-			return 0;
-		id++;
-	}
-
-	return -EINVAL;
-}
-EXPORT_SYMBOL_GPL(nxt_analog_sensor_assert_valid_name);
 
 static ssize_t sensor_names_show(struct device_driver *driver, char *buf)
 {

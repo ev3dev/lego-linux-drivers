@@ -15,7 +15,7 @@
 
 /*
  * -----------------------------------------------------------------------------
- * Provides a host for registering EV3 analog sensors. Sensors are registered
+ * Provides a host for registering NXT analog sensors. Sensors are registered
  * either though the platform data or through the set_sensor attribute.
  * -----------------------------------------------------------------------------
  */
@@ -42,8 +42,6 @@ struct device_type nxt_analog_sensor_device_type = {
 	.uevent = legoev3_port_device_uevent,
 };
 
-extern int nxt_analog_sensor_assert_valid_name(const char* name);
-
 static ssize_t store_set_sensor(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
@@ -52,7 +50,6 @@ static ssize_t store_set_sensor(struct device *dev,
 	struct legoev3_port_device *sensor;
 	char buf_copy[count + 1];
 	char* name;
-	int err;
 
 	if (mutex_is_locked(&data->sensor_mutex))
 		return -EBUSY;
@@ -64,17 +61,13 @@ static ssize_t store_set_sensor(struct device *dev,
 	if (data->sensor && !strcmp(name, data->sensor->name))
 		return count;
 
-	err = nxt_analog_sensor_assert_valid_name(name);
-	if (err)
-		return err;
-
 	mutex_lock(&data->sensor_mutex);
 	if (data->sensor) {
 		legoev3_port_device_unregister(data->sensor);
 		data->sensor = NULL;
 	}
 	sensor = legoev3_port_device_register(name,
-		&nxt_analog_sensor_device_type, NULL, 0, data->in_port);
+		&nxt_analog_sensor_device_type, dev, NULL, 0, data->in_port);
 	if (IS_ERR(sensor))
 		dev_warn(dev, "Failed to sensor %s. %ld", name, PTR_ERR(sensor));
 	else
@@ -122,11 +115,10 @@ static int nxt_analog_host_probe(struct legoev3_port_device *host)
 		goto err_sysfs_create_groups;
 	}
 
-	if (pdata && pdata->inital_sensor
-		&& !WARN_ON(nxt_analog_sensor_assert_valid_name(pdata->inital_sensor)))
-	{
+	if (pdata && pdata->inital_sensor) {
 		sensor = legoev3_port_device_register(pdata->inital_sensor,
-			&nxt_analog_sensor_device_type, NULL, 0, data->in_port);
+			&nxt_analog_sensor_device_type, &host->dev, NULL, 0,
+			data->in_port);
 		if (IS_ERR(sensor))
 			dev_warn(&host->dev, "Failed to sensor %s. %ld",
 				pdata->inital_sensor, PTR_ERR(sensor));
@@ -167,7 +159,7 @@ struct legoev3_port_device_driver nxt_analog_host_driver = {
 EXPORT_SYMBOL_GPL(nxt_analog_host_driver);
 legoev3_port_device_driver(nxt_analog_host_driver);
 
-MODULE_DESCRIPTION("NXT analog sensor host driver for LEGO Mindstorms EV3");
+MODULE_DESCRIPTION("NXT analog host driver for LEGO Mindstorms EV3");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("legoev3:nxt-analog-host");

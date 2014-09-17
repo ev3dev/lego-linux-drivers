@@ -191,7 +191,8 @@ void ev3_output_port_register_motor(struct work_struct *work)
 
 	motor = legoev3_port_device_register("motor",
 				&ev3_motor_device_types[data->motor_type],
-				&pdata, sizeof(struct ev3_motor_platform_data),
+				&data->out_port->dev, &pdata,
+				sizeof(struct ev3_motor_platform_data),
 				data->out_port);
 	if (IS_ERR(motor)) {
 		dev_err(&data->out_port->dev, "Could not register motor on port %s.\n",

@@ -21,6 +21,32 @@
 
 #define NXT_I2C_ID_STR_LEN 8
 
+#define NXT_I2C_FW_VER_REG	0x00
+#define	NXT_I2C_VEND_ID_REG	0x08
+#define NXT_I2C_PROD_ID_REG	0x10
+
+struct nxt_i2c_sensor_data;
+
+/**
+ * struct nxt_i2c_sensor_ops
+ *
+ * If these functions need private data, they should use callback_data
+ *
+ * @set_mode_pre_cb: Called before the mode is set. Returning a negative error
+ * 	value will prevent the mode from being changed.
+ * @set_mode_post_cb: Called after the mode has been changed.
+ * @poll_cb: Called after the sensor has been polled.
+ * @probe_cb: Called at the end of the driver probe function.
+ * @remove_cb: Called at the beginning of the driver remove function.
+ */
+struct nxt_i2c_sensor_ops {
+	int (*set_mode_pre_cb)(struct nxt_i2c_sensor_data *data, u8 mode);
+	void (*set_mode_post_cb)(struct nxt_i2c_sensor_data *data, u8 mode);
+	void (*poll_cb)(struct nxt_i2c_sensor_data *data);
+	void (*probe_cb)(struct nxt_i2c_sensor_data *data);
+	void (*remove_cb)(struct nxt_i2c_sensor_data *data);
+};
+
 /**
  * struct nxt_i2c_sensor_mode_info
  * @ms_mode_info: Mode info used by the msensor device class.
@@ -40,37 +66,83 @@ struct nxt_i2c_sensor_mode_info {
  * struct nxt_i2c_sensor_info
  * @vendor_id: The vendor ID string to match to the sensor.
  * @product_id: The product ID string to match to the sensor.
- * @ms: The msensor class device for this sensor.
+ * @callback_data: Pointer for private data used by ops.
+ * @ops: Optional hooks for special-case drivers.
  * @mode_info: Array of mode information for each sensor mode.
  * @num_modes: Number of valid elements in the mode_info array.
+ * @num_read_only_modes: Number of modes that are usable without having to
+ * 	write data to the sensor.
+ * @slow: The sensor cannot operate at 100kHz.
  */
 struct nxt_i2c_sensor_info {
 	const char *vendor_id;
 	const char *product_id;
-	struct msensor_device ms;
+	void *callback_data;
+	struct nxt_i2c_sensor_ops ops;
 	struct msensor_mode_info ms_mode_info[MSENSOR_MODE_MAX + 1];
 	struct nxt_i2c_sensor_mode_info i2c_mode_info[MSENSOR_MODE_MAX + 1];
+	int num_modes;
+	int num_read_only_modes;
+	unsigned slow:1;
 };
 
-enum nxt_i2c_sensor_types {
-	UNKNOWN_SENSOR,
+enum nxt_i2c_sensor_type {
+	UNKNOWN_I2C_SENSOR,
 	LEGO_NXT_ULTRASONIC_SENSOR,
 	LEGO_POWER_STORAGE_SENSOR,
 	HT_NXT_PIR_SENSOR,
 	HT_NXT_BAROMETRIC_SENSOR,
 	HT_NXT_IR_SEEKER_SENSOR_V2,
-	HT_COLOR_SENSOR_V2,
 	HT_NXT_COLOR_SENSOR,
+	HT_NXT_COLOR_SENSOR_V2,
 	HT_NXT_ANGLE_SENSOR,
 	HT_NXT_COMPASS_SENSOR,
 	HT_NXT_IR_RECIEIVER_SENSOR,
 	HT_NXT_ACCELERATION_TILT_SENSOR,
 	HT_NXT_IR_LINK_SENSOR,
 	HT_NXT_SUPER_PRO_SENSOR,
+	HT_NXT_SENSOR_MUX,
 	MS_LIGHT_SENSOR_ARRAY,
 	NUM_NXT_I2C_SENSORS
 };
 
-extern struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[];
+/*
+ * This table is shared by the nxt-i2c-sensor and ht-smux-i2c-sensor modules.
+ * The entries must be in the same order as the enum above because it is used
+ * as a reverse lookup to get the name in addition to being the driver id
+ * lookup table.
+ */
+
+#define NXT_I2C_SENSOR_ID_TABLE_DATA \
+{ "nxt-i2c-sensor",	UNKNOWN_I2C_SENSOR		}, \
+{ "lego-nxt-ultrasonic",LEGO_NXT_ULTRASONIC_SENSOR	}, \
+{ "lego-power-storage",	LEGO_POWER_STORAGE_SENSOR	}, \
+{ "ht-nxt-pir",		HT_NXT_PIR_SENSOR		}, \
+{ "ht-nxt-barometric",	HT_NXT_BAROMETRIC_SENSOR	}, \
+{ "ht-ir-seeker-v2",	HT_NXT_IR_SEEKER_SENSOR_V2	}, \
+{ "ht-nxt-color",	HT_NXT_COLOR_SENSOR		}, \
+{ "ht-nxt-color-v2",	HT_NXT_COLOR_SENSOR_V2		}, \
+{ "ht-nxt-angle",	HT_NXT_ANGLE_SENSOR		}, \
+{ "ht-nxt-compass",	HT_NXT_COMPASS_SENSOR		}, \
+{ "ht-nxt-ir-receiver",	HT_NXT_IR_RECIEIVER_SENSOR	}, \
+{ "ht-nxt-accel",	HT_NXT_ACCELERATION_TILT_SENSOR	}, \
+{ "ht-nxt-ir-link",	HT_NXT_IR_LINK_SENSOR		}, \
+{ "ht-super-pro",	HT_NXT_SUPER_PRO_SENSOR		}, \
+{ "ht-nxt-smux",	HT_NXT_SENSOR_MUX		}, \
+{ "ms-light-array",	MS_LIGHT_SENSOR_ARRAY		}, \
+{ }
+
+extern const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[];
+
+struct nxt_i2c_sensor_data {
+	struct i2c_client *client;
+	struct legoev3_port *in_port;
+	struct nxt_i2c_sensor_info info;
+	struct msensor_device ms;
+	struct delayed_work poll_work;
+	enum nxt_i2c_sensor_type type;
+	unsigned poll_ms;
+	u8 mode;
+};
 
 #endif /* NXT_I2C_SENSOR_H_ */

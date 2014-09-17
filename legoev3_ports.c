@@ -86,7 +86,6 @@ static struct attribute *legoev3_port_device_type_attrs[] = {
 struct attribute_group legoev3_port_device_type_attr_grp = {
 	.attrs	= legoev3_port_device_type_attrs,
 };
-
 EXPORT_SYMBOL_GPL(legoev3_port_device_type_attr_grp);
 
 static struct attribute *legoev3_output_port_device_type_attrs[] = {
@@ -117,12 +116,14 @@ static void legoev3_port_release (struct device *dev)
  * @name: The name of the port.
  * @id: The sysfs node id of the port - should match port number.
  * @type: The type of device.
+ * @parent: Parent sysfs device.
  * @platform_data: Device specific data that depends on the device type.
  * @platform_data_size: Size of platform_data.
  */
 struct legoev3_port
-*legoev3_port_register(const char *name, int id, struct device_type *type,
-		       void *platform_data, size_t platform_data_size)
+*legoev3_port_register(const char *name, int id, const struct device_type *type,
+		       struct device *parent, void *platform_data,
+		       size_t platform_data_size)
 {
 	struct legoev3_port *port;
 	void *pdata = NULL;
@@ -150,7 +151,7 @@ struct legoev3_port
 		memcpy(pdata, platform_data, platform_data_size);
 		port->dev.platform_data = pdata;
 	}
-	port->dev.parent = &legoev3_ports->pdev->dev;
+	port->dev.parent = parent;
 	/* special case for output ports since they are labeled A-D on the EV3 */
 	if (0 == strncmp(port->name, "out", LEGOEV3_PORT_NAME_SIZE))
 		err = dev_set_name(&port->dev, "%s%c", port->name,
@@ -169,6 +170,8 @@ struct legoev3_port
 		goto err_device_add;
 	}
 
+	dev_info(parent, "Added new port '%s'\n", dev_name(&port->dev));
+
 	return port;
 
 err_device_add:
@@ -179,15 +182,19 @@ err_kalloc_pdata:
 
 	return ERR_PTR(err);
 }
+EXPORT_SYMBOL_GPL(legoev3_port_register);
 
-void legoev3_port_unregister(struct legoev3_port *pdev)
+void legoev3_port_unregister(struct legoev3_port *port)
 {
-	if (!pdev)
+	if (!port)
 		return;
 
-	device_del(&pdev->dev);
-	put_device(&pdev->dev);
+	dev_info(port->dev.parent, "Removed port '%s'\n", dev_name(&port->dev));
+
+	device_del(&port->dev);
+	put_device(&port->dev);
 }
+EXPORT_SYMBOL_GPL(legoev3_port_unregister);
 
 int legoev3_port_device_uevent(struct device *dev,
 			       struct kobj_uevent_env *env)
@@ -214,13 +221,15 @@ static void legoev3_port_device_release (struct device *dev)
 /**
  * legoev3_port_device_register - Register a new device on the legoev3 port bus.
  * @name: The name of the device.
- * @type: The type of device (required).
- * @platform_data: Device specific data that depends on the device type.
+ * @type: The type of device.
+ * @parent: The parent sysfs device.
+ * @platform_data: Device specific data that depends on the device type (optional).
+ * @platform_data_size: Size of platform data.
  * @port: The port the device is attached to.
  */
 struct legoev3_port_device
 *legoev3_port_device_register(const char *name, struct device_type *type,
-			      void *platform_data,
+			      struct device *parent, void *platform_data,
 			      size_t platform_data_size,
 			      struct legoev3_port *port)
 {
@@ -251,7 +260,7 @@ struct legoev3_port_device
 		memcpy(pdata, platform_data, platform_data_size);
 		pdev->dev.platform_data = pdata;
 	}
-	pdev->dev.parent = &port->dev;
+	pdev->dev.parent = parent;
 	err = dev_set_name(&pdev->dev, "%s:%s", dev_name(&pdev->port->dev), pdev->name);
 	if (err < 0) {
 		dev_err(&pdev->dev, "Could not set name.\n");
@@ -263,6 +272,8 @@ struct legoev3_port_device
 		dev_err(&pdev->dev, "Failed to add device.\n");
 		goto err_device_add;
 	}
+
+	dev_info(pdev->dev.parent, "Added new device '%s'\n", dev_name(&pdev->dev));
 
 	return pdev;
 
@@ -280,6 +291,8 @@ void legoev3_port_device_unregister(struct legoev3_port_device *pdev)
 {
 	if (!pdev)
 		return;
+
+	dev_info(pdev->dev.parent, "Removed device '%s'\n", dev_name(&pdev->dev));
 
 	device_del(&pdev->dev);
 	put_device(&pdev->dev);
@@ -465,8 +478,8 @@ int legoev3_register_input_ports(struct legoev3_port *ports[],
 			continue;
 		}
 		ports[i] = legoev3_port_register("in", id,
-			&ev3_input_port_device_type, &data[i],
-			sizeof(struct ev3_input_port_platform_data));
+			&ev3_input_port_device_type, &legoev3_ports->pdev->dev,
+			&data[i], sizeof(struct ev3_input_port_platform_data));
 		if (IS_ERR(ports[i])) {
 			err = PTR_ERR(ports[i]);
 			goto err_legoev3_port_register;
@@ -509,8 +522,8 @@ int legoev3_register_output_ports(struct legoev3_port *ports[],
 			continue;
 		}
 		ports[i] = legoev3_port_register("out", id,
-			&ev3_output_port_device_type, &data[i],
-			sizeof(struct ev3_output_port_platform_data));
+			&ev3_output_port_device_type, &legoev3_ports->pdev->dev,
+			&data[i], sizeof(struct ev3_output_port_platform_data));
 		if (IS_ERR(ports[i])) {
 			err = PTR_ERR(ports[i]);
 			goto err_legoev3_port_register;

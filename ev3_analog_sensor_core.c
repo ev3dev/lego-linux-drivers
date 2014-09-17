@@ -122,7 +122,7 @@ static struct legoev3_port_device_id ev3_analog_sensor_device_ids [] = {
 		.driver_data = GENERIC_EV3_ANALOG_SENSOR,
 	},
 	{
-		.name = "ev3-touch",
+		.name = "lego-ev3-touch",
 		.driver_data = LEGO_EV3_TOUCH_SENSOR,
 	},
 	{

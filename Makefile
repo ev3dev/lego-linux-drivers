@@ -27,6 +27,9 @@ obj-$(CONFIG_EV3_ANALOG_SENSORS)	+= ev3_analog_sensor.o
 obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= nxt_i2c_host.o
 nxt_i2c_sensor-objs := nxt_i2c_sensor_core.o nxt_i2c_sensor_defs.o
 obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= nxt_i2c_sensor.o
+obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= ht_smux_input_port.o
+obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= ht_smux_i2c_host.o
+obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= ht_smux_i2c_sensor.o
 
 # UART Sensors
 obj-$(CONFIG_LEGOEV3_UART_SENSORS)	+= legoev3_uart.o

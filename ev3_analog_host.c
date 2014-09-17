@@ -59,7 +59,8 @@ static int ev3_analog_host_probe(struct legoev3_port_device *host)
 		&& !WARN_ON(ev3_analog_sensor_assert_valid_name(pdata->inital_sensor)))
 	{
 		sensor = legoev3_port_device_register(pdata->inital_sensor,
-			&ev3_analog_sensor_device_type, NULL, 0, data->in_port);
+			&ev3_analog_sensor_device_type, &host->dev, NULL, 0,
+			data->in_port);
 		if (IS_ERR(sensor))
 			dev_warn(&host->dev, "Failed to register sensor %s. %ld",
 				pdata->inital_sensor, PTR_ERR(sensor));
@@ -93,7 +94,7 @@ struct legoev3_port_device_driver ev3_analog_host_driver = {
 EXPORT_SYMBOL_GPL(ev3_analog_host_driver);
 legoev3_port_device_driver(ev3_analog_host_driver);
 
-MODULE_DESCRIPTION("EV3 analog sensor host driver for LEGO Mindstorms EV3");
+MODULE_DESCRIPTION("EV3 analog host driver for LEGO Mindstorms EV3");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("legoev3:ev3-analog-host");

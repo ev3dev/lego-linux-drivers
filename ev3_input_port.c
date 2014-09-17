@@ -315,13 +315,14 @@ struct device_type ev3_sensor_host_device_types[] = {
 		.uevent = legoev3_port_device_uevent,
 	},
 };
+
 const char *ev3_input_port_sensor_table[] = {
-	[SENSOR_TYPE_ID_NXT_TOUCH]	= "nxt-touch",
-	[SENSOR_TYPE_ID_NXT_LIGHT]	= "nxt-light",
+	[SENSOR_TYPE_ID_NXT_TOUCH]	= "lego-nxt-touch",
+	[SENSOR_TYPE_ID_NXT_LIGHT]	= "lego-nxt-light",
 	[SENSOR_TYPE_ID_NXT_ANALOG]	= "nxt-analog",
-	[SENSOR_TYPE_ID_NXT_COLOR]	= "nxt-color",
+	[SENSOR_TYPE_ID_NXT_COLOR]	= "lego-nxt-color",
 	[SENSOR_TYPE_ID_EV3_ANALOG_01]	= "ev3-analog",
-	[SENSOR_TYPE_ID_EV3_TOUCH]	= "ev3-touch",
+	[SENSOR_TYPE_ID_EV3_TOUCH]	= "lego-ev3-touch",
 	[SENSOR_TYPE_ID_EV3_ANALOG_03]	= "ev3-analog",
 	[SENSOR_TYPE_ID_EV3_ANALOG_04]	= "ev3-analog",
 	[SENSOR_TYPE_ID_EV3_ANALOG_05]	= "ev3-analog",
@@ -336,6 +337,7 @@ const char *ev3_input_port_sensor_table[] = {
 	[SENSOR_TYPE_ID_EV3_ANALOG_14]	= "ev3-analog",
 	[SENSOR_TYPE_ID_UNKNOWN]	= NULL,
 };
+
 /**
  * struct ev3_input_port_data - Driver data for an input port on the EV3 brick
  * @id: Unique identifier for the port.
@@ -518,7 +520,7 @@ void ev3_input_port_register_host(struct work_struct *work)
 	    || data->sensor_type == SENSOR_ERR
 	    || data->sensor_type >= NUM_SENSOR_TYPE)
 	{
-		dev_err(&data->in_port->dev, "Trying to register an invalid sensor on %s.\n",
+		dev_err(&data->in_port->dev, "Trying to register an invalid host on %s.\n",
 			dev_name(&data->in_port->dev));
 		return;
 	}
@@ -531,10 +533,10 @@ void ev3_input_port_register_host(struct work_struct *work)
 	host = legoev3_port_device_register(
 		ev3_sensor_host_device_types[data->sensor_type].name,
 		&ev3_sensor_host_device_types[data->sensor_type],
-		&pdata, sizeof(struct ev3_analog_host_platform_data),
-		data->in_port);
+		&data->in_port->dev, &pdata,
+		sizeof(struct ev3_analog_host_platform_data), data->in_port);
 	if (IS_ERR(host)) {
-		dev_err(&data->in_port->dev, "Could not register sensor on port %s.\n",
+		dev_err(&data->in_port->dev, "Could not register host on port %s.\n",
 			dev_name(&data->in_port->dev));
 		return;
 	}
@@ -726,14 +728,25 @@ static struct attribute *ev3_input_port_raw_attrs[] = {
 
 ATTRIBUTE_GROUPS(ev3_input_port_raw);
 
-void ev3_input_port_enable_raw_mode(struct ev3_input_port_data *data)
+int ev3_input_port_enable_raw_mode(struct ev3_input_port_data *data)
 {
-	int i;
+	int err, i;
 
-	sysfs_create_groups(&data->in_port->dev.kobj, ev3_input_port_raw_groups);
+	err = sysfs_create_groups(&data->in_port->dev.kobj, ev3_input_port_raw_groups);
+	if (err < 0)
+		return err;
+
 	/* TODO: would be nice to create symlinks from exported gpios to in_port */
-	for (i = 0; i < NUM_GPIO; i++)
-		gpio_export(data->gpio[i].gpio, true);
+	for (i = 0; i < NUM_GPIO; i++) {
+		err = gpio_export(data->gpio[i].gpio, true);
+		if (err < 0) {
+			for (i--; i >= 0; i--)
+				gpio_unexport(data->gpio[i].gpio);
+			return err;
+		}
+	}
+
+	return 0;
 }
 
 void ev3_input_port_disable_raw_mode(struct ev3_input_port_data *data)
@@ -780,7 +793,7 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 {
 	struct ev3_input_port_data *data = dev_get_drvdata(dev);
 	enum ev3_input_port_mode new_mode = -1;
-	int i;
+	int err, i;
 
 	for (i = 0; i < NUM_EV3_INPUT_PORT_MODE; i++) {
 		if (sysfs_streq(buf, ev3_input_port_mode_names[i])) {
@@ -842,12 +855,16 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 	case EV3_INPUT_PORT_MODE_OTHER_UART:
 		data->sensor_type = SENSOR_NONE;
 		data->sensor_type_id = SENSOR_TYPE_ID_UNKNOWN;
-		ev3_input_port_enable_uart(data->in_port);
+		err = ev3_input_port_enable_uart(data->in_port);
+		if (err < 0)
+			return err;
 		break;
 	case EV3_INPUT_PORT_MODE_RAW:
 		data->sensor_type = SENSOR_NONE;
 		data->sensor_type_id = SENSOR_TYPE_ID_UNKNOWN;
-		ev3_input_port_enable_raw_mode(data);
+		err = ev3_input_port_enable_raw_mode(data);
+		if (err < 0)
+			return err;
 		break;
 	default:
 		/* should never get here, but keeps compiler happy */
@@ -984,6 +1001,11 @@ static int ev3_input_port_remove(struct legoev3_port *port)
 	gpio_free_array(data->gpio, ARRAY_SIZE(data->gpio));
 	put_legoev3_analog(data->analog);
 	dev_set_drvdata(&port->dev, NULL);
+	port->in_ops.get_pin1_mv = NULL;
+	port->in_ops.get_pin6_mv = NULL;
+	port->in_ops.set_pin1_gpio = NULL;
+	port->in_ops.set_pin5_gpio = NULL;
+	port->in_ops.register_analog_cb = NULL;
 	sysfs_remove_groups(&port->dev.kobj, ev3_input_port_groups);
 	kfree(data);
 

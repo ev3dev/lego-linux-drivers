@@ -126,10 +126,8 @@ static ssize_t msensor_show_modes(struct device *dev,
 	int i;
 	unsigned count = 0;
 
-	for (i = 0; i < ms->num_modes; i++) {
-		count += sprintf(buf + count, "%s", ms->mode_info[i].name);
-		count += sprintf(buf + count, "%c", ' ');
-	}
+	for (i = 0; i < ms->num_modes; i++)
+		count += sprintf(buf + count, "%s ", ms->mode_info[i].name);
 	if (count == 0)
 		return -ENXIO;
 	buf[count - 1] = '\n';
@@ -395,7 +393,7 @@ static ssize_t msensor_show_fw_version(struct device *dev,
 {
 	struct msensor_device *ms = to_msensor_device(dev);
 
-	return snprintf(buf, MSENSOR_FW_VERSION_SIZE, "%s\n", ms->fw_version);
+	return snprintf(buf, MSENSOR_FW_VERSION_SIZE + 2, "%s\n", ms->fw_version);
 }
 
 static ssize_t msensor_show_address(struct device *dev,
@@ -404,7 +402,7 @@ static ssize_t msensor_show_address(struct device *dev,
 {
 	struct msensor_device *ms = to_msensor_device(dev);
 
-	return sprintf(buf, "0x%02x\n", ms->address);
+	return sprintf(buf, "%u\n", ms->address);
 }
 
 static ssize_t msensor_read_bin_data(struct file *file, struct kobject *kobj,
@@ -554,7 +552,7 @@ int register_msensor(struct msensor_device *ms, struct device *parent)
 	if (err)
 		return err;
 
-	dev_info(&ms->dev, "Mindstorms sensor registered.\n");
+	dev_info(&ms->dev, "Bound to device '%s'\n", dev_name(parent));
 
 	return 0;
 }
@@ -562,7 +560,7 @@ EXPORT_SYMBOL_GPL(register_msensor);
 
 void unregister_msensor(struct msensor_device *ms)
 {
-	dev_info(&ms->dev, "Mindstorms sensor unregistered.\n");
+	dev_info(&ms->dev, "Unregistered\n");
 	device_unregister(&ms->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_msensor);
