@@ -13,6 +13,36 @@
  * GNU General Public License for more details.
  */
 
+/*
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * EV3 UART Host Driver
+ *
+ * This driver tells an [EV3 input port] to configure itself for UART
+ * communications. It also triggers a udev rule that loads the [EV3 UART Sensor
+ * Line Discipline] on the tty device associated with the port.
+ * .
+ * You can find this device at `/sys/bus/legoev3/devices/in<N>:ev3-uart-host`
+ * where `<N>` is the number of an input port (1 to 4).
+ * .
+ * ### sysfs Attributes
+ * .
+ * `device_type` (read-only)
+ * : Returns `ev3-uart-host`
+ * .
+ * `port_name` (read-only)
+ * : Returns the name of the port this host is connected to (e.g. `in1`).
+ *.
+ * [EV3 input port]: ../ev3-input-port
+ * [EV3 UART Sensor Line Discipline]: ../legoev3-uart
+ */
+
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/legoev3/legoev3_ports.h>

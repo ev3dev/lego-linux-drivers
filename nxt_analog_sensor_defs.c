@@ -88,12 +88,28 @@ static void ms_touch_mux_cb(void *context)
 	as->ms.mode_info[as->mode].raw_data[2] = sensor3;
 }
 
-struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
+/*
+ * Documentation is automatically generated from this struct, so formatting is
+ * very important. Make sure any new sensors have the same layout. The comments
+ * are also parsed to provide more information for the documentation. The
+ * parser can be found in the ev3dev-kpkg repository.
+ */
+
+const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 	[GENERIC_NXT_ANALOG_SENSOR] = {
+		/**
+		 * @vendor_part_name: Generic NXT Analog Sensor
+		 */
+		.name = "nxt-analog",
 		.num_modes = 2,
 		/* TODO: do we want more modes to set pin 6 gpio */
 		.ms_mode_info = {
 			[0] = {
+				/**
+				 * @description: Raw analog value
+				 * @value0: Voltage (0 - 5000)
+				 * @units_description: volts
+				 */
 				.name = "NXT-ANALOG-0",
 				.units = "V",
 				.raw_max = 5000,
@@ -104,6 +120,11 @@ struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				.data_type = MSENSOR_DATA_S32,
 			},
 			[1] = {
+				/**
+				 * @description: Raw analog value<br />Pin 5 high
+				 * @value0: Voltage (0 - 5000)
+				 * @units_description: volts
+				 */
 				.name = "NXT-ANALOG-1",
 				.units = "V",
 				.raw_max = 5000,
@@ -121,9 +142,28 @@ struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		},
 	},
 	[LEGO_NXT_TOUCH_SENSOR] = {
+		/**
+		 * @vendor_name: LEGO
+		 * @vendor_part_number: 9843
+		 * @vendor_part_name: NXT Touch Sensor
+		 * @vendor_website: http://www.lego.com/en-us/mindstorms/downloads/software/nxt-hdk/
+		 */
+		.name = "lego-nxt-touch",
 		.num_modes = 1,
 		.ms_mode_info = {
 			[0] = {
+				/**
+				 * [^mode0-value]: Values:
+				 *
+				 * | Value | Description |
+				 * |:-----:|:-----------:|
+				 * | `0`   | Released    |
+				 * | `1`   | Pressed     |
+				 *
+				 * @description: Button state
+				 * @value0: State (0 or 1)
+				 * @value0_footnote: [^mode0-value]
+				 */
 				.name = "TOUCH",
 				.raw_max = 1,
 				.pct_max = 100,
@@ -138,9 +178,21 @@ struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		},
 	},
 	[LEGO_NXT_LIGHT_SENSOR] = {
+		/**
+		 * @vendor_name: LEGO
+		 * @vendor_part_number: 9844
+		 * @vendor_part_name: NXT Light Sensor
+		 * @vendor_website: http://www.lego.com/en-us/mindstorms/downloads/software/nxt-hdk/
+		 */
+		.name = "lego-nxt-light",
 		.num_modes = 2,
 		.ms_mode_info = {
 			[0] = {
+				/**
+				 * @description: Reflected light<br />LED on
+				 * @value0: Reflected light intensity (0 to 100)
+				 * @units_description: percent
+				 */
 				.name = "NXT-REFLECT",
 				.units = "pct",
 				.raw_min = 4116,
@@ -152,6 +204,11 @@ struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				.data_type = MSENSOR_DATA_S32,
 			},
 			[1] = {
+				/**
+				 * @description: Ambient light<br />LED off
+				 * @value0: Ambient light intensity (0 to 100)
+				 * @units_description: percent
+				 */
 				.name = "NXT-AMBIENT",
 				.units = "pct",
 				.raw_min = 4164,
@@ -173,9 +230,21 @@ struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		},
 	},
 	[LEGO_NXT_SOUND_SENSOR] = {
+		/**
+		 * @vendor_name: LEGO
+		 * @vendor_part_number: 9845
+		 * @vendor_part_name: NXT Sound Sensor
+		 * @vendor_website: http://www.lego.com/en-us/mindstorms/downloads/software/nxt-hdk/
+		 */
+		.name = "lego-nxt-sound",
 		.num_modes = 2,
 		.ms_mode_info = {
 			[0] = {
+				/**
+				 * @description: Sound pressure level<br />Flat weighting
+				 * @value0: Sound pressure level (0 to 1000)
+				 * @units_description: percent
+				 */
 				.name = "NXT-SND-DB",
 				.units = "pct",
 				.raw_max = 5000,
@@ -186,6 +255,11 @@ struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				.data_type = MSENSOR_DATA_S32,
 			},
 			[1] = {
+				/**
+				 * @description: Sound pressure level<br />A weighting
+				 * @value0: Sound pressure level (0 to 1000)
+				 * @units_description: percent
+				 */
 				.name = "NXT-SND_DBA",
 				.units = "pct",
 				.raw_max = 5000,
@@ -206,21 +280,45 @@ struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		},
 	},
 	[HT_EOPD_SENSOR] = {
+		/**
+		 * @vendor_name: HiTechnic
+		 * @vendor_part_number: NEO1048
+		 * @vendor_part_name: NXT EOPD
+		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NEO1048
+		 */
+		.name = "ht-nxt-eopd",
 		.num_modes = 2,
 		.ms_mode_info = {
 			[0] = {
+				/**
+				 * [^adjusted-value]: This value is the square root of the
+				 * raw value. You can derive a value proportional (linear)
+				 * to distance by dividing a constant by this value,
+				 * e.g. `35 / value0`.
+				 *
+				 * @description: Proximity (long range)
+				 * @value0: Proximity (0-100)
+				 * @value0_footnote: [^adjusted-value]
+				 */
 				.name = "HT-EOPD-L",
-				.raw_max = 100,
+				.raw_max = 5000,
 				.pct_max = 100,
 				.si_max = 100,
 				.data_sets = 1,
+				.data_type = MSENSOR_DATA_S32,
 			},
 			[1] = {
+				/**
+				 * @description: Proximity (short range)
+				 * @value0: Proximity (0-100)
+				 * @value0_footnote: [^adjusted-value]
+				 */
 				.name = "HT-EOPD-S",
-				.raw_max = 100,
+				.raw_max = 5000,
 				.pct_max = 100,
 				.si_max = 100,
 				.data_sets = 1,
+				.data_type = MSENSOR_DATA_S32,
 			},
 		},
 		.analog_mode_info = {
@@ -235,9 +333,20 @@ struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		},
 	},
 	[HT_FORCE_SENSOR] = {
+		/**
+		 * @vendor_name: HiTechnic
+		 * @vendor_part_number: NFS1074
+		 * @vendor_part_name: NXT Force Sensor
+		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NFS1074
+		 */
+		.name = "ht-nxt-force",
 		.num_modes = 1,
 		.ms_mode_info = {
 			[0] = {
+				/**
+				 * @description: Raw value (non-linear)
+				 * @value0: (0-1023)
+				 */
 				.name = "HT-FORCE",
 				.raw_max = 5000,
 				.pct_max = 100,
@@ -253,9 +362,21 @@ struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 */
 	},
 	[HT_GYRO_SENSOR] = {
+		/**
+		 * @vendor_name: HiTechnic
+		 * @vendor_part_number: NGY1044
+		 * @vendor_part_name: NXT Gyro Sensor
+		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NGY1044
+		 */
+		.name = "ht-nxt-gyro",
 		.num_modes = 1,
 		.ms_mode_info = {
 			[0] = {
+				/**
+				 * @description: Angular speed
+				 * @value0: Angular speed (-540 to 400)
+				 * @units_description: degrees per second
+				 */
 				.name = "HT-GYRO",
 				.units = "d/s",
 				.raw_max = 4880,
@@ -268,9 +389,20 @@ struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		},
 	},
 	[HT_MAGNETIC_SENSOR] = {
+		/**
+		 * @vendor_name: HiTechnic
+		 * @vendor_part_number: NMS1035
+		 * @vendor_part_name: NXT Magnetic Sensor
+		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NMS1035
+		 */
+		.name = "ht-nxt-mag",
 		.num_modes = 1,
 		.ms_mode_info = {
 			[0] = {
+				/**
+				 * @description: Magnetic field???
+				 * @value0: ???
+				 */
 				.name = "HT-MAG",
 				.raw_max = 5000,
 				.pct_max = 100,
@@ -281,9 +413,32 @@ struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		},
 	},
 	[MS_TOUCH_SENSOR_MUX] = {
+		/**
+		 * @vendor_name: mindsensors.com
+		 * @vendor_part_number: TouchMux
+		 * @vendor_part_name: Touch Sensor Multiplexer for NXT & EV3
+		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=135
+		 */
+		.name = "ms-nxt-touch-mux",
 		.num_modes = 1,
 		.ms_mode_info = {
 			[0] = {
+				/**
+				 * [^values]: Values:
+				 *
+				 * | Value | Description |
+				 * |:-----:|:-----------:|
+				 * | `0`   | Released    |
+				 * | `1`   | Pressed     |
+				 *
+				 * @description: Touch sensors
+				 * @value0: Sensor T1 state
+				 * @value0_footnote: [^values]
+				 * @value1: Sensor T2 state
+				 * @value1_footnote: [^values]
+				 * @value2: Sensor T3 state
+				 * @value2_footnote: [^values]
+				 */
 				.name = "TOUCH-MUX",
 				.raw_max = 1,
 				.pct_max = 100,

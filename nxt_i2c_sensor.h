@@ -64,6 +64,7 @@ struct nxt_i2c_sensor_mode_info {
 
 /**
  * struct nxt_i2c_sensor_info
+ * @name: The driver name. Must match name in id_table.
  * @vendor_id: The vendor ID string to match to the sensor.
  * @product_id: The product ID string to match to the sensor.
  * @callback_data: Pointer for private data used by ops.
@@ -75,6 +76,7 @@ struct nxt_i2c_sensor_mode_info {
  * @slow: The sensor cannot operate at 100kHz.
  */
 struct nxt_i2c_sensor_info {
+	const char *name;
 	const char *vendor_id;
 	const char *product_id;
 	void *callback_data;
@@ -97,7 +99,7 @@ enum nxt_i2c_sensor_type {
 	HT_NXT_COLOR_SENSOR_V2,
 	HT_NXT_ANGLE_SENSOR,
 	HT_NXT_COMPASS_SENSOR,
-	HT_NXT_IR_RECIEIVER_SENSOR,
+	HT_NXT_IR_RECEIVER_SENSOR,
 	HT_NXT_ACCELERATION_TILT_SENSOR,
 	HT_NXT_IR_LINK_SENSOR,
 	HT_NXT_SUPER_PRO_SENSOR,
@@ -108,11 +110,7 @@ enum nxt_i2c_sensor_type {
 
 /*
  * This table is shared by the nxt-i2c-sensor and ht-smux-i2c-sensor modules.
- * The entries must be in the same order as the enum above because it is used
- * as a reverse lookup to get the name in addition to being the driver id
- * lookup table.
  */
-
 #define NXT_I2C_SENSOR_ID_TABLE_DATA \
 { "nxt-i2c-sensor",	UNKNOWN_I2C_SENSOR		}, \
 { "lego-nxt-ultrasonic",LEGO_NXT_ULTRASONIC_SENSOR	}, \
@@ -124,7 +122,7 @@ enum nxt_i2c_sensor_type {
 { "ht-nxt-color-v2",	HT_NXT_COLOR_SENSOR_V2		}, \
 { "ht-nxt-angle",	HT_NXT_ANGLE_SENSOR		}, \
 { "ht-nxt-compass",	HT_NXT_COMPASS_SENSOR		}, \
-{ "ht-nxt-ir-receiver",	HT_NXT_IR_RECIEIVER_SENSOR	}, \
+{ "ht-nxt-ir-receiver",	HT_NXT_IR_RECEIVER_SENSOR	}, \
 { "ht-nxt-accel",	HT_NXT_ACCELERATION_TILT_SENSOR	}, \
 { "ht-nxt-ir-link",	HT_NXT_IR_LINK_SENSOR		}, \
 { "ht-super-pro",	HT_NXT_SUPER_PRO_SENSOR		}, \

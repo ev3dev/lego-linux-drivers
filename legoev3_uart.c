@@ -13,6 +13,39 @@
  * GNU General Public License for more details.
  */
 
+/*
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * EV3 UART Line Discipline
+ *
+ * This driver is a tty [line discipline] that runs on top of a tty. It listens
+ * for the information data that is sent from UART/EV3 sensors. When it receives
+ * valid data, it negotiates with the sensor, telling the sensor to enter data
+ * sending mode. After successful negotiation, it creates an [msensor device]
+ * that is used to monitor and control the sensor.
+ * .
+ * This line discipline has been assigned the number 29. To attach this line
+ * discipline to a tty, run `ldattach 29 /dev/tty<N>` where `<N>` is the name
+ * of the tty you want to connect to.  **NOTE:** This driver [works with any tty],
+ * which means the sensor does not necessarily have to be plugged into one of
+ * the input ports on the EV3.
+ * .
+ * UART/EV3 sensors do not have individual drivers like other types of sensors.
+ * As a result, the name returned by the [msensor][msensor device] `name`
+ * attribute is not a real driver name. Instead it returns `ev3-uart-<N>`,
+ * where `<N>` is the type id of the sensor.
+ * .
+ * [line discipline]: https://en.wikipedia.org/wiki/Line_discipline
+ * [msensor device]: ../msensor-class
+ * [works with any tty]: http://lechnology.com/2014/09/using-uart-sensors-on-any-linux/
+ */
+
 #include <linux/bitops.h>
 #include <linux/circ_buf.h>
 #include <linux/delay.h>
@@ -135,14 +168,14 @@ enum legoev3_uart_info_flags {
  * @tty: Pointer to the tty device that the sensor is connected to
  * @in_port: The input port device associated with this tty.
  * @ms: The msensor class structure for the sensor.
- * @rx_data_tasklet: Takslet for proccessing the data received.
+ * @rx_data_work: Workqueue item for handling received data.
  * @send_ack_work: Used to send ACK after a delay.
  * @change_bitrate_work: Used to change the baud rate after a delay.
  * @keep_alive_timer: Sends a NACK every 100usec when a sensor is connected.
  * @keep_alive_tasklet: Does the actual sending of the NACK.
+ * @set_mode_completion: Used to block until confirmation has been received from
+ * 	the sensor that the mode was actually changed.
  * @mode_info: Array of information about each mode of the sensor
- * @num_modes: The number of modes that the sensor has. (1-8)
- * @num_view_modes: Number of modes that can be used for data logging. (1-8)
  * @type_id: Type id returned by the sensor
  * @mode: The current mode.
  * @new_mode: The mode requested by set_mode.
@@ -159,7 +192,7 @@ enum legoev3_uart_info_flags {
  * 	from the sensor.
  * @buffer: Byte array to store received data in between receive_buf interrupts.
  * @circ_buf: Circular buffer struct that points to buffer (above).
- * @data_watchdog: Watchdog timer for receiving DATA messages.
+ * @last_err: Message to be printed in case of an error.
  * @num_data_err: Number of bad reads when receiving DATA messages.
  * @synced: Flag indicating communications are synchronized with the sensor.
  * @info_done: Flag indicating that all mode info has been received and it is

@@ -14,9 +14,32 @@
  */
 
 /*
- * -----------------------------------------------------------------------------
- * Provides a host for registering EV3 analog sensors.
- * -----------------------------------------------------------------------------
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * EV3 Analog Host Driver
+ *
+ * This driver tells an [EV3 input port] to configure itself for Analog/EV3
+ * communications and loads a sensor device based on the id resistor of the
+ * sensor that is connected to the port.
+ * .
+ * ### sysfs Attributes
+ * .
+ *  * You can find this device at `/sys/bus/legoev3/devices/in<N>:ev3-analog-host`
+ * where `<N>` is the number of an input port (1 to 4).
+ * .
+ * `device_type` (read-only)
+ * : Returns `ev3-analog-host`
+ * .
+ * `port_name` (read-only)
+ * : Returns the name of the port this host is connected to (e.g. `in1`).
+ * .
+ * [EV3 input port]: ../ev3-input-port
  */
 
 #include <linux/module.h>
@@ -40,8 +63,6 @@ struct device_type ev3_analog_sensor_device_type = {
 	.uevent = legoev3_port_device_uevent,
 };
 
-extern int ev3_analog_sensor_assert_valid_name(const char* name);
-
 static int ev3_analog_host_probe(struct legoev3_port_device *host)
 {
 	struct ev3_analog_host_data *data;
@@ -55,8 +76,7 @@ static int ev3_analog_host_probe(struct legoev3_port_device *host)
 	data->in_port = host->port;
 	dev_set_drvdata(&host->dev, data);
 
-	if (pdata && pdata->inital_sensor
-		&& !WARN_ON(ev3_analog_sensor_assert_valid_name(pdata->inital_sensor)))
+	if (pdata && pdata->inital_sensor)
 	{
 		sensor = legoev3_port_device_register(pdata->inital_sensor,
 			&ev3_analog_sensor_device_type, &host->dev, NULL, 0,
@@ -91,7 +111,6 @@ struct legoev3_port_device_driver ev3_analog_host_driver = {
 		.owner	= THIS_MODULE,
 	},
 };
-EXPORT_SYMBOL_GPL(ev3_analog_host_driver);
 legoev3_port_device_driver(ev3_analog_host_driver);
 
 MODULE_DESCRIPTION("EV3 analog host driver for LEGO Mindstorms EV3");

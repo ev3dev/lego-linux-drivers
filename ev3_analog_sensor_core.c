@@ -13,6 +13,40 @@
  * GNU General Public License for more details.
  */
 
+/*
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * EV3 Analog Sensor Driver
+ *
+ * The `ev3-analog-sensor` module provides all of the drivers for Analog/EV3
+ * sensors. You can find the complete list [here][supported sensors].
+ * .
+ * ### sysfs Attributes
+ * .
+ * These drivers provide a [msensor device], which is where all the really
+ * useful attributes are.
+ * .
+ * You can find this device at `/sys/bus/legoev3/devices/in<N>:<device-name>`
+ * where `<N>` is the number of an input port (1 to 4) and `<device-name>` is
+ * the name of one of the drivers in the `ev3-analog-sensor` module (e.g.
+ * `lego-ev3-touch`).
+ * .
+ * `device_type` (read-only)
+ * : Returns `ev3-analog-sensor`
+ * .
+ * `port_name` (read-only)
+ * : Returns the name of the port this host is connected to (e.g. `in1`).
+ * .
+ * [msensor device]: ../msensor-class
+ * [supported sensors]: ../#supported-sensors
+ */
+
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -176,23 +210,6 @@ static struct legoev3_port_device_id ev3_analog_sensor_device_ids [] = {
 	{  }
 };
 
-/**
- * Returns 0 if the name is valid or -EINVAL if not.
- */
-int ev3_analog_sensor_assert_valid_name(const char* name)
-{
-	struct legoev3_port_device_id *id = ev3_analog_sensor_device_ids;
-
-	while (id->name[0]) {
-		if (!strcmp(name, id->name))
-			return 0;
-		id++;
-	}
-
-	return -EINVAL;
-}
-EXPORT_SYMBOL_GPL(ev3_analog_sensor_assert_valid_name);
-
 struct legoev3_port_device_driver ev3_analog_sensor_driver = {
 	.probe	= ev3_analog_sensor_probe,
 	.remove	= ev3_analog_sensor_remove,
@@ -202,7 +219,6 @@ struct legoev3_port_device_driver ev3_analog_sensor_driver = {
 	},
 	.id_table = ev3_analog_sensor_device_ids,
 };
-EXPORT_SYMBOL_GPL(ev3_analog_sensor_driver);
 legoev3_port_device_driver(ev3_analog_sensor_driver);
 
 MODULE_DESCRIPTION("EV3 Analog sensor device driver for LEGO Mindstorms EV3");

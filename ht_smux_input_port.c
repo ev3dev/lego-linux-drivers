@@ -13,6 +13,51 @@
  * GNU General Public License for more details.
  */
 
+/*
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * HiTechnic NXT Sensor Multiplexer input port driver
+ *
+ * A `ht-smux-input-port` device is loaded for each port of the HiTechnic NXT
+ * Sensor Multiplexer by the [ht-nxt-smux] driver. The devices are similar to
+ * the [EV3 input port] devices except that they only support two host types,
+ * [nxt-analog-host] and [ht-smux-i2c-host]. This means only NXT sensors
+ * (Analog/NXT and I2C/NXT connection types) will work with the sensor mux.
+ * The new EV3 sensors (Analog/EV3 and UART/EV3 connection types) won't work.
+ * Additionally, I2C sensors connected to the sensor mux cannot be written to.
+ * They operate in a read-only mode, so some features of certain I2c sensors
+ * may not be usable via the sensor mux.
+ * .
+ * ### sysfs attributes
+ * .
+ * The HiTechnic NXT Sensor Multiplexer I2C input port devices can be found at
+ * `/sys/bus/legoev3/in<N>:mux<M>` where `<N>` is the number of the port on the
+ * EV3 (1 to 4) and `<M>` is the number of the port on the sensor mux (1 to 4).
+ * .
+ * `modes` (read-only)
+ * : Returns a space separated list of the possible modes, namely `analog` and
+ *   `i2c`.
+ * .
+ * `mode` (read/write)
+ * : Reading returns the currently selected mode. Writing sets the mode. When
+ *   the mode is changed, the host ([nxt-analog-host] or [ht-smux-i2c-host])
+ *   and any devices form the previous mode are removed and a new host is
+ *   loaded. The [nxt-analog-host] will load the generic [nxt-analog] driver.
+ *   The [ht-smux-i2c-host] does not automatically load any sensor drivers.
+ * .
+ * [ht-nxt-smux]: ../hitechnic-nxt-sensor-multiplexer
+ * [EV3 input port]: ../ev3-input-port
+ * [nxt-analog-host]: ../nxt-analog-host
+ * [ht-smux-i2c-host]: ../ht-smux-i2c-host
+ * [nxt-analog]: ../generic-nxt-analog-sensor
+ */
+
 #include <linux/err.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
@@ -24,24 +69,24 @@
 #include "ht_smux.h"
 
 static const u8 ht_smux_config_offset[] = {
-	[HT_SMUX_CH1] = HT_SMUX_CH1_CONFIG_REG - HT_SMUX_DATA_GROUP1_BASE,
-	[HT_SMUX_CH2] = HT_SMUX_CH2_CONFIG_REG - HT_SMUX_DATA_GROUP1_BASE,
-	[HT_SMUX_CH3] = HT_SMUX_CH3_CONFIG_REG - HT_SMUX_DATA_GROUP1_BASE,
-	[HT_SMUX_CH4] = HT_SMUX_CH4_CONFIG_REG - HT_SMUX_DATA_GROUP1_BASE,
+	[HT_SMUX_CH1] = HT_SMUX_CH1_CONFIG_REG - HT_SMUX_COMMAND_REG,
+	[HT_SMUX_CH2] = HT_SMUX_CH2_CONFIG_REG - HT_SMUX_COMMAND_REG,
+	[HT_SMUX_CH3] = HT_SMUX_CH3_CONFIG_REG - HT_SMUX_COMMAND_REG,
+	[HT_SMUX_CH4] = HT_SMUX_CH4_CONFIG_REG - HT_SMUX_COMMAND_REG,
 };
 
 static const u8 ht_smux_analog_offset[] = {
-	[HT_SMUX_CH1] = HT_SMUX_CH1_ANALOG_REG - HT_SMUX_DATA_GROUP1_BASE,
-	[HT_SMUX_CH2] = HT_SMUX_CH2_ANALOG_REG - HT_SMUX_DATA_GROUP1_BASE,
-	[HT_SMUX_CH3] = HT_SMUX_CH3_ANALOG_REG - HT_SMUX_DATA_GROUP1_BASE,
-	[HT_SMUX_CH4] = HT_SMUX_CH4_ANALOG_REG - HT_SMUX_DATA_GROUP1_BASE,
+	[HT_SMUX_CH1] = HT_SMUX_CH1_ANALOG_REG - HT_SMUX_COMMAND_REG,
+	[HT_SMUX_CH2] = HT_SMUX_CH2_ANALOG_REG - HT_SMUX_COMMAND_REG,
+	[HT_SMUX_CH3] = HT_SMUX_CH3_ANALOG_REG - HT_SMUX_COMMAND_REG,
+	[HT_SMUX_CH4] = HT_SMUX_CH4_ANALOG_REG - HT_SMUX_COMMAND_REG,
 };
 
 static u8 ht_smux_i2c_data_offset[] = {
-	[HT_SMUX_CH1] = HT_SMUX_CH1_I2C_DATA_REG - HT_SMUX_DATA_GROUP2_BASE,
-	[HT_SMUX_CH2] = HT_SMUX_CH2_I2C_DATA_REG - HT_SMUX_DATA_GROUP2_BASE,
-	[HT_SMUX_CH3] = HT_SMUX_CH3_I2C_DATA_REG - HT_SMUX_DATA_GROUP2_BASE,
-	[HT_SMUX_CH4] = HT_SMUX_CH4_I2C_DATA_REG - HT_SMUX_DATA_GROUP2_BASE,
+	[HT_SMUX_CH1] = HT_SMUX_CH1_I2C_DATA_REG - HT_SMUX_COMMAND_REG,
+	[HT_SMUX_CH2] = HT_SMUX_CH2_I2C_DATA_REG - HT_SMUX_COMMAND_REG,
+	[HT_SMUX_CH3] = HT_SMUX_CH3_I2C_DATA_REG - HT_SMUX_COMMAND_REG,
+	[HT_SMUX_CH4] = HT_SMUX_CH4_I2C_DATA_REG - HT_SMUX_COMMAND_REG,
 };
 
 enum ht_smux_input_port_mode {
@@ -135,7 +180,7 @@ static void ht_smux_input_port_set_config_bit(struct legoev3_port *in_port,
 		return;
 
 	i2c_smbus_write_byte_data(data->pdata.client,
-				  HT_SMUX_DATA_GROUP1_BASE + offset, new);
+				  HT_SMUX_COMMAND_REG + offset, new);
 }
 
 static void ht_smux_input_port_set_pin1_gpio(struct legoev3_port *in_port,
@@ -176,7 +221,7 @@ void ht_smux_input_port_copy_i2c_data(struct legoev3_port *in_port, u8 *dest)
 	struct ht_smux_input_port_data *data = dev_get_drvdata(&in_port->dev);
 	int offset = ht_smux_i2c_data_offset[data->pdata.channel];
 
-	memcpy(dest, data->pdata.sensor_i2c_data + offset, 8);
+	memcpy(dest, data->pdata.sensor_data + offset, 8);
 }
 EXPORT_SYMBOL_GPL(ht_smux_input_port_copy_i2c_data);
 
@@ -189,7 +234,7 @@ void ht_smux_input_port_set_i2c_addr(struct legoev3_port *in_port, u8 addr,
 
 	if (data->pdata.sensor_data[offset + HT_SMUX_CFG_I2C_ADDR] != addr)
 		i2c_smbus_write_byte_data(data->pdata.client,
-			HT_SMUX_DATA_GROUP1_BASE + offset + HT_SMUX_CFG_I2C_ADDR,
+			HT_SMUX_COMMAND_REG + offset + HT_SMUX_CFG_I2C_ADDR,
 			addr);
 	old = data->pdata.sensor_data[offset + HT_SMUX_CFG_MODE];
 	if (slow)
@@ -198,7 +243,7 @@ void ht_smux_input_port_set_i2c_addr(struct legoev3_port *in_port, u8 addr,
 		new = old & ~HT_SMUX_CONFIG_SLOW;
 	if (old != new)
 		i2c_smbus_write_byte_data(data->pdata.client,
-			HT_SMUX_DATA_GROUP1_BASE + offset + HT_SMUX_CFG_MODE,
+			HT_SMUX_COMMAND_REG + offset + HT_SMUX_CFG_MODE,
 			new);
 }
 EXPORT_SYMBOL_GPL(ht_smux_input_port_set_i2c_addr);
@@ -211,13 +256,13 @@ void ht_smux_input_port_set_i2c_data_reg(struct legoev3_port *in_port, u8 reg,
 
 	if (data->pdata.sensor_data[offset + HT_SMUX_CFG_I2C_REG] != reg)
 		i2c_smbus_write_byte_data(data->pdata.client,
-			HT_SMUX_DATA_GROUP1_BASE + offset + HT_SMUX_CFG_I2C_REG,
+			HT_SMUX_COMMAND_REG + offset + HT_SMUX_CFG_I2C_REG,
 			reg);
 	if (count > 8)
 		count = 8;
 	if (data->pdata.sensor_data[offset + HT_SMUX_CFG_I2C_CNT] != count)
 		i2c_smbus_write_byte_data(data->pdata.client,
-			HT_SMUX_DATA_GROUP1_BASE + offset + HT_SMUX_CFG_I2C_CNT,
+			HT_SMUX_COMMAND_REG + offset + HT_SMUX_CFG_I2C_CNT,
 			count);
 }
 EXPORT_SYMBOL_GPL(ht_smux_input_port_set_i2c_data_reg);
@@ -285,7 +330,7 @@ static ssize_t mode_show(struct device *dev, struct device_attribute *attr,
 	int ret;
 
 	ret = i2c_smbus_read_byte_data(data->pdata.client,
-		HT_SMUX_DATA_GROUP1_BASE + ht_smux_config_offset[data->pdata.channel]);
+		HT_SMUX_COMMAND_REG + ht_smux_config_offset[data->pdata.channel]);
 	if (ret < 0)
 		return ret;
 
@@ -417,7 +462,6 @@ struct legoev3_port_driver ht_smux_input_port_driver = {
 		.owner	= THIS_MODULE,
 	},
 };
-EXPORT_SYMBOL_GPL(ht_smux_input_port_driver);
 legoev3_port_driver(ht_smux_input_port_driver);
 
 MODULE_DESCRIPTION("Input port driver for HiTechnic NXT Sensor Multiplexer");

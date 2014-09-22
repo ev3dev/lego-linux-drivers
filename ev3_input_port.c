@@ -1,5 +1,5 @@
 /*
- * Input port driver for LEGO Mindstorms EV3
+ * EV3 Input port driver for LEGO Mindstorms EV3
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
@@ -11,6 +11,79 @@
  * kind, whether express or implied; without even the implied warranty
  * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
+ */
+
+/*
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * EV3 Input Port Driver
+ *
+ * Each of the four input [ports on the EV3] is treated a separate device in the
+ * ev3dev kernel. The `ev3-input-port` driver is used by other drivers to control
+ * the low-level hardware of the port (gpios and analog/digital converters).
+ * .
+ * This driver is where the auto-detection for the input ports happens. The pins
+ * of the port are monitored for changes in voltage. When a change is detected,
+ * a series of tests are made to determine what was plugged in. The port then
+ * configures itself to the correct mode and loads additional drivers. See the
+ * sysfs attribute descriptions below for more detailed information.
+ * .
+ * It is also possible to manually specify the mode of the port in cases where
+ * the device you are using is not detected correctly. For example, the
+ * mindsensors.com EV3 console adapter is detected as an I2C sensor, but it is
+ * a UART device (but not a UART sensor), so in this case, we would manually
+ * specify the mode as `other-uart`.
+ * .
+ * ### sysfs attributes
+ * .
+ * The input ports sysfs devices can be found at `/sys/bus/legoev3/devices/in<N>`
+ * where `<N>` is the number of the port (1 to 4).
+ * .
+ * `modes` (read-only)
+ * : Returns a space separated list of all of the possible modes.
+ * .
+ * .    - `auto`: (Default) Use auto-detection to detect when sensors are
+ *        connected and disconnected. The appropriate host and sensor device/
+ *        driver will be loaded.
+ *      - `ev3-analog`: Force the port to load the [ev3-analog-host] device.
+ *      - `ev3-uart`: Force the port to load the [ev3-uart-host] device.
+ *      - `nxt-analog`: Force the port to load the [nxt-analog-host] device.
+ *      - `nxt-color`: Force the port to load the [nxt-color-host] device.
+ *      - `nxt-i2c`: Force the port to load the [nxt-i2c-host] device.
+ *      - `other-uart`: Force the port to be configured for UART communications
+ *        but do not load any host device.
+ *      - `raw`: Exports gpios and analog/digital converter values to sysfs so
+ *        that they can be controlled directly.
+ * .
+ * `mode` (read/write)
+ * : Reading returns the currently selected mode. Writing sets the mode.
+ * .
+ * `state` (read/only)
+ * : For modes other than `auto`, it will return the same value as `mode`. In
+ *   `auto` mode it returns the mode that was determined by the auto-detection
+ *   algorithm. If no sensor is connected, it will return `no-sensor`. If an
+ *   unsupported device is connected (like a motor), it will return `error`.
+ * .
+ * `pin1_mv` (read-only)
+ * : Only present in `raw` mode. Returns the reading of the analog/digital
+ *   converter on pin 1 in mV (0 to 5000).
+ * .
+ * `pin6_mv` (read-only)
+ * : Only present in `raw` mode. Returns the reading of the analog/digital
+ *   converter on pin 6 in mV (0 to 5000).
+ * .
+ * [ports on the EV3]: ../legoev3-ports
+ * [ev3-analog-host]: ../ev3-analog-host
+ * [ev3-uart-host]: ../ev3-uart-host
+ * [nxt-analog-host]: ../nxt-analog-host
+ * [nxt-color-host]: ../nxt-color-host
+ * [nxt-i2c-host]: ../nxt-i2c-host
  */
 
 #include <linux/err.h>
@@ -95,13 +168,13 @@ enum ev3_analog_sensor_res_id {
 	NUM_EV3_RESISTOR_ID,
 };
 
-struct ev3_analog_sensor_info {
+struct ev3_analog_id_resistor_info {
 	unsigned type_id;
 	int min_mv;
 	int max_mv;
 };
 
-static struct ev3_analog_sensor_info ev3_analog_sensor_infos[] = {
+static struct ev3_analog_id_resistor_info ev3_analog_id_resistor_infos[] = {
 	[EV3_RESISTOR_ID_01] = {
 		.type_id = SENSOR_TYPE_ID_EV3_ANALOG_01,
 		.min_mv = PIN1_ID_01 - PIN1_ID_VAR,
@@ -183,9 +256,9 @@ unsigned to_ev3_analog_sensor_type_id(int mv)
 	enum ev3_analog_sensor_res_id res_id = NUM_EV3_RESISTOR_ID;
 
 	while (res_id--) {
-		if (mv >= ev3_analog_sensor_infos[res_id].min_mv
-		    && mv <= ev3_analog_sensor_infos[res_id].max_mv)
-			return ev3_analog_sensor_infos[res_id].type_id;
+		if (mv >= ev3_analog_id_resistor_infos[res_id].min_mv
+		    && mv <= ev3_analog_id_resistor_infos[res_id].max_mv)
+			return ev3_analog_id_resistor_infos[res_id].type_id;
 	}
 
 	return SENSOR_TYPE_ID_UNKNOWN;

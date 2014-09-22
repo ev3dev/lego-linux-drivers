@@ -1,5 +1,5 @@
 /*
- * HiTechnic Sensor Multiplexer I2C host driver for LEGO Mindstorms EV3
+ * HiTechnic NXT Sensor Multiplexer I2C host driver for LEGO Mindstorms EV3
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *
@@ -14,10 +14,56 @@
  */
 
 /*
- * -----------------------------------------------------------------------------
- * Provides a host for registering EV3 analog sensors. Sensors are registered
- * either though the platform data or through the set_sensor attribute.
- * -----------------------------------------------------------------------------
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * HiTechnic NXT Sensor Multiplexer I2C host driver
+ *
+ * A `ht-smux-i2c-host` device is loaded by the [ht-smux-input-port] driver when
+ * a port is set to `i2c` mode. This happens when an I2C sensor is detected
+ * by the sensor mux when it is in detect mode or when the mode of a port on
+ * the sensor mux is set manually (via sysfs attribute). If one of the
+ * supported sensors was detected during auto-detection, then the correct
+ * device will be loaded for that sensor, otherwise no sensor device is loaded
+ * and the attached sensor must be manually specified using the `set_sensor`
+ * attribute (see below).
+ * .
+ * ### sysfs attributes
+ * .
+ * The HiTechnic NXT Sensor Multiplexer I2C host devices can be found at
+ * `/sys/bus/legoev3/devices/in<N>:mux<M>:ht-smux-i2c-host` where `<N>` is the
+ * number of the port on the EV3 (1 to 4). and `<M>` is the number of the port
+ * on the sensor mux (1 to 4).
+ * .
+ * `device_type` (read-only)
+ * : Returns `ht-smux-i2c-host`
+ * .
+ * `port_name` (read-only)
+ * : Returns the name of the port this host is connected to (e.g. `in1:mux2`).
+ * .
+ * `set_sensor` (write-only)
+ * : Sets the device attached to the sensor mux input port. Takes 2 arguments
+ *   (separated by a space).
+ * .
+ * .    The first argument is the name of the device. It is one of the drivers
+ * .    in the `nxt-i2c-sensor` module from the [list of supported sensors]
+ * .    (e.g. `lego-nxt-ultrasonic`). In other words, only sensors with
+ * .    connection type of I2C/NXT work with the `ht-smux-i2c-host`. **NOTE:**
+ * .    The sensors will actually use the `ht-smux-i2c-sensor` module driver
+ * .    and not the `nxt-i2c-sensor` module when connected to the sensor mux,
+ * .    which means they operate with reduced (read-only) functionality.
+ * .
+ * .    The second argument is the address of the I2C sensor (e.g. `0x01`).
+ * .    See [I2C Sensor Addressing] for more information.
+ * .
+ * [ht-smux-input-port]: ../ht-smux-input-port
+ * [list of supported sensors]: ../#supported-sensors
+ * [I2C Sensor Addressing]: ../i2c-sensor-addressing
  */
 
 #include <linux/module.h>
@@ -180,7 +226,6 @@ struct legoev3_port_device_driver ht_smux_i2c_host_driver = {
 		.owner	= THIS_MODULE,
 	},
 };
-EXPORT_SYMBOL_GPL(ht_smux_i2c_host_driver);
 legoev3_port_device_driver(ht_smux_i2c_host_driver);
 
 MODULE_DESCRIPTION("HiTechnic Sensor Multiplexer I2C host driver for LEGO Mindstorms EV3");

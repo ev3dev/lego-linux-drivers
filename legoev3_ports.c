@@ -31,6 +31,38 @@
  * -----------------------------------------------------------------------------
  */
 
+/*
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * EV3 Input and Output Ports
+ *
+ * By default, a sysfs device is created for each input and output port on the
+ * EV3. See the [ev3-input-port] and [ev3-output-port] drivers for more
+ * information on how these work.
+ * .
+ * ### Module parameters
+ * .
+ * `disable_in_port`
+ * : Used to prevent the input port device from being loaded. This is useful
+ *   if you want to use input port 1 for printing kernel messages while you
+ *   are debugging the Linux kernel. You may also want to do this if you want
+ *   to control the input port gpios directly.
+ * .
+ * `disable_out_port`
+ * : Used to prevent the output port from being loaded. This leaves the pwm
+ *   device and gpios used by the port free to be controlled directly or used
+ *   by other drivers.
+ * .
+ * [ev3-input-port]: ../ev3-input-port
+ * [ev3-output-port]: ../ev3-output-port
+ */
+
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/string.h>

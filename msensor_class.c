@@ -13,6 +13,108 @@
  * GNU General Public License for more details.
  */
 
+/*
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * MINDSTORMS Sensor (msensor) Class
+ *
+* The `msensor` class provides a uniform interface for using most of the sensors
+* available for the EV3. The various underlying device drivers will create a
+* `msensor` device for interacting with the sensors.
+* .
+* Sensors are primarily controlled by setting the `mode` and monitored by
+* reading the `value<N>` attributes. Values can be converted to floating point
+* if needed by `value<N>` / 10.0 ^ `dp`.
+* .
+* ### Identifying sensors
+* .
+* Since the name of the `sensor<N>` device node does not correspond to the port
+* that a sensor is plugged in to, you must look at the port_name attribute if
+* you need to know which port a sensor is plugged in to. However, if you don't
+* have more than one sensor of each type, you can just look for a matching
+* `name`. Then it will not matter which port a sensor is plugged in to - your
+* program will still work. In the case of I2C sensors, you may also want to
+* check the `address` since it is possible to have more than one I2C sensor
+* connected to a single input port at a time.
+* .
+* ### sysfs Attributes
+* .
+* Sensors can be found at `/sys/class/msensor/sensor<N>`, where `<N>` is
+* incremented each time a sensor is loaded (is is not related to which port
+* the sensor is plugged in to).
+* .
+* `bin_data` (read/write)
+* : Reading the file will give the same values in the `value<N>` attributes.
+* .    Use `bin_data_format` and `num_values` to determine how to interpret
+* .    the data. Writing will write data to the sensor (I2C, UART and NXT
+* .    Color sensors only).
+* .
+* `bin_data_format` (read-only)
+* : Returns the format of the values in `bin_data` for the current mode.
+* .    Possible values are:
+* .
+* .    - `u8`: Unsigned 8-bit integer (byte)
+* .    - `s8`: Signed 8-bit integer (sbyte)
+* .    - `u16`: Unsigned 16-bit integer (ushort)
+* .    - `s16`: Signed 16-bit integer (short)
+* .    - `s16_be`: Signed 16-bit integer, big endian
+* .    - `s32`: Signed 32-bit integer (int)
+* .    - `float`: IEEE 754 32-bit floating point (float)
+* .
+* `dp` (read-only)
+* : Returns the number of decimal places for the values in the `value<N>`
+* .    attributes of the current mode.
+* .
+* `fw_version` (read-only)
+* : Present only for [nxt-i2c-sensor] devices. Returns the firmware version of
+* .    the sensor.
+* .
+* `address` (read-only)
+* : Present only for I2C devices. Returns the address of the sensor.
+* .
+* `modes` (read-only)
+* : Returns a space separated list of the valid modes for the sensor.
+* .
+* `mode` (read/write)
+* : Returns the current mode. Writing one of the values returned by `modes` sets
+* .    the sensor to that mode.
+* .
+* `num_values` (read-only)
+* : Returns the number of `value<N>` attributes that will return a valid value
+* .    for the current mode.
+* .
+* `poll_ms` (read/write)
+* : | Present only for [nxt-i2c-sensor] devices. Returns the polling period of
+* .    the sensor in milliseconds. Writing sets the polling period. Setting to
+* .    0 disables polling. Minimum value is hard coded as 50 msec.
+* .
+* `port_name` (read-only)
+* : Returns the name of the port that the sensor is connected to.
+* .
+* `units` (read-only)
+* : Returns the units of the measured value for the current mode. May return
+* .    empty string"
+* .
+* `name` (read-only)
+* : Returns the name of the sensor driver. See the list of [supported sensors]
+* .    for a complete list of drivers.
+* .
+* `value<N>` (read-only)
+* : Returns the value or values measured by the sensor. Check `num_values` to
+* .    see how many values there are. Values with N >= num_values will return an
+* .    error. The values are fixed point numbers, so check `dp` to see if you
+* .    need to divide to get the actual value.
+* .
+* [nxt-i2c-sensor]: ../nxt-i2c-sensor
+* [supported sensors]: ../#supported-sensors
+*/
+
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/legoev3/msensor_class.h>
@@ -406,8 +508,8 @@ static ssize_t msensor_show_address(struct device *dev,
 }
 
 static ssize_t msensor_read_bin_data(struct file *file, struct kobject *kobj,
-                                     struct bin_attribute *attr,
-                                     char *buf, loff_t off, size_t count)
+				     struct bin_attribute *attr,
+				     char *buf, loff_t off, size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct msensor_device *ms = to_msensor_device(dev);

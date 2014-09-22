@@ -13,6 +13,54 @@
  * GNU General Public License for more details.
  */
 
+/*
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * NXT I2C Sensor Driver
+ *
+ * The `nxt-i2c-sensor` module provides all of the drivers for I2C/NXT
+ * sensors. You can find the complete list [here][supported sensors].
+ * .
+ * ### sysfs Attributes
+ * .
+ * These drivers provide a [msensor device], which is where all the really
+ * useful attributes are.
+ * .
+ * You can find this device at `/sys/bus/legoev3/devices/in<N>:<device-name>`
+ * where `<N>` is the number of an input port (1 to 4) and `<device-name>` is
+ * the name of one of the drivers in the `nxt-analog-sensor` module (e.g.
+ * `lego-nxt-sound`).
+ * .
+ * `device_type` (read-only)
+ * : Returns `nxt-i2c-sensor`
+ * .
+ * `port_name` (read-only)
+ * : Returns the name of the port this host is connected to (e.g. `in1`).
+ * .
+ * ### Module Parameters
+ * .
+ * Note: These parameters can be changed at runtime at
+ * `/sys/module/nxt_i2c_sensor/parameters/<parameter>`.
+ * .
+ * `allow_autodetect`
+ * : Setting to `N` disables probing of sensors. Default is `Y`.
+ * .
+ * `default_poll_ms`
+ * : This provides the default value for the poll_ms attribute. A value of `0`
+ * .    will disable polling by default. Values of less that the minimum 50
+ * .    msec will be rounded up to 50 msec. Changes only affect sensors plugged
+ * .    in after the change was made. Default is 100 msec.
+ * .
+ * [supported sensors]: ../#supported-sensors
+ * [msensor device]: ../msensor-class
+ */
+
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -135,13 +183,13 @@ void nxt_i2c_sensor_poll_work(struct work_struct *work)
 	struct msensor_mode_info *ms_mode_info =
 			&sensor->info.ms_mode_info[sensor->mode];
 
-	i2c_smbus_read_i2c_block_data(sensor->client, i2c_mode_info->read_data_reg,
-				      ms_mode_info->data_sets
-				      * msensor_data_size[ms_mode_info->data_type],
-				      ms_mode_info->raw_data);
-
 	if (sensor->info.ops.poll_cb)
 		sensor->info.ops.poll_cb(sensor);
+	else
+		i2c_smbus_read_i2c_block_data(sensor->client,
+			i2c_mode_info->read_data_reg, ms_mode_info->data_sets
+			* msensor_data_size[ms_mode_info->data_type],
+			ms_mode_info->raw_data);
 
 	if (sensor->poll_ms && !delayed_work_pending(&sensor->poll_work))
 		schedule_delayed_work(&sensor->poll_work,

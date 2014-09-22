@@ -64,10 +64,6 @@ enum ht_smux_channel {
 #define HT_SMUX_CONFIG_DIG1	BIT(3) /* Pin 6 set high */
 #define HT_SMUX_CONFIG_SLOW	BIT(4) /* I2C read rate is 20kHz instead of 80kHz */
 
-/* data is read in 2 groups */
-#define HT_SMUX_DATA_GROUP1_BASE HT_SMUX_COMMAND_REG
-#define HT_SMUX_DATA_GROUP2_BASE HT_SMUX_CH1_I2C_DATA_REG
-
 enum ht_smux_detected_sensor {
 	HT_SMUX_SENSOR_NXT_ANALOG,
 	HT_SMUX_SENSOR_LEGO_ULTRASONIC,
@@ -86,7 +82,6 @@ struct ht_smux_input_port_platform_data {
 	struct i2c_client *client;
 	enum ht_smux_channel channel;
 	u8 *sensor_data;
-	u8 *sensor_i2c_data;
 };
 
 /*

@@ -13,6 +13,42 @@
  * GNU General Public License for more details.
  */
 
+/*
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * NXT Analog Sensor Driver
+ *
+ * The `nxt-analog-sensor` module provides all of the drivers for Analog/NXT
+ * sensors. You can find the complete list [here][supported sensors].
+ * .
+ * ### sysfs Attributes
+ * .
+ * These drivers provide a [msensor device], which is where all the really
+ * useful attributes are.
+ * .
+ * You can find this device at `/sys/bus/legoev3/devices/in<N>:<device-name>`
+ * where `<N>` is the number of an input port (1 to 4) and `<device-name>` is
+ * the name of one of the drivers in the `nxt-analog-sensor` module (e.g.
+ * `lego-nxt-sound`). NOTE: These drivers are also used by the [HiTechnic NXT
+ * Sensor Multiplexer], in which case the device name will be
+ * `in<N>:mux<M>:nxt-analog-host`.
+ * .
+ * `device_type` (read-only)
+ * : Returns `nxt-analog-sensor`
+ * .
+ * `port_name` (read-only)
+ * : Returns the name of the port this host is connected to (e.g. `in1`).
+ * .
+ * [msensor device]: ../msensor-class
+ * [supported sensors]: ../#supported-sensors
+ */
+
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -190,7 +226,6 @@ struct legoev3_port_device_driver nxt_analog_sensor_driver = {
 	},
 	.id_table = nxt_analog_sensor_device_ids,
 };
-EXPORT_SYMBOL_GPL(nxt_analog_sensor_driver);
 legoev3_port_device_driver(nxt_analog_sensor_driver);
 
 MODULE_DESCRIPTION("NXT Analog sensor device driver for LEGO Mindstorms EV3");

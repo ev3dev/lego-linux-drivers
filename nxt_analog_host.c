@@ -14,10 +14,49 @@
  */
 
 /*
- * -----------------------------------------------------------------------------
- * Provides a host for registering NXT analog sensors. Sensors are registered
- * either though the platform data or through the set_sensor attribute.
- * -----------------------------------------------------------------------------
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * NXT Analog Host Driver
+ *
+ * This driver tells an [EV3 input port] to configure itself for Analog/NXT
+ * communications. If the auto-detection algorithm was able to determine the
+ * exact type of sensor, that sensor driver is loaded, otherwise the generic
+ * [nxt-analog] sensor driver is loaded. You can set the correct driver for
+ * the attached sensor using the `set_sensor` attribute (see below).
+ * .
+ * ### sysfs Attributes
+ * .
+ * You can find this device at `/sys/bus/legoev3/devices/in<N>:nxt-analog-host`
+ * where `<N>` is the number of an input port (1 to 4). NOTE: This host is also
+ * used by the [HiTechnic NXT Sensor Multiplexer], in which case the device
+ * name will be `in<N>:mux<M>:nxt-analog-host`.
+ * .
+ * `device_type` (read-only)
+ * : Returns `nxt-analog-host`
+ * .
+ * `port_name` (read-only)
+ * : Returns the name of the port this host is connected to (e.g. `in1`).
+ * .
+ * `set_sensor` (write-only)
+ * : Writing the name of the sensor driver will remove the existing device from
+ *   this host and load a new sysfs device for the sensor specified. The name
+ *   of the sensor is one of the drivers in the [nxt-analog-sensor] module from
+ *   the [list of supported sensors] (e.g. `lego-nxt-sound`). In other words,
+ *   only sensors with connection type of Analog/NXT work with the
+ *   `nxt-analog-host`. A space separated list of valid sensor names can be
+ *   obtained by reading `/sys/bus/legoev3/drivers/nxt-analog-sensor/sensor_names`.
+ * .
+ * [EV3 input port]: ../ev3-input-port
+ * [nxt-analog]: ../generic-nxt-analog-sensor
+ * [HiTechnic NXT Sensor Multiplexer]: ../hitechnic-nxt-sensor-multiplexer
+ * [nxt-analog-sensor]: ../nxt-analog-sensor
+ * [list of supported sensors]: ../#supported-sensors
  */
 
 #include <linux/module.h>
@@ -156,7 +195,6 @@ struct legoev3_port_device_driver nxt_analog_host_driver = {
 		.owner	= THIS_MODULE,
 	},
 };
-EXPORT_SYMBOL_GPL(nxt_analog_host_driver);
 legoev3_port_device_driver(nxt_analog_host_driver);
 
 MODULE_DESCRIPTION("NXT analog host driver for LEGO Mindstorms EV3");

@@ -31,12 +31,14 @@ struct nxt_analog_sensor_mode_info {
 
 /**
  * struct nxt_analog_sensor_info
+ * @name: The driver name. Must match name in id_table.
  * @ms_mode_info: Array of msensor mode information for each sensor mode.
  * @ms_mode_info: Array of analog sensor specific mode information for each
  * 	sensor mode.
  * @num_modes: Number of valid elements in the mode_info array.
  */
 struct nxt_analog_sensor_info {
+	const char* name;
 	struct msensor_mode_info ms_mode_info[MSENSOR_MODE_MAX + 1];
 	struct nxt_analog_sensor_mode_info analog_mode_info[MSENSOR_MODE_MAX + 1];
 	int num_modes;
@@ -54,7 +56,7 @@ enum nxt_analog_sensor_types {
 	MS_TOUCH_SENSOR_MUX,
 };
 
-extern struct nxt_analog_sensor_info nxt_analog_sensor_defs[];
+extern const struct nxt_analog_sensor_info nxt_analog_sensor_defs[];
 
 struct nxt_analog_sensor_data {
 	struct legoev3_port *in_port;
