@@ -163,6 +163,11 @@ enum legoev3_uart_info_flags {
 						| LEGOEV3_UART_INFO_FLAG_INFO_FORMAT,
 };
 
+#define LEGOEV3_UART_TYPE_ID_COLOR	29
+#define LEGOEV3_UART_TYPE_ID_ULTRASONIC	30
+#define LEGOEV3_UART_TYPE_ID_GYRO	32
+#define LEGOEV3_UART_TYPE_ID_INFRARED	33
+
 /**
  * struct legoev3_uart_data - Discipline data for EV3 UART Sensor communication
  * @tty: Pointer to the tty device that the sensor is connected to
@@ -297,15 +302,17 @@ int legoev3_uart_set_mode(void *context, const u8 mode)
 	struct legoev3_uart_port_data *port;
 	const int data_size = 3;
 	u8 data[data_size];
+	int retries = 10;
 	int ret;
 
 	if (!tty)
 		return -ENODEV;
 
 	port = tty->disc_data;
+	if (!port->synced || !port->info_done)
+		return -ENODEV;
 	if (mode >= port->ms.num_modes)
 		return -EINVAL;
-
 	if (!completion_done(&port->set_mode_completion))
 		return -EBUSY;
 
@@ -315,19 +322,22 @@ int legoev3_uart_set_mode(void *context, const u8 mode)
 	data[1] = mode;
 	data[2] = 0xFF ^ data[0] ^ data[1];
 
-	set_bit(TTY_DO_WRITE_WAKEUP, &tty->flags);
-	ret = tty->ops->write(tty, data, data_size);
-	if (ret < 0)
-		return ret;
-
 	port->new_mode = mode;
 	reinit_completion(&port->set_mode_completion);
-	ret = wait_for_completion_timeout(&port->set_mode_completion,
-						msecs_to_jiffies(300));
-	if (!ret) {
-		port->set_mode_completion.done++;
-		return -ETIMEDOUT;
+	while (retries--) {
+		set_bit(TTY_DO_WRITE_WAKEUP, &tty->flags);
+		ret = tty->ops->write(tty, data, data_size);
+		if (ret < 0)
+			return ret;
+
+		ret = wait_for_completion_timeout(&port->set_mode_completion,
+						  msecs_to_jiffies(50));
+		if (ret)
+			break;
 	}
+	port->set_mode_completion.done++;
+	if (!ret)
+		return -ETIMEDOUT;
 
 	return 0;
 }
@@ -596,12 +606,13 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 			debug_pr("chksum:%d, actual:%d\n",
 			         chksum, message[msg_size - 1]);
 			/*
-			 * The LEGO EV3 color sensor (type 29) sends bad checksums
+			 * The LEGO EV3 color sensor sends bad checksums
 			 * for RGB-RAW data (mode 4). The check here could be
 			 * improved if someone can find a pattern.
 			 */
 			if (chksum != message[msg_size - 1]
-			    && port->type_id != 29 && message[0] != 0xDC)
+			    && port->type_id != LEGOEV3_UART_TYPE_ID_COLOR
+			    && message[0] != 0xDC)
 			{
 				port->last_err = "Bad checksum.";
 				if (port->info_done) {
