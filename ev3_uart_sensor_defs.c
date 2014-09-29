@@ -69,8 +69,17 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 			},
 			[3] = {
 				/**
+				 * [^single-measurement]: A measurement is taken when the mode is set
+				 * and `value0` will not change after this. To take another measurement
+				 * set the mode again. **NOTE:** If you write the mode too frequently
+				 * (e.g. every 100msec), the sensor will sometimes lock up and writing
+				 * to the `mode` attribute will return an error. A delay of 250msec
+				 * between each write to the mode attribute seems sufficient to keep
+				 * the sensor from locking up.
+				 *
 				 * @description: Single measurement<br />LEDs: On momentarily when mode is set, then off
 				 * @value0: Distance (0-2550)
+				 * @value0_footnote: [^single-measurement]
 				 * @units_description: centimeters
 				 */
 				.name	= "US-SI-CM",
@@ -79,8 +88,9 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 			},
 			[4] = {
 				/**
-				 * @description: ???<br />LEDs: On momentarily when mode is set, then off
+				 * @description: Single measurement<br />LEDs: On momentarily when mode is set, then off
 				 * @value0: Distance (0-1003)
+				 * @value0_footnote: [^single-measurement]
 				 * @units_description: inches
 				 */
 				.name	= "US-SI-IN",
@@ -90,7 +100,7 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 			[5] = {
 				/**
 				 * [^dc-mode]: Not sure what DC mode stands for.
-				 * Seems to work like the continious measurement modes.
+				 * Seems to work like the continuous measurement modes.
 				 *
 				 * @name_footnote: [^dc-mode]
 				 * @description: ???<br />LEDs: On, steady
@@ -104,7 +114,7 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 			[6] = {
 				/**
 				 * @name_footnote: [^dc-mode]
-				 * @description: Continuous measurement<br />LEDs: On, steady
+				 * @description: ???<br />LEDs: On, steady
 				 * @value0: Distance (0-1003)
 				 * @units_description: inches
 				 */
