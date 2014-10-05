@@ -109,7 +109,7 @@ static int ev3_analog_sensor_probe(struct legoev3_port_device *sensor)
 
 	memcpy(&as->info, &ev3_analog_sensor_defs[sensor->entry_id->driver_data],
 	       sizeof(struct ev3_analog_sensor_info));
-	strncpy(as->ms.name, dev_name(&sensor->dev), MSENSOR_NAME_SIZE);
+	strncpy(as->ms.name, sensor->entry_id->name, MSENSOR_NAME_SIZE);
 	strncpy(as->ms.port_name, dev_name(&as->in_port->dev),
 		MSENSOR_NAME_SIZE);
 	as->ms.num_modes	= as->info.num_modes;
