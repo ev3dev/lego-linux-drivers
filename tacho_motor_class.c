@@ -21,62 +21,62 @@ struct tacho_motor_mode_item {
 	const char *name;
 };
 
-static struct tacho_motor_mode_item tacho_motor_regulation_modes[NUM_REGULATION_MODES] = {
-	[REGULATION_OFF] =  { "off" },
-	[REGULATION_ON]  =  { "on"  },
+static struct tacho_motor_mode_item tacho_motor_regulation_modes[TM_NUM_REGULATION_MODES] = {
+	[TM_REGULATION_OFF] =  { "off" },
+	[TM_REGULATION_ON]  =  { "on"  },
 };
 
-static struct tacho_motor_mode_item tacho_motor_stop_modes[NUM_STOP_MODES] = {
-	[STOP_COAST]     =  { "coast" },
-	[STOP_BRAKE]     =  { "brake" },
-	[STOP_HOLD]      =  { "hold" },
+static struct tacho_motor_mode_item tacho_motor_stop_modes[TM_NUM_STOP_MODES] = {
+	[TM_STOP_COAST]     =  { "coast" },
+	[TM_STOP_BRAKE]     =  { "brake" },
+	[TM_STOP_HOLD]      =  { "hold" },
 };
 
-static struct tacho_motor_mode_item tacho_motor_position_modes[NUM_POSITION_MODES] = {
-	[POSITION_ABSOLUTE] =  { "absolute" },
-	[POSITION_RELATIVE] =  { "relative" },
+static struct tacho_motor_mode_item tacho_motor_position_modes[TM_NUM_POSITION_MODES] = {
+	[TM_POSITION_ABSOLUTE] =  { "absolute" },
+	[TM_POSITION_RELATIVE] =  { "relative" },
 };
 
-static struct tacho_motor_mode_item tacho_motor_run_modes[NUM_RUN_MODES] = {
-	[RUN_FOREVER]   =  { "forever"  },
-	[RUN_TIME]      =  { "time"     },
-	[RUN_POSITION]  =  { "position" },
+static struct tacho_motor_mode_item tacho_motor_run_modes[TM_NUM_RUN_MODES] = {
+	[TM_RUN_FOREVER]   =  { "forever"  },
+	[TM_RUN_TIME]      =  { "time"     },
+	[TM_RUN_POSITION]  =  { "position" },
 };
 
-static struct tacho_motor_mode_item tacho_motor_polarity_modes[NUM_POLARITY_MODES] = {
-	[POLARITY_NORMAL]	=  { "normal"  },
-	[POLARITY_INVERTED]	=  { "inverted"  },
+static struct tacho_motor_mode_item tacho_motor_polarity_modes[TM_NUM_POLARITY_MODES] = {
+	[TM_POLARITY_NORMAL]	=  { "normal"  },
+	[TM_POLARITY_INVERTED]	=  { "inverted"  },
 };
 
-static struct tacho_motor_mode_item tacho_motor_encoder_modes[NUM_ENCODER_MODES] = {
-	[ENCODER_NORMAL]	=  { "normal"  },
-	[ENCODER_INVERTED]	=  { "inverted"  },
+static struct tacho_motor_mode_item tacho_motor_encoder_modes[TM_NUM_ENCODER_MODES] = {
+	[TM_ENCODER_NORMAL]	=  { "normal"  },
+	[TM_ENCODER_INVERTED]	=  { "inverted"  },
 };
 
 struct tacho_motor_type_item {
 	const char *name;
 };
 
-static struct tacho_motor_type_item tacho_motor_types[NUM_TACHO_TYPES] = {
-	[TACHO_TYPE_TACHO]     =  { "tacho"     },
-	[TACHO_TYPE_MINITACHO] =  { "minitacho" },
+static struct tacho_motor_type_item tacho_motor_types[TM_NUM_TYPES] = {
+	[TM_TYPE_TACHO]     =  { "tacho"     },
+	[TM_TYPE_MINITACHO] =  { "minitacho" },
 };
 
 struct tacho_motor_state_item {
 	const char *name;
 };
 
-static struct tacho_motor_mode_item tacho_motor_state_items[NUM_TACHO_MOTOR_STATES] = {
-	[STATE_RUN_FOREVER]			= { "run_forever"		},
-	[STATE_SETUP_RAMP_TIME]			= { "setup_ramp_time"		},
-	[STATE_SETUP_RAMP_POSITION]		= { "setup_ramp_position"	},
-	[STATE_SETUP_RAMP_REGULATION]		= { "setup_ramp_regulation"	},
-	[STATE_RAMP_UP]				= { "ramp_up"			},
-	[STATE_RAMP_CONST]			= { "ramp_const"		},
-	[STATE_POSITION_RAMP_DOWN]		= { "position_ramp_down"	},
-	[STATE_RAMP_DOWN]			= { "ramp_down"			},
-	[STATE_STOP]				= { "stop"			},
-	[STATE_IDLE]				= { "idle"			},
+static struct tacho_motor_mode_item tacho_motor_states[TM_NUM_STATES] = {
+	[TM_STATE_RUN_FOREVER]			= { "run_forever"		},
+	[TM_STATE_SETUP_RAMP_TIME]		= { "setup_ramp_time"		},
+	[TM_STATE_SETUP_RAMP_POSITION]		= { "setup_ramp_position"	},
+	[TM_STATE_SETUP_RAMP_REGULATION]	= { "setup_ramp_regulation"	},
+	[TM_STATE_RAMP_UP]			= { "ramp_up"			},
+	[TM_STATE_RAMP_CONST]			= { "ramp_const"		},
+	[TM_STATE_POSITION_RAMP_DOWN]		= { "position_ramp_down"	},
+	[TM_STATE_RAMP_DOWN]			= { "ramp_down"			},
+	[TM_STATE_STOP]				= { "stop"			},
+	[TM_STATE_IDLE]				= { "idle"			},
 };
 
 static ssize_t tacho_motor_show_port_name(struct device *dev,
@@ -101,10 +101,10 @@ static ssize_t tacho_motor_store_type(struct device *dev, struct device_attribut
 
         unsigned int i;
 
-	for (i=0; i<NUM_TACHO_TYPES; ++i)
+	for (i=0; i<TM_NUM_TYPES; ++i)
 		if (sysfs_streq(buf, tacho_motor_types[i].name)) break;
 
-	if (i >= NUM_TACHO_TYPES)
+	if (i >= TM_NUM_TYPES)
                 return -EINVAL;
 
         tm->fp->set_type(tm, i);
@@ -134,11 +134,25 @@ ssize_t tacho_motor_store_position(struct device *dev, struct device_attribute *
         return size;
 }
 
+static ssize_t tacho_motor_show_states(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        unsigned int i;
+
+	int size = 0;
+
+	for (i=0; i<TM_NUM_STATES; ++i)
+		size += sprintf(buf+size, "%s ", tacho_motor_states[i].name);
+
+	size += sprintf(buf+size, "\n");
+
+        return size;
+}
+
 static ssize_t tacho_motor_show_state(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
 
-	return sprintf(buf, "%s\n", tacho_motor_state_items[tm->fp->get_state(tm)].name);
+	return sprintf(buf, "%s\n", tacho_motor_states[tm->fp->get_state(tm)].name);
 }
 
 static ssize_t tacho_motor_show_duty_cycle(struct device *dev, struct device_attribute *attr, char *buf)
@@ -155,6 +169,20 @@ static ssize_t tacho_motor_show_pulses_per_second(struct device *dev, struct dev
 	return sprintf(buf, "%d\n", tm->fp->get_pulses_per_second(tm));
 }
 
+static ssize_t tacho_motor_show_run_modes(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        unsigned int i;
+
+	int size = 0;
+
+	for (i=0; i<TM_NUM_RUN_MODES; ++i)
+		size += sprintf(buf+size, "%s ", tacho_motor_run_modes[i].name);
+
+	size += sprintf(buf+size, "\n");
+
+        return size;
+}
+
 static ssize_t tacho_motor_show_run_mode(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
@@ -168,13 +196,27 @@ static ssize_t tacho_motor_store_run_mode(struct device *dev, struct device_attr
 
         unsigned int i;
 
-	for (i=0; i<NUM_RUN_MODES; ++i)
+	for (i=0; i<TM_NUM_RUN_MODES; ++i)
 		if (sysfs_streq(buf, tacho_motor_run_modes[i].name)) break;
 
-	if (i >= NUM_RUN_MODES)
+	if (i >= TM_NUM_RUN_MODES)
                 return -EINVAL;
 
         tm->fp->set_run_mode(tm, i);
+
+        return size;
+}
+
+static ssize_t tacho_motor_show_regulation_modes(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        unsigned int i;
+
+	int size = 0;
+
+	for (i=0; i<TM_NUM_REGULATION_MODES; ++i)
+		size += sprintf(buf+size, "%s ", tacho_motor_regulation_modes[i].name);
+
+	size += sprintf(buf+size, "\n");
 
         return size;
 }
@@ -192,10 +234,10 @@ static ssize_t tacho_motor_store_regulation_mode(struct device *dev, struct devi
 
         unsigned int i;
 
-	for (i=0; i<NUM_REGULATION_MODES; ++i)
+	for (i=0; i<TM_NUM_REGULATION_MODES; ++i)
 		if (sysfs_streq( buf, tacho_motor_regulation_modes[i].name)) break;
 
-	if (i >= NUM_REGULATION_MODES)
+	if (i >= TM_NUM_REGULATION_MODES)
                 return -EINVAL;
 
         tm->fp->set_regulation_mode(tm, i);
@@ -209,9 +251,7 @@ static ssize_t tacho_motor_show_stop_modes(struct device *dev, struct device_att
 
 	int size = 0;
 
-// struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
-
-	for (i=0; i<NUM_STOP_MODES; ++i)
+	for (i=0; i<TM_NUM_STOP_MODES; ++i)
 		size += sprintf(buf+size, "%s ", tacho_motor_stop_modes[i].name);
 
 	size += sprintf(buf+size, "\n");
@@ -232,13 +272,27 @@ static ssize_t tacho_motor_store_stop_mode(struct device *dev, struct device_att
 
         unsigned int i;
 
-	for (i=0; i<NUM_STOP_MODES; ++i)
+	for (i=0; i<TM_NUM_STOP_MODES; ++i)
 		if (sysfs_streq( buf, tacho_motor_stop_modes[i].name)) break;
 
-	if (i >= NUM_STOP_MODES)
+	if (i >= TM_NUM_STOP_MODES)
                 return -EINVAL;
 
         tm->fp->set_stop_mode(tm, i);
+
+        return size;
+}
+
+static ssize_t tacho_motor_show_position_modes(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        unsigned int i;
+
+	int size = 0;
+
+	for (i=0; i<TM_NUM_POSITION_MODES; ++i)
+		size += sprintf(buf+size, "%s ", tacho_motor_position_modes[i].name);
+
+	size += sprintf(buf+size, "\n");
 
         return size;
 }
@@ -256,13 +310,27 @@ static ssize_t tacho_motor_store_position_mode(struct device *dev, struct device
 
         unsigned int i;
 
-	for (i=0; i<NUM_POSITION_MODES; ++i)
+	for (i=0; i<TM_NUM_POSITION_MODES; ++i)
 		if (sysfs_streq( buf, tacho_motor_position_modes[i].name)) break;
 
-	if (i >= NUM_POSITION_MODES)
+	if (i >= TM_NUM_POSITION_MODES)
                 return -EINVAL;
 
         tm->fp->set_position_mode(tm, i);
+
+        return size;
+}
+
+static ssize_t tacho_motor_show_polarity_modes(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        unsigned int i;
+
+	int size = 0;
+
+	for (i=0; i<TM_NUM_POLARITY_MODES; ++i)
+		size += sprintf(buf+size, "%s ", tacho_motor_polarity_modes[i].name);
+
+	size += sprintf(buf+size, "\n");
 
         return size;
 }
@@ -280,13 +348,27 @@ static ssize_t tacho_motor_store_polarity_mode(struct device *dev, struct device
 
         unsigned int i;
 
-	for (i=0; i<NUM_POLARITY_MODES; ++i)
+	for (i=0; i<TM_NUM_POLARITY_MODES; ++i)
 		if (sysfs_streq(buf, tacho_motor_polarity_modes[i].name)) break;
 
-	if (i >= NUM_POLARITY_MODES)
+	if (i >= TM_NUM_POLARITY_MODES)
                 return -EINVAL;
 
         tm->fp->set_polarity_mode(tm, i);
+
+        return size;
+}
+
+static ssize_t tacho_motor_show_encoder_modes(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        unsigned int i;
+
+	int size = 0;
+
+	for (i=0; i<TM_NUM_ENCODER_MODES; ++i)
+		size += sprintf(buf+size, "%s ", tacho_motor_encoder_modes[i].name);
+
+	size += sprintf(buf+size, "\n");
 
         return size;
 }
@@ -304,10 +386,10 @@ static ssize_t tacho_motor_store_encoder_mode(struct device *dev, struct device_
 
         unsigned int i;
 
-	for (i=0; i<NUM_ENCODER_MODES; ++i)
+	for (i=0; i<TM_NUM_ENCODER_MODES; ++i)
 		if (sysfs_streq(buf, tacho_motor_encoder_modes[i].name)) break;
 
-	if (i >= NUM_ENCODER_MODES)
+	if (i >= TM_NUM_ENCODER_MODES)
                 return -EINVAL;
 
         tm->fp->set_encoder_mode(tm, i);
@@ -606,12 +688,17 @@ DEVICE_ATTR(pulses_per_second_sp, S_IRUGO | S_IWUSR, tacho_motor_show_pulses_per
 DEVICE_ATTR(time_sp, S_IRUGO | S_IWUSR, tacho_motor_show_time_sp, tacho_motor_store_time_sp);
 DEVICE_ATTR(position_sp, S_IRUGO | S_IWUSR, tacho_motor_show_position_sp, tacho_motor_store_position_sp);
 
+DEVICE_ATTR(run_modes, S_IRUGO, tacho_motor_show_run_modes, NULL);
 DEVICE_ATTR(run_mode, S_IRUGO | S_IWUSR, tacho_motor_show_run_mode, tacho_motor_store_run_mode);
+DEVICE_ATTR(regulation_modes, S_IRUGO, tacho_motor_show_regulation_modes, NULL);
 DEVICE_ATTR(regulation_mode, S_IRUGO | S_IWUSR, tacho_motor_show_regulation_mode, tacho_motor_store_regulation_mode);
-DEVICE_ATTR(stop_modes, S_IRUGO | S_IWUSR, tacho_motor_show_stop_modes, NULL);
+DEVICE_ATTR(stop_modes, S_IRUGO, tacho_motor_show_stop_modes, NULL);
 DEVICE_ATTR(stop_mode, S_IRUGO | S_IWUSR, tacho_motor_show_stop_mode, tacho_motor_store_stop_mode);
+DEVICE_ATTR(position_modes, S_IRUGO, tacho_motor_show_position_modes, NULL);
 DEVICE_ATTR(position_mode, S_IRUGO | S_IWUSR, tacho_motor_show_position_mode, tacho_motor_store_position_mode);
+DEVICE_ATTR(polarity_modes, S_IRUGO, tacho_motor_show_polarity_modes, NULL);
 DEVICE_ATTR(polarity_mode, S_IRUGO | S_IWUSR, tacho_motor_show_polarity_mode, tacho_motor_store_polarity_mode);
+DEVICE_ATTR(encoder_modes, S_IRUGO, tacho_motor_show_encoder_modes, NULL);
 DEVICE_ATTR(encoder_mode, S_IRUGO | S_IWUSR, tacho_motor_show_encoder_mode, tacho_motor_store_encoder_mode);
 
 DEVICE_ATTR(ramp_up_sp, S_IRUGO | S_IWUSR, tacho_motor_show_ramp_up_sp, tacho_motor_store_ramp_up_sp);
@@ -638,12 +725,17 @@ static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_pulses_per_second_sp.attr,
 	&dev_attr_time_sp.attr,
 	&dev_attr_position_sp.attr,
+	&dev_attr_run_modes.attr,
 	&dev_attr_run_mode.attr,
+	&dev_attr_regulation_modes.attr,
 	&dev_attr_regulation_mode.attr,
 	&dev_attr_stop_modes.attr,
 	&dev_attr_stop_mode.attr,
+	&dev_attr_position_modes.attr,
 	&dev_attr_position_mode.attr,
+	&dev_attr_polarity_modes.attr,
 	&dev_attr_polarity_mode.attr,
+	&dev_attr_encoder_modes.attr,
 	&dev_attr_encoder_mode.attr,
 	&dev_attr_ramp_up_sp.attr,
 	&dev_attr_ramp_down_sp.attr,
