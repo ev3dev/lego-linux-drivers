@@ -376,7 +376,7 @@ static struct i2c_driver nxt_i2c_sensor_driver = {
 	.remove		= nxt_i2c_sensor_remove,
 	.class		= I2C_CLASS_LEGOEV3,
 	.detect		= nxt_i2c_sensor_detect,
-	.address_list	= I2C_ADDRS(0x01, 0x02, 0x08, 0x0A),
+	.address_list	= I2C_ADDRS(0x01, 0x02, 0x08, 0x0A, 0x58),
 };
 module_i2c_driver(nxt_i2c_sensor_driver);
 

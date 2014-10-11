@@ -15,9 +15,12 @@
 
 #include <linux/i2c.h>
 #include <linux/legoev3/legoev3_ports.h>
+#include <linux/legoev3/servo_motor_class.h>
 
 #include "nxt_i2c_sensor.h"
 #include "ht_smux.h"
+
+/* HiTechnic NXT Sensor Multiplexer implementation */
 
 static const struct device_type ht_smux_input_port_device_type = {
 	.name	= "ht-smux-input-port",
@@ -149,6 +152,146 @@ void ht_sensor_mux_register_poll_cb(struct i2c_client *client,
 }
 EXPORT_SYMBOL_GPL(ht_sensor_mux_register_poll_cb);
 
+/* mindsensors.com 8-channel servo motor controller implementation */
+
+struct ms_8ch_servo_data {
+	int id;
+	struct nxt_i2c_sensor_data *sensor;
+	struct servo_motor_device servo;
+};
+
+static inline int ms_8ch_servo_scale(unsigned in_min, unsigned in_max,
+				     unsigned out_min, unsigned out_max,
+				     unsigned value)
+{
+	long scaled = value - in_min;
+	scaled *= out_max - out_min;
+	scaled /= in_max - in_min;
+	scaled += out_min;
+	return scaled;
+}
+
+static int ms_8ch_servo_get_position(void* context)
+{
+	struct ms_8ch_servo_data *servo = context;
+	struct i2c_client *client = servo->sensor->client;
+	int ret;
+
+	ret = i2c_smbus_read_word_data(client, 0x42 + servo->id * 2);
+	if (ret < 0)
+		return ret;
+
+	if (ret == 0)
+		return INT_MAX;
+	if (ret < servo->servo.min_pulse_ms)
+		return 0;
+	else if (ret < servo->servo.mid_pulse_ms)
+		return ms_8ch_servo_scale(servo->servo.min_pulse_ms,
+			servo->servo.mid_pulse_ms, 0, 900, ret);
+	else if (ret < servo->servo.max_pulse_ms)
+		return ms_8ch_servo_scale(servo->servo.mid_pulse_ms,
+			servo->servo.max_pulse_ms, 900, 1800, ret);
+	return 1800;
+}
+
+static int ms_8ch_servo_set_position(void* context, int value)
+{
+	struct ms_8ch_servo_data *servo = context;
+	struct i2c_client *client = servo->sensor->client;
+	int scaled;
+
+	if (value == INT_MAX)
+		scaled = 0;
+	else if (value > 900)
+		scaled = ms_8ch_servo_scale(900, 1800, servo->servo.mid_pulse_ms,
+			servo->servo.max_pulse_ms, value);
+	else
+		scaled = ms_8ch_servo_scale(0, 900, servo->servo.min_pulse_ms,
+			servo->servo.mid_pulse_ms, value);
+
+	return i2c_smbus_write_word_data(client, 0x42 + servo->id * 2, scaled);
+}
+
+static int ms_8ch_servo_get_rate(void* context)
+{
+	struct ms_8ch_servo_data *servo = context;
+	struct i2c_client *client = servo->sensor->client;
+	int ret;
+
+	ret = i2c_smbus_read_word_data(client, 0x52 + servo->id);
+	if (ret < 0)
+		return ret;
+
+	if (ret == 0)
+		return 0;
+	return 48000 / ret;
+}
+
+static int ms_8ch_servo_set_rate(void* context, unsigned value)
+{
+	struct ms_8ch_servo_data *servo = context;
+	struct i2c_client *client = servo->sensor->client;
+	int scaled;
+
+	if (value >= 48000)
+		scaled = 1;
+	else if (value < 188)
+		scaled = 0;
+	else
+		scaled = 48000 / value;
+
+	return i2c_smbus_write_word_data(client, 0x52 + servo->id * 2, scaled);
+}
+
+static void ms_8ch_servo_probe_cb(struct nxt_i2c_sensor_data *data)
+{
+	struct ms_8ch_servo_data *servos;
+	int i, err;
+
+	servos = kzalloc(sizeof(struct ms_8ch_servo_data) * 8, GFP_KERNEL);
+	if (IS_ERR(servos)) {
+		dev_err(&data->client->dev, "Error allocating servos. %ld",
+			PTR_ERR(servos));
+		return;
+	}
+	for (i = 0; i < 8; i++) {
+		servos[i].id = i;
+		servos[i].sensor = data;
+		strncpy(servos[i].servo.name, data->ms.name, SERVO_MOTOR_NAME_SIZE);
+		snprintf(servos[i].servo.port_name, SERVO_MOTOR_NAME_SIZE,
+			 "%s:sv%d", data->ms.port_name, i + 1);
+		servos[i].servo.ops.get_position = ms_8ch_servo_get_position;
+		servos[i].servo.ops.set_position = ms_8ch_servo_set_position;
+		servos[i].servo.ops.get_rate = ms_8ch_servo_get_rate;
+		servos[i].servo.ops.set_rate = ms_8ch_servo_set_rate;
+		servos[i].servo.context = &servos[i];
+		err = register_servo_motor(&servos[i].servo, &data->client->dev);
+		if (err)
+			break;
+	}
+	if (err < 0) {
+		for (i--; i >= 0; i--)
+			unregister_servo_motor(&servos[i].servo);
+		kfree(servos);
+		dev_err(&data->client->dev, "Error registering servos. %d", err);
+		return;
+	}
+	data->info.callback_data = servos;
+	data->poll_ms = 1000;
+}
+
+static void ms_8ch_servo_remove_cb(struct nxt_i2c_sensor_data *data)
+{
+	struct ms_8ch_servo_data *servos = data->info.callback_data;
+	int i;
+
+	if (servos) {
+		for (i = 0; i < 8; i++)
+			unregister_servo_motor(&servos[i].servo);
+		kfree(servos);
+	}
+}
+
 /**
  * nxt_i2c_sensor_defs - Sensor definitions
  *
@@ -162,8 +305,11 @@ EXPORT_SYMBOL_GPL(ht_sensor_mux_register_poll_cb);
  *
  * Optional values:
  * - num_read_only_modes (default num_modes)
- * - ops.set_mode_cb
+ * - ops.set_mode_pre_cb
+ * - ops.set_mode_post_cb
  * - ops.poll_cb
+ * - ops.probe_cb
+ * - ops.remove_cb
  * - ms_mode_info.raw_min
  * - ms_mode_info.raw_max (default 255)
  * - ms_mode_info.pct_min
@@ -1399,6 +1545,84 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.read_data_reg	= 0x20,
 				.set_mode_reg = 0x20,
 				.set_mode_data = 0,
+			},
+		},
+	},
+	[MS_8CH_SERVO] = {
+		/**
+		 * [^address]: The address is programmable. See manufacturer
+		 * documentation for more information.
+		 * [^servo-motor-devices]: The `ms-8ch-servo` driver loads separate
+		 * servo motor devices (one for each of the 8 channels) in addition
+		 * to the [msensor] device. See the [Servo Motor Class](../servo-motor-class)
+		 * for more information. The `servo_motor` class `port_name` attribute
+		 * will return `in<N>:sv<M>` where `<N>` is the input port the servo
+		 * controller is connected to and `<M>` is the channel as indicated
+		 * on the servo controller itself.
+		 *
+		 * @vendor_name: mindsensors.com
+		 * @vendor_part_number: NxtServo
+		 * @vendor_part_name: 8-channel Servo Controller
+		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=93
+		 * @default_address: 0x58
+		 * @default_address_footnote: [^address]
+		 * @device_class_footnote: [^servo-motor-devices]
+		 */
+		.name			= "ms-8ch-servo",
+		.vendor_id		= "mndsnsrs",
+		.product_id		= "NXTServo",
+		.num_modes		= 2,
+		.ops.probe_cb		= ms_8ch_servo_probe_cb,
+		.ops.remove_cb		= ms_8ch_servo_remove_cb,
+		.ms_mode_info		= {
+			[0] = {
+				/**
+				 *
+				 * [^battery-voltage]: The current voltage scaling is based on
+				 * the manufacturers documentation, however it seems to be low.
+				 * If you are seeing this too, please open an issue on GitHub
+				 * and we will change the scaling.
+				 *
+				 * @description: EV3 Compatible
+				 * @value0: Battery voltage (0 to 9400)
+				 * @value0_footnote: [^battery-voltage]
+				 * @units_description: volts
+				 */
+				.name = "MS-8CH-SERVO-V3",
+				.raw_min = 127,
+				.raw_max = 255,
+				.si_min = 4700,
+				.si_max = 9400,
+				.decimals = 3,
+				.units = "V",
+			},
+			[1] = {
+				/**
+				 * [^old-mode]: Older versions of this sensor have the battery
+				 * voltage at a different address. If the default mode does not
+				 * return a value, try this mode.
+				 *
+				 * @name_footnote: [^old-mode]
+				 * @description: Older versions
+				 * @value0: Battery voltage (0 to 9400)
+				 * @value0_footnote: [^battery-voltage]
+				 * @units_description: volts
+				 */
+				.name = "MS-8CH-SERVO",
+				.raw_min = 127,
+				.raw_max = 255,
+				.si_min = 4700,
+				.si_max = 9400,
+				.decimals = 3,
+				.units = "V",
+			},
+		},
+		.i2c_mode_info	= {
+			[0] = {
+				.read_data_reg	= 0x62,
+			},
+			[1] = {
+				.read_data_reg	= 0x41,
 			},
 		},
 	},
