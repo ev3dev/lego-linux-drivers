@@ -87,4 +87,11 @@ config LEGOEV3_SERVO_MOTORS
 	help
 	  Select Y to enable support for servo motors.
 
+config LEGOEV3_DC_MOTORS
+	tristate "DC motor support"
+	default y
+	help
+	  Select Y to enable support for DC motors (includes LEGO Power
+	  Functions motors).
+
 endif #LEGOEV3_DRIVERS
