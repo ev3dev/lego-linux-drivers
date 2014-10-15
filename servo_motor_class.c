@@ -31,7 +31,7 @@
 * .
 * ### sysfs Attributes
 * .
-* Servo motors can be found at `/sys/class/servo_motor/servo<N>`, where `<N>`
+* Servo motors can be found at `/sys/class/servo_motor/motor<N>`, where `<N>`
 * is incremented each time a servo is loaded (it is not related to which port
 * the motor is plugged in to).
 * .
@@ -82,37 +82,37 @@
 static ssize_t name_show(struct device *dev, struct device_attribute *attr,
 			 char *buf)
 {
-	struct servo_motor_device *servo = to_servo_motor_device(dev);
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
 
-	return snprintf(buf, SERVO_MOTOR_NAME_SIZE, "%s\n", servo->name);
+	return snprintf(buf, SERVO_MOTOR_NAME_SIZE, "%s\n", motor->name);
 }
 
 static ssize_t port_name_show(struct device *dev, struct device_attribute *attr,
 			      char *buf)
 {
-	struct servo_motor_device *servo = to_servo_motor_device(dev);
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
 
-	return snprintf(buf, SERVO_MOTOR_NAME_SIZE, "%s\n", servo->port_name);
+	return snprintf(buf, SERVO_MOTOR_NAME_SIZE, "%s\n", motor->port_name);
 }
 
 static ssize_t min_pulse_ms_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
-	struct servo_motor_device *servo = to_servo_motor_device(dev);
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
 
-	return snprintf(buf, SERVO_MOTOR_NAME_SIZE, "%u\n", servo->min_pulse_ms);
+	return sprintf(buf, "%u\n", motor->min_pulse_ms);
 }
 
 static ssize_t min_pulse_ms_store(struct device *dev,
 				  struct device_attribute *attr,
 				  const char *buf, size_t count)
 {
-	struct servo_motor_device *servo = to_servo_motor_device(dev);
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
 	unsigned value;
 
 	if (sscanf(buf, "%ud", &value) != 1 || value > 700 || value < 300)
 		return -EINVAL;
-	servo->min_pulse_ms = value;
+	motor->min_pulse_ms = value;
 
 	return count;
 }
@@ -120,9 +120,9 @@ static ssize_t min_pulse_ms_store(struct device *dev,
 static ssize_t mid_pulse_ms_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
-	struct servo_motor_device *servo = to_servo_motor_device(dev);
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
 
-	return snprintf(buf, SERVO_MOTOR_NAME_SIZE, "%u\n", servo->mid_pulse_ms);
+	return sprintf(buf, "%u\n", motor->mid_pulse_ms);
 }
 
 static ssize_t mid_pulse_ms_store(struct device *dev,
@@ -142,21 +142,21 @@ static ssize_t mid_pulse_ms_store(struct device *dev,
 static ssize_t max_pulse_ms_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
-	struct servo_motor_device *servo = to_servo_motor_device(dev);
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
 
-	return snprintf(buf, SERVO_MOTOR_NAME_SIZE, "%u\n", servo->max_pulse_ms);
+	return snprintf(buf, SERVO_MOTOR_NAME_SIZE, "%u\n", motor->max_pulse_ms);
 }
 
 static ssize_t max_pulse_ms_store(struct device *dev,
 				  struct device_attribute *attr,
 				  const char *buf, size_t count)
 {
-	struct servo_motor_device *servo = to_servo_motor_device(dev);
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
 	unsigned value;
 
 	if (sscanf(buf, "%ud", &value) != 1 || value > 2700 || value < 2300)
 		return -EINVAL;
-	servo->max_pulse_ms = value;
+	motor->max_pulse_ms = value;
 
 	return count;
 }
@@ -164,10 +164,10 @@ static ssize_t max_pulse_ms_store(struct device *dev,
 static ssize_t position_show(struct device *dev, struct device_attribute *attr,
 			     char *buf)
 {
-	struct servo_motor_device *servo = to_servo_motor_device(dev);
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
 	int ret;
 
-	ret = servo->ops.get_position(servo->context);
+	ret = motor->ops.get_position(motor->context);
 	if (ret < 0)
 		return ret;
 	if (ret == INT_MAX)
@@ -178,7 +178,7 @@ static ssize_t position_show(struct device *dev, struct device_attribute *attr,
 static ssize_t position_store(struct device *dev, struct device_attribute *attr,
 			      const char *buf, size_t count)
 {
-	struct servo_motor_device *servo = to_servo_motor_device(dev);
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
 	int value;
 	int err;
 
@@ -186,7 +186,7 @@ static ssize_t position_store(struct device *dev, struct device_attribute *attr,
 		return -EINVAL;
 	if (value == -1)
 		value = INT_MAX;
-	err = servo->ops.set_position(servo->context, value);
+	err = motor->ops.set_position(motor->context, value);
 	if (err < 0)
 		return err;
 
@@ -196,12 +196,12 @@ static ssize_t position_store(struct device *dev, struct device_attribute *attr,
 static ssize_t rate_show(struct device *dev, struct device_attribute *attr,
 			 char *buf)
 {
-	struct servo_motor_device *servo = to_servo_motor_device(dev);
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
 	int ret;
 
-	if (!servo->ops.get_rate)
+	if (!motor->ops.get_rate)
 		return -ENOSYS;
-	ret = servo->ops.get_rate(servo->context);
+	ret = motor->ops.get_rate(motor->context);
 	if (ret < 0)
 		return ret;
 	return sprintf(buf, "%d\n", ret);
@@ -210,16 +210,16 @@ static ssize_t rate_show(struct device *dev, struct device_attribute *attr,
 static ssize_t rate_store(struct device *dev, struct device_attribute *attr,
 			  const char *buf, size_t count)
 {
-	struct servo_motor_device *servo = to_servo_motor_device(dev);
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
 	unsigned value;
 	int err;
 
-	if (!servo->ops.set_rate)
+	if (!motor->ops.set_rate)
 		return -ENOSYS;
 
 	if (sscanf(buf, "%ud", &value) != 1)
 		return -EINVAL;
-	err = servo->ops.set_rate(servo->context, value);
+	err = motor->ops.set_rate(motor->context, value);
 	if (err < 0)
 		return err;
 
@@ -271,7 +271,7 @@ int register_servo_motor(struct servo_motor_device *servo, struct device *parent
 	servo->dev.release = servo_motor_release;
 	servo->dev.parent = parent;
 	servo->dev.class = &servo_motor_class;
-	dev_set_name(&servo->dev, "servo%d", servo_motor_class_id++);
+	dev_set_name(&servo->dev, "motor%d", servo_motor_class_id++);
 	servo->min_pulse_ms = 600;
 	servo->mid_pulse_ms = 1500;
 	servo->max_pulse_ms = 2400;
