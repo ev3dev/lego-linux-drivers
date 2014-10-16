@@ -772,7 +772,7 @@ int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
 	tm->dev.release = tacho_motor_release;
 	tm->dev.parent = parent;
 	tm->dev.class = &tacho_motor_class;
-	dev_set_name(&tm->dev, "tacho-motor%d", tacho_motor_class_id++);
+	dev_set_name(&tm->dev, "motor%d", tacho_motor_class_id++);
 
 	err = device_register(&tm->dev);
 	if (err)

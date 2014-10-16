@@ -31,7 +31,7 @@
 * .
 * ### sysfs Attributes
 * .
-* Servo motors can be found at `/sys/class/servo_motor/motor<N>`, where `<N>`
+* Servo motors can be found at `/sys/class/servo-motor/motor<N>`, where `<N>`
 * is incremented each time a servo is loaded (it is not related to which port
 * the motor is plugged in to).
 * .
@@ -314,7 +314,7 @@ static int servo_motor_dev_uevent(struct device *dev, struct kobj_uevent_env *en
 
 static char *servo_motor_devnode(struct device *dev, umode_t *mode)
 {
-	return kasprintf(GFP_KERNEL, "servo_motor/%s", dev_name(dev));
+	return kasprintf(GFP_KERNEL, "servo-motor/%s", dev_name(dev));
 }
 
 struct class servo_motor_class = {

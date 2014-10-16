@@ -30,7 +30,7 @@
 * .
 * ### sysfs Attributes
 * .
-* DC motors can be found at `/sys/class/dc_motor/motor<N>`, where `<N>`
+* DC motors can be found at `/sys/class/dc-motor/motor<N>`, where `<N>`
 * is incremented each time a motor is loaded (it is not related to which port
 * the motor is plugged in to).
 * .
@@ -317,7 +317,7 @@ static int dc_motor_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
 
 static char *dc_motor_devnode(struct device *dev, umode_t *mode)
 {
-	return kasprintf(GFP_KERNEL, "dc_motor/%s", dev_name(dev));
+	return kasprintf(GFP_KERNEL, "dc-motor/%s", dev_name(dev));
 }
 
 struct class dc_motor_class = {
