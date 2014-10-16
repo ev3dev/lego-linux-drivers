@@ -94,14 +94,8 @@ static ssize_t ramp_up_ms_show(struct device *dev,
 			       struct device_attribute *attr, char *buf)
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
-	int ret;
 
-	if (!motor->ops.get_ramp_up_ms)
-		return -ENOSYS;
-	ret = motor->ops.get_ramp_up_ms(motor->ops.context);
-	if (ret < 0)
-		return ret;
-	return sprintf(buf, "%u\n", ret);
+	return sprintf(buf, "%u\n", motor->ramp_up_ms);
 }
 
 static ssize_t ramp_up_ms_store(struct device *dev,
@@ -110,16 +104,11 @@ static ssize_t ramp_up_ms_store(struct device *dev,
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
 	unsigned value;
-	int err;
 
-	if (!motor->ops.set_ramp_up_ms)
-		return -ENOSYS;
 	if (sscanf(buf, "%ud", &value) != 1)
 		return -EINVAL;
-	err = motor->ops.set_ramp_up_ms(motor->ops.context, value);
-	if (err)
-		return err;
-
+	motor->ramp_up_ms = value;
+	/* TODO: need to implement ramping */
 
 	return count;
 }
@@ -128,14 +117,8 @@ static ssize_t ramp_down_ms_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
-	int ret;
 
-	if (!motor->ops.get_ramp_down_ms)
-		return -ENOSYS;
-	ret = motor->ops.get_ramp_down_ms(motor->ops.context);
-	if (ret < 0)
-		return ret;
-	return sprintf(buf, "%u\n", ret);
+	return sprintf(buf, "%u\n", motor->ramp_down_ms);
 }
 
 static ssize_t ramp_down_ms_store(struct device *dev,
@@ -144,15 +127,11 @@ static ssize_t ramp_down_ms_store(struct device *dev,
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
 	unsigned value;
-	int err;
 
-	if (!motor->ops.set_ramp_down_ms)
-		return -ENOSYS;
 	if (sscanf(buf, "%ud", &value) != 1)
 		return -EINVAL;
-	err = motor->ops.set_ramp_down_ms(motor->ops.context, value);
-	if (err)
-		return err;
+	motor->ramp_down_ms = value;
+	/* TODO: need to implement ramping */
 
 	return count;
 }
@@ -161,8 +140,11 @@ static ssize_t duty_cycle_show(struct device *dev,
 			       struct device_attribute *attr, char *buf)
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
+	int duty_cycle;
 
-	return sprintf(buf, "%u\n", motor->duty_cycle);
+	duty_cycle = motor->ops.get_duty_cycle(motor->ops.context);
+
+	return sprintf(buf, "%d\n", duty_cycle);
 }
 
 static ssize_t duty_cycle_store(struct device *dev,
@@ -171,10 +153,13 @@ static ssize_t duty_cycle_store(struct device *dev,
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
 	unsigned value;
+	int err;
 
 	if (sscanf(buf, "%ud", &value) != 1 || value > 1000)
 		return -EINVAL;
-	motor->duty_cycle = value;
+	err = motor->ops.set_duty_cycle(motor->ops.context, value);
+	if (err)
+		return err;
 
 	return count;
 }

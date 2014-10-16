@@ -778,7 +778,7 @@ int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
 	if (err)
 		return err;
 
-	dev_info(&tm->dev, "Tacho motor registered.\n");
+	dev_info(&tm->dev, "Bound to '%s'.\n", dev_name(parent));
 
 	return 0;
 }
@@ -786,6 +786,7 @@ EXPORT_SYMBOL_GPL(register_tacho_motor);
 
 void unregister_tacho_motor(struct tacho_motor_device *tm)
 {
+	dev_info(&tm->dev, "Unregistered.\n");
 	device_unregister(&tm->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_tacho_motor);

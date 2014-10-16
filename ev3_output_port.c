@@ -93,6 +93,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
+#include <linux/legoev3/dc_motor_class.h>
 #include <linux/legoev3/ev3_output_port.h>
 #include <linux/legoev3/legoev3_analog.h>
 #include <linux/legoev3/legoev3_ports.h>
@@ -262,7 +263,72 @@ struct ev3_output_port_data {
 	enum motor_type tacho_motor_type;
 	struct legoev3_port_device *motor;
 	enum ev3_output_port_mode mode;
+	enum dc_motor_command command;
 };
+
+static unsigned ev3_ouput_port_get_supported_commands(void* context)
+{
+	return DC_MOTOR_COMMAND_FORWARD | DC_MOTOR_COMMAND_REVERSE
+		| DC_MOTOR_COMMAND_COAST | DC_MOTOR_COMMAND_BRAKE;
+}
+
+static int ev3_output_port_get_command(void *context)
+{
+	struct ev3_output_port_data *data = context;
+
+	return data->command;
+}
+
+static int ev3_output_port_set_command(void *context, enum dc_motor_command command)
+{
+	struct ev3_output_port_data *data = context;
+
+	if (data->command == command)
+		return 0;
+	switch(command) {
+	case DC_MOTOR_COMMAND_FORWARD:
+		gpio_direction_output(data->gpio[GPIO_PIN1].gpio, 1);
+		gpio_direction_input(data->gpio[GPIO_PIN2].gpio);
+		break;
+	case DC_MOTOR_COMMAND_REVERSE:
+		gpio_direction_input(data->gpio[GPIO_PIN1].gpio);
+		gpio_direction_output(data->gpio[GPIO_PIN2].gpio, 1);
+		break;
+	case DC_MOTOR_COMMAND_BRAKE:
+		gpio_direction_output(data->gpio[GPIO_PIN1].gpio, 1);
+		gpio_direction_output(data->gpio[GPIO_PIN2].gpio, 1);
+		break;
+	case DC_MOTOR_COMMAND_COAST:
+		gpio_direction_input(data->gpio[GPIO_PIN1].gpio);
+		gpio_direction_input(data->gpio[GPIO_PIN2].gpio);
+		break;
+	default:
+		return -EINVAL;
+	}
+	data->command = command;
+
+	return 0;
+}
+
+static unsigned ev3_output_port_get_duty_cycle(void *context)
+{
+	struct ev3_output_port_data *data = context;
+	unsigned period = pwm_get_period(data->pwm);
+
+	if (unlikely(period == 0))
+		return 0;
+	return pwm_get_duty_cycle(data->pwm) * 1000 / period;
+}
+
+static int ev3_output_port_set_duty_cycle(void *context, unsigned duty)
+{
+	struct ev3_output_port_data *data = context;
+	unsigned period = pwm_get_period(data->pwm);
+
+	if (duty > 1000)
+		return -EINVAL;
+	return pwm_config(data->pwm, period * duty / 1000, period);
+}
 
 void ev3_output_port_float(struct ev3_output_port_data *data)
 {
@@ -271,6 +337,7 @@ void ev3_output_port_float(struct ev3_output_port_data *data)
 	gpio_direction_input(data->gpio[GPIO_PIN5].gpio);
 	gpio_direction_input(data->gpio[GPIO_PIN5_INT].gpio);
 	gpio_direction_input(data->gpio[GPIO_PIN6_DIR].gpio);
+	data->command = DC_MOTOR_COMMAND_COAST;
 }
 
 void ev3_output_port_register_motor(struct work_struct *work)
@@ -294,11 +361,15 @@ void ev3_output_port_register_motor(struct work_struct *work)
 
 	pdata.out_port = data->out_port;
 
-	pdata.motor_dir0_gpio = data->gpio[GPIO_PIN1].gpio;
-	pdata.motor_dir1_gpio = data->gpio[GPIO_PIN2].gpio;
+	pdata.motor_ops.get_supported_commands =
+					ev3_ouput_port_get_supported_commands;
+	pdata.motor_ops.get_command = ev3_output_port_get_command;
+	pdata.motor_ops.set_command = ev3_output_port_set_command;
+	pdata.motor_ops.set_duty_cycle = ev3_output_port_set_duty_cycle;
+	pdata.motor_ops.get_duty_cycle = ev3_output_port_get_duty_cycle;
+	pdata.motor_ops.context = data;
 	pdata.tacho_int_gpio  = data->gpio[GPIO_PIN5_INT].gpio;
 	pdata.tacho_dir_gpio  = data->gpio[GPIO_PIN6_DIR].gpio;
-	pdata.pwm             = data->pwm;
 	pdata.motor_type      = data->tacho_motor_type;
 
 	motor = legoev3_port_device_register(

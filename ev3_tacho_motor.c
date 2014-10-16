@@ -19,7 +19,6 @@
 #include <linux/gpio.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
-#include <linux/pwm.h>
 #include <linux/random.h>
 
 #include <linux/legoev3/legoev3_ports.h>
@@ -80,14 +79,14 @@ enum {
 struct ev3_tacho_motor_data {
 	struct tacho_motor_device tm;
 
-	struct legoev3_port_device *out_port;
+	struct legoev3_port *out_port;
 	struct legoev3_port_device *motor_port;
 
 	struct hrtimer timer;
 	struct work_struct notify_state_change_work;
 
-        unsigned tacho_samples[TACHO_SAMPLES];
-        unsigned tacho_samples_head;
+	unsigned tacho_samples[TACHO_SAMPLES];
+	unsigned tacho_samples_head;
 
 	bool got_new_sample;
 	
@@ -133,19 +132,18 @@ struct ev3_tacho_motor_data {
 		int prev_position_error;
 	} pid;
 
-        int speed_reg_sp;
-        int run_direction;
-        int set_direction;
+	int speed_reg_sp;
+	int run_direction;
 
 	int run;
 	int estop;
 
 	int motor_type;
 
-        int tacho;	
+	int tacho;
 	int irq_tacho;	/* tacho and irq_tacho combine to make position - change name to pulse? */
 
-        int speed;
+	int speed;
 	int power;
 	int state;
 
@@ -321,50 +319,6 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 	return IRQ_HANDLED;
 }
 
- 
-static void ev3_tacho_motor_forward(struct ev3_tacho_motor_data *ev3_tm)
-{
-	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
-
-	if (FORWARD != ev3_tm->set_direction) {
-		gpio_direction_output(pdata->motor_dir0_gpio, 1);
-		gpio_direction_input( pdata->motor_dir1_gpio   );
-		ev3_tm->set_direction = FORWARD;
-	}
-}
-static void ev3_tacho_motor_reverse(struct ev3_tacho_motor_data *ev3_tm)
-{
-	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
-
-	if (REVERSE != ev3_tm->set_direction) {
-		gpio_direction_input( pdata->motor_dir0_gpio   );
-		gpio_direction_output(pdata->motor_dir1_gpio, 1);
-		ev3_tm->set_direction = REVERSE;
-	}
-}
-static void ev3_tacho_motor_brake(struct ev3_tacho_motor_data *ev3_tm)
-{
-	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
-
-	#warning "The LEGO code sets the regulation power to an opposite level to stop the motor hard"
-
-	if (BRAKE != ev3_tm->set_direction) {
-		gpio_direction_output(pdata->motor_dir0_gpio, 1);
-		gpio_direction_output(pdata->motor_dir1_gpio, 1);
-		ev3_tm->set_direction = BRAKE;
-	}
-}
-static void ev3_tacho_motor_coast(struct ev3_tacho_motor_data *ev3_tm)
-{
-	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
-
-	if (COAST != ev3_tm->set_direction) {
-		gpio_direction_output(pdata->motor_dir0_gpio, 0);
-		gpio_direction_output(pdata->motor_dir1_gpio, 0);
-		ev3_tm->set_direction = COAST;
-	}
-}
-
 static void ev3_tacho_motor_set_power(struct ev3_tacho_motor_data *ev3_tm, int power)
 {
 	int err;
@@ -383,45 +337,42 @@ static void ev3_tacho_motor_set_power(struct ev3_tacho_motor_data *ev3_tm, int p
 		power = -MAX_POWER;
 	}
 
-        if (0 < power) {
-		if (TM_POLARITY_NORMAL == ev3_tm->polarity_mode) {
-			ev3_tacho_motor_forward(ev3_tm);
-		} else {
-			ev3_tacho_motor_reverse(ev3_tm);
-		}
+	if (0 < power) {
+		if (TM_POLARITY_NORMAL == ev3_tm->polarity_mode)
+			pdata->motor_ops.set_command(pdata->motor_ops.context,
+						DC_MOTOR_COMMAND_FORWARD);
+		else
+			pdata->motor_ops.set_command(pdata->motor_ops.context,
+						DC_MOTOR_COMMAND_REVERSE);
 
-		if (TM_REGULATION_OFF == ev3_tm->regulation_mode) {
-			if (power < 10) power = 10;
-		}	
-
+		if (TM_REGULATION_OFF == ev3_tm->regulation_mode && power < 10)
+			power = 10;
 	} else if (0 > power) {
-		if (TM_POLARITY_NORMAL == ev3_tm->polarity_mode) {
-			ev3_tacho_motor_reverse(ev3_tm);
-		} else {
-			ev3_tacho_motor_forward(ev3_tm);
-		}
+		if (TM_POLARITY_NORMAL == ev3_tm->polarity_mode)
+			pdata->motor_ops.set_command(pdata->motor_ops.context,
+						DC_MOTOR_COMMAND_REVERSE);
+		else
+			pdata->motor_ops.set_command(pdata->motor_ops.context,
+						DC_MOTOR_COMMAND_FORWARD);
 
-		if (TM_REGULATION_OFF == ev3_tm->regulation_mode) {
-			if (power > -10) power = -10;
-		}	
-
+		if (TM_REGULATION_OFF == ev3_tm->regulation_mode && power > -10)
+			power = -10;
 	} else {
 		if (TM_STOP_COAST == ev3_tm->stop_mode)
-			ev3_tacho_motor_coast(ev3_tm);
+			pdata->motor_ops.set_command(pdata->motor_ops.context,
+						DC_MOTOR_COMMAND_COAST);
 		else if (TM_STOP_BRAKE == ev3_tm->stop_mode)
-			ev3_tacho_motor_brake(ev3_tm);
+			pdata->motor_ops.set_command(pdata->motor_ops.context,
+						DC_MOTOR_COMMAND_BRAKE);
 		else if (TM_STOP_HOLD == ev3_tm->stop_mode)
-			ev3_tacho_motor_brake(ev3_tm);
+			pdata->motor_ops.set_command(pdata->motor_ops.context,
+						DC_MOTOR_COMMAND_BRAKE);
 	}
 
 	/* The power sets the duty cycle - 100% power == 100% duty cycle */
-	err = pwm_config(pdata->pwm, pdata->pwm->period * abs(power) / 100,
-			 pdata->pwm->period);
-
- 	if (err) {
- 		dev_err(&ev3_tm->motor_port->dev, "%s: Failed to set pwm duty percent! (%d)\n",
- 			__func__, err);
- 	}
+	err = pdata->motor_ops.set_duty_cycle(pdata->motor_ops.context,
+					      abs(power) * 10);
+	WARN_ONCE(err, "Failed to set pwm duty cycle! (%d)\n", err);
 
 no_change_power:
 
@@ -466,6 +417,8 @@ static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
 	ev3_tm->pid.I			= 0;
 	ev3_tm->pid.D			= 0;
 
+	/* TODO: These need to get converted to an id lookup table like sensors */
+
 	if (pdata->motor_type == MOTOR_MINITACHO)
 		ev3_tm->motor_type = MOTOR_TYPE_MINITACHO;
 	else if (pdata->motor_type == MOTOR_TACHO)
@@ -494,7 +447,6 @@ static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
 	ev3_tm->pid.prev_position_error	= 0;
         ev3_tm->speed_reg_sp		= 0;
         ev3_tm->run_direction		= UNKNOWN;
-        ev3_tm->set_direction		= UNKNOWN;
 	ev3_tm->run			= 0;
 	ev3_tm->estop			= 0;
 
@@ -777,7 +729,6 @@ static void regulate_speed(struct ev3_tacho_motor_data *ev3_tm)
 {
 	int power;
 	int speed_error;
-	int prevI;
 
 	/* Make sure speed_reg_setpoint is within a reasonable range */
 	
@@ -907,7 +858,7 @@ static void regulate_position(struct ev3_tacho_motor_data *ev3_tm)
 
 static void adjust_ramp_for_position(struct ev3_tacho_motor_data *ev3_tm)
 {
-	long ramp_down_time;
+	long ramp_down_time = 0;
 	long ramp_down_distance;
 
 	/* The ramp down time is based on the current power level when regulation is off, and
@@ -982,14 +933,14 @@ static int calculate_ramp_progress ( int numerator, int denominator )
 
 static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer)
 {
- 	struct ev3_tacho_motor_data *ev3_tm =
- 			container_of(timer, struct ev3_tacho_motor_data, timer);
-
- 	int speed;
-
+	struct ev3_tacho_motor_data *ev3_tm =
+			container_of(timer, struct ev3_tacho_motor_data, timer);
+	struct ev3_motor_platform_data *pdata =
+					ev3_tm->motor_port->dev.platform_data;
+	int speed;
 	bool reprocess = true;
 
- 	hrtimer_forward_now(timer, ktime_set(0, TACHO_MOTOR_POLL_NS));
+	hrtimer_forward_now(timer, ktime_set(0, TACHO_MOTOR_POLL_NS));
 
 	/* Continue with the actual calculations */
 
@@ -1368,10 +1319,12 @@ no_run:
 
 	if (!ev3_tm->run) {
 		if (TM_STOP_COAST == ev3_tm->stop_mode)
-			ev3_tacho_motor_coast(ev3_tm);
+			pdata->motor_ops.set_command(pdata->motor_ops.context,
+							DC_MOTOR_COMMAND_COAST);
 
 		else if (TM_STOP_BRAKE == ev3_tm->stop_mode) 
-			ev3_tacho_motor_brake(ev3_tm);
+			pdata->motor_ops.set_command(pdata->motor_ops.context,
+							DC_MOTOR_COMMAND_BRAKE);
 
 		else if (TM_STOP_HOLD == ev3_tm->stop_mode)
 			regulate_position(ev3_tm);
@@ -1935,11 +1888,6 @@ static int ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 
 	dev_set_drvdata(&motor->dev, ev3_tm);
 
-	dev_info(&motor->dev, "Tacho Motor connected to port %s gpio %d irq %d\n",
-		 dev_name(&pdata->out_port->dev),
-		 pdata->tacho_int_gpio,
-		 gpio_to_irq(pdata->tacho_int_gpio));
-
 	/* Here's where we set up the port pins on a per-port basis */
 	if(request_irq(gpio_to_irq(pdata->tacho_int_gpio), tacho_motor_isr, 0, dev_name(&pdata->out_port->dev), ev3_tm ))
 		goto err_dev_request_irq;
@@ -1975,16 +1923,7 @@ static int ev3_tacho_motor_remove(struct legoev3_port_device *motor)
 
 	hrtimer_cancel(&ev3_tm->timer);
 	cancel_work_sync(&ev3_tm->notify_state_change_work);
-
-	dev_info(&motor->dev, "Unregistering interrupt from gpio %d irq %d on port %s\n",
-		pdata->tacho_int_gpio,
-		gpio_to_irq(pdata->tacho_int_gpio),
-		dev_name(&pdata->out_port->dev));
-
 	free_irq(gpio_to_irq(pdata->tacho_int_gpio), ev3_tm);
-
-	dev_info(&motor->dev, "Tacho motor removed from port %s\n",
-		 dev_name(&pdata->out_port->dev));
 	dev_set_drvdata(&motor->dev, NULL);
 	unregister_tacho_motor(&ev3_tm->tm);
 	kfree(ev3_tm);
