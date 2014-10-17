@@ -206,7 +206,7 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 		if (sysfs_streq(buf, dc_motor_command_names[i])) {
 			if (supported_commands & BIT(i)) {
 				err = motor->ops.set_command(motor->ops.context,
-					BIT(i));
+					i);
 				if (err)
 					return err;
 				return count;
@@ -276,7 +276,7 @@ EXPORT_SYMBOL_GPL(register_dc_motor);
 
 void unregister_dc_motor(struct dc_motor_device *dc)
 {
-	dev_info(&dc->dev, "Unregistered\n");
+	dev_info(&dc->dev, "Unregistered.\n");
 	device_unregister(&dc->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_dc_motor);

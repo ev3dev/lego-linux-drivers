@@ -53,8 +53,6 @@
  *        will be loaded.
  *      - `ev3-tacho-motor`: Force the port to load the [ev3-tacho-motor] device.
  *        The driver will default to the Large Motor settings.
- *      - `ev3-servo-motor`: Force the port to load the [ev3-servo-motor] device.
- *        This allows a hobby type servo motor to be controlled by the output port.
  *      - `rcx-motor`: Force the port to load the [rcx-motor] device. This can
  *        be use with MINDSTORMS RCX motor, Power Functions motors and any other
  *        'plain' DC motor. By 'plain', we mean the motor is just a motor
@@ -80,7 +78,6 @@
  * .
  * [ports on the EV3]: ../legoev3-ports
  * [ev3-tacho-motor]: ../ev3-tacho-motor
- * [ev3-servo-motor]: ../ev3-servo-motor
  * [rcx-motor]: ../rcx-motor
  * [rcx-led]: ../rcx-led
  */
@@ -168,7 +165,6 @@ static const char* ev3_output_port_state_names[] = {
 enum ev3_output_port_mode {
 	EV3_OUTPUT_PORT_MODE_AUTO,
 	EV3_OUTPUT_PORT_MODE_TACHO_MOTOR,
-	EV3_OUTPUT_PORT_MODE_SERVO_MOTOR,
 	EV3_OUTPUT_PORT_MODE_DC_MOTOR,
 	EV3_OUTPUT_PORT_MODE_LED,
 	EV3_OUTPUT_PORT_MODE_RAW,
@@ -178,7 +174,6 @@ enum ev3_output_port_mode {
 static const char *ev3_output_port_mode_names[] = {
 	[EV3_OUTPUT_PORT_MODE_AUTO]		= "auto",
 	[EV3_OUTPUT_PORT_MODE_TACHO_MOTOR]	= "ev3-tacho-motor",
-	[EV3_OUTPUT_PORT_MODE_SERVO_MOTOR]	= "ev3-servo-motor",
 	[EV3_OUTPUT_PORT_MODE_DC_MOTOR]		= "rcx-motor",
 	[EV3_OUTPUT_PORT_MODE_LED]		= "rcx-led",
 	[EV3_OUTPUT_PORT_MODE_RAW]		= "raw",
@@ -211,10 +206,6 @@ struct device_type ev3_motor_device_types[] = {
 	},
 	[EV3_OUTPUT_PORT_MODE_TACHO_MOTOR] = {
 		.name	= "ev3-tacho-motor",
-		.groups	= ev3_motor_device_type_attr_groups,
-	},
-	[EV3_OUTPUT_PORT_MODE_SERVO_MOTOR] = {
-		.name	= "ev3-servo-motor",
 		.groups	= ev3_motor_device_type_attr_groups,
 	},
 	[EV3_OUTPUT_PORT_MODE_DC_MOTOR] = {
@@ -268,8 +259,8 @@ struct ev3_output_port_data {
 
 static unsigned ev3_ouput_port_get_supported_commands(void* context)
 {
-	return DC_MOTOR_COMMAND_FORWARD | DC_MOTOR_COMMAND_REVERSE
-		| DC_MOTOR_COMMAND_COAST | DC_MOTOR_COMMAND_BRAKE;
+	return BIT(DC_MOTOR_COMMAND_FORWARD) | BIT(DC_MOTOR_COMMAND_REVERSE)
+		| BIT(DC_MOTOR_COMMAND_COAST) | BIT(DC_MOTOR_COMMAND_BRAKE);
 }
 
 static int ev3_output_port_get_command(void *context)
@@ -681,12 +672,13 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 		data->tacho_motor_type = MOTOR_TACHO;
 		ev3_output_port_register_motor(&data->work);
 		break;
-	case EV3_OUTPUT_PORT_MODE_SERVO_MOTOR:
 	case EV3_OUTPUT_PORT_MODE_DC_MOTOR:
 	case EV3_OUTPUT_PORT_MODE_LED:
-	case EV3_OUTPUT_PORT_MODE_RAW:
 		data->tacho_motor_type = MOTOR_NONE;
 		ev3_output_port_register_motor(&data->work);
+		break;
+	case EV3_OUTPUT_PORT_MODE_RAW:
+		ev3_output_port_enable_raw_mode(data);
 		break;
 	default:
 		WARN_ON("Unknown mode.");
