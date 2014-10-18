@@ -160,56 +160,20 @@ struct ms_8ch_servo_data {
 	struct servo_motor_device servo;
 };
 
-static inline int ms_8ch_servo_scale(unsigned in_min, unsigned in_max,
-				     unsigned out_min, unsigned out_max,
-				     unsigned value)
-{
-	long scaled = value - in_min;
-	scaled *= out_max - out_min;
-	scaled /= in_max - in_min;
-	scaled += out_min;
-	return scaled;
-}
-
 static int ms_8ch_servo_get_position(void* context)
 {
 	struct ms_8ch_servo_data *servo = context;
 	struct i2c_client *client = servo->sensor->client;
-	int ret;
 
-	ret = i2c_smbus_read_word_data(client, 0x42 + servo->id * 2);
-	if (ret < 0)
-		return ret;
-
-	if (ret == 0)
-		return INT_MAX;
-	if (ret < servo->servo.min_pulse_ms)
-		return 0;
-	else if (ret < servo->servo.mid_pulse_ms)
-		return ms_8ch_servo_scale(servo->servo.min_pulse_ms,
-			servo->servo.mid_pulse_ms, 0, 900, ret);
-	else if (ret < servo->servo.max_pulse_ms)
-		return ms_8ch_servo_scale(servo->servo.mid_pulse_ms,
-			servo->servo.max_pulse_ms, 900, 1800, ret);
-	return 1800;
+	return i2c_smbus_read_word_data(client, 0x42 + servo->id * 2);
 }
 
 static int ms_8ch_servo_set_position(void* context, int value)
 {
 	struct ms_8ch_servo_data *servo = context;
 	struct i2c_client *client = servo->sensor->client;
-	int scaled;
 
-	if (value == INT_MAX)
-		scaled = 0;
-	else if (value > 900)
-		scaled = ms_8ch_servo_scale(900, 1800, servo->servo.mid_pulse_ms,
-			servo->servo.max_pulse_ms, value);
-	else
-		scaled = ms_8ch_servo_scale(0, 900, servo->servo.min_pulse_ms,
-			servo->servo.mid_pulse_ms, value);
-
-	return i2c_smbus_write_word_data(client, 0x42 + servo->id * 2, scaled);
+	return i2c_smbus_write_word_data(client, 0x42 + servo->id * 2, value);
 }
 
 static int ms_8ch_servo_get_rate(void* context)

@@ -26,8 +26,6 @@
  *
 * The `servo_motor` class provides a uniform interface for using [hobby type
 * servo motors](https://en.wikipedia.org/wiki/Servo_%%28radio_control%%29).
-* The interface is designed for 180 degree rotation servos, but can be used
-* with 90 degree and continuous rotation servos as well.
 * .
 * ### sysfs Attributes
 * .
@@ -35,49 +33,119 @@
 * is incremented each time a servo is loaded (it is not related to which port
 * the motor is plugged in to).
 * .
+* `command` (read/write)
+* : Sets the command for the servo. Valid values are `run` and `float`. Setting
+*   to `run` will cause the servo to be driven to the position set in the
+*   `position` attribute. Setting to `float` will remove power from the motor.
+* .
 * `max_pulse_ms` (read/write)
 * : Used to set the pulse size in milliseconds for the signal that tells the
-* .    servo to drive to the 180 degree position. Default value is 2400. Valid
-* .    values are 2300 to 2700. You must write to the position attribute for
-* .    changes to this attribute to take effect.
+*   servo to drive to the maximum (clockwise) position. Default value is 2400.
+*   Valid values are 2300 to 2700. You must write to the position attribute for
+*   changes to this attribute to take effect.
 * .
 * `mid_pulse_ms` (read/write)
 * : Used to set the pulse size in milliseconds for the signal that tells the
-* .    servo to drive to the 90 degree position. Default value is 1500. Valid
-* .    values are 1300 to 1700. This is also the neutral position on continuous
-* .    rotation servos. You must write to the position attribute for changes to
-* .    this attribute to take effect.
+*   servo to drive to the mid position. Default value is 1500. Valid
+*   values are 1300 to 1700. For example, on a 180 degree servo, this would be
+*   90 degrees. On continuous rotation servo, this is the "neutral" position
+*   where the motor does not turn. You must write to the position attribute for
+*   changes to this attribute to take effect.
 * .
 * `min_pulse_ms` (read/write)
 * : Used to set the pulse size in milliseconds for the signal that tells the
-* .    servo to drive to the 0 degree position. Default value is 600. Valid
-* .    values are 300 to 700. You must write to the position attribute for
-* .    changes to this attribute to take effect.
+*   servo to drive to the miniumum (counter-clockwise) position. Default value
+*   is 600. Valid values are 300 to 700. You must write to the position
+*   attribute for changes to this attribute to take effect.
 * .
 * `name` (read-only)
 * : Returns the name of the servo controller's driver.
+* .
+* `polarity` (read/write)
+* : Sets the polarity of the servo. Valid values are `normal` and `inverted`.
+*   Setting the value to `inverted` will cause the position value to be
+*   inverted. i.e `-1000` will correspond to `max_pulse_ms`, and `1000` will
+*   correspond to `min_pulse_ms`.
 * .
 * `port_name` (read-only)
 * : Returns the name of the port that the motor is connected to.
 * .
 * `position` (read/write)
 * : Reading returns the current position of the servo. Writing instructs the
-* .    servo to move to the specified position. Units are degrees * 10, i.e
-* .    `1234` = 123.4 degrees. A value of `-1` means float (do not power) the
-* .    motor.
+*   servo to move to the specified position. Units are percent * 10, i.e
+*   `500` = 50.%. Valid values are -1000 to 1000 (-100.0% to 100.0%) where
+*   `-1000` corresponds to `min_pulse_ms`, `0` corresponds to `mid_pulse_ms`
+*   and `1000` corresponds to `max_pulse_ms`.
 * .
 * `rate` (read/write)
-* : Sets the rate at which the servo travels the full range of 0 to 180 degrees.
-* .    Units are in milliseconds. Example: Setting the rate to 2000 means that
-* .    it will take the servo 1 second to move from 0 to 90 degrees. Note:
-* .    Some servo controllers may not support this in which case reading and
-* .    writing will fail with -ENOSYS. In continuous rotation servos, this
-* .    value will affect the rate at which the speed ramps up or down.
+* : Sets the rate at which the servo travels the full range from -100.0% to
+*   100.0%. Units are in milliseconds. Example: Setting the rate to 2000 means
+*   that it will take a 180 degree servo 1 second to move from 0 to 90 degrees.
+*   Note: Some servo controllers may not support this in which case reading and
+*   writing will fail with -ENOSYS. In continuous rotation servos, this
+*   value will affect the rate at which the speed ramps up or down.
 */
 
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/legoev3/servo_motor_class.h>
+
+const char *servo_motor_command_values[] = {
+	[SERVO_MOTOR_COMMAND_RUN]	= "run",
+	[SERVO_MOTOR_COMMAND_FLOAT]	= "float",
+};
+
+const char *servo_motor_polarity_values[] = {
+	[SERVO_MOTOR_POLARITY_NORMAL]	= "normal",
+	[SERVO_MOTOR_POLARITY_INVERTED]	= "inverted",
+};
+
+inline int servo_motor_class_scale(unsigned in_min, unsigned in_max,
+				   unsigned out_min, unsigned out_max,
+				   unsigned value)
+{
+	long scaled = value - in_min;
+	scaled *= out_max - out_min;
+	scaled /= in_max - in_min;
+	scaled += out_min;
+	return scaled;
+}
+
+int servo_motor_class_get_command(struct servo_motor_device *motor)
+{
+	int ret;
+
+	ret = motor->ops.get_position(motor->context);
+	if (ret < 0)
+		return ret;
+
+	return ret ? SERVO_MOTOR_COMMAND_RUN : SERVO_MOTOR_COMMAND_FLOAT;
+}
+
+int servo_motor_class_set_position(struct servo_motor_device *motor,
+				   int new_position,
+				   enum servo_motor_polarity new_polarity)
+{
+	int scaled_position;
+
+	motor->polarity = new_polarity;
+	motor->position = new_position;
+
+	if (motor->command == SERVO_MOTOR_COMMAND_RUN) {
+		if (new_polarity == SERVO_MOTOR_POLARITY_INVERTED)
+			new_position = -new_position;
+		if (new_position > 0)
+			scaled_position = servo_motor_class_scale(0, 1000,
+				motor->mid_pulse_ms, motor->max_pulse_ms,
+				new_position);
+		else
+			scaled_position = servo_motor_class_scale(-1000, 0,
+				motor->min_pulse_ms, motor->mid_pulse_ms,
+				new_position);
+		return motor->ops.set_position(motor->context, scaled_position);
+	}
+	return 0;
+}
 
 static ssize_t name_show(struct device *dev, struct device_attribute *attr,
 			 char *buf)
@@ -161,6 +229,70 @@ static ssize_t max_pulse_ms_store(struct device *dev,
 	return count;
 }
 
+static ssize_t command_show(struct device *dev, struct device_attribute *attr,
+			    char *buf)
+{
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
+
+	return sprintf(buf, "%s\n", servo_motor_command_values[motor->command]);
+}
+
+static ssize_t command_store(struct device *dev, struct device_attribute *attr,
+			     const char *buf, size_t size)
+{
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
+	int i, err;
+
+	for (i = 0; i < NUM_SERVO_MOTOR_COMMAND; i++) {
+		if (!sysfs_streq(buf, servo_motor_command_values[i]))
+			continue;
+		if (motor->command == i)
+			return size;
+
+		motor->command = i;
+		if (motor->command == SERVO_MOTOR_COMMAND_RUN)
+			err = servo_motor_class_set_position(motor, motor->position,
+							     motor->polarity);
+		else
+			err = motor->ops.set_position(motor->context, 0);
+		if (err)
+			return err;
+		return size;
+	}
+
+	return -EINVAL;
+}
+
+static ssize_t polarity_show(struct device *dev, struct device_attribute *attr,
+			     char *buf)
+{
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
+
+	return sprintf(buf, "%s\n", servo_motor_polarity_values[motor->polarity]);
+}
+
+static ssize_t polarity_store(struct device *dev, struct device_attribute *attr,
+			      const char *buf, size_t size)
+{
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
+	int i, err;
+
+	for (i = 0; i < NUM_SERVO_MOTOR_POLARITY; i++) {
+		if (!sysfs_streq(buf, servo_motor_polarity_values[i]))
+			continue;
+
+		if (motor->polarity != i) {
+			err = servo_motor_class_set_position(motor,
+							     motor->position, i);
+			if (err)
+				return err;
+		}
+		return size;
+	}
+
+	return -EINVAL;
+}
+
 static ssize_t position_show(struct device *dev, struct device_attribute *attr,
 			     char *buf)
 {
@@ -170,8 +302,14 @@ static ssize_t position_show(struct device *dev, struct device_attribute *attr,
 	ret = motor->ops.get_position(motor->context);
 	if (ret < 0)
 		return ret;
-	if (ret == INT_MAX)
-		ret = -1;
+	if (ret == 0)
+		ret = motor->position;
+	else if (ret < motor->mid_pulse_ms)
+		ret =  servo_motor_class_scale(motor->min_pulse_ms,
+			motor->mid_pulse_ms, -1000, 0, ret);
+	else
+		ret = servo_motor_class_scale(motor->mid_pulse_ms,
+			motor->max_pulse_ms, 0, 1000, ret);
 	return sprintf(buf, "%d\n", ret);
 }
 
@@ -179,16 +317,16 @@ static ssize_t position_store(struct device *dev, struct device_attribute *attr,
 			      const char *buf, size_t count)
 {
 	struct servo_motor_device *motor = to_servo_motor_device(dev);
-	int value;
-	int err;
+	int value, err;
 
-	if (sscanf(buf, "%d", &value) != 1 || value > 1800 || value < -1)
+	if (sscanf(buf, "%d", &value) != 1 || value > 1000 || value < -1000)
 		return -EINVAL;
-	if (value == -1)
-		value = INT_MAX;
-	err = motor->ops.set_position(motor->context, value);
-	if (err < 0)
-		return err;
+	if (motor->position != value) {
+		err = servo_motor_class_set_position(motor, value,
+						     motor->polarity);
+		if (err)
+			return err;
+	}
 
 	return count;
 }
@@ -231,6 +369,8 @@ static DEVICE_ATTR_RO(port_name);
 static DEVICE_ATTR_RW(min_pulse_ms);
 static DEVICE_ATTR_RW(mid_pulse_ms);
 static DEVICE_ATTR_RW(max_pulse_ms);
+static DEVICE_ATTR_RW(command);
+static DEVICE_ATTR_RW(polarity);
 static DEVICE_ATTR_RW(position);
 static DEVICE_ATTR_RW(rate);
 
@@ -240,6 +380,8 @@ static struct attribute *servo_motor_class_attrs[] = {
 	&dev_attr_min_pulse_ms.attr,
 	&dev_attr_mid_pulse_ms.attr,
 	&dev_attr_max_pulse_ms.attr,
+	&dev_attr_command.attr,
+	&dev_attr_polarity.attr,
 	&dev_attr_position.attr,
 	&dev_attr_rate.attr,
 	NULL
@@ -263,7 +405,7 @@ struct class servo_motor_class;
 
 int register_servo_motor(struct servo_motor_device *servo, struct device *parent)
 {
-	int err;
+	int ret;
 
 	if (!servo || !servo->port_name || !parent)
 		return -EINVAL;
@@ -275,10 +417,15 @@ int register_servo_motor(struct servo_motor_device *servo, struct device *parent
 	servo->min_pulse_ms = 600;
 	servo->mid_pulse_ms = 1500;
 	servo->max_pulse_ms = 2400;
+	ret = servo_motor_class_get_command(servo);
+	if (ret < 0)
+		return ret;
+	servo->command = ret;
+	printk("command is %d", ret);
 
-	err = device_register(&servo->dev);
-	if (err)
-		return err;
+	ret = device_register(&servo->dev);
+	if (ret)
+		return ret;
 
 	dev_info(&servo->dev, "Bound to device '%s'\n", dev_name(parent));
 
