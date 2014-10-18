@@ -675,6 +675,29 @@ static ssize_t tacho_motor_store_reset(struct device *dev, struct device_attribu
         return size;
 }
 
+static ssize_t tacho_motor_show_log(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+	size_t size = 0;
+	int i;
+
+	for (i=0; i<tm->log.index; ++i ) {
+		size += scnprintf( &(buf[size]), PAGE_SIZE-size, "%08X %04X %04X\n", tm->log.timestamp[i], tm->log.event[i], tm->log.data[i] );
+        }
+
+	return size;
+}
+
+static ssize_t tacho_motor_store_log(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+
+        tm->log.index = 0;
+
+        return size;
+}
+
 DEVICE_ATTR(port_name, S_IRUGO, tacho_motor_show_port_name, NULL);
 DEVICE_ATTR(type, S_IRUGO | S_IWUSR, tacho_motor_show_type, tacho_motor_store_type);
 DEVICE_ATTR(position, S_IRUGO | S_IWUSR, tacho_motor_show_position, tacho_motor_store_position);
@@ -714,6 +737,8 @@ DEVICE_ATTR(estop, S_IRUGO | S_IWUSR, tacho_motor_show_estop, tacho_motor_store_
 
 DEVICE_ATTR(reset, S_IWUSR, NULL, tacho_motor_store_reset);
 
+DEVICE_ATTR(log, S_IRUGO | S_IWUSR, tacho_motor_show_log, tacho_motor_store_log);
+
 static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_port_name.attr,
 	&dev_attr_type.attr,
@@ -746,6 +771,7 @@ static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_run.attr,
 	&dev_attr_estop.attr,
 	&dev_attr_reset.attr,
+	&dev_attr_log.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(tacho_motor_class);

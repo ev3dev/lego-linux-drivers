@@ -233,28 +233,122 @@ static void set_samples_per_speed( struct ev3_tacho_motor_data *ev3_tm, int spee
 	}
 }
 
+/*
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * EV3 Tacho Motor Driver
+ *
+ * The tacho motor driver uses two pins on each port to determine the direction
+ * of rotation of the motor.
+ * .
+ * `pdata->tacho_int_gpio` is the pin that is set up to trigger an interrupt
+ * any edge change
+ * .
+ * `pdata->tacho_dir_gpio` is the pin that helps to determine the direction
+ * of rotation
+ * .
+ * When int == dir then the encoder is turning in the forward direction
+ * When int != dir then the encoder is turning in the reverse direction
+ * .
+ * ```
+ * -----     --------           --------      -----
+ *     |     |      |           |      |      |
+ *     |     |      |           |      |      |
+ *     -------      -------------       -------          DIRx signal
+ *
+ *  -------     --------     --------     --------       INTx signal
+ *        |     |      |     |      |     |      |
+ *        |     |      |     |      |     |      |
+ *        -------      -------      -------      -----
+ *        \     \      \     \      \     \      \
+ *         ^     ^      ^     ^      ^     ^      ^      ISR handler
+ *         +1    +1     +1    -1     -1    -1     -1     TachoCount
+ *
+ * All this works perfectly well when there are no missed interrupts, and when
+ * the transitions on these pins are clean (no bounce or noise). It is possible
+ * to get noisy operation when the transitions are very slow, and we have 
+ * observed signals similar to this:
+ * .
+ * ```
+ * -------------                       -------------
+ *             |                       |           
+ *             |                       |           
+ *             -------------------------                 DIRx signal
+ *
+ *    ---------------   ----                             INTx signal
+ *    |             |   |  | 
+ *    |             |   |  |
+ * ----             -----  -------------------------
+ *    \              \   \  \
+ *     ^              ^   ^  ^                           ISR Handler
+ *     +1             +1  -1 +1                          TachoCount
+ *                    A   B  C
+ * ```
+ * .
+ * The example above has three transitions that we are interested in
+ * labelled A, B, and C - they represent a noisy signal. As long as
+ * all three transitions are cought by the ISR, then the count is
+ * incremented by 2 as expected. But there are other outcomes possible.
+ * .
+ * For example, if the A transition is handled, but the INT signal
+ * is not measured until after B, then the final count value is 1.
+ * .
+ * On the other hand, if the B transition is missed, and only A and
+ * C are handled, then the final count value is 3.
+ * .
+ * Either way, we need to figure out a way to clean things up, and as
+ * long as at least two of the interrupts are caught, we can "undo"
+ * a reading quite easily.
+ * .
+ * The mini-tacho motor turns at a maximum of 1200 pulses per second, the
+ * standard tacho motor has a maximum speed of 900 pulses per second. Taking
+ * the highest value, this means that about 800 usec is the fastest time
+ * between interrupts. If we see two interrupts with a delta of much less
+ * than, say 400 usec, then we're probably looking at a noisy transition.
+ * .
+ * In most cases that have been captured, the shortest delta is the A-B
+ * transition, anywhere from 10 to 20 usec, which is faster than the ISR
+ * response time. The B-C transition has been measured up to 150 usec.
+ * .
+ * It is clear that the correct transition to use for changing the
+ * value of `TachoCount` is C - so if the delta from A-C is less than
+ * the threshold, we should "undo" whatever the A transition told us.
+ * .
+ */
+
 static irqreturn_t tacho_motor_isr(int irq, void *id)
 {
 	struct ev3_tacho_motor_data *ev3_tm = id;
 	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
 
+	struct tm_log *log = &(ev3_tm->tm.log);
+
 	bool int_state =  gpio_get_value(pdata->tacho_int_gpio);
 	bool dir_state = !gpio_get_value(pdata->tacho_dir_gpio);
 
-	unsigned long timer = legoev3_hires_timer_read();
-
+	unsigned long timer      = legoev3_hires_timer_read();
+	unsigned long prev_timer = ev3_tm->tacho_samples[ev3_tm->tacho_samples_head];
+	
 	unsigned next_sample;
 
 	int  next_direction;
 
-	/* Grab the next incremental sample timestamp */
-
+//	if (128 > log->index) {
+//		log->timestamp[log->index] = timer;
+//		log->event[log->index]     = int_state;
+//		log->data[log->index]      = dir_state;
+//		log->index++;
+//        }
+	
 	next_sample = (ev3_tm->tacho_samples_head + 1) % TACHO_SAMPLES;
 
-	ev3_tm->tacho_samples[next_sample] = timer;
-	ev3_tm->tacho_samples_head = next_sample;
-
-	/* If the speed is high enough, just update the tacho counter based on direction */
+        /* If the speed is high enough, just update the tacho counter based on direction */
 
 	if ((35 < ev3_tm->speed) || (-35 > ev3_tm->speed)) {
 
@@ -262,25 +356,26 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 			ev3_tm->dir_chg_samples++;
 
 	} else {
-
-	/* Update the tacho count and motor direction for low speed, taking
-	 * advantage of the fact that if state and dir match, then the motor
-	 * is turning FORWARD!
-	 *
-	 * We also look after the polarity_mode and encoder_mode here as follows:
-	 *
-	 * polarity_mode | encoder_mode | next_direction
-	 * --------------+--------------+---------------
-	 *   normal      |    normal    | normal
-	 *   normal      |    inverted  | inverted
-	 *   inverted    |    normal    | inverted
-	 *   inverted    |    inverted  | normal
-	 *
-	 * Yes, this could be compressed into a clever set of conditionals that 
-	 * results in only two assignments, but it's clearer to write nested
-	 * if statements in this case - it looks a lot more like the truth table
-	 */
-
+		
+		/* Update the tacho count and motor direction for low speed, taking
+		 * advantage of the fact that if state and dir match, then the motor
+		 * is turning FORWARD!
+		 *
+		 * We also look after the polarity_mode and encoder_mode here as follows:
+		 *
+		 * polarity_mode | encoder_mode | next_direction
+		 * --------------+--------------+---------------
+		 * normal        | normal       | normal
+		 * normal        | inverted     | inverted
+		 * inverted      | normal       | inverted
+		 * inverted      | inverted     | normal
+		 *
+		 * Yes, this could be compressed into a clever set of conditionals that
+		 * results in only two assignments, or a lookup table, but it's clearer
+		 * to write nested if statements in this case - it looks a lot more
+		 * like the truth table
+		 */
+	
 		if (TM_POLARITY_NORMAL == ev3_tm->polarity_mode) {
 			if (TM_ENCODER_NORMAL == ev3_tm->encoder_mode) {
 				next_direction = (int_state == dir_state) ? FORWARD : REVERSE;
@@ -292,20 +387,52 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 				next_direction = (int_state == dir_state) ? REVERSE : FORWARD;
 			} else {
 				next_direction = (int_state == dir_state) ? FORWARD : REVERSE;
+			}	
+		}
+
+	       /* If the difference in timestamps is too small, then undo the
+		 * previous increment - it's OK for a count to waver once in
+	         * a while - better than being wrong!
+		 *
+		 * Here's what we'll do when the transition is too small:
+		 *
+		 * 1) UNDO the increment to the next timer sample update
+		 *    dir_chg_samples count!
+		 * 2) UNDO the previous run_direction count update
+		 *
+		 */
+	
+	        if ((400 * 33) > (timer - prev_timer)) {
+			ev3_tm->tacho_samples[ev3_tm->tacho_samples_head] = timer;
+
+			if (FORWARD == ev3_tm->run_direction)
+				ev3_tm->irq_tacho--;
+			else			
+				ev3_tm->irq_tacho++;
+	
+			next_sample = ev3_tm->tacho_samples_head;
+
+		} else {
+ 	       	
+			/* If the saved and next direction states
+			 * match, then update the dir_chg_sample count
+			 */
+
+			if (ev3_tm->run_direction == next_direction) {
+				if (ev3_tm->dir_chg_samples < (TACHO_SAMPLES-1))
+					ev3_tm->dir_chg_samples++;
+			} else {
+				ev3_tm->dir_chg_samples = 0;
 			}
 		}
-	
-                /* If the saved and next direction states match, then update the dir_chg_sample count */
-
-		if (ev3_tm->run_direction == next_direction) {
-			if (ev3_tm->dir_chg_samples < (TACHO_SAMPLES-1))
-				ev3_tm->dir_chg_samples++;
-		} else {
-			ev3_tm->dir_chg_samples = 0;
-		}
-
-		ev3_tm->run_direction = next_direction;
 	}
+
+	ev3_tm->run_direction = next_direction;
+
+	/* Grab the next incremental sample timestamp */
+
+	ev3_tm->tacho_samples[next_sample] = timer;
+	ev3_tm->tacho_samples_head = next_sample;
 
 	ev3_tm->irq_mutex = true;
 
