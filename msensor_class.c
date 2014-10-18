@@ -46,7 +46,7 @@
 * ### sysfs Attributes
 * .
 * Sensors can be found at `/sys/class/msensor/sensor<N>`, where `<N>` is
-* incremented each time a sensor is loaded (is is not related to which port
+* incremented each time a sensor is loaded (it is not related to which port
 * the sensor is plugged in to).
 * .
 * `bin_data` (read/write)
@@ -460,7 +460,7 @@ static ssize_t msensor_show_poll_ms(struct device *dev,
 	int ret;
 
 	if (!ms->get_poll_ms)
-		return -ENXIO;
+		return -ENOSYS;
 
 	ret = ms->get_poll_ms(ms->context);
 	if (ret < 0)
@@ -478,7 +478,7 @@ static ssize_t msensor_store_poll_ms(struct device *dev,
 	int err;
 
 	if (!ms->set_poll_ms)
-		return -ENXIO;
+		return -ENOSYS;
 
 	if (sscanf(buf, "%ud", &value) != 1)
 		return -EINVAL;
@@ -504,7 +504,7 @@ static ssize_t msensor_show_address(struct device *dev,
 {
 	struct msensor_device *ms = to_msensor_device(dev);
 
-	return sprintf(buf, "%u\n", ms->address);
+	return sprintf(buf, "0x%02x\n", ms->address);
 }
 
 static ssize_t msensor_read_bin_data(struct file *file, struct kobject *kobj,
@@ -534,7 +534,7 @@ static ssize_t msensor_write_bin_data(struct file *file ,struct kobject *kobj,
 	struct msensor_device *ms = to_msensor_device(dev);
 
 	if (!ms->write_data)
-		return -ENXIO;
+		return -ENOSYS;
 
 	return ms->write_data(ms->context, buf, off, count);
 }

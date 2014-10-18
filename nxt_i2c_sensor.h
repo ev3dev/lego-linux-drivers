@@ -104,6 +104,7 @@ enum nxt_i2c_sensor_type {
 	HT_NXT_IR_LINK_SENSOR,
 	HT_NXT_SUPER_PRO_SENSOR,
 	HT_NXT_SENSOR_MUX,
+	MS_8CH_SERVO,
 	MS_LIGHT_SENSOR_ARRAY,
 	NUM_NXT_I2C_SENSORS
 };
@@ -127,6 +128,7 @@ enum nxt_i2c_sensor_type {
 { "ht-nxt-ir-link",	HT_NXT_IR_LINK_SENSOR		}, \
 { "ht-super-pro",	HT_NXT_SUPER_PRO_SENSOR		}, \
 { "ht-nxt-smux",	HT_NXT_SENSOR_MUX		}, \
+{ "ms-8ch-servo", 	MS_8CH_SERVO			}, \
 { "ms-light-array",	MS_LIGHT_SENSOR_ARRAY		}, \
 { }
 

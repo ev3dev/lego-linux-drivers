@@ -67,7 +67,7 @@ config LEGOEV3_UART_SENSORS
 	  Select Y to enable support for EV3 UART sensors.
 
 config LEGOEV3_MOTORS
-	tristate "EV3 motor suppport"
+	tristate "EV3 motor support"
 	default y
 	depends on LEGOEV3_DEV_PORTS
 	help
@@ -75,11 +75,16 @@ config LEGOEV3_MOTORS
 	  class interface for LEGO EV3 and NXT compatible motors.
 
 config LEGOEV3_TACHO_MOTORS
-	tristate "EV3 tacho motor suppport"
+	tristate "tacho motor support"
 	default y
 	depends on LEGOEV3_MOTORS
 	help
-	  Select Y to enable support for LEGO EV3 and NXT tacho motors.
+	  Select Y to enable support for tacho motors.
 
+config LEGOEV3_SERVO_MOTORS
+	tristate "Servo motor support"
+	default y
+	help
+	  Select Y to enable support for servo motors.
 
 endif #LEGOEV3_DRIVERS
