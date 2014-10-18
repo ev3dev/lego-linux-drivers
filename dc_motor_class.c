@@ -25,8 +25,8 @@
  * DC Motor Class
  *
 * The `dc_motor` class provides a uniform interface for using regular DC motors
-* with no fancy controls or feedback. This includes the LEGO Power Functions
-* motors.
+* with no fancy controls or feedback. This includes LEGO MINDSTORMS RCX motors
+* and LEGO Power Functions motors.
 * .
 * ### sysfs Attributes
 * .

@@ -13,6 +13,31 @@
  * GNU General Public License for more details.
  */
 
+/*
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * RCX/Power Functions Motor Driver
+ *
+ * This driver provides a [dc-motor] interface for RCX motors, Power Functions
+ * motors or any other DC motor connected to an output port. You can find the
+ * sysfs device at `/sys/bus/legoev3/devices/<port>:rcx-motor` where `<port>`
+ * is the the name of the output port the motor is connected to (e.g. `outA`).
+ * There is not much of interest there though - all the useful stuff is in the
+ * [dc-motor] class.
+ * .
+ * This device is loaded when an [ev3-output-port] is set to `rcx-motor` mode.
+ * It is not automatically detected.
+ * .
+ * [dc-motor]: ../dc-motor-class
+ * [ev3-output-port]: ../ev3-output-port
+ */
+
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/slab.h>
