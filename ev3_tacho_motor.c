@@ -158,8 +158,8 @@ struct ev3_tacho_motor_data {
 	long regulation_mode;
 	long stop_mode;
 	long position_mode;
-	long polarity_mode;
-	long encoder_mode;
+	enum dc_motor_polarity polarity_mode;
+	enum dc_motor_polarity encoder_mode;
 };
 
 static const int SamplesPerSpeed[NO_OF_MOTOR_TYPES][NO_OF_SAMPLE_STEPS] = {
@@ -373,24 +373,24 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 		 * to write nested if statements in this case - it looks a lot more
 		 * like the truth table
 		 */
-	
-		if (TM_POLARITY_NORMAL == ev3_tm->polarity_mode) {
-			if (TM_ENCODER_NORMAL == ev3_tm->encoder_mode) {
+
+		if (ev3_tm->polarity_mode == DC_MOTOR_POLARITY_NORMAL) {
+			if (ev3_tm->encoder_mode == DC_MOTOR_POLARITY_NORMAL) {
 				next_direction = (int_state == dir_state) ? FORWARD : REVERSE;
 			} else {
 				next_direction = (int_state == dir_state) ? REVERSE : FORWARD;
 			}
 		} else {
-			if (TM_ENCODER_NORMAL == ev3_tm->encoder_mode) {
+			if (ev3_tm->encoder_mode == DC_MOTOR_POLARITY_NORMAL) {
 				next_direction = (int_state == dir_state) ? REVERSE : FORWARD;
 			} else {
 				next_direction = (int_state == dir_state) ? FORWARD : REVERSE;
-			}	
+			}
 		}
 
-	       /* If the difference in timestamps is too small, then undo the
+		/* If the difference in timestamps is too small, then undo the
 		 * previous increment - it's OK for a count to waver once in
-	         * a while - better than being wrong!
+		 * a while - better than being wrong!
 		 *
 		 * Here's what we'll do when the transition is too small:
 		 *
@@ -400,7 +400,7 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 		 *
 		 */
 	
-	        if ((400 * 33) > (timer - prev_timer)) {
+		if ((400 * 33) > (timer - prev_timer)) {
 			ev3_tm->tacho_samples[ev3_tm->tacho_samples_head] = timer;
 
 			if (FORWARD == ev3_tm->run_direction)
@@ -409,10 +409,9 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 				ev3_tm->irq_tacho++;
 	
 			next_sample = ev3_tm->tacho_samples_head;
-
 		} else {
- 	       	
-			/* If the saved and next direction states
+			/*
+			 * If the saved and next direction states
 			 * match, then update the dir_chg_sample count
 			 */
 
@@ -446,46 +445,27 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 	return IRQ_HANDLED;
 }
 
-static void ev3_tacho_motor_set_power(struct ev3_tacho_motor_data *ev3_tm, int power)
+void ev3_tacho_motor_update_output(struct ev3_tacho_motor_data *ev3_tm)
 {
+	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data;
 	int err;
-	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
 
-	/* Bail out early if there's no change in the power setting */
-
-	if (ev3_tm->power == power)
-		goto no_change_power;
-
-	/* Make sure power is within a reasonable range */
-
-	if (power > MAX_POWER) {
-		power = MAX_POWER;
-	} else if (power < -MAX_POWER) {
-		power = -MAX_POWER;
-	}
-
-	if (0 < power) {
-		if (TM_POLARITY_NORMAL == ev3_tm->polarity_mode)
-			pdata->motor_ops.set_command(pdata->motor_ops.context,
-						DC_MOTOR_COMMAND_FORWARD);
-		else
-			pdata->motor_ops.set_command(pdata->motor_ops.context,
-						DC_MOTOR_COMMAND_REVERSE);
-
-		if (TM_REGULATION_OFF == ev3_tm->regulation_mode && power < 10)
-			power = 10;
-	} else if (0 > power) {
-		if (TM_POLARITY_NORMAL == ev3_tm->polarity_mode)
-			pdata->motor_ops.set_command(pdata->motor_ops.context,
-						DC_MOTOR_COMMAND_REVERSE);
-		else
-			pdata->motor_ops.set_command(pdata->motor_ops.context,
-						DC_MOTOR_COMMAND_FORWARD);
-
-		if (TM_REGULATION_OFF == ev3_tm->regulation_mode && power > -10)
-			power = -10;
+	if (ev3_tm->power > 0) {
+		pdata->motor_ops.set_polarity(pdata->motor_ops.context,
+					      ev3_tm->polarity_mode);
+		pdata->motor_ops.set_command(pdata->motor_ops.context,
+					     DC_MOTOR_COMMAND_RUN);
+		if (ev3_tm->regulation_mode == TM_REGULATION_OFF && ev3_tm->power < 10)
+			ev3_tm->power = 10;
+	} else if (ev3_tm->power < 0) {
+		pdata->motor_ops.set_polarity(pdata->motor_ops.context,
+					      !ev3_tm->polarity_mode);
+		pdata->motor_ops.set_command(pdata->motor_ops.context,
+					     DC_MOTOR_COMMAND_RUN);
+		if (ev3_tm->regulation_mode == TM_REGULATION_OFF && ev3_tm->power > -10)
+			ev3_tm->power = -10;
 	} else {
-		if (TM_STOP_COAST == ev3_tm->stop_mode)
+		if (ev3_tm->stop_mode == TM_STOP_COAST)
 			pdata->motor_ops.set_command(pdata->motor_ops.context,
 						DC_MOTOR_COMMAND_COAST);
 		else if (TM_STOP_BRAKE == ev3_tm->stop_mode)
@@ -498,18 +478,24 @@ static void ev3_tacho_motor_set_power(struct ev3_tacho_motor_data *ev3_tm, int p
 
 	/* The power sets the duty cycle - 100% power == 100% duty cycle */
 	err = pdata->motor_ops.set_duty_cycle(pdata->motor_ops.context,
-					      abs(power) * 10);
+					      abs(ev3_tm->power) * 10);
 	WARN_ONCE(err, "Failed to set pwm duty cycle! (%d)\n", err);
+}
 
-no_change_power:
+static void ev3_tacho_motor_set_power(struct ev3_tacho_motor_data *ev3_tm, int power)
+{
+	int err;
 
-	/* Note, we get here all the time, we always do the assignment otherwise
-	 * the careful work we did to limit the range of power is wasted when we
-	 * try to read it back! Also, it's required because you can't goto
-	 * the very end of a void function - who knew?
-	 */
+	if (ev3_tm->power == power)
+		return;
+
+	if (power > MAX_POWER)
+		power = MAX_POWER;
+	else if (power < -MAX_POWER)
+		power = -MAX_POWER;
 
 	ev3_tm->power = power;
+	ev3_tacho_motor_update_output(ev3_tm);
 }
 
 static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
@@ -572,14 +558,14 @@ static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
 	ev3_tm->pid.prev_pulses_per_second 	= 0;
 
 	ev3_tm->pid.prev_position_error	= 0;
-        ev3_tm->speed_reg_sp		= 0;
-        ev3_tm->run_direction		= UNKNOWN;
+	ev3_tm->speed_reg_sp		= 0;
+	ev3_tm->run_direction		= UNKNOWN;
 	ev3_tm->run			= 0;
 	ev3_tm->estop			= 0;
 
 	ev3_tm->tacho			= 0;	
 	ev3_tm->irq_tacho		= 0;
-        ev3_tm->speed			= 0;
+	ev3_tm->speed			= 0;
 	ev3_tm->power			= 0;
 	ev3_tm->state			= TM_STATE_IDLE;
 
@@ -594,8 +580,8 @@ static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
 	ev3_tm->regulation_mode	= TM_REGULATION_OFF;
 	ev3_tm->stop_mode	= TM_STOP_COAST;
 	ev3_tm->position_mode	= TM_POSITION_ABSOLUTE;
-	ev3_tm->polarity_mode	= TM_POLARITY_NORMAL;
-	ev3_tm->encoder_mode	= TM_ENCODER_NORMAL;
+	ev3_tm->polarity_mode	= DC_MOTOR_POLARITY_NORMAL;
+	ev3_tm->encoder_mode	= DC_MOTOR_POLARITY_NORMAL;
 };
 
 /*
@@ -1656,12 +1642,14 @@ static int ev3_tacho_motor_get_polarity_mode(struct tacho_motor_device *tm)
 	return ev3_tm->polarity_mode;
 }
 
-static void ev3_tacho_motor_set_polarity_mode(struct tacho_motor_device *tm, long polarity_mode)
+static void ev3_tacho_motor_set_polarity_mode(struct tacho_motor_device *tm,
+					      long polarity_mode)
 {
 	struct ev3_tacho_motor_data *ev3_tm =
 			container_of(tm, struct ev3_tacho_motor_data, tm);
 
 	ev3_tm->polarity_mode = polarity_mode;
+	ev3_tacho_motor_update_output(ev3_tm);
 }
 
 static int ev3_tacho_motor_get_encoder_mode(struct tacho_motor_device *tm)
@@ -1672,7 +1660,8 @@ static int ev3_tacho_motor_get_encoder_mode(struct tacho_motor_device *tm)
 	return ev3_tm->encoder_mode;
 }
 
-static void ev3_tacho_motor_set_encoder_mode(struct tacho_motor_device *tm, long encoder_mode)
+static void ev3_tacho_motor_set_encoder_mode(struct tacho_motor_device *tm,
+					     long encoder_mode)
 {
 	struct ev3_tacho_motor_data *ev3_tm =
 			container_of(tm, struct ev3_tacho_motor_data, tm);

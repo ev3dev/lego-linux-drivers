@@ -43,11 +43,14 @@
 * : Returns a space separated list of commands supported by the motor controller.
 * .
 * `duty_cycle` (read/write)
-* : Sets the duty cycle of the PWM signal sent to the motor. Values are 0 to
-*   1000 (0.0 to 100.0%).
+* : Sets the duty cycle of the PWM signal sent to the motor. Values are -1000
+*   to 1000 (-100.0 to 100.0%).
 * .
 * `name` (read-only)
-* : Returns the name of the dc controller's driver.
+* : Returns the name of the motor controller's driver.
+* .
+* `polarity`: (read/write)
+* : Sets the polarity of the motor. Valid values are `normal` and `inverted`.
 * .
 * `port_name` (read-only)
 * : Returns the name of the port that the motor is connected to.
@@ -67,12 +70,18 @@
 #include <linux/module.h>
 #include <linux/legoev3/dc_motor_class.h>
 
-const char* dc_motor_command_names[]  = {
-	[DC_MOTOR_COMMAND_FORWARD]	= "forward",
-	[DC_MOTOR_COMMAND_REVERSE]	= "reverse",
+const char* dc_motor_command_names[] = {
+	[DC_MOTOR_COMMAND_RUN]		= "run",
 	[DC_MOTOR_COMMAND_COAST]	= "coast",
 	[DC_MOTOR_COMMAND_BRAKE]	= "brake",
 };
+EXPORT_SYMBOL_GPL(dc_motor_command_names);
+
+const char* dc_motor_polarity_values[] = {
+	[DC_MOTOR_POLARITY_NORMAL]	= "normal",
+	[DC_MOTOR_POLARITY_INVERTED]	= "inverted",
+};
+EXPORT_SYMBOL_GPL(dc_motor_polarity_values);
 
 static ssize_t name_show(struct device *dev, struct device_attribute *attr,
 			 char *buf)
@@ -136,6 +145,33 @@ static ssize_t ramp_down_ms_store(struct device *dev,
 	return count;
 }
 
+static ssize_t polarity_show(struct device *dev,
+			     struct device_attribute *attr, char *buf)
+{
+	struct dc_motor_device *motor = to_dc_motor_device(dev);
+
+	return sprintf(buf, "%s\n", dc_motor_polarity_values[motor->polarity]);
+}
+
+static ssize_t polarity_store(struct device *dev, struct device_attribute *attr,
+			      const char *buf, size_t count)
+{
+	struct dc_motor_device *motor = to_dc_motor_device(dev);
+	int i, err;
+
+	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++) {
+		if (sysfs_streq(buf, dc_motor_polarity_values[i])) {
+			err = motor->ops.set_polarity(motor->ops.context, i);
+			if (err)
+				return err;
+			motor->polarity = i;
+			return count;
+		}
+
+	}
+	return -EINVAL;
+}
+
 static ssize_t duty_cycle_show(struct device *dev,
 			       struct device_attribute *attr, char *buf)
 {
@@ -143,7 +179,8 @@ static ssize_t duty_cycle_show(struct device *dev,
 	int duty_cycle;
 
 	duty_cycle = motor->ops.get_duty_cycle(motor->ops.context);
-
+	if (motor->polarity == DC_MOTOR_POLARITY_INVERTED)
+		duty_cycle = -duty_cycle;
 	return sprintf(buf, "%d\n", duty_cycle);
 }
 
@@ -152,12 +189,13 @@ static ssize_t duty_cycle_store(struct device *dev,
 				const char *buf, size_t count)
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
-	unsigned value;
-	int err;
+	int value, err;
 
-	if (sscanf(buf, "%ud", &value) != 1 || value > 1000)
+	if (sscanf(buf, "%d", &value) != 1 || value < -1000 || value > 1000)
 		return -EINVAL;
-	err = motor->ops.set_duty_cycle(motor->ops.context, value);
+	err = motor->ops.set_polarity(motor->ops.context,
+				      motor->polarity ^ (value < 0));
+	err = motor->ops.set_duty_cycle(motor->ops.context, abs(value));
 	if (err)
 		return err;
 
@@ -221,6 +259,7 @@ static DEVICE_ATTR_RO(name);
 static DEVICE_ATTR_RO(port_name);
 static DEVICE_ATTR_RW(ramp_up_ms);
 static DEVICE_ATTR_RW(ramp_down_ms);
+static DEVICE_ATTR_RW(polarity);
 static DEVICE_ATTR_RW(duty_cycle);
 static DEVICE_ATTR_RO(commands);
 static DEVICE_ATTR_RW(command);
@@ -230,6 +269,7 @@ static struct attribute *dc_motor_class_attrs[] = {
 	&dev_attr_port_name.attr,
 	&dev_attr_ramp_up_ms.attr,
 	&dev_attr_ramp_down_ms.attr,
+	&dev_attr_polarity.attr,
 	&dev_attr_duty_cycle.attr,
 	&dev_attr_commands.attr,
 	&dev_attr_command.attr,

@@ -238,7 +238,8 @@ struct device_type ev3_motor_device_types[] = {
  * @tacho_motor_type: The type of motor currently connected.
  * @motor: Pointer to the motor device that is connected to the output port.
  * @mode: The current mode of the output port.
- * @command: The current command for the PWM of the output port.
+ * @command: The current command for the motor driver of the output port.
+ * @polarity: The current polarity for the motor driver of the output port.
  */
 struct ev3_output_port_data {
 	enum ev3_output_port_id id;
@@ -257,35 +258,20 @@ struct ev3_output_port_data {
 	struct legoev3_port_device *motor;
 	enum ev3_output_port_mode mode;
 	enum dc_motor_command command;
+	enum dc_motor_polarity polarity;
 };
 
-static unsigned ev3_ouput_port_get_supported_commands(void* context)
+int ev3_output_port_set_direction_gpios(struct ev3_output_port_data *data)
 {
-	return BIT(DC_MOTOR_COMMAND_FORWARD) | BIT(DC_MOTOR_COMMAND_REVERSE)
-		| BIT(DC_MOTOR_COMMAND_COAST) | BIT(DC_MOTOR_COMMAND_BRAKE);
-}
-
-static int ev3_output_port_get_command(void *context)
-{
-	struct ev3_output_port_data *data = context;
-
-	return data->command;
-}
-
-static int ev3_output_port_set_command(void *context, enum dc_motor_command command)
-{
-	struct ev3_output_port_data *data = context;
-
-	if (data->command == command)
-		return 0;
-	switch(command) {
-	case DC_MOTOR_COMMAND_FORWARD:
-		gpio_direction_output(data->gpio[GPIO_PIN1].gpio, 1);
-		gpio_direction_input(data->gpio[GPIO_PIN2].gpio);
-		break;
-	case DC_MOTOR_COMMAND_REVERSE:
-		gpio_direction_input(data->gpio[GPIO_PIN1].gpio);
-		gpio_direction_output(data->gpio[GPIO_PIN2].gpio, 1);
+	switch(data->command) {
+	case DC_MOTOR_COMMAND_RUN:
+		if (data->polarity == DC_MOTOR_POLARITY_NORMAL) {
+			gpio_direction_output(data->gpio[GPIO_PIN1].gpio, 1);
+			gpio_direction_input(data->gpio[GPIO_PIN2].gpio);
+		} else {
+			gpio_direction_input(data->gpio[GPIO_PIN1].gpio);
+			gpio_direction_output(data->gpio[GPIO_PIN2].gpio, 1);
+		}
 		break;
 	case DC_MOTOR_COMMAND_BRAKE:
 		gpio_direction_output(data->gpio[GPIO_PIN1].gpio, 1);
@@ -298,9 +284,51 @@ static int ev3_output_port_set_command(void *context, enum dc_motor_command comm
 	default:
 		return -EINVAL;
 	}
+	return 0;
+}
+
+static unsigned ev3_ouput_port_get_supported_commands(void* context)
+{
+	return BIT(DC_MOTOR_COMMAND_RUN) | BIT(DC_MOTOR_COMMAND_COAST)
+		| BIT(DC_MOTOR_COMMAND_BRAKE);
+}
+
+static int ev3_output_port_get_command(void *context)
+{
+	struct ev3_output_port_data *data = context;
+
+	return data->command;
+}
+
+static int ev3_output_port_set_command(void *context,
+				       enum dc_motor_command command)
+{
+	struct ev3_output_port_data *data = context;
+
+	if (data->command == command)
+		return 0;
 	data->command = command;
 
-	return 0;
+	return ev3_output_port_set_direction_gpios(data);
+}
+
+static enum dc_motor_polarity ev3_output_port_get_polarity(void *context)
+{
+	struct ev3_output_port_data *data = context;
+
+	return data->command;
+}
+
+static int ev3_output_port_set_polarity(void *context,
+					enum dc_motor_polarity polarity)
+{
+	struct ev3_output_port_data *data = context;
+
+	if (data->polarity == polarity)
+		return 0;
+	data->polarity = polarity;
+
+	return ev3_output_port_set_direction_gpios(data);
 }
 
 static unsigned ev3_output_port_get_duty_cycle(void *context)
@@ -358,6 +386,8 @@ void ev3_output_port_register_motor(struct work_struct *work)
 					ev3_ouput_port_get_supported_commands;
 	pdata.motor_ops.get_command = ev3_output_port_get_command;
 	pdata.motor_ops.set_command = ev3_output_port_set_command;
+	pdata.motor_ops.get_polarity = ev3_output_port_get_polarity;
+	pdata.motor_ops.set_polarity = ev3_output_port_set_polarity;
 	pdata.motor_ops.set_duty_cycle = ev3_output_port_set_duty_cycle;
 	pdata.motor_ops.get_duty_cycle = ev3_output_port_get_duty_cycle;
 	pdata.motor_ops.context = data;

@@ -103,7 +103,7 @@ static int rcx_led_probe(struct legoev3_port_device *motor)
 	dev_set_drvdata(&motor->dev, data);
 
 	data->motor_ops.set_command(data->motor_ops.context,
-				    DC_MOTOR_COMMAND_FORWARD);
+				    DC_MOTOR_COMMAND_RUN);
 	dev_info(data->cdev.dev, "Bound to device '%s'\n",
 		 dev_name(&motor->dev));
 

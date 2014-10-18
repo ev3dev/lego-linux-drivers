@@ -15,6 +15,7 @@
 
 #include <linux/device.h>
 #include <linux/module.h>
+#include <linux/legoev3/dc_motor_class.h>
 #include <linux/legoev3/tacho_motor_class.h>
 
 struct tacho_motor_mode_item {
@@ -41,16 +42,6 @@ static struct tacho_motor_mode_item tacho_motor_run_modes[TM_NUM_RUN_MODES] = {
 	[TM_RUN_FOREVER]   =  { "forever"  },
 	[TM_RUN_TIME]      =  { "time"     },
 	[TM_RUN_POSITION]  =  { "position" },
-};
-
-static struct tacho_motor_mode_item tacho_motor_polarity_modes[TM_NUM_POLARITY_MODES] = {
-	[TM_POLARITY_NORMAL]	=  { "normal"  },
-	[TM_POLARITY_INVERTED]	=  { "inverted"  },
-};
-
-static struct tacho_motor_mode_item tacho_motor_encoder_modes[TM_NUM_ENCODER_MODES] = {
-	[TM_ENCODER_NORMAL]	=  { "normal"  },
-	[TM_ENCODER_INVERTED]	=  { "inverted"  },
 };
 
 struct tacho_motor_type_item {
@@ -321,80 +312,94 @@ static ssize_t tacho_motor_store_position_mode(struct device *dev, struct device
         return size;
 }
 
-static ssize_t tacho_motor_show_polarity_modes(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t tacho_motor_show_polarity_modes(struct device *dev,
+					       struct device_attribute *attr,
+					       char *buf)
 {
-        unsigned int i;
-
+	int i;
 	int size = 0;
 
-	for (i=0; i<TM_NUM_POLARITY_MODES; ++i)
-		size += sprintf(buf+size, "%s ", tacho_motor_polarity_modes[i].name);
+	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++)
+		size += sprintf(buf+size, "%s ", dc_motor_polarity_values[i]);
 
-	size += sprintf(buf+size, "\n");
+	buf[size - 1]= '\n';
 
-        return size;
+	return size;
 }
 
-static ssize_t tacho_motor_show_polarity_mode(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t tacho_motor_show_polarity_mode(struct device *dev,
+					      struct device_attribute *attr,
+					      char *buf)
 {
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+	struct tacho_motor_device *tm =
+			container_of(dev, struct tacho_motor_device, dev);
 
-	return sprintf(buf, "%s\n", tacho_motor_polarity_modes[tm->fp->get_polarity_mode(tm)].name);
+	return sprintf(buf, "%s\n",
+		       dc_motor_polarity_values[tm->fp->get_polarity_mode(tm)]);
 }
 
-static ssize_t tacho_motor_store_polarity_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+static ssize_t tacho_motor_store_polarity_mode(struct device *dev,
+					       struct device_attribute *attr,
+					       const char *buf, size_t size)
 {
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+	struct tacho_motor_device *tm =
+			container_of(dev, struct tacho_motor_device, dev);
 
-        unsigned int i;
+	int i;
 
-	for (i=0; i<TM_NUM_POLARITY_MODES; ++i)
-		if (sysfs_streq(buf, tacho_motor_polarity_modes[i].name)) break;
+	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++) {
+		if (sysfs_streq(buf, dc_motor_polarity_values[i])) {
+			tm->fp->set_polarity_mode(tm, i);
+			return size;
+		}
+	}
 
-	if (i >= TM_NUM_POLARITY_MODES)
-                return -EINVAL;
-
-        tm->fp->set_polarity_mode(tm, i);
-
-        return size;
+	return -EINVAL;
 }
 
-static ssize_t tacho_motor_show_encoder_modes(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t tacho_motor_show_encoder_modes(struct device *dev,
+					      struct device_attribute *attr,
+					      char *buf)
 {
-        unsigned int i;
-
+	int i;
 	int size = 0;
 
-	for (i=0; i<TM_NUM_ENCODER_MODES; ++i)
-		size += sprintf(buf+size, "%s ", tacho_motor_encoder_modes[i].name);
+	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++)
+		size += sprintf(buf+size, "%s ", dc_motor_polarity_values[i]);
 
-	size += sprintf(buf+size, "\n");
+	buf[size - 1]= '\n';
 
-        return size;
+	return size;
 }
 
-static ssize_t tacho_motor_show_encoder_mode(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t tacho_motor_show_encoder_mode(struct device *dev,
+					     struct device_attribute *attr,
+					     char *buf)
 {
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+	struct tacho_motor_device *tm =
+			container_of(dev, struct tacho_motor_device, dev);
 
-	return sprintf(buf, "%s\n", tacho_motor_encoder_modes[tm->fp->get_encoder_mode(tm)].name);
+	return sprintf(buf, "%s\n",
+		       dc_motor_polarity_values[tm->fp->get_encoder_mode(tm)]);
 }
 
-static ssize_t tacho_motor_store_encoder_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+static ssize_t tacho_motor_store_encoder_mode(struct device *dev,
+					      struct device_attribute *attr,
+					      const char *buf, size_t size)
 {
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+	struct tacho_motor_device *tm =
+			container_of(dev, struct tacho_motor_device, dev);
 
-        unsigned int i;
+	int i;
 
-	for (i=0; i<TM_NUM_ENCODER_MODES; ++i)
-		if (sysfs_streq(buf, tacho_motor_encoder_modes[i].name)) break;
+	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++) {
+		if (sysfs_streq(buf, dc_motor_polarity_values[i])) {
+			tm->fp->set_encoder_mode(tm, i);
+			return size;
+		}
+	}
 
-	if (i >= TM_NUM_ENCODER_MODES)
-                return -EINVAL;
-
-        tm->fp->set_encoder_mode(tm, i);
-
-        return size;
+	return -EINVAL;
 }
 
 static ssize_t tacho_motor_show_ramp_up_sp(struct device *dev, struct device_attribute *attr, char *buf)
