@@ -188,7 +188,7 @@ static int ms_8ch_servo_get_rate(void* context)
 
 	if (ret == 0)
 		return 0;
-	return 48000 / ret;
+	return 24000 / ret;
 }
 
 static int ms_8ch_servo_set_rate(void* context, unsigned value)
@@ -197,12 +197,12 @@ static int ms_8ch_servo_set_rate(void* context, unsigned value)
 	struct i2c_client *client = servo->sensor->client;
 	int scaled;
 
-	if (value >= 48000)
+	if (value >= 24000)
 		scaled = 1;
-	else if (value < 188)
+	else if (value < 94)
 		scaled = 0;
 	else
-		scaled = 48000 / value;
+		scaled = 24000 / value;
 
 	return i2c_smbus_write_word_data(client, 0x52 + servo->id * 2, scaled);
 }

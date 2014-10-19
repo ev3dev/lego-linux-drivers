@@ -78,9 +78,9 @@
 *   and `1000` corresponds to `max_pulse_ms`.
 * .
 * `rate` (read/write)
-* : Sets the rate at which the servo travels the full range from -100.0% to
-*   100.0%. Units are in milliseconds. Example: Setting the rate to 2000 means
-*   that it will take a 180 degree servo 1 second to move from 0 to 90 degrees.
+* : Sets the rate at which the servo travels the half of the full range (0 to
+*   100.0%. Units are in milliseconds. Example: Setting the rate to 1000 means
+*   that it will take a 180 degree servo 2 second to move from 0 to 180 degrees.
 *   Note: Some servo controllers may not support this in which case reading and
 *   writing will fail with -ENOSYS. In continuous rotation servos, this
 *   value will affect the rate at which the speed ramps up or down.
@@ -421,7 +421,6 @@ int register_servo_motor(struct servo_motor_device *servo, struct device *parent
 	if (ret < 0)
 		return ret;
 	servo->command = ret;
-	printk("command is %d", ret);
 
 	ret = device_register(&servo->dev);
 	if (ret)

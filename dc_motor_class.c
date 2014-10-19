@@ -35,9 +35,9 @@
 * the motor is plugged in to).
 * .
 * `command` (read/write)
-* : Sets the command for the motor. Possible values are `forward`, `reverse`
-*   `brake` and `coast`. Not all commands may be supported, so be sure to check
-*   the contents of the `commands` attribute.
+* : Sets the command for the motor. Possible values are `run`, `brake` and
+*  `coast`. Not all commands may be supported, so be sure to check the contents
+*   of the `commands` attribute.
 * .
 * `commands` (read only)
 * : Returns a space separated list of commands supported by the motor controller.
@@ -57,13 +57,13 @@
 * .
 * `ramp_down_ms` (read/write)
 * : Sets the time in milliseconds that it take the motor to ramp down from 100%
-*   to 0%. If the controller does not support ramping, then reading and writing
-*   will fail with -ENOSYS.
+*   to 0%. Valid values are 0 to 10000. Default is 0. If the controller does not
+*   support ramping, then reading and writing will fail with -ENOSYS.
 * .
 * `ramp_up_ms` (read/write)
 * : Sets the time in milliseconds that it take the motor to up ramp from 0% to
-*   100%. If the controller does not support ramping, then reading and writing
-*   will fail with -ENOSYS.
+*   100%. Valid values are 0 to 10000. Default is 0. If the controller does not
+*   support ramping, then reading and writing will fail with -ENOSYS.
 */
 
 #include <linux/device.h>
@@ -82,6 +82,33 @@ const char* dc_motor_polarity_values[] = {
 	[DC_MOTOR_POLARITY_INVERTED]	= "inverted",
 };
 EXPORT_SYMBOL_GPL(dc_motor_polarity_values);
+
+enum hrtimer_restart dc_motor_class_ramp_timer_handler(struct hrtimer *timer)
+{
+	struct dc_motor_device *motor =
+		container_of(timer, struct dc_motor_device, ramp_timer);
+	int ramp_ns, err;
+
+	if (motor->current_duty_cycle == motor->target_duty_cycle)
+		return HRTIMER_NORESTART;
+
+	if (motor->current_duty_cycle < motor->target_duty_cycle) {
+		ramp_ns = motor->ramp_up_ms * 1000;
+		motor->current_duty_cycle++;
+	} else {
+		ramp_ns = motor->ramp_down_ms * 1000;
+		motor->current_duty_cycle--;
+	}
+	hrtimer_forward_now(&motor->ramp_timer, ktime_set(0, ramp_ns));
+	err = motor->ops.set_polarity(motor->ops.context,
+			motor->polarity ^ (motor->current_duty_cycle < 0));
+	WARN_ONCE(err, "Failed to set polarity.");
+	err = motor->ops.set_duty_cycle(motor->ops.context,
+					abs(motor->current_duty_cycle));
+	WARN_ONCE(err, "Failed to set duty cycle.");
+
+	return HRTIMER_RESTART;
+}
 
 static ssize_t name_show(struct device *dev, struct device_attribute *attr,
 			 char *buf)
@@ -114,7 +141,7 @@ static ssize_t ramp_up_ms_store(struct device *dev,
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
 	unsigned value;
 
-	if (sscanf(buf, "%ud", &value) != 1)
+	if (sscanf(buf, "%ud", &value) != 1 || value > 10000)
 		return -EINVAL;
 	motor->ramp_up_ms = value;
 	/* TODO: need to implement ramping */
@@ -137,7 +164,7 @@ static ssize_t ramp_down_ms_store(struct device *dev,
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
 	unsigned value;
 
-	if (sscanf(buf, "%ud", &value) != 1)
+	if (sscanf(buf, "%ud", &value) != 1 || value > 10000)
 		return -EINVAL;
 	motor->ramp_down_ms = value;
 	/* TODO: need to implement ramping */
@@ -189,15 +216,13 @@ static ssize_t duty_cycle_store(struct device *dev,
 				const char *buf, size_t count)
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
-	int value, err;
+	int value;
 
 	if (sscanf(buf, "%d", &value) != 1 || value < -1000 || value > 1000)
 		return -EINVAL;
-	err = motor->ops.set_polarity(motor->ops.context,
-				      motor->polarity ^ (value < 0));
-	err = motor->ops.set_duty_cycle(motor->ops.context, abs(value));
-	if (err)
-		return err;
+	motor->target_duty_cycle = value;
+	if (motor->ops.get_command(motor->ops.context) == DC_MOTOR_COMMAND_RUN)
+		hrtimer_start(&motor->ramp_timer, ktime_set(0, 0), HRTIMER_MODE_REL);
 
 	return count;
 }
@@ -241,14 +266,21 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 
 	supported_commands = motor->ops.get_supported_commands(motor->ops.context);
 	for (i = 0; i < NUM_DC_MOTOR_COMMANDS; i++) {
-		if (sysfs_streq(buf, dc_motor_command_names[i])) {
-			if (supported_commands & BIT(i)) {
-				err = motor->ops.set_command(motor->ops.context,
-					i);
-				if (err)
-					return err;
-				return count;
+		if (!sysfs_streq(buf, dc_motor_command_names[i]))
+			continue;
+		if (supported_commands & BIT(i)) {
+			err = motor->ops.set_command(motor->ops.context,
+				i);
+			if (err)
+				return err;
+			if (i == DC_MOTOR_COMMAND_RUN) {
+				hrtimer_start(&motor->ramp_timer,
+					ktime_set(0, 0), HRTIMER_MODE_REL);
+			} else {
+				hrtimer_cancel(&motor->ramp_timer);
+				motor->current_duty_cycle = 0;
 			}
+			return count;
 		}
 
 	}
@@ -304,6 +336,9 @@ int register_dc_motor(struct dc_motor_device *dc, struct device *parent)
 	dc->dev.class = &dc_motor_class;
 	dev_set_name(&dc->dev, "motor%d", dc_motor_class_id++);
 
+	hrtimer_init(&dc->ramp_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	dc->ramp_timer.function = dc_motor_class_ramp_timer_handler;
+
 	err = device_register(&dc->dev);
 	if (err)
 		return err;
@@ -317,6 +352,7 @@ EXPORT_SYMBOL_GPL(register_dc_motor);
 void unregister_dc_motor(struct dc_motor_device *dc)
 {
 	dev_info(&dc->dev, "Unregistered.\n");
+	hrtimer_cancel(&dc->ramp_timer);
 	device_unregister(&dc->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_dc_motor);
