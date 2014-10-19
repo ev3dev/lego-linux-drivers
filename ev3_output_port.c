@@ -584,9 +584,6 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 	case CON_STATE_WAITING_FOR_DISCONNECT:
 		new_pin5_mv = legoev3_analog_out_pin5_value(data->analog, data->id);
 
-		if (gpio_get_value(data->gpio[GPIO_PIN6_DIR].gpio))
-			data->timer_loop_cnt = 0;
-
 		if ((new_pin5_mv < PIN5_BALANCE_LOW) || (new_pin5_mv > PIN5_BALANCE_HIGH))
 			data->timer_loop_cnt = 0;
 
