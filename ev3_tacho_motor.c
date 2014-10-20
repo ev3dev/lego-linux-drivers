@@ -29,46 +29,44 @@
 
 #include <asm/bug.h>
 
-#define TACHO_MOTOR_POLL_NS	(  2000000)	                /* 2 msec */
+#define TACHO_MOTOR_POLL_NS	2000000	/* 2 msec */
 
-#define   TACHO_SAMPLES           128
+#define TACHO_SAMPLES		128
 
-#define   MAX_PWM_CNT                   (10000)
-#define   MAX_SPEED                     (100)
-#define   MAX_POWER                     (100)
-#define   MAX_SYNC_MOTORS               (2)
+#define MAX_PWM_CNT		10000
+#define MAX_SPEED		100
+#define MAX_POWER		100
+#define MAX_SYNC_MOTORS		2
 
-enum
-{
-  MOTOR_TYPE_0  = 0,
-  MOTOR_TYPE_1,
-  MOTOR_TYPE_2,
-  MOTOR_TYPE_3,
-  MOTOR_TYPE_4,
-  MOTOR_TYPE_5,
-  MOTOR_TYPE_6,
-  MOTOR_TYPE_TACHO,
-  MOTOR_TYPE_MINITACHO,
-  MOTOR_TYPE_NEWTACHO,
-  MOTOR_TYPE_10,
-  MOTOR_TYPE_11,
-  MOTOR_TYPE_12,
-  MOTOR_TYPE_13,
-  MOTOR_TYPE_14,
-  MOTOR_TYPE_15,
-  NO_OF_MOTOR_TYPES,
+enum ev3_tacho_motor_type {
+	MOTOR_TYPE_0,
+	MOTOR_TYPE_1,
+	MOTOR_TYPE_2,
+	MOTOR_TYPE_3,
+	MOTOR_TYPE_4,
+	MOTOR_TYPE_5,
+	MOTOR_TYPE_6,
+	MOTOR_TYPE_TACHO,
+	MOTOR_TYPE_MINITACHO,
+	MOTOR_TYPE_NEWTACHO,
+	MOTOR_TYPE_10,
+	MOTOR_TYPE_11,
+	MOTOR_TYPE_12,
+	MOTOR_TYPE_13,
+	MOTOR_TYPE_14,
+	MOTOR_TYPE_15,
+	NO_OF_MOTOR_TYPES,
 };
 
-enum
-{
-  SAMPLES_PER_SPEED_BELOW_40 =  0,
-  SAMPLES_PER_SPEED_ABOVE_40 =  1,
-  SAMPLES_PER_SPEED_ABOVE_60 =  2,
-  SAMPLES_PER_SPEED_ABOVE_80 =  3,
-  NO_OF_SAMPLE_STEPS	     =  4
+enum ev3_tacho_motor_samples {
+	SAMPLES_PER_SPEED_BELOW_40,
+	SAMPLES_PER_SPEED_ABOVE_40,
+	SAMPLES_PER_SPEED_ABOVE_60,
+	SAMPLES_PER_SPEED_ABOVE_80,
+	NO_OF_SAMPLE_STEPS
 };
 
-enum {
+enum ev3_tacho_motor_command {
 	UNKNOWN,
 	FORWARD,
 	REVERSE,
@@ -89,14 +87,14 @@ struct ev3_tacho_motor_data {
 	unsigned tacho_samples_head;
 
 	bool got_new_sample;
-	
+
 	int samples_per_speed;
 	int dir_chg_samples;
 
 	int counts_per_pulse;
 	int pulses_per_second;
 
-	#warning "The class mutex interlock is not implemented - should be up at device level to allow busy indication"
+	/* TODO - The class mutex interlock is not implemented - should be up at device level to allow busy indication */
 
 	bool class_mutex;
 	bool irq_mutex;
@@ -105,18 +103,18 @@ struct ev3_tacho_motor_data {
 		struct {
 			int start;
 			int end;
+			int full;
 		} up;
 
 		struct {
 			int start;
 			int end;
+			int full;
 		} down;
 
 		int percent;
-		int sp;
 		int direction;
 		int position_sp;
-		int offset;
 		int count;	/* This must be set to either tacho or time increment! */
 	} ramp;
 
@@ -219,7 +217,7 @@ static const int MaxPulsesPerSec[NO_OF_MOTOR_TYPES] = {
 	   1, /* Motor Type 15             */
 };
 
-static void set_samples_per_speed( struct ev3_tacho_motor_data *ev3_tm, int speed ) {
+static void set_samples_per_speed(struct ev3_tacho_motor_data *ev3_tm, int speed) {
 	if (speed > 80) {
 		ev3_tm->samples_per_speed = SamplesPerSpeed[ev3_tm->motor_type][SAMPLES_PER_SPEED_ABOVE_80];
 	} else if (speed > 60) {
@@ -231,30 +229,21 @@ static void set_samples_per_speed( struct ev3_tacho_motor_data *ev3_tm, int spee
 	}
 }
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
 /**
- * DOC: website
- *
- * EV3 Tacho Motor Driver
+ * Handling the Tachometer Inputs
  *
  * The tacho motor driver uses two pins on each port to determine the direction
  * of rotation of the motor.
- * .
+ *
  * `pdata->tacho_int_gpio` is the pin that is set up to trigger an interrupt
  * any edge change
- * .
+ *
  * `pdata->tacho_dir_gpio` is the pin that helps to determine the direction
  * of rotation
- * .
+ *
  * When int == dir then the encoder is turning in the forward direction
  * When int != dir then the encoder is turning in the reverse direction
- * .
- * ```
+ *
  * -----     --------           --------      -----
  *     |     |      |           |      |      |
  *     |     |      |           |      |      |
@@ -270,83 +259,71 @@ static void set_samples_per_speed( struct ev3_tacho_motor_data *ev3_tm, int spee
  *
  * All this works perfectly well when there are no missed interrupts, and when
  * the transitions on these pins are clean (no bounce or noise). It is possible
- * to get noisy operation when the transitions are very slow, and we have 
+ * to get noisy operation when the transitions are very slow, and we have
  * observed signals similar to this:
- * .
- * ```
+ *
  * -------------                       -------------
- *             |                       |           
- *             |                       |           
+ *             |                       |
+ *             |                       |
  *             -------------------------                 DIRx signal
  *
  *    ---------------   ----                             INTx signal
- *    |             |   |  | 
+ *    |             |   |  |
  *    |             |   |  |
  * ----             -----  -------------------------
  *    \              \   \  \
  *     ^              ^   ^  ^                           ISR Handler
  *     +1             +1  -1 +1                          TachoCount
  *                    A   B  C
- * ```
- * .
+ *
  * The example above has three transitions that we are interested in
- * labelled A, B, and C - they represent a noisy signal. As long as
- * all three transitions are cought by the ISR, then the count is
+ * labeled A, B, and C - they represent a noisy signal. As long as
+ * all three transitions are caught by the ISR, then the count is
  * incremented by 2 as expected. But there are other outcomes possible.
- * .
+ *
  * For example, if the A transition is handled, but the INT signal
  * is not measured until after B, then the final count value is 1.
- * .
+ *
  * On the other hand, if the B transition is missed, and only A and
  * C are handled, then the final count value is 3.
- * .
+ *
  * Either way, we need to figure out a way to clean things up, and as
  * long as at least two of the interrupts are caught, we can "undo"
  * a reading quite easily.
- * .
+ *
  * The mini-tacho motor turns at a maximum of 1200 pulses per second, the
  * standard tacho motor has a maximum speed of 900 pulses per second. Taking
  * the highest value, this means that about 800 usec is the fastest time
  * between interrupts. If we see two interrupts with a delta of much less
  * than, say 400 usec, then we're probably looking at a noisy transition.
- * .
+ *
  * In most cases that have been captured, the shortest delta is the A-B
  * transition, anywhere from 10 to 20 usec, which is faster than the ISR
  * response time. The B-C transition has been measured up to 150 usec.
- * .
+ *
  * It is clear that the correct transition to use for changing the
  * value of `TachoCount` is C - so if the delta from A-C is less than
  * the threshold, we should "undo" whatever the A transition told us.
- * .
  */
 
 static irqreturn_t tacho_motor_isr(int irq, void *id)
 {
 	struct ev3_tacho_motor_data *ev3_tm = id;
-	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
-
-	struct tm_log *log = &(ev3_tm->tm.log);
+	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data;
 
 	bool int_state =  gpio_get_value(pdata->tacho_int_gpio);
 	bool dir_state = !gpio_get_value(pdata->tacho_dir_gpio);
 
 	unsigned long timer      = legoev3_hires_timer_read();
 	unsigned long prev_timer = ev3_tm->tacho_samples[ev3_tm->tacho_samples_head];
-	
+
 	unsigned next_sample;
 
-	int  next_direction;
+	int  next_direction = ev3_tm->run_direction;
 
-//	if (128 > log->index) {
-//		log->timestamp[log->index] = timer;
-//		log->event[log->index]     = int_state;
-//		log->data[log->index]      = dir_state;
-//		log->index++;
-//        }
-	
 	next_sample = (ev3_tm->tacho_samples_head + 1) % TACHO_SAMPLES;
 
-        /* If the speed is high enough, just update the tacho counter based on direction */
+	/* If the speed is high enough, just update the tacho counter based on direction */
 
 	if ((35 < ev3_tm->speed) || (-35 > ev3_tm->speed)) {
 
@@ -354,8 +331,9 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 			ev3_tm->dir_chg_samples++;
 
 	} else {
-		
-		/* Update the tacho count and motor direction for low speed, taking
+
+		/*
+		 * Update the tacho count and motor direction for low speed, taking
 		 * advantage of the fact that if state and dir match, then the motor
 		 * is turning FORWARD!
 		 *
@@ -388,7 +366,8 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 			}
 		}
 
-		/* If the difference in timestamps is too small, then undo the
+		/*
+		 * If the difference in timestamps is too small, then undo the
 		 * previous increment - it's OK for a count to waver once in
 		 * a while - better than being wrong!
 		 *
@@ -398,16 +377,17 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 		 *    dir_chg_samples count!
 		 * 2) UNDO the previous run_direction count update
 		 *
+		 * TODO: Make this work out to 400 usec based on the clock rate!
 		 */
-	
+
 		if ((400 * 33) > (timer - prev_timer)) {
 			ev3_tm->tacho_samples[ev3_tm->tacho_samples_head] = timer;
 
 			if (FORWARD == ev3_tm->run_direction)
 				ev3_tm->irq_tacho--;
-			else			
+			else
 				ev3_tm->irq_tacho++;
-	
+
 			next_sample = ev3_tm->tacho_samples_head;
 		} else {
 			/*
@@ -435,7 +415,7 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 
 	if (FORWARD == ev3_tm->run_direction)
 		ev3_tm->irq_tacho++;
-	else			
+	else
 		ev3_tm->irq_tacho--;
 
 	ev3_tm->got_new_sample = true;
@@ -484,8 +464,6 @@ void ev3_tacho_motor_update_output(struct ev3_tacho_motor_data *ev3_tm)
 
 static void ev3_tacho_motor_set_power(struct ev3_tacho_motor_data *ev3_tm, int power)
 {
-	int err;
-
 	if (ev3_tm->power == power)
 		return;
 
@@ -500,9 +478,10 @@ static void ev3_tacho_motor_set_power(struct ev3_tacho_motor_data *ev3_tm, int p
 
 static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
 {
-	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data; 
+	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data;
 
-	/* This is the same as initializing a motor - we will set everything
+	/*
+	 * This is the same as initializing a motor - we will set everything
 	 * to default values, as if it had just been plugged in
 	 */
 
@@ -521,10 +500,8 @@ static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
 	ev3_tm->ramp.down.start		= 0;
 	ev3_tm->ramp.down.end		= 0;
 	ev3_tm->ramp.percent		= 0;
-	ev3_tm->ramp.sp			= 0;
 	ev3_tm->ramp.direction		= 0;
 	ev3_tm->ramp.position_sp	= 0;
-	ev3_tm->ramp.offset		= 0;
 	ev3_tm->ramp.count		= 0;
 	ev3_tm->pid.P			= 0;
 	ev3_tm->pid.I			= 0;
@@ -563,7 +540,7 @@ static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
 	ev3_tm->run			= 0;
 	ev3_tm->estop			= 0;
 
-	ev3_tm->tacho			= 0;	
+	ev3_tm->tacho			= 0;
 	ev3_tm->irq_tacho		= 0;
 	ev3_tm->speed			= 0;
 	ev3_tm->power			= 0;
@@ -585,14 +562,12 @@ static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
 };
 
 /*
- *! \brief    calculate_speed
- *
  * NOTE: The comments are from the original LEGO source code, but the code
- *       has been changed to reflect the per-motor data structures. 
+ *       has been changed to reflect the per-motor data structures.
  *
- * NOTE: The original LEGO code used the 24 most significant bits of the 
+ * NOTE: The original LEGO code used the 24 most significant bits of the
  *       free-running P3 timer by dividing the values captured at every
- *       interrupt edge by 256. Unfortunately, this results in having to 
+ *       interrupt edge by 256. Unfortunately, this results in having to
  *       mask off the 24 least significant bits in all subsequent calculations
  *       that involve the captured values.
  *
@@ -759,14 +734,15 @@ static bool calculate_speed(struct ev3_tacho_motor_data *ev3_tm)
 
 	bool speed_updated = false;
 
-	#warning "Don't run this if we're updating the ev3_tm in the isr!"
+	/* TODO - Don't run this if we're updating the ev3_tm in the isr! */
 
-	/* Determine the approximate speed of the motor using the difference
+	/*
+	 * Determine the approximate speed of the motor using the difference
 	 * in time between this tacho pulse and the previous pulse.
 	 *
 	 * The old code had a conditional that forced the difference to be at
 	 * least 1 by checking for the special case of a zero difference, which
-	 * would be almost impossible to acheive in practice.
+	 * would be almost impossible to achieve in practice.
 	 *
 	 * This version simply ORs a 1 into the LSB of the difference - now
 	 * that we're using the full 32 bit free running counter, the impact
@@ -781,20 +757,21 @@ static bool calculate_speed(struct ev3_tacho_motor_data *ev3_tm)
 
 	DiffIdx = ev3_tm->tacho_samples_head;
 
-	#warning "This should really be a boolean value that gets set at the ISR level"
-	#warning "Can/Should we change this to not set_samples_per_speed evry time we're called?"
+	/* TODO - This should really be a boolean value that gets set at the ISR level */
+	/* TODO - Can/Should we change this to not set_samples_per_speed every time we're called? */
 
 	if (ev3_tm->dir_chg_samples >= 1) {
 
-		Diff = ev3_tm->tacho_samples[DiffIdx] 
+		Diff = ev3_tm->tacho_samples[DiffIdx]
 				- ev3_tm->tacho_samples[(DiffIdx + TACHO_SAMPLES - 1) % TACHO_SAMPLES];
 
 		Diff |= 1;
 
-		set_samples_per_speed( ev3_tm, ev3_tm->counts_per_pulse / Diff );
+		set_samples_per_speed(ev3_tm, ev3_tm->counts_per_pulse / Diff);
 	}
 
-	/* Now get a better estimate of the motor speed by using the total
+	/*
+	 * Now get a better estimate of the motor speed by using the total
 	 * time used to accumulate the last n samples, where n is determined
 	 * by the first approximation to the speed.
 	 *
@@ -806,14 +783,14 @@ static bool calculate_speed(struct ev3_tacho_motor_data *ev3_tm)
 	 * is 0!
 	 */
 
-	if (ev3_tm->got_new_sample && (ev3_tm->dir_chg_samples >= ev3_tm->samples_per_speed) ) {
+	if (ev3_tm->got_new_sample && (ev3_tm->dir_chg_samples >= ev3_tm->samples_per_speed)) {
 
-		Diff = ev3_tm->tacho_samples[DiffIdx] 
+		Diff = ev3_tm->tacho_samples[DiffIdx]
 				- ev3_tm->tacho_samples[(DiffIdx + TACHO_SAMPLES - ev3_tm->samples_per_speed) % TACHO_SAMPLES];
 
 		Diff |= 1;
 
-		#warning "This should be based on the low level clcok rate"
+		/* TODO - This should be based on the low level clock rate */
 
 		ev3_tm->pulses_per_second = (33000000 * ev3_tm->samples_per_speed) / Diff;
 
@@ -824,13 +801,13 @@ static bool calculate_speed(struct ev3_tacho_motor_data *ev3_tm)
 
 		ev3_tm->got_new_sample = false;
 
-	} else if ( ev3_tm->counts_per_pulse < (legoev3_hires_timer_read() - ev3_tm->tacho_samples[DiffIdx] ) ) {
+	} else if (ev3_tm->counts_per_pulse < (legoev3_hires_timer_read() - ev3_tm->tacho_samples[DiffIdx])) {
 
 		ev3_tm->dir_chg_samples = 0;
 
 		ev3_tm->pulses_per_second = 0;
 
-		#warning "This is where we can put in a calculation for a stalled motor!"
+		/* TODO - This is where we can put in a calculation for a stalled motor! */
 
 		speed_updated = true;
 	}
@@ -844,29 +821,30 @@ static void regulate_speed(struct ev3_tacho_motor_data *ev3_tm)
 	int speed_error;
 
 	/* Make sure speed_reg_setpoint is within a reasonable range */
-	
-	if (ev3_tm->speed_reg_sp > MaxPulsesPerSec[ev3_tm->motor_type] ) {
+
+	if (ev3_tm->speed_reg_sp > MaxPulsesPerSec[ev3_tm->motor_type]) {
 		ev3_tm->speed_reg_sp = MaxPulsesPerSec[ev3_tm->motor_type];
-	} else if (ev3_tm->speed_reg_sp < -MaxPulsesPerSec[ev3_tm->motor_type] ) {
+	} else if (ev3_tm->speed_reg_sp < -MaxPulsesPerSec[ev3_tm->motor_type]) {
 		ev3_tm->speed_reg_sp = -MaxPulsesPerSec[ev3_tm->motor_type];
 	}
 
 	speed_error = ev3_tm->speed_reg_sp - ev3_tm->pulses_per_second;
 
-	#warning "Implement an attribute set for PID constants that adjusts based on speed"
+	/* TODO - Implement an attribute set for PID constants that adjusts based on speed */
 
 	ev3_tm->pid.P = speed_error;
 
-        /* The integral term can get quite large if the speed setpoint is higher than the
+	/*
+	 * The integral term can get quite large if the speed setpoint is higher than the
 	 * maximum speed that the motor can get to. This can happen if the motor is heavily
 	 * loaded or if the setpoint is high and the battery voltage is low.
 	 *
 	 * To avoid the problem of "integral windup", we stop adding to the integral
 	 * term if its contribution alone would set the power level to 100%
-         *
-         * Earlier versions of this algorithm did not allow the pid.I component to change
-         * once it hit the 100% limit. This algorithm allows the change if the absolute
-         * value of the result is less than 100.
+	 *
+	 * Earlier versions of this algorithm did not allow the pid.I component to change
+	 * once it hit the 100% limit. This algorithm allows the change if the absolute
+	 * value of the result is less than 100.
 	 */
 
 	ev3_tm->pid.I = ev3_tm->pid.I + speed_error;
@@ -879,31 +857,33 @@ static void regulate_speed(struct ev3_tacho_motor_data *ev3_tm)
 		+ (ev3_tm->pid.I * ev3_tm->pid.speed_regulation_I)
 		+ (ev3_tm->pid.D * ev3_tm->pid.speed_regulation_D) ) / ev3_tm->pid.speed_regulation_K;
 
-        /* Subtract the speed error to avoid integral windup if the resulting power is
-         * more than 100%
-         */
+	/*
+	 * Subtract the speed error to avoid integral windup if the resulting power is
+	 * more than 100%
+	 */
 
-        if ( 100 < abs(power) )
+	if (100 < abs(power))
 		ev3_tm->pid.I = ev3_tm->pid.I - speed_error;
 
-	/* When regulation_mode is on, and the user sets the
+	/*
+	 * When regulation_mode is on, and the user sets the
 	 * pulses_per_second_sp to 0, the motor may have been
 	 * running at a non-zero speed - which will make the
-	 * motor oscillate to acheive the 0 speed. A check
-	 * for the special condition of pulses_per_second_sp 
+	 * motor oscillate to achieve the 0 speed. A check
+	 * for the special condition of pulses_per_second_sp
 	 * equal to 0 will turn off the motor to prevent the
 	 * oscillation.
 	 */
 
-	#warning "The real answer to this is different PID values based on motor speed"
-	if ( 0 == ev3_tm->speed_reg_sp  ) {
+	if (0 == ev3_tm->speed_reg_sp) {
 		ev3_tacho_motor_set_power(ev3_tm, 0    );
-        } else {
+	} else {
 		ev3_tacho_motor_set_power(ev3_tm, power);
 	}
 }
 
-/* This function changes either the actual power setting for the motor, or the speed
+/*
+ * This function changes either the actual power setting for the motor, or the speed
  * regulation setpoint, depending on whether the regulation_mode is on or off.
  *
  * Note that it is assumed by this function and all of its callers that
@@ -922,15 +902,15 @@ static void update_motor_speed_or_power(struct ev3_tacho_motor_data *ev3_tm, int
 	if (TM_REGULATION_OFF == ev3_tm->regulation_mode) {
 
 		if ((TM_RUN_POSITION == ev3_tm->run_mode))
-			ev3_tacho_motor_set_power( ev3_tm, ev3_tm->ramp.direction * abs((ev3_tm->duty_cycle_sp * percent)/100 ));
-                else
-			ev3_tacho_motor_set_power( ev3_tm,                             ((ev3_tm->duty_cycle_sp * percent)/100 ));
+			ev3_tacho_motor_set_power(ev3_tm, ev3_tm->ramp.direction * abs((ev3_tm->duty_cycle_sp * percent)/100));
+		else
+			ev3_tacho_motor_set_power(ev3_tm,                             ((ev3_tm->duty_cycle_sp * percent)/100));
 
 	} else if (TM_REGULATION_ON == ev3_tm->regulation_mode) {
 
 		if ((TM_RUN_POSITION == ev3_tm->run_mode))
 			ev3_tm->speed_reg_sp = ev3_tm->ramp.direction * abs((ev3_tm->pulses_per_second_sp * percent)/100);
-                else
+		else
 			ev3_tm->speed_reg_sp =                             ((ev3_tm->pulses_per_second_sp * percent)/100);
 	}
 }
@@ -941,7 +921,8 @@ static void regulate_position(struct ev3_tacho_motor_data *ev3_tm)
 	int position_error;
 
 
-	/* Make sure that the irq_tacho value has been set to a value that represents the
+	/*
+	 * Make sure that the irq_tacho value has been set to a value that represents the
 	 * current error from the desired position so we can drive the motor towards
 	 * the desired position hold point.
 	 */
@@ -974,7 +955,8 @@ static void adjust_ramp_for_position(struct ev3_tacho_motor_data *ev3_tm)
 	long ramp_down_time = 0;
 	long ramp_down_distance;
 
-	/* The ramp down time is based on the current power level when regulation is off, and
+	/*
+	 * The ramp down time is based on the current power level when regulation is off, and
 	 * on the current speed when regulation is on - don't forget, we're not always at the
 	 * end of the up ramp by the time we need to ramp down!
 	 */
@@ -985,13 +967,15 @@ static void adjust_ramp_for_position(struct ev3_tacho_motor_data *ev3_tm)
 		ramp_down_time  = abs((ev3_tm->ramp_down_sp * ev3_tm->pulses_per_second) / MaxPulsesPerSec[ev3_tm->motor_type]);
 	}
 
-	/* The adjustment for ramp distance is to take into account that we'll have trouble hitting
+	/*
+	 * The adjustment for ramp distance is to take into account that we'll have trouble hitting
 	 * the position setpoint at low speeds...shorten the distance!
 	 */
 
-	ramp_down_distance = abs((ev3_tm->pulses_per_second * ramp_down_time * 7) / (2000 * 10) ); 
+	ramp_down_distance = abs((ev3_tm->pulses_per_second * ramp_down_time * 7) / (2000 * 10));
 
-	/* Depending on the direction we are turning, figure out if we're going to overshoot
+	/*
+	 * Depending on the direction we are turning, figure out if we're going to overshoot
 	 * the target position based on current speed. Note the calculation of ramp.down.end
 	 * is relative to the current ramp.count, and that the ramp.down.start is recalculated
 	 * backwards from the end so that the setpoint percentages work out properly!
@@ -1018,31 +1002,32 @@ static void adjust_ramp_for_position(struct ev3_tacho_motor_data *ev3_tm)
 	}
 }
 
-/* ------------------------------------------------------------------------------
- * This function plays a key part in sinplifying the calculation of ramp
+/*
+ * This function plays a key part in simplifying the calculation of ramp
  * progress in the code, and handles a number of special cases that can
  * cause odd behaviour.
  *
- * The strangest behaviour is when the numerator is one less than the
+ * The strangest behaviour is when the numerator is two less than the
  * denominator - for cases where the denominator is small, this results in
- * very wierd results for the speed, often many percent below the target
- * speed. ie 2/3 = 66 % , and the next iteration of the timer callback 
+ * very weird results for the speed, often many percent below the target
+ * speed. ie 2/3 = 66 % , and the next iteration of the timer callback
  * adds 2 to the numerator so the ramp never gets re-evaluated!
  *
  * 1) If the denominator is less than or equal to the numerator, return 100
  * 2) If the denominator is 0
- * 3) If the denomonator is two greater than the numerator, return 100
+ * 3) If the denominator is two greater than the numerator, return 100
  */
 
-static int calculate_ramp_progress ( int numerator, int denominator )
+static int calculate_ramp_progress(int numerator, int denominator)
 {
-	if ( denominator <= (numerator + 2) )
+	if (denominator <= (numerator + 2))
 		return 100;
-	else if ( 0 == denominator )
+	else if (0 == denominator)
 		return 100;
 	else
-		return( (numerator * 100) / denominator );
+		return((numerator * 100) / denominator);
 }
+
 
 static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer)
 {
@@ -1057,47 +1042,50 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 
 	/* Continue with the actual calculations */
 
-	speed = calculate_speed( ev3_tm );
+	speed = calculate_speed(ev3_tm);
 
-	if ( (0 == ev3_tm->run) )
+	if (0 == ev3_tm->run)
 		goto no_run;
 
-	/* Update the ramp counter if we're in any of the ramp modes.
+	/*
+	 * Update the ramp counter if we're in any of the ramp modes - the
+	 * ramp counter always reflects milliseconds! Much cleaner this way.
 	 *
-	 * This has to be done outside of the main state processing 
+	 * This has to be done outside of the main state processing
 	 * loop, otherwise we can end up updating the counter multiple
 	 * times.
 	 */
 
 	switch (ev3_tm->state) {
-
 	case TM_STATE_RAMP_UP:
 	case TM_STATE_RAMP_CONST:
 	case TM_STATE_POSITION_RAMP_DOWN:
 	case TM_STATE_RAMP_DOWN:
-			#warning "This makes a bunch of math really messy for ramping - maybe force to 1?"
-			ev3_tm->ramp.count = ev3_tm->ramp.count + 2;
-
-	default: break;
+		ev3_tm->ramp.count = ev3_tm->ramp.count + 2;
+		break;
+	default:
+		break;
 	}
 
-	while ( reprocess ) {
+	while (reprocess) {
 
-		/* Some cases (such as RAMP_XXX) may change the state of the
+		/*
+		 * Some cases (such as RAMP_XXX) may change the state of the
 		 * handler and require reprocessing. If so, they must set the
 		 * reprocess flag to force an extra evaluation
 		 */
 
-		reprocess = 0;	
+		reprocess = 0;
 
 		switch (ev3_tm->state) {
-	
-	        case TM_STATE_RUN_FOREVER:
 
-			/* Just fall through to set the ramp time. If ramp times are zero
+		case TM_STATE_RUN_FOREVER:
+
+			/*
+			 * Just fall through to set the ramp time. If ramp times are zero
 			 * then start/stop is immediate!
 			 */
-	
+
 		case TM_STATE_SETUP_RAMP_TIME:
 
 			ev3_tm->ramp.up.start = 0;
@@ -1108,24 +1096,38 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 			if ((TM_RUN_FOREVER == ev3_tm->run_mode))
 				ev3_tm->ramp.down.end = 60*60*1000;
 
-			/* The ramp.up.end and ramp.down.start points depend on whether or
-			 * not the regulation mode is on. If we're not regulated, then the
-			 * time calculation is done based on the duty_cycle_sp. If we're
-			 * regulated, then it's based on the pulses_per_second_sp.
+			/*
+			 * First, we calculate ramp.up.full and ramp.down.full which are the point at which
+			 * the ramp hits 100% of the setpoint - not the maximum theoretical speed or
+			 * duty cycle.
+			 *
+			 * Why do we need this helper variable? It's because we also need to calculate the
+			 * percentage completion of the ramp later on - and we must always maintain the
+			 * rule that passing 100% to the update_motor_speed_or_power() function sets the
+			 * speed or power to 100% of the setpoint, not the theoretical max.
 			 */
 
 			if (TM_REGULATION_OFF == ev3_tm->regulation_mode) {
-				ev3_tm->ramp.up.end     = ev3_tm->ramp.up.start + ((abs(ev3_tm->duty_cycle_sp) * ev3_tm->ramp_up_sp  ) / 100);
-				ev3_tm->ramp.down.start = ev3_tm->ramp.down.end - ((abs(ev3_tm->duty_cycle_sp) * ev3_tm->ramp_down_sp) / 100);
-				ev3_tm->ramp.direction = (ev3_tm->duty_cycle_sp >= 0 ? 1 : -1);
+				ev3_tm->ramp.up.full    = ((abs(ev3_tm->duty_cycle_sp) * ev3_tm->ramp_up_sp  ) / 100);
+				ev3_tm->ramp.down.full  = ((abs(ev3_tm->duty_cycle_sp) * ev3_tm->ramp_down_sp) / 100);
+				ev3_tm->ramp.direction  = (ev3_tm->duty_cycle_sp >= 0 ? 1 : -1);
 
 			} else if (TM_REGULATION_ON == ev3_tm->regulation_mode) {
-				ev3_tm->ramp.up.end     = ev3_tm->ramp.up.start + ((abs(ev3_tm->pulses_per_second_sp) * ev3_tm->ramp_up_sp  ) / MaxPulsesPerSec[ev3_tm->motor_type] );
-				ev3_tm->ramp.down.start = ev3_tm->ramp.down.end - ((abs(ev3_tm->pulses_per_second_sp) * ev3_tm->ramp_down_sp) / MaxPulsesPerSec[ev3_tm->motor_type] );
-				ev3_tm->ramp.direction = (ev3_tm->pulses_per_second_sp >= 0 ? 1 : -1);
+				ev3_tm->ramp.up.full    = ((abs(ev3_tm->pulses_per_second_sp) * ev3_tm->ramp_up_sp  ) / MaxPulsesPerSec[ev3_tm->motor_type]);
+				ev3_tm->ramp.down.full  = ((abs(ev3_tm->pulses_per_second_sp) * ev3_tm->ramp_down_sp) / MaxPulsesPerSec[ev3_tm->motor_type]);
+				ev3_tm->ramp.direction  = (ev3_tm->pulses_per_second_sp >= 0 ? 1 : -1);
 			}
 
-			/* Now figure out if ramp.up.end is past ramp.down.start
+			/*
+			 * Now set the ramp.up and ramp.down start and end fields based on the values
+			 * we just calculated for full in the previous step. We'll check for overlaps later
+			 */
+
+			ev3_tm->ramp.up.end     = ev3_tm->ramp.up.start + ev3_tm->ramp.up.full;
+			ev3_tm->ramp.down.start = ev3_tm->ramp.down.end - ev3_tm->ramp.down.full;
+
+			/*
+			 * Now figure out if ramp.up.end is past ramp.down.start
 			 * and adjust if needed using the intersection of the
 			 * ramp up line and ramp down line.
 			 *
@@ -1134,14 +1136,11 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 			 * reduced in proportion to how far the intersection is
 			 * from the original end point gives us:
 			 */
-			
+
 			if (ev3_tm->ramp.up.end > ev3_tm->ramp.down.start) {
 				ev3_tm->ramp.up.end     = ((ev3_tm->time_sp * ev3_tm->ramp_up_sp)/(ev3_tm->ramp_up_sp + ev3_tm->ramp_down_sp));
-				#warning "This is where the new ramp_setpoint gets calculated"
 				ev3_tm->ramp.down.start = ev3_tm->ramp.up.end;
 			}
-
-			#warning "Also add checks and state machine change for 0 ramp up/down times!"
 
 			ev3_tm->state = TM_STATE_SETUP_RAMP_REGULATION;
 			reprocess = true;
@@ -1149,18 +1148,19 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 
 		case TM_STATE_SETUP_RAMP_POSITION:
 
-			/* The position setups are a bit "interesting". We'll want
+			/*
+			 * The position setups are a bit "interesting". We'll want
 			 * use the same time based ramping mechanism, but we also
 			 * need to take into account position.
 			 *
 			 * Since the ramp is a linear increase in velocity up to
 			 * a setpoint, the position is the "area under the curve"
 			 * which happens to be a triangle. The distance covered in
-			 * the inital ramp up is 1/2(V*T) where V is measured in
+			 * the initial ramp up is 1/2(V*T) where V is measured in
 			 * ticks per second and T is measured in milliseconds)
 			 *
 			 * It's easiest if we simply allow the speed to ramp up
-			 * normally up to the speed setpoint and continuously 
+			 * normally up to the speed setpoint and continuously
 			 * estimate the ramp down start and end points based on
 			 * the current speed. We have a nice attribute called
 			 * pulses_per_second and that value is calculated every time
@@ -1174,7 +1174,7 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 			 * ramp_time = ((pulses_per_sec * ramp_down) / MaxPulsesPerSec[ev3_tm->motor_type] ) msec
 			 *
 			 * The actual speed in pulses_per_sec can then be used
-			 * to estimate how far the motor will travel in that 
+			 * to estimate how far the motor will travel in that
 			 * time as:
 			 *
 			 * ramp_distance = (( pulses_per_sec * ramp_time ) / (1000)) pulses
@@ -1192,22 +1192,38 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 			else
 				ev3_tm->ramp.position_sp = ev3_tm->ramp.position_sp + ev3_tm->position_sp;
 
-			#warning "These get recalculated in SETUP_RAMP_REGULATION - but it's OK"
+			/* TODO - These get recalculated in SETUP_RAMP_REGULATION - but it's OK */
 
 			ev3_tm->ramp.direction = ((ev3_tm->ramp.position_sp >= (ev3_tm->tacho + ev3_tm->irq_tacho)) ? 1 : -1);
 
 			ev3_tm->ramp.up.start = 0;
 
-			// The ramp transition point calculations depend on whether
-			// regulation is on or not
-
+			/*
+			 * The ramp transition point calculations depend on whether
+			 * regulation is on or not
+			 */
 			if (TM_REGULATION_OFF == ev3_tm->regulation_mode) {
-				ev3_tm->ramp.up.end = ev3_tm->ramp.up.start + ((abs(ev3_tm->duty_cycle_sp) * ev3_tm->ramp_up_sp  ) / 100);
+				ev3_tm->ramp.up.full    = ((abs(ev3_tm->duty_cycle_sp) * ev3_tm->ramp_up_sp  ) / 100);
+				ev3_tm->ramp.down.full  = ((abs(ev3_tm->duty_cycle_sp) * ev3_tm->ramp_down_sp) / 100);
 			} else if (TM_REGULATION_ON == ev3_tm->regulation_mode) {
-				ev3_tm->ramp.up.end = ev3_tm->ramp.up.start + ((abs(ev3_tm->pulses_per_second_sp) * ev3_tm->ramp_up_sp) / MaxPulsesPerSec[ev3_tm->motor_type] );
+				ev3_tm->ramp.up.full    = ((abs(ev3_tm->pulses_per_second_sp) * ev3_tm->ramp_up_sp  ) / MaxPulsesPerSec[ev3_tm->motor_type]);
+				ev3_tm->ramp.down.full  = ((abs(ev3_tm->pulses_per_second_sp) * ev3_tm->ramp_down_sp) / MaxPulsesPerSec[ev3_tm->motor_type]);
 			}
 
-			#warning "Can this get handled in RAM_CONST?"
+			/*
+			 * Now set the ramp.up and ramp.down start and end fields based on the values
+			 * we just calculated for full in the previous step. We'll check for overlaps later
+			 */
+
+			ev3_tm->ramp.up.end     = ev3_tm->ramp.up.start + ev3_tm->ramp.up.full;
+
+//			if (TM_REGULATION_OFF == ev3_tm->regulation_mode) {
+//				ev3_tm->ramp.up.end = ev3_tm->ramp.up.start + ((abs(ev3_tm->duty_cycle_sp) * ev3_tm->ramp_up_sp) / 100);
+//			} else if (TM_REGULATION_ON == ev3_tm->regulation_mode) {
+//				ev3_tm->ramp.up.end = ev3_tm->ramp.up.start + ((abs(ev3_tm->pulses_per_second_sp) * ev3_tm->ramp_up_sp) / MaxPulsesPerSec[ev3_tm->motor_type]);
+//			}
+
+			/* TODO - Can this get handled in RAMP_CONST? */
 
 			ev3_tm->ramp.down.end   =  60*60*1000;
 			ev3_tm->ramp.down.start =  60*60*1000;
@@ -1223,7 +1239,8 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 			reprocess = true;
 			break;
 
-		/* The LIMITED_XXX functions have to handle the three phases (any of
+		/*
+		 * The LIMITED_XXX functions have to handle the three phases (any of
 		 * which are optional) of a motor move operation. It is assumed that
 		 * when the run mode was set, the ramp factors were calculated.
 		 *
@@ -1241,78 +1258,69 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 		 * of the sequence is ramping up, the tail end of the sequence is
 		 * ramping down.
 		 */
-	
+
 		case TM_STATE_RAMP_UP:
-			/* Figure out if we're done ramping up - if yes set state to RAMP_CONST
+			/*
+			 * Figure out if we're done ramping up - if yes set state to RAMP_CONST
 			 * and allow states to get reprocessed
 			 */
 			if (ev3_tm->run_mode == TM_RUN_POSITION) {
 				adjust_ramp_for_position(ev3_tm);
 			}
-	
-			if ( ev3_tm->ramp.count >= ev3_tm->ramp.up.end ) {
+
+			if (ev3_tm->ramp.count >= ev3_tm->ramp.up.end) {
 				ev3_tm->state = TM_STATE_RAMP_CONST;
 				reprocess = true;
 			}
-		
-			/* Figure out how far along we are in the ramp operation */
-				
-			ev3_tm->ramp.percent = calculate_ramp_progress(	  ev3_tm->ramp.count
-									, ev3_tm->ramp.up.end );
-//								, ev3_tm->ramp_up_sp );
 
-//			if( 0 != ev3_tm->ramp_up_sp )
-//				ev3_tm->ramp.percent = ((ev3_tm->ramp.count * 100) / ev3_tm->ramp_up_sp);
-//			else
-//				ev3_tm->ramp.percent = 100;
+			/* Figure out how far along we are in the ramp operation */
+
+			ev3_tm->ramp.percent = calculate_ramp_progress( ev3_tm->ramp.count, ev3_tm->ramp.up.full);
 
 			update_motor_speed_or_power(ev3_tm, ev3_tm->ramp.percent);
 			break;
-	
+
 		case TM_STATE_RAMP_CONST:
-			/* Figure out if we're done with the const section - if yes set state to RAMP_DOWN
-			 * and allow states to get reprocessed. 
+			/*
+			 * Figure out if we're done with the const section - if yes set state to RAMP_DOWN
+			 * and allow states to get reprocessed.
 			 *
 			 *  Just push out the end point if we're in TM_RUN_FOREVER mode
 			 */
 
-			#warning "Ramp endpoint calcs are different for regulation ON!"
 			if (ev3_tm->run_mode == TM_RUN_FOREVER) {
 				ev3_tm->ramp.down.start = ev3_tm->ramp.count;
 				ev3_tm->ramp.down.end   = ev3_tm->ramp.count + ((abs(ev3_tm->duty_cycle_sp) * ev3_tm->ramp_down_sp) / 100);
 			}
 
-			/* Just push out the end point if we're in TM_RUN_TIME mode, and
+			/*
+			 * Just push out the end point if we're in TM_RUN_TIME mode, and
 			 * then check to see if we should start ramping down
 			 */
 
-			#warning "Ramp endpoint calcs are different for regulation ON!"
 			else if (ev3_tm->run_mode == TM_RUN_TIME) {
-//				ev3_tm->ramp.down.start = ev3_tm->ramp.count;
-//				ev3_tm->ramp.down.end   = ev3_tm->ramp.count + ((abs(ev3_tm->duty_cycle_sp) * ev3_tm->ramp_down_sp) / 100);
-
-//				if (ev3_tm->ramp.down.end >= ev3_tm->time_sp) {
-			        if ( ev3_tm->ramp.count >= ev3_tm->ramp.down.start ) {
+				if (ev3_tm->ramp.count >= ev3_tm->ramp.down.start) {
 					ev3_tm->state = TM_STATE_RAMP_DOWN;
 					reprocess = true;
 				}
 			}
 
-			/* In TM_RUN_POSITION mode, estimate where the end point would
+			/*
+			 * In TM_RUN_POSITION mode, estimate where the end point would
 			 * be, and ramp down if we're past it.
 			 */
 
-			#warning "Ramp endpoint calcs are different for regulation ON!"
 			else if (ev3_tm->run_mode == TM_RUN_POSITION) {
 				adjust_ramp_for_position(ev3_tm);
 
-				if ( ev3_tm->ramp.count >= ev3_tm->ramp.down.start ) {
+				if (ev3_tm->ramp.count >= ev3_tm->ramp.down.start) {
 					ev3_tm->state = TM_STATE_POSITION_RAMP_DOWN;
 					reprocess = true;
 				}
 			}
 
-			/* This has to be here or else changing the pulses_per_second_sp
+			/*
+			 * This has to be here or else changing the pulses_per_second_sp
 			 * or the duty_cycle_sp when the motor is running won't work...
 			 */
 
@@ -1321,30 +1329,31 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 			break;
 
 		case TM_STATE_POSITION_RAMP_DOWN:
-			#warning "Maybe incorporate this into the adjust_ramp_for_position() function"
+			/* TODO - Maybe incorporate this into the adjust_ramp_for_position() function */
 
 			if (ev3_tm->ramp.direction > 0) {
 
 				if (ev3_tm->ramp.position_sp <= (ev3_tm->tacho + ev3_tm->irq_tacho /*+ (ev3_tm->power/4)*/)) {
 					ev3_tm->ramp.down.end = ev3_tm->ramp.count;
-				} else if ( ev3_tm->ramp.down.end <= ev3_tm->ramp.count ) {
-					#warning "Increase ramp endpoint to nudge the ramp setpoint higher"
-				 	ev3_tm->ramp.down.end = ev3_tm->ramp.count + 100;
+				} else if (ev3_tm->ramp.down.end <= ev3_tm->ramp.count) {
+					/* TODO - Increase ramp endpoint to nudge the ramp setpoint higher */
+					ev3_tm->ramp.down.end = ev3_tm->ramp.count + 100;
 				}
 
 			} else {
 
 				if (ev3_tm->ramp.position_sp >= (ev3_tm->tacho + ev3_tm->irq_tacho /*+ (ev3_tm->power/4)*/)) {
 					ev3_tm->ramp.down.end = ev3_tm->ramp.count;
-				} else if ( ev3_tm->ramp.down.end <= ev3_tm->ramp.count ) {
-					#warning "Increase ramp endpoint to nudge the ramp setpoint higher"
-				 	ev3_tm->ramp.down.end = ev3_tm->ramp.count + 100;
+				} else if (ev3_tm->ramp.down.end <= ev3_tm->ramp.count) {
+					/* TODO - Increase ramp endpoint to nudge the ramp setpoint higher */
+					ev3_tm->ramp.down.end = ev3_tm->ramp.count + 100;
 				}
 			}
 
 			ev3_tm->ramp.down.start = ev3_tm->ramp.down.end - ev3_tm->ramp_down_sp;
 
-			/* NOTE: Intentional fallthrough to the TM_STATE_RAMP_DOWN case
+			/*
+			 * NOTE: Intentional fallthrough to the TM_STATE_RAMP_DOWN case
 			 *
 			 * The TM_STATE_POSTION_RAMP_DOWN is busy recalculating the
 			 * end point based on the current motor speed, so we can use
@@ -1352,33 +1361,27 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 			 */
 
 		case TM_STATE_RAMP_DOWN:
-			/* Figure out if we're done ramping down - if yes then 
+			/*
+			 * Figure out if we're done ramping down - if yes then
 			 * decide whether to brake, coast, or leave the motor
 			 * unchanged, and allow states to get reprocessed
 			 */
-	
-			if ( ev3_tm->ramp.count >= ev3_tm->ramp.down.end ) {
+
+			if (ev3_tm->ramp.count >= ev3_tm->ramp.down.end) {
 				ev3_tm->state = TM_STATE_STOP;
 				reprocess = true;
 
 			}
 			/* Figure out how far along we are in the ramp operation */
-				
-			ev3_tm->ramp.percent = calculate_ramp_progress(	 (ev3_tm->ramp.down.end - ev3_tm->ramp.count)
-									, ev3_tm->ramp_down_sp );
-//									, ev3_tm->ramp_down_sp );
 
-//			if( 0 != ev3_tm->ramp_down_sp )
-//				ev3_tm->ramp.percent = ((ev3_tm->ramp.down.end - ev3_tm->ramp.count) * 100) / ev3_tm->ramp_down_sp;
-//			else
-//				ev3_tm->ramp.percent = 0;
+			ev3_tm->ramp.percent = calculate_ramp_progress( (ev3_tm->ramp.down.end - ev3_tm->ramp.count), ev3_tm->ramp.down.full );
 
 			update_motor_speed_or_power(ev3_tm, ev3_tm->ramp.percent);
 			break;
 
 		case TM_STATE_STOP:
-	          {	
-			/* Add in the irq_tacho for the current move so that we can use
+			/*
+			 * Add in the irq_tacho for the current move so that we can use
 			 * the value of irq_tacho in the HOLD mode - the current, real
 			 * tacho reading is ALWAYS tacho + irq_tacho!
 			 */
@@ -1392,9 +1395,10 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 			}
 
 			ev3_tm->speed_reg_sp = 0;
-			ev3_tacho_motor_set_power( ev3_tm, 0 );
+			ev3_tacho_motor_set_power(ev3_tm, 0);
 
-			/* Reset the PID terms here to avoid having these terms influence the motor
+			/*
+			 * Reset the PID terms here to avoid having these terms influence the motor
 			 * operation at the beginning of the next sequence. The most common issue is
 			 * having some residual integral value briefly turn the motor on hard if
 			 * we're ramping up slowly
@@ -1406,26 +1410,24 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 
 			reprocess     = true;
 			ev3_tm->state = TM_STATE_IDLE;
-	          }
-	          break;
+			break;
 
 		case TM_STATE_IDLE:
 			ev3_tm->run = 0;
 			schedule_work(&ev3_tm->notify_state_change_work);
 			break;
-	  	default:
-	          { /* Intentionally left empty */
-	          }
-	 	break;
-	 	}
-	
+		default:
+			/* Intentionally left empty */
+			break;
+		}
 	}
 
 	if (ev3_tm->run && (TM_REGULATION_ON == ev3_tm->regulation_mode))
 		regulate_speed(ev3_tm);
 
 no_run:
-	/* Note, we get here even if we're running - so we need to check
+	/*
+	 * Note, we get here even if we're running - so we need to check
 	 * explicitly. These are some special cases to handle changes in the
 	 * brake_mode when the motor is not running!
 	 */
@@ -1435,7 +1437,7 @@ no_run:
 			pdata->motor_ops.set_command(pdata->motor_ops.context,
 							DC_MOTOR_COMMAND_COAST);
 
-		else if (TM_STOP_BRAKE == ev3_tm->stop_mode) 
+		else if (TM_STOP_BRAKE == ev3_tm->stop_mode)
 			pdata->motor_ops.set_command(pdata->motor_ops.context,
 							DC_MOTOR_COMMAND_BRAKE);
 
@@ -1493,8 +1495,8 @@ static void ev3_tacho_motor_set_position(struct tacho_motor_device *tm, long pos
 	struct ev3_tacho_motor_data *ev3_tm =
 			container_of(tm, struct ev3_tacho_motor_data, tm);
 
-	ev3_tm->irq_tacho              = 0;
-	ev3_tm->tacho 		       = position;
+	ev3_tm->irq_tacho	 = 0;
+	ev3_tm->tacho		 = position;
 	ev3_tm->ramp.position_sp = position;
 }
 
@@ -1643,7 +1645,7 @@ static int ev3_tacho_motor_get_polarity_mode(struct tacho_motor_device *tm)
 }
 
 static void ev3_tacho_motor_set_polarity_mode(struct tacho_motor_device *tm,
-					      long polarity_mode)
+						long polarity_mode)
 {
 	struct ev3_tacho_motor_data *ev3_tm =
 			container_of(tm, struct ev3_tacho_motor_data, tm);
@@ -1661,7 +1663,7 @@ static int ev3_tacho_motor_get_encoder_mode(struct tacho_motor_device *tm)
 }
 
 static void ev3_tacho_motor_set_encoder_mode(struct tacho_motor_device *tm,
-					     long encoder_mode)
+						long encoder_mode)
 {
 	struct ev3_tacho_motor_data *ev3_tm =
 			container_of(tm, struct ev3_tacho_motor_data, tm);
@@ -1765,8 +1767,6 @@ static void ev3_tacho_motor_set_speed_regulation_K(struct tacho_motor_device *tm
 	ev3_tm->pid.speed_regulation_K = speed_regulation_K;
 }
 
-/* -------------------------------------------------------------------------- */
-
 static int ev3_tacho_motor_get_run_mode(struct tacho_motor_device *tm)
 {
 	struct ev3_tacho_motor_data *ev3_tm =
@@ -1796,14 +1796,14 @@ static void ev3_tacho_motor_set_run(struct tacho_motor_device *tm, long run)
 	struct ev3_tacho_motor_data *ev3_tm =
 			container_of(tm, struct ev3_tacho_motor_data, tm);
 
-	/* Safety First! If the estop is set, then unconditionally STOP
-	 */
+	/* Safety First! If the estop is set, then unconditionally STOP */
 
-	if (0 != ev3_tm->estop ) {
+	if (0 != ev3_tm->estop) {
 		ev3_tm->state = TM_STATE_STOP;
 	}
 
-	/* If the motor is currently running and we're asked to stop
+	/*
+	 * If the motor is currently running and we're asked to stop
 	 * it, then figure out how we're going to stop it - maybe we
 	 * need to ramp it down first!
 	 */
@@ -1822,7 +1822,8 @@ static void ev3_tacho_motor_set_run(struct tacho_motor_device *tm, long run)
 			ev3_tm->state = TM_STATE_STOP;
 	}
 
-	/* If the motor is currently idle and we're asked to run
+	/*
+	 * If the motor is currently idle and we're asked to run
 	 * it, then figure out how we're going to get things started
 	 */
 
@@ -1837,14 +1838,14 @@ static void ev3_tacho_motor_set_run(struct tacho_motor_device *tm, long run)
 			ev3_tm->state = TM_STATE_SETUP_RAMP_POSITION;
 	}
 
-	/* Otherwise, put the motor in STOP state - it will eventually stop
-	 */
+	/* Otherwise, put the motor in STOP state - it will eventually stop */
 
-	else if (0 == run)  
+	else if (0 == run) {
 		ev3_tm->state = TM_STATE_STOP;
+	}
 
-
-	/* what's going on here - why is run always set to 1? 
+	/*
+	 * what's going on here - why is run always set to 1?
 	 *
 	 * the answer is that we check for run == 0 as the first condition
 	 * at the top of this function. if it's set, then the next motor state
@@ -1871,32 +1872,40 @@ static void ev3_tacho_motor_set_estop(struct tacho_motor_device *tm, long estop)
 	struct ev3_tacho_motor_data *ev3_tm =
 			container_of(tm, struct ev3_tacho_motor_data, tm);
 
-	// If the estop is unarmed, then writing ANY value will arm it!
-        //
-        // Note that stop_mode gets set to TM_STOP_COAST to make it easier to
-	// move the motor by hand if needed...
+	/*
+	 * If the estop is unarmed, then writing ANY value will arm it!
+	 *
+	 * Note that stop_mode gets set to TM_STOP_COAST to make it easier to
+	 * move the motor by hand if needed...
+	 */
 
-	if ( 0 == ev3_tm->estop ) {
+	if (0 == ev3_tm->estop) {
 		ev3_tm->stop_mode = TM_STOP_COAST;
 		ev3_tm->state     = TM_STATE_STOP;
 
-		// This handles the obscure case of accidentally getting
-		// a random value of 0 for the estop key.
+		/*
+		 * This handles the obscure case of accidentally getting
+		 * a random value of 0 for the estop key.
+		 */
 
-		while( 0 == ev3_tm->estop )
+		while(0 == ev3_tm->estop)
 			get_random_bytes(&ev3_tm->estop, sizeof(ev3_tm->estop));
 
-	// If the estop is armed and we're writing the exact value back
-	// disarm the estop
+	/*
+	 * If the estop is armed and we're writing the exact value back
+	 * disarm the estop
+	 */
 
 	} else if (estop == ev3_tm->estop) {
 		ev3_tm->estop = 0;
 
-	// Otherwise the estop is armed and we wrote the wrong value back
-	// so do nothing
+	/*
+	 * Otherwise the estop is armed and we wrote the wrong value back
+	 * so do nothing
+	 */
 
 	} else {
-		// This space intentionally left blank
+		/* This space intentionally left blank */
 	}
 }
 
@@ -1995,7 +2004,7 @@ static int ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 	ev3_tm->motor_port = motor;
 
 	strncpy(ev3_tm->tm.port_name, dev_name(&pdata->out_port->dev),
-	        TACHO_MOTOR_PORT_NAME_SIZE);
+		TACHO_MOTOR_PORT_NAME_SIZE);
 	ev3_tm->tm.fp = &fp;
 
 	err = register_tacho_motor(&ev3_tm->tm, &motor->dev);
@@ -2005,10 +2014,12 @@ static int ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 	dev_set_drvdata(&motor->dev, ev3_tm);
 
 	/* Here's where we set up the port pins on a per-port basis */
-	if(request_irq(gpio_to_irq(pdata->tacho_int_gpio), tacho_motor_isr, 0, dev_name(&pdata->out_port->dev), ev3_tm ))
+	if(request_irq(gpio_to_irq(pdata->tacho_int_gpio), tacho_motor_isr, 0,
+				dev_name(&pdata->out_port->dev), ev3_tm))
 		goto err_dev_request_irq;
 
-	irq_set_irq_type(gpio_to_irq(pdata->tacho_int_gpio), IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING);
+	irq_set_irq_type(gpio_to_irq(pdata->tacho_int_gpio),
+			 IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING);
 
 	hrtimer_init(&ev3_tm->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	ev3_tm->timer.function = ev3_tacho_motor_timer_callback;
