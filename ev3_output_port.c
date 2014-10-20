@@ -278,8 +278,8 @@ int ev3_output_port_set_direction_gpios(struct ev3_output_port_data *data)
 		gpio_direction_output(data->gpio[GPIO_PIN2].gpio, 1);
 		break;
 	case DC_MOTOR_COMMAND_COAST:
-		gpio_direction_input(data->gpio[GPIO_PIN1].gpio);
-		gpio_direction_input(data->gpio[GPIO_PIN2].gpio);
+		gpio_direction_output(data->gpio[GPIO_PIN1].gpio, 0);
+		gpio_direction_output(data->gpio[GPIO_PIN2].gpio, 0);
 		break;
 	default:
 		return -EINVAL;
