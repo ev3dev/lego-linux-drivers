@@ -338,7 +338,7 @@ static unsigned ev3_output_port_get_duty_cycle(void *context)
 
 	if (unlikely(period == 0))
 		return 0;
-	return pwm_get_duty_cycle(data->pwm) * 1000 / period;
+	return pwm_get_duty_cycle(data->pwm) * 100 / period;
 }
 
 static int ev3_output_port_set_duty_cycle(void *context, unsigned duty)
@@ -346,9 +346,9 @@ static int ev3_output_port_set_duty_cycle(void *context, unsigned duty)
 	struct ev3_output_port_data *data = context;
 	unsigned period = pwm_get_period(data->pwm);
 
-	if (duty > 1000)
+	if (duty > 100)
 		return -EINVAL;
-	return pwm_config(data->pwm, period * duty / 1000, period);
+	return pwm_config(data->pwm, period * duty / 100, period);
 }
 
 void ev3_output_port_float(struct ev3_output_port_data *data)

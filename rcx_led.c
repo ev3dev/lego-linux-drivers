@@ -93,7 +93,7 @@ static int rcx_led_probe(struct legoev3_port_device *motor)
 	data->cdev.brightness_set = rcx_led_brightness_set;
 	data->cdev.brightness_get = rcx_led_brightness_get;
 	data->cdev.brightness = LED_OFF;
-	data->cdev.max_brightness = 1000;
+	data->cdev.max_brightness = 100;
 	memcpy(&data->motor_ops, &pdata->motor_ops, sizeof(struct dc_motor_ops));
 
 	err = led_classdev_register(&motor->dev, &data->cdev);

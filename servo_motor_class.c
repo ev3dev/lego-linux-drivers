@@ -64,7 +64,7 @@
 * `polarity` (read/write)
 * : Sets the polarity of the servo. Valid values are `normal` and `inverted`.
 *   Setting the value to `inverted` will cause the position value to be
-*   inverted. i.e `-1000` will correspond to `max_pulse_ms`, and `1000` will
+*   inverted. i.e `-100` will correspond to `max_pulse_ms`, and `100` will
 *   correspond to `min_pulse_ms`.
 * .
 * `port_name` (read-only)
@@ -73,9 +73,9 @@
 * `position` (read/write)
 * : Reading returns the current position of the servo. Writing instructs the
 *   servo to move to the specified position. Units are percent * 10, i.e
-*   `500` = 50.%. Valid values are -1000 to 1000 (-100.0% to 100.0%) where
-*   `-1000` corresponds to `min_pulse_ms`, `0` corresponds to `mid_pulse_ms`
-*   and `1000` corresponds to `max_pulse_ms`.
+*   `500` = 50.%. Valid values are -100 to 100 (-100% to 100%) where
+*   `-100` corresponds to `min_pulse_ms`, `0` corresponds to `mid_pulse_ms`
+*   and `100` corresponds to `max_pulse_ms`.
 * .
 * `rate` (read/write)
 * : Sets the rate at which the servo travels the half of the full range (0 to
@@ -135,11 +135,11 @@ int servo_motor_class_set_position(struct servo_motor_device *motor,
 		if (new_polarity == SERVO_MOTOR_POLARITY_INVERTED)
 			new_position = -new_position;
 		if (new_position > 0)
-			scaled_position = servo_motor_class_scale(0, 1000,
+			scaled_position = servo_motor_class_scale(0, 100,
 				motor->mid_pulse_ms, motor->max_pulse_ms,
 				new_position);
 		else
-			scaled_position = servo_motor_class_scale(-1000, 0,
+			scaled_position = servo_motor_class_scale(-100, 0,
 				motor->min_pulse_ms, motor->mid_pulse_ms,
 				new_position);
 		return motor->ops.set_position(motor->context, scaled_position);
@@ -306,10 +306,10 @@ static ssize_t position_show(struct device *dev, struct device_attribute *attr,
 		ret = motor->position;
 	else if (ret < motor->mid_pulse_ms)
 		ret =  servo_motor_class_scale(motor->min_pulse_ms,
-			motor->mid_pulse_ms, -1000, 0, ret);
+			motor->mid_pulse_ms, -100, 0, ret);
 	else
 		ret = servo_motor_class_scale(motor->mid_pulse_ms,
-			motor->max_pulse_ms, 0, 1000, ret);
+			motor->max_pulse_ms, 0, 100, ret);
 	return sprintf(buf, "%d\n", ret);
 }
 
@@ -319,7 +319,7 @@ static ssize_t position_store(struct device *dev, struct device_attribute *attr,
 	struct servo_motor_device *motor = to_servo_motor_device(dev);
 	int value, err;
 
-	if (sscanf(buf, "%d", &value) != 1 || value > 1000 || value < -1000)
+	if (sscanf(buf, "%d", &value) != 1 || value > 100 || value < -100)
 		return -EINVAL;
 	if (motor->position != value) {
 		err = servo_motor_class_set_position(motor, value,

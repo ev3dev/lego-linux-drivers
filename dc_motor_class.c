@@ -43,8 +43,8 @@
 * : Returns a space separated list of commands supported by the motor controller.
 * .
 * `duty_cycle` (read/write)
-* : Sets the duty cycle of the PWM signal sent to the motor. Values are -1000
-*   to 1000 (-100.0 to 100.0%).
+* : Sets the duty cycle of the PWM signal sent to the motor. Values are -100
+*   to 100 (-100 to 100%).
 * .
 * `name` (read-only)
 * : Returns the name of the motor controller's driver.
@@ -93,10 +93,10 @@ enum hrtimer_restart dc_motor_class_ramp_timer_handler(struct hrtimer *timer)
 		return HRTIMER_NORESTART;
 
 	if (motor->current_duty_cycle < motor->target_duty_cycle) {
-		ramp_ns = motor->ramp_up_ms * 1000;
+		ramp_ns = motor->ramp_up_ms * 10000;
 		motor->current_duty_cycle++;
 	} else {
-		ramp_ns = motor->ramp_down_ms * 1000;
+		ramp_ns = motor->ramp_down_ms * 10000;
 		motor->current_duty_cycle--;
 	}
 	hrtimer_forward_now(&motor->ramp_timer, ktime_set(0, ramp_ns));
@@ -218,7 +218,7 @@ static ssize_t duty_cycle_store(struct device *dev,
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
 	int value;
 
-	if (sscanf(buf, "%d", &value) != 1 || value < -1000 || value > 1000)
+	if (sscanf(buf, "%d", &value) != 1 || value < -100 || value > 100)
 		return -EINVAL;
 	motor->target_duty_cycle = value;
 	if (motor->ops.get_command(motor->ops.context) == DC_MOTOR_COMMAND_RUN)

@@ -458,7 +458,7 @@ void ev3_tacho_motor_update_output(struct ev3_tacho_motor_data *ev3_tm)
 
 	/* The power sets the duty cycle - 100% power == 100% duty cycle */
 	err = pdata->motor_ops.set_duty_cycle(pdata->motor_ops.context,
-					      abs(ev3_tm->power) * 10);
+					      abs(ev3_tm->power));
 	WARN_ONCE(err, "Failed to set pwm duty cycle! (%d)\n", err);
 }
 
