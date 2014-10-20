@@ -1,5 +1,5 @@
 /*
- * Tacho motor device class for LEGO Mindstorms EV3
+ * Tacho motor device class for LEGO MINDSTORMS EV3
  *
  * Copyright (C) 2013-2014 Ralph Hempel <rhempel@hempeldesigngroup.com>
  *
@@ -12,6 +12,137 @@
  * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+
+/*
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * Tacho Motor Class
+ *
+* The `tacho-motor` class provides a uniform interface for using motors with
+* positional and directional feedback such as the EV3 and NXT motors. This
+* feedback allows for precise control of the motors. This documentation is not
+* complete. For now, see the [old wiki] for more information.
+* .
+* ### sysfs Attributes
+* .
+* Tacho motors can be found at `/sys/class/tacho-motor/motor<N>`, where `<N>`
+* is incremented each time a motor is loaded (it is not related to which port
+* the motor is plugged in to).
+* .
+* `duty_cycle` (read-only)
+* : Returns the current duty cycle of the motor. Units are percent. Values
+*   are -100 to 100.
+* .
+* `duty_cycle_sp` (read/write)
+* : TODO
+* .
+* `encoder_mode` (read/write)
+* : Sets the polarity of the rotary encoder. This should only be changed for
+*   motors that are "wired backwards", like the Firgelli Linear Actuators.
+* .
+* `encoder_modes` (read-only)
+* : Returns a space-separated list of valid encoder modes (`normal inverted`).
+* .
+* `estop`: (read/write)
+* : Used to immediately remove power from the motor (emergency stop). Reading
+*   returns `0` if the estop has not been set or a random 32-bit integer if the
+*   estop has been set. Writing anything will stop the motor. After the estop
+*   has been set, writing the random number that was read will reset the estop.
+* .
+* `log` (read-only)
+* : Used for debugging.
+* .
+* `polarity_mode` (read/write)
+* : Sets the polarity of the motor. With `normal` polarity, a positive duty
+*   cycle will cause the motor to rotate clockwise. With `inverted` polarity,
+*   a positive duty cycle will cause the motor to rotate counter-clockwise.
+* .
+* `polarity_modes` (read-only)
+* : Returns a space-separated list of valid polarity modes (`normal inverted`).
+* .
+* `port_name` (read-only)
+* : Returns the name of the port that the motor is connected to.
+* .
+* `position` (read/write)
+* : Returns the current position of the motor in pulses of the rotary
+*   encoder. When the motor rotates clockwise, the position will increase.
+*   Likewise, rotating counter-clockwise causes the position to decrease.
+*   Writing will set the position to that value.
+* `position_mode` (read/write)
+* : TODO
+* .
+* `position_modes` (read-only)
+* : Returns a space-separated list of valid position modes.
+* .
+* `position_sp` (read/write)
+* : TODO
+* .
+* `pulses_per_second` (read-only)
+* : TODO
+* .
+* `pulses_per_second_sp` (read/write)
+* : TODO
+* .
+* `ramp_up_sp` (read/write)
+* : TODO
+* .
+* `ramp_down_sp` (read/write)
+* : TODO
+* .
+* `regulation_mode` (read/write)
+* : TODO
+* .
+* `regulation_modes` (read-only)
+* : Returns a space-separated list of valid regulation modes.
+* .
+* `reset` (write-only)
+* : Writing `1` will reset all attributes to the default values.
+* .
+* `run` (read/write)
+* : Commands the motor to run or stop. Writing a `1` will cause the motor to
+*   run. Writing `0` will cause the motor to stop.
+* .
+* `run_mode` (read/write)
+* : TODO
+* .
+* `run_modes` (read-only)
+* : Returns a space-separated list of valid run modes.
+* .
+* `speed_regulation_D`: (read/write)
+* : TODO
+* .
+* `speed_regulation_I`: (read/write)
+* : TODO
+* .
+* `speed_regulation_K`: (read/write)
+* : TODO
+* .
+* `speed_regulation_P`: (read/write)
+* : TODO
+* .
+* `state` (read-only)
+* : TODO
+* .
+* `stop_mode` (read/write)
+* : TODO
+* .
+* `stop_modes` (read-only)
+* : Returns a space-separated list of valid stop modes.
+* .
+* `time_sp` (read/write)
+* : TODO
+* .
+* `type` (read-only)
+* : TODO
+* .
+* [old wiki]: https://github.com/ev3dev/ev3dev/wiki/Using-Motors
+*/
 
 #include <linux/device.h>
 #include <linux/module.h>
@@ -848,7 +979,6 @@ struct class tacho_motor_class = {
 	.dev_uevent	= tacho_motor_dev_uevent,
 	.devnode	= tacho_motor_devnode,
 };
-EXPORT_SYMBOL_GPL(tacho_motor_class);
 
 static int tacho_motor_class_init(void)
 {
@@ -870,6 +1000,6 @@ static void tacho_motor_class_exit(void)
 }
 module_exit(tacho_motor_class_exit);
 
-MODULE_DESCRIPTION("Tacho Motor device class for LEGO Mindstorms EV3");
+MODULE_DESCRIPTION("Tacho Motor device class for LEGO MINDSTORMS EV3");
 MODULE_AUTHOR("Ralph Hempel <rhempel@hempeldesigngroup.com>");
 MODULE_LICENSE("GPL");

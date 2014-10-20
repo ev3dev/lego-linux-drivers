@@ -24,7 +24,7 @@
  *
  * DC Motor Class
  *
-* The `dc_motor` class provides a uniform interface for using regular DC motors
+* The `dc-motor` class provides a uniform interface for using regular DC motors
 * with no fancy controls or feedback. This includes LEGO MINDSTORMS RCX motors
 * and LEGO Power Functions motors.
 * .
@@ -39,12 +39,12 @@
 *  `coast`. Not all commands may be supported, so be sure to check the contents
 *   of the `commands` attribute.
 * .
-* `commands` (read only)
+* `commands` (read-only)
 * : Returns a space separated list of commands supported by the motor controller.
 * .
 * `duty_cycle` (read/write)
 * : Sets the duty cycle of the PWM signal sent to the motor. Values are -100
-*   to 100 (-100 to 100%).
+*   to 100 (-100% to 100%).
 * .
 * `name` (read-only)
 * : Returns the name of the motor controller's driver.
@@ -57,13 +57,15 @@
 * .
 * `ramp_down_ms` (read/write)
 * : Sets the time in milliseconds that it take the motor to ramp down from 100%
-*   to 0%. Valid values are 0 to 10000. Default is 0. If the controller does not
-*   support ramping, then reading and writing will fail with -ENOSYS.
+*   to 0%. Valid values are 0 to 10000 (10 seconds). Default is 0. If the
+*   controller does not support ramping, then reading and writing will fail
+*   with -ENOSYS.
 * .
 * `ramp_up_ms` (read/write)
 * : Sets the time in milliseconds that it take the motor to up ramp from 0% to
-*   100%. Valid values are 0 to 10000. Default is 0. If the controller does not
-*   support ramping, then reading and writing will fail with -ENOSYS.
+*   100%. Valid values are 0 to 10000 (10 seconds). Default is 0. If the
+*   controller does not support ramping, then reading and writing will fail
+*   with -ENOSYS.
 */
 
 #include <linux/device.h>

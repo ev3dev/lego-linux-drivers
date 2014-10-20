@@ -1,5 +1,5 @@
 /*
- * EV3 Tacho Motor device driver for LEGO Mindstorms EV3
+ * EV3 Tacho Motor device driver for LEGO MINDSTORMS EV3
  *
  * Copyright (C) 2013-2014 Ralph Hempel <rhempel@hempeldesigngroup.com>
  *
@@ -11,6 +11,35 @@
  * kind, whether express or implied; without even the implied warranty
  * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
+ */
+
+/*
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * EV3/NXT Tacho Motor Driver
+ *
+ * This driver provides a [tacho-motor] interface for EV3 and NXT motors or any
+ * other compatible motor with an [incremental rotary encoder] for position
+ * and direction feedback that is connected to an output port. We call them
+ * "tacho" motors because that is what the LMS2012 source code calls them. You
+ * can find the sysfs device at `/sys/bus/legoev3/devices/<port>:ev3-tacho-motor`
+ * where `<port>` is the the name of the output port the motor is connected to
+ * (e.g. `outA`). There is not much of interest there though - all the useful
+ * stuff is in the [tacho-motor] class.
+ * .
+ * This device is loaded automatically when a motor is plugged in and the
+ * [ev3-output-port] is set to `auto` or when [ev3-output-port] is set to
+ * `ev3-tacho-motor` mode.
+ * .
+ * [tacho-motor]: ../taco-motor-class
+ * [incremental rotary encoder]: https://en.wikipedia.org/wiki/Rotary_encoder#Incremental_rotary_encoder
+ * [ev3-output-port]: ../ev3-output-port
  */
 
 #include <linux/device.h>
@@ -229,7 +258,7 @@ static void set_samples_per_speed(struct ev3_tacho_motor_data *ev3_tm, int speed
 	}
 }
 
-/**
+/*
  * Handling the Tachometer Inputs
  *
  * The tacho motor driver uses two pins on each port to determine the direction
@@ -2065,10 +2094,9 @@ struct legoev3_port_device_driver ev3_tacho_motor_driver = {
 		.owner	= THIS_MODULE,
 	},
 };
-EXPORT_SYMBOL_GPL(ev3_tacho_motor_driver);
 legoev3_port_device_driver(ev3_tacho_motor_driver);
 
-MODULE_DESCRIPTION("EV3 tacho motor driver for LEGO Mindstorms EV3");
+MODULE_DESCRIPTION("EV3 tacho motor driver for LEGO MINDSTORMS EV3");
 MODULE_AUTHOR("Ralph Hempel <rhempel@hempeldesigngroup.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("legoev3:ev3-tacho-motor");

@@ -24,7 +24,7 @@
  *
  * Servo Motor Class
  *
-* The `servo_motor` class provides a uniform interface for using [hobby type
+* The `servo-motor` class provides a uniform interface for using [hobby type
 * servo motors](https://en.wikipedia.org/wiki/Servo_%%28radio_control%%29).
 * .
 * ### sysfs Attributes
@@ -72,18 +72,17 @@
 * .
 * `position` (read/write)
 * : Reading returns the current position of the servo. Writing instructs the
-*   servo to move to the specified position. Units are percent * 10, i.e
-*   `500` = 50.%. Valid values are -100 to 100 (-100% to 100%) where
-*   `-100` corresponds to `min_pulse_ms`, `0` corresponds to `mid_pulse_ms`
-*   and `100` corresponds to `max_pulse_ms`.
+*   servo to move to the specified position. Units are percent. Valid values
+*   are -100 to 100 (-100% to 100%) where `-100` corresponds to `min_pulse_ms`,
+*   `0` corresponds to `mid_pulse_ms` and `100` corresponds to `max_pulse_ms`.
 * .
 * `rate` (read/write)
-* : Sets the rate at which the servo travels the half of the full range (0 to
-*   100.0%. Units are in milliseconds. Example: Setting the rate to 1000 means
-*   that it will take a 180 degree servo 2 second to move from 0 to 180 degrees.
-*   Note: Some servo controllers may not support this in which case reading and
-*   writing will fail with -ENOSYS. In continuous rotation servos, this
-*   value will affect the rate at which the speed ramps up or down.
+* : Sets the rate at which the servo travels from 0 to 100.0% (half of the full
+*   range of the servo). Units are in milliseconds. Example: Setting the rate
+*   to 1000 means that it will take a 180 degree servo 2 second to move from 0
+*   to 180 degrees. Note: Some servo controllers may not support this in which
+*   case reading and writing will fail with -ENOSYS. In continuous rotation
+*   servos, this value will affect the rate at which the speed ramps up or down.
 */
 
 #include <linux/device.h>
