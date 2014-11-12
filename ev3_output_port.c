@@ -316,7 +316,7 @@ static enum dc_motor_polarity ev3_output_port_get_polarity(void *context)
 {
 	struct ev3_output_port_data *data = context;
 
-	return data->command;
+	return data->polarity;
 }
 
 static int ev3_output_port_set_polarity(void *context,
