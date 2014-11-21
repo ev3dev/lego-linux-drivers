@@ -1590,6 +1590,95 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
+	[MS_ANGLE_SENSOR] = {
+		/**
+		 * @vendor_name: mindsensors.com
+		 * @vendor_part_number: AngleSensor
+		 * @vendor_part_name: GlideWheel-AS
+		 * @vendor_website: http://www.mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=173
+		 * @default_address: 0x18
+		 */
+		.name			= "ms-angle-sensor",
+		.vendor_id		= "mndsnsrs",
+		.product_id		= "AngSens",
+		.num_modes		= 4,
+		.ms_mode_info	= {
+			[0] = {
+				/**
+				 * @description: Angle
+				 * @value0: Angle
+				 * @units_description: degrees
+				 */
+				.name		= "MS-AS-ANGLE",
+				.data_sets	= 1,
+				.data_type	= MSENSOR_DATA_S32,
+				.units		= "deg",
+			},
+			[1] = {
+				/**
+				 * @description: High-precision angle
+				 * @value0: Angle
+				 * @units_description: degrees
+				 */
+				.name		= "MS-AS-ANGLE2",
+				.raw_max	= 360,
+				.si_max		= 1800,
+				.data_sets	= 1,
+				.decimals	= 1,
+				.data_type	= MSENSOR_DATA_S32,
+				.units		= "deg",
+			},
+			[2] = {
+				/**
+				 * @description: Rotational Speed
+				 * @value0: Rotational Speed (-4000 to 4000)
+				 * @units_description: revolutions per minute
+				 */
+				.name		= "MS-AS-RPM",
+				.raw_max	= 100,
+				.si_max		= 100,
+				.data_sets	= 1,
+				.units		= "rpm",
+				.data_type	= MSENSOR_DATA_S16,
+			},
+			[3] = {
+				/**
+				 * [^mode3-value1]: Angle value times 2
+				 * (i.e. value of 10 = angle of 5 degrees).
+				 * Allows for 0.5 degree precision.
+				 * [^mode3-value2]: Value needs to be converted to
+				 * 16-bit signed integer. Example:
+				 * `if (value2 > 32767) value2 = value2 - 65536`
+				 *
+				 * @description: All values
+				 * @value0: Angle
+				 * @value1: Angle x2
+				 * @value1_footnote: [^mode3-value1]
+				 * @value2: Rotational Speed
+				 * @value2_footnote: [^mode3-value2]
+				 */
+				.name		= "MS-AS-ALL",
+				.raw_max	= 100,
+				.si_max		= 100,
+				.data_sets	= 3,
+				.data_type	= MSENSOR_DATA_S32,
+			},
+		},
+		.i2c_mode_info	= {
+			[0] = {
+				.read_data_reg	= 0x42,
+			},
+			[1] = {
+				.read_data_reg	= 0x46,
+			},
+			[2] = {
+				.read_data_reg	= 0x4A,
+			},
+			[3] = {
+				.read_data_reg	= 0x42,
+			},
+		},
+	},
 	[MS_LIGHT_SENSOR_ARRAY] = {
 		/**
 		 * [^address]: The address is programmable. See manufacturer
