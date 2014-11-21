@@ -348,7 +348,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		/**
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 9846
-		 * @vendor_part_name: NXT Ultrasonic  Sensor
+		 * @vendor_part_name: NXT Ultrasonic Sensor
 		 * @vendor_website: http://www.lego.com/en-us/mindstorms/downloads/software/nxt-hdk/
 		 * @default_address: 0x01
 		 */
