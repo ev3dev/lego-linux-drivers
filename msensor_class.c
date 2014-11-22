@@ -1,5 +1,5 @@
 /*
- * Measurement sensor device class for LEGO Mindstorms EV3
+ * Mindstorms sensor device class for LEGO MINDSTORMS EV3
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
@@ -84,6 +84,13 @@
 * `mode` (read/write)
 * : Returns the current mode. Writing one of the values returned by `modes` sets
 * .    the sensor to that mode.
+* .
+* `commands` (read-only)
+* : Returns a space separated list of the valid commands for the sensor. Returns
+* 	-ENOSYS if no commands are supported.
+* .
+* `command` (write-only)
+* : Sends a command to the sensor.
 * .
 * `num_values` (read-only)
 * : Returns the number of `value<N>` attributes that will return a valid value
@@ -262,6 +269,41 @@ static ssize_t msensor_store_mode(struct device *dev,
 	for (i = 0; i < ms->num_modes; i++) {
 		if (sysfs_streq(buf, ms->mode_info[i].name)) {
 			err = ms->set_mode(ms->context, i);
+			if (err)
+				return err;
+			return count;
+		}
+	}
+	return -EINVAL;
+}
+
+static ssize_t msensor_show_commands(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf)
+{
+	struct msensor_device *ms = to_msensor_device(dev);
+	int i;
+	unsigned count = 0;
+
+	for (i = 0; i < ms->num_commands; i++)
+		count += sprintf(buf + count, "%s ", ms->cmd_info[i].name);
+	if (count == 0)
+		return -ENOSYS;
+	buf[count - 1] = '\n';
+
+	return count;
+}
+
+static ssize_t msensor_store_command(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
+{
+	struct msensor_device *ms = to_msensor_device(dev);
+	int i, err;
+
+	for (i = 0; i < ms->num_commands; i++) {
+		if (sysfs_streq(buf, ms->cmd_info[i].name)) {
+			err = ms->send_command(ms->context, i);
 			if (err)
 				return err;
 			return count;
@@ -544,6 +586,8 @@ static DEVICE_ATTR(port_name, S_IRUGO, msensor_show_port_name, NULL);
 static DEVICE_ATTR(address, S_IRUGO , msensor_show_address, NULL);
 static DEVICE_ATTR(modes, S_IRUGO, msensor_show_modes, NULL);
 static DEVICE_ATTR(mode, S_IRUGO | S_IWUSR, msensor_show_mode, msensor_store_mode);
+static DEVICE_ATTR(commands, S_IRUGO, msensor_show_commands, NULL);
+static DEVICE_ATTR(command, S_IWUGO, NULL, msensor_store_command);
 static DEVICE_ATTR(units, S_IRUGO, msensor_show_units, NULL);
 static DEVICE_ATTR(dp, S_IRUGO, msensor_show_dp, NULL);
 static DEVICE_ATTR(num_values, S_IRUGO, msensor_show_num_values, NULL);
@@ -570,6 +614,8 @@ static struct attribute *msensor_class_attrs[] = {
 	&dev_attr_address.attr,
 	&dev_attr_modes.attr,
 	&dev_attr_mode.attr,
+	&dev_attr_commands.attr,
+	&dev_attr_command.attr,
 	&dev_attr_units.attr,
 	&dev_attr_dp.attr,
 	&dev_attr_num_values.attr,
@@ -727,6 +773,6 @@ static void __exit msensor_class_exit(void)
 }
 module_exit(msensor_class_exit);
 
-MODULE_DESCRIPTION("Mindstorms sensor device class for LEGO Mindstorms EV3");
+MODULE_DESCRIPTION("Mindstorms sensor device class for LEGO MINDSTORMS EV3");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");

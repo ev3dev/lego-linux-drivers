@@ -63,16 +63,34 @@ struct nxt_i2c_sensor_mode_info {
 };
 
 /**
+ * struct nxt_i2c_sensor_mode_info
+ * @cmd_reg: The register address used to set the command.
+ * @cmd_data: The data to write to the command register.
+ */
+struct nxt_i2c_sensor_cmd_info {
+	u8 cmd_reg;
+	u8 cmd_data;
+};
+
+/**
  * struct nxt_i2c_sensor_info
  * @name: The driver name. Must match name in id_table.
  * @vendor_id: The vendor ID string to match to the sensor.
  * @product_id: The product ID string to match to the sensor.
  * @callback_data: Pointer for private data used by ops.
  * @ops: Optional hooks for special-case drivers.
- * @mode_info: Array of mode information for each sensor mode.
+ * @ms_mode_info: Array of mode information for each sensor mode. Used by the
+ * 	msensor class.
+ * @i2c_mode_info: Array of mode information each sensor mode. Used by this
+ * 	driver.
+ * @ms_cmd_info: Array of command information for each sensor command. Used by
+ * 	the msensor class.
+ * @i2c_mode_info: Array of command information for each sensor command. Used by
+ * 	this driver.
  * @num_modes: Number of valid elements in the mode_info array.
  * @num_read_only_modes: Number of modes that are usable without having to
  * 	write data to the sensor.
+ * @num_commands: The number of commands supported by the sensor.
  * @slow: The sensor cannot operate at 100kHz.
  */
 struct nxt_i2c_sensor_info {
@@ -83,8 +101,11 @@ struct nxt_i2c_sensor_info {
 	struct nxt_i2c_sensor_ops ops;
 	struct msensor_mode_info ms_mode_info[MSENSOR_MODE_MAX + 1];
 	struct nxt_i2c_sensor_mode_info i2c_mode_info[MSENSOR_MODE_MAX + 1];
+	struct msensor_cmd_info ms_cmd_info[MSENSOR_MODE_MAX + 1];
+	struct nxt_i2c_sensor_cmd_info i2c_cmd_info[MSENSOR_MODE_MAX + 1];
 	int num_modes;
 	int num_read_only_modes;
+	int num_commands;
 	unsigned slow:1;
 };
 

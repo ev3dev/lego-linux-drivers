@@ -126,6 +126,15 @@ static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
 	return 0;
 }
 
+static int nxt_i2c_sensor_send_command(void *context, u8 command)
+{
+	struct nxt_i2c_sensor_data *sensor = context;
+
+	return i2c_smbus_write_byte_data(sensor->client,
+		sensor->info.i2c_cmd_info[command].cmd_reg,
+		sensor->info.i2c_cmd_info[command].cmd_data);
+}
+
 static ssize_t nxt_i2c_sensor_write_data(void *context, char *data, loff_t off,
 					 size_t count)
 {
@@ -236,8 +245,11 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 	sensor->ms.num_modes = sensor->info.num_modes;
 	sensor->ms.num_view_modes = 1;
 	sensor->ms.mode_info = sensor->info.ms_mode_info;
+	sensor->ms.num_commands = sensor->info.num_commands;
+	sensor->ms.cmd_info = sensor->info.ms_cmd_info;
 	sensor->ms.get_mode = nxt_i2c_sensor_get_mode;
 	sensor->ms.set_mode = nxt_i2c_sensor_set_mode;
+	sensor->ms.send_command = nxt_i2c_sensor_send_command;
 	sensor->ms.write_data = nxt_i2c_sensor_write_data;
 	sensor->ms.get_poll_ms = nxt_i2c_sensor_get_poll_ms;
 	sensor->ms.set_poll_ms = nxt_i2c_sensor_set_poll_ms;

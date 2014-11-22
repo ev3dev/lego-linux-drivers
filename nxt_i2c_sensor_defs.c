@@ -1,5 +1,5 @@
 /*
- * NXT I2C sensor device driver for LEGO Mindstorms EV3
+ * NXT I2C sensor device driver for LEGO MINDSTORMS EV3
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
@@ -1028,8 +1028,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.name		= "ht-nxt-angle",
 		.vendor_id	= "HITECHNC",
 		.product_id	= "AnglSnsr",
-		.num_modes	= 4,
-		.num_read_only_modes = 3,
+		.num_modes	= 3,
 		.ms_mode_info	= {
 			[0] = {
 				/**
@@ -1071,21 +1070,6 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_type = MSENSOR_DATA_S16,
 				.units = "RPM",
 			},
-			[3] = {
-				/**
-				 * [^mode3]: `HT-ANG-RSET` mode is exactly the same as `HT-ANG-DEG2` except
-				 * that the angle is reset each time the mode is set to `HT-ANG-RSET`.
-				 *
-				 * @name_footnote: [^mode3]
-				 * @description: Reset angle
-				 * @units_description: degrees
-				 * @value0: Angle (0 to 180)
-				 */
-				.name = "HT-ANG-RSET",
-				.raw_max = 180,
-				.si_max = 180,
-				.units = "deg",
-			},
 		},
 		.i2c_mode_info	= {
 			[0] = {
@@ -1097,11 +1081,21 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[2] = {
 				.read_data_reg	= 0x46,
 			},
-			[3] = {
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= 0x52,
-				.read_data_reg	= 0x42,
+		},
+		.num_commands	= 1,
+		.ms_cmd_info	= {
+			[0] = {
+				/**
+				 * @description: Reset angle values
+				 */
+				.name = "RESET",
 			},
+		},
+		.i2c_cmd_info	= {
+			[0] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 0x52,
+			}
 		},
 	},
 	[HT_NXT_COMPASS_SENSOR] = {
@@ -1678,6 +1672,21 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.read_data_reg	= 0x42,
 			},
 		},
+		.num_commands	= 1,
+		.ms_cmd_info	= {
+			[0] = {
+				/**
+				 * @description: Reset angle values
+				 */
+				.name = "RESET",
+			}
+		},
+		.i2c_cmd_info	= {
+			[0] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'r',
+			},
+		}
 	},
 	[MS_LIGHT_SENSOR_ARRAY] = {
 		/**
@@ -1694,8 +1703,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.name			= "ms-light-array",
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "LSArray",
-		.num_modes		= 7,
-		.num_read_only_modes	= 2,
+		.num_modes		= 2,
 		.ms_mode_info	= {
 			[0] = {
 				/**
@@ -1734,108 +1742,6 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_sets = 8,
 				.data_type = MSENSOR_DATA_S16,
 			},
-			[2] = {
-				/**
-				 * [^config-modes]: This mode returns the same values as `MS-LSA-CAL`
-				 *
-				 * @name_footnote: [^config-modes]
-				 * @description: Calibrate to white
-				 * @value0: LED 0 (0 to 100)
-				 * @value1: LED 1 (0 to 100)
-				 * @value2: LED 2 (0 to 100)
-				 * @value3: LED 3 (0 to 100)
-				 * @value4: LED 4 (0 to 100)
-				 * @value5: LED 5 (0 to 100)
-				 * @value6: LED 6 (0 to 100)
-				 * @value7: LED 7 (0 to 100)
-				 * @units_description: percent
-				 */
-				.name	= "MS-LSA-C-W",
-				.raw_max = 100,
-				.si_max = 100,
-				.data_sets = 8,
-				.units	= "pct",
-			},
-			[3] = {
-				/**
-				 * @name_footnote: [^config-modes]
-				 * @description: Calibrate to black
-				 * @value0: LED 0 (0 to 100)
-				 * @value1: LED 1 (0 to 100)
-				 * @value2: LED 2 (0 to 100)
-				 * @value3: LED 3 (0 to 100)
-				 * @value4: LED 4 (0 to 100)
-				 * @value5: LED 5 (0 to 100)
-				 * @value6: LED 6 (0 to 100)
-				 * @value7: LED 7 (0 to 100)
-				 * @units_description: percent
-				 */
-				.name	= "MS-LSA-C-B",
-				.raw_max = 100,
-				.si_max = 100,
-				.data_sets = 8,
-				.units	= "pct",
-			},
-			[4] = {
-				/**
-				 * @name_footnote: [^config-modes]
-				 * @description: Configure for 60Hz electrical mains
-				 * @value0: LED 0 (0 to 100)
-				 * @value1: LED 1 (0 to 100)
-				 * @value2: LED 2 (0 to 100)
-				 * @value3: LED 3 (0 to 100)
-				 * @value4: LED 4 (0 to 100)
-				 * @value5: LED 5 (0 to 100)
-				 * @value6: LED 6 (0 to 100)
-				 * @value7: LED 7 (0 to 100)
-				 * @units_description: percent
-				 */
-				.name	= "MS-LSA-C-A",
-				.raw_max = 100,
-				.si_max = 100,
-				.data_sets = 8,
-				.units	= "pct",
-			},
-			[5] = {
-				/**
-				 * @name_footnote: [^config-modes]
-				 * @description: Configure for 50Hz electrical mains
-				 * @value0: LED 0 (0 to 100)
-				 * @value1: LED 1 (0 to 100)
-				 * @value2: LED 2 (0 to 100)
-				 * @value3: LED 3 (0 to 100)
-				 * @value4: LED 4 (0 to 100)
-				 * @value5: LED 5 (0 to 100)
-				 * @value6: LED 6 (0 to 100)
-				 * @value7: LED 7 (0 to 100)
-				 * @units_description: percent
-				 */
-				.name	= "MS-LSA-C-E",
-				.raw_max = 100,
-				.si_max = 100,
-				.data_sets = 8,
-				.units	= "pct",
-			},
-			[6] = {
-				/**
-				 * @name_footnote: [^config-modes]
-				 * @description: Configure for universal electrical mains
-				 * @value0: LED 0 (0 to 100)
-				 * @value1: LED 1 (0 to 100)
-				 * @value2: LED 2 (0 to 100)
-				 * @value3: LED 3 (0 to 100)
-				 * @value4: LED 4 (0 to 100)
-				 * @value5: LED 5 (0 to 100)
-				 * @value6: LED 6 (0 to 100)
-				 * @value7: LED 7 (0 to 100)
-				 * @units_description: percent
-				 */
-				.name	= "MS-LSA-C-U",
-				.raw_max = 100,
-				.si_max = 100,
-				.data_sets = 8,
-				.units	= "pct",
-			},
 		},
 		.i2c_mode_info	= {
 			[0] = {
@@ -1844,32 +1750,90 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[1] = {
 				.read_data_reg	= 0x6A,
 			},
+		},
+		.num_commands	= 7,
+		.ms_cmd_info	= {
+			[0] = {
+				/**
+				 * @description: Calibrate white
+				 */
+				.name = "CAL-WHITE",
+			},
+			[1] = {
+				/**
+				 * @description: Calibrate black
+				 */
+				.name = "CAL-BLACK",
+			},
 			[2] = {
-				.read_data_reg	= 0x42,
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= 'W',
+				/**
+				 * [^sleep]: `poll_ms` must be set to `0` in order for sensor to sleep.
+				 *
+				 * @name_footnote: [^sleep]
+				 * @description: Put sensor to sleep
+				 */
+				.name = "SLEEP",
 			},
 			[3] = {
-				.read_data_reg	= 0x42,
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= 'B',
+				/**
+				 * [^wake]: Will return an error (-ENXIO) if sensor is actually asleep.
+				 * Completes successfully if sensor is already awake.
+				 *
+				 * @name_footnote: [^wake]
+				 * @description: Wake up the sensor
+				 */
+				.name = "WAKE",
 			},
 			[4] = {
-				.read_data_reg	= 0x42,
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= 'A',
+				/**
+				 * @description: Configures sensor for 60Hz electrical mains
+				 */
+				.name = "60HZ",
 			},
 			[5] = {
-				.read_data_reg	= 0x42,
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= 'E',
+				/**
+				 * @description: Configures sensor for 50Hz electrical mains
+				 */
+				.name = "50HZ",
 			},
 			[6] = {
-				.read_data_reg	= 0x42,
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= 'U',
+				/**
+				 * @description: Configures sensor for any (50/60Hz) electrical mains
+				 */
+				.name = "UNIVERSAL",
+			},
+		},
+		.i2c_cmd_info	= {
+			[0] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'W',
+			},
+			[1] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'B',
+			},
+			[2] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'D',
+			},
+			[3] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'P',
+			},
+			[4] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'A',
+			},
+			[5] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'E',
+			},
+			[6] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'U',
 			},
 		},
 	},
 };
+
 EXPORT_SYMBOL_GPL(nxt_i2c_sensor_defs);
