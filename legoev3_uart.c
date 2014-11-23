@@ -1,5 +1,5 @@
 /*
- * tty line discipline for LEGO Mindstorms EV3 UART sensors
+ * tty line discipline for LEGO MINDSTORMS EV3 UART sensors
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *
@@ -86,12 +86,14 @@
 #define LEGOEV3_UART_SPEED_MIN		2400
 #define LEGOEV3_UART_SPEED_MID		57600
 #define LEGOEV3_UART_SPEED_MAX		460800
+#define LEGOEV3_UART_MODE_MAX		7
 #define LEGOEV3_UART_MODE_NAME_SIZE	11
 
 #define LEGOEV3_UART_SEND_ACK_DELAY		10 /* msec */
 #define LEGOEV3_UART_DATA_KEEP_ALIVE_TIMEOUT	100 /* msec */
 
 #define LEGOEV3_UART_DEVICE_TYPE_NAME_SIZE	30
+#define LEGOEV3_UART_UNITS_SIZE			4
 
 enum legoev3_uart_msg_type {
 	LEGOEV3_UART_MSG_TYPE_SYS	= 0x00,
@@ -219,7 +221,7 @@ struct legoev3_uart_port_data {
 	struct hrtimer keep_alive_timer;
 	struct tasklet_struct keep_alive_tasklet;
 	struct completion set_mode_completion;
-	struct msensor_mode_info mode_info[MSENSOR_MODE_MAX + 1];
+	struct msensor_mode_info mode_info[LEGOEV3_UART_MODE_MAX + 1];
 	u8 type_id;
 	u8 mode;
 	u8 new_mode;
@@ -541,7 +543,7 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 			continue;
 		port->ms.num_modes = 1;
 		port->ms.num_view_modes = 1;
-		for (i = 0; i <= MSENSOR_MODE_MAX; i++)
+		for (i = 0; i <= LEGOEV3_UART_MODE_MAX; i++)
 			port->mode_info[i] = legoev3_uart_default_mode_info;
 		port->type_id = type;
 		snprintf(port->ms.name, MSENSOR_NAME_SIZE, "ev3-uart-%u", type);
@@ -658,7 +660,7 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 					port->last_err = "Received duplicate modes INFO.";
 					goto err_invalid_state;
 				}
-				if (!cmd2 || cmd2 > MSENSOR_MODE_MAX) {
+				if (!cmd2 || cmd2 > LEGOEV3_UART_MODE_MAX) {
 					port->last_err = "Number of modes is out of range.";
 					goto err_invalid_state;
 				}
@@ -792,7 +794,7 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 				 */
 				message[msg_size - 1] = 0;
 				snprintf(port->mode_info[mode].units,
-					 MSENSOR_UNITS_SIZE + 1, "%s",
+					 LEGOEV3_UART_UNITS_SIZE + 1, "%s",
 					 message + 2);
 				debug_pr("mode %d units:%s\n",
 				       mode, port->mode_info[mode].units);
@@ -886,7 +888,7 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 				port->last_err = "Received DATA before INFO was complete.";
 				goto err_invalid_state;
 			}
-			if (mode > MSENSOR_MODE_MAX) {
+			if (mode > LEGOEV3_UART_MODE_MAX) {
 				port->last_err = "Invalid mode received.";
 				goto err_invalid_state;
 			}
@@ -1086,7 +1088,7 @@ static void __exit legoev3_uart_exit(void)
 }
 module_exit(legoev3_uart_exit);
 
-MODULE_DESCRIPTION("tty line discipline for LEGO Mindstorms EV3 sensors");
+MODULE_DESCRIPTION("tty line discipline for LEGO MINDSTORMS EV3 sensors");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS_LDISC(N_LEGOEV3);
