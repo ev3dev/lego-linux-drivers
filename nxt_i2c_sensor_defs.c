@@ -256,6 +256,51 @@ static void ms_8ch_servo_remove_cb(struct nxt_i2c_sensor_data *data)
 	}
 }
 
+/*
+ * Lookup table for rad2deg(asin(x / 128)). Used to convert raw value to degrees.
+ */
+static const u8 ms_imu_tilt2deg[] = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 9, 10,
+	10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18,
+	19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 23, 24, 24, 25, 25, 26, 26, 27,
+	27, 28, 28, 29, 29, 30, 31, 31, 32, 32, 33, 33, 34, 34, 35, 35, 36, 36,
+	37, 38, 38, 39, 39, 40, 40, 41, 42, 42, 43, 43, 44, 45, 45, 46, 47, 47,
+	48, 49, 49, 50, 51, 51, 52, 53, 54, 54, 55, 56, 57, 58, 58, 59, 60, 61,
+	62, 63, 64, 65, 66, 67, 68, 70, 71, 72, 74, 76, 78, 80, 83, 90, 97, 100,
+	102, 104, 106, 108, 109, 110, 112, 113, 114, 115, 116, 117, 118, 119,
+	120, 121, 122, 122, 123, 124, 125, 126, 126, 127, 128, 129, 129, 130,
+	131, 131, 132, 133, 133, 134, 135, 135, 136, 137, 137, 138, 138, 139,
+	140, 140, 141, 141, 142, 142, 143, 144, 144, 145, 145, 146, 146, 147,
+	147, 148, 148, 149, 149, 150, 151, 151, 152, 152, 153, 153, 154, 154,
+	155, 155, 156, 156, 157, 157, 157, 158, 158, 159, 159, 160, 160, 161,
+	161, 162, 162, 163, 163, 164, 164, 165, 165, 166, 166, 166, 167, 167,
+	168, 168, 169, 169, 170, 170, 171, 171, 171, 172, 172, 173, 173, 174,
+	174, 175, 175, 176, 176, 176, 177, 177, 178, 178, 179, 179, 180
+};
+
+static void ms_imu_poll_cb(struct nxt_i2c_sensor_data *sensor)
+{
+	struct nxt_i2c_sensor_mode_info *i2c_mode_info =
+		&sensor->info.i2c_mode_info[sensor->mode];
+	struct msensor_mode_info *ms_mode_info =
+			&sensor->info.ms_mode_info[sensor->mode];
+
+	/*
+	 * Perform normal i2c read (just like nxt_i2c_sensor_poll_work).
+	 */
+	i2c_smbus_read_i2c_block_data(sensor->client,
+		i2c_mode_info->read_data_reg, ms_mode_info->data_sets
+		* msensor_data_size[ms_mode_info->data_type],
+		ms_mode_info->raw_data);
+
+	/* scale values for tilt mode */
+	if (sensor->mode == 0) {
+		ms_mode_info->raw_data[0] = ms_imu_tilt2deg[ms_mode_info->raw_data[0]];
+		ms_mode_info->raw_data[1] = ms_imu_tilt2deg[ms_mode_info->raw_data[1]];
+		ms_mode_info->raw_data[2] = ms_imu_tilt2deg[ms_mode_info->raw_data[2]];
+	}
+}
+
 /**
  * nxt_i2c_sensor_defs - Sensor definitions
  *
@@ -1581,6 +1626,257 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[1] = {
 				.read_data_reg	= 0x41,
+			},
+		},
+	},
+	[MS_ABSOLUTE_IMU] = {
+		/**
+		 * [^address]: The address is programmable. See manufacturer
+		 * documentation for more information.
+		 *
+		 * @vendor_name: mindsensors.com
+		 * @vendor_part_number: AbsoluteIMU(-A/C/G)
+		 * @vendor_part_name: Gyro, MultiSensitivity Accelerometer and/or Compass
+		 * @vendor_website: http://www.mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=169&MMN_position=30:30
+		 * @default_address: 0x11
+		 * @default_address_footnote: [^address]
+		 */
+		.name			= "ms-absolute-imu",
+		.vendor_id		= "mndsnsrs",
+		.product_id		= "AbsIMU",
+		.num_modes		= 8,
+		.num_read_only_modes	= 6,
+		.ops.poll_cb		= ms_imu_poll_cb,
+		.ms_mode_info	= {
+			[0] = {
+				/**
+				 * @description: Tilt
+				 * @value0: X-axis angle (0 to 180)
+				 * @value1: Y-axis angle (0 to 180)
+				 * @value2: Y-axis angle (0 to 180)
+				 * @units_description: degrees
+				 */
+				.name		= "MS-IMU-TILT",
+				.data_sets	= 3,
+				.data_type	= MSENSOR_DATA_U8,
+				.units		= "deg",
+			},
+			[1] = {
+				/**
+				 * [^accel]: Only returns data from models with an accelerometer
+				 * (AbsoluteIMU-AC/AbsoluteIMU-A).
+				 *
+				 * @name_footnote: [^accel]
+				 * @description: Acceleration
+				 * @value0: X-axis acceleration
+				 * @value1: Y-axis acceleration
+				 * @value2: Z-axis acceleration
+				 * @units_description: milli-G (G = 9.81m/s<sup>2</sup>)
+				 */
+				.name		= "MS-IMU-ACCEL",
+				.data_sets	= 3,
+				.data_type	= MSENSOR_DATA_S16,
+				.units		= "mG",
+			},
+			[2] = {
+				/**
+				 * [^compass]: Only returns data from models with a compass
+				 * (AbsoluteIMU-C/AbsoluteIMU-AC/AbsoluteIMU-ACG).
+				 *
+				 * @name_footnote: [^compass]
+				 * @description: Compass
+				 * @value0: Heading (0 to 360)
+				 * @units_description: degrees
+				 */
+				.name		= "MS-IMU-COMP",
+				.data_sets	= 1,
+				.decimals	= 2,
+				.units		= "deg",
+				.data_type	= MSENSOR_DATA_U16,
+			},
+			[3] = {
+				/**
+				 * @name_footnote: [^compass]
+				 * @description: Magnetic field
+				 * @value0: X-axis magnetic field
+				 * @value1: Y-axis magnetic field
+				 * @value2: Z-axis magnetic field
+				 */
+				.name		= "MS-IMU-MAG",
+				.data_sets	= 3,
+				.data_type	= MSENSOR_DATA_S16,
+			},
+			[4] = {
+				/**
+				 * [^gyro]: Only returns data from models with a gyro
+				 * (AbsoluteIMU-ACG).
+				 *
+				 * @name_footnote: [^gyro]
+				 * @description: Gryo (250 deg/sec sensitivity)
+				 * @value0: X-axis rotational speed
+				 * @value1: Y-axis rotational speed
+				 * @value2: Z-axis rotational speed
+				 * @units_description: degrees per second
+				 */
+				.name		= "MS-IMU-GYRO-250",
+				.raw_max	= 1000,
+				.si_max		= 875,
+				.decimals	= 2,
+				.data_sets	= 3,
+				.data_type	= MSENSOR_DATA_S16,
+				.units		= "d/s",
+			},
+			[5] = {
+				/**
+				 * [^all]: Reads all data from the sensor. Use `bin_data`
+				 * attribute to read values. Some values will not be scaled.
+				 * See manufacturer docs for more info.
+				 *
+				 * @name_footnote: [^all]
+				 * @description: All data
+				 */
+				.name		= "MS-IMU-ALL",
+				.data_sets	= 23,
+			},
+			[6] = {
+				/**
+				 * @name_footnote: [^gyro]
+				 * @description: Gryo (500 deg/sec sensitivity)
+				 * @value0: X-axis rotational speed
+				 * @value1: Y-axis rotational speed
+				 * @value2: Z-axis rotational speed
+				 * @units_description: degrees per second
+				 */
+				.name		= "MS-IMU-GYRO-500",
+				.raw_max	= 1000,
+				.si_max		= 175,
+				.decimals	= 1,
+				.data_sets	= 3,
+				.data_type	= MSENSOR_DATA_S16,
+				.units		= "d/s",
+			},
+			[7] = {
+				/**
+				 * @name_footnote: [^gyro]
+				 * @description: Gryo (2000 deg/sec sensitivity)
+				 * @value0: X-axis rotational speed
+				 * @value1: Y-axis rotational speed
+				 * @value2: Z-axis rotational speed
+				 * @units_description: degrees per second
+				 */
+				.name		= "MS-IMU-GYRO-2000",
+				.raw_max	= 1000,
+				.si_max		= 700,
+				.decimals	= 1,
+				.data_sets	= 3,
+				.data_type	= MSENSOR_DATA_S16,
+				.units		= "d/s",
+			},
+		},
+		.i2c_mode_info	= {
+			[0] = {
+				.read_data_reg	= 0x42,
+			},
+			[1] = {
+				.read_data_reg	= 0x45,
+			},
+			[2] = {
+				.read_data_reg	= 0x4B,
+			},
+			[3] = {
+				.read_data_reg	= 0x4D,
+			},
+			[4] = {
+				.read_data_reg	= 0x53,
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= '1',
+			},
+			[5] = {
+				.read_data_reg	= 0x42,
+			},
+			[6] = {
+				.read_data_reg	= 0x53,
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= '2',
+			},
+			[7] = {
+				.read_data_reg	= 0x53,
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= '3',
+			},
+		},
+		.num_commands	= 6,
+		.ms_cmd_info	= {
+			[0] = {
+				/**
+				 * @description: Begin compass calibration
+				 */
+				.name = "BEGIN-COMP-CAL",
+			},
+			[1] = {
+				/**
+				 * @description: End compass calibration
+				 */
+				.name = "END-COMP-CAL",
+			},
+			[2] = {
+				/**
+				 * [^accel-commands]: The acceleration commands are only
+				 * intended for use with the `MS-IMU-ACCEL` and `MS-IMU-ALL`
+				 * modes. Sending these commands in any of the `MS-IMU-GRYO-*`
+				 * modes will cause incorrect readings.
+				 *
+				 * @description: Change Accelerometer Sensitivity to 2G
+				 * @name_footnote: [^accel-commands]
+				 */
+				.name = "ACCEL-2G",
+			},
+			[3] = {
+				/**
+				 * @description: Change Accelerometer Sensitivity to 4G
+				 * @name_footnote: [^accel-commands]
+				 */
+				.name = "ACCEL-4G",
+			},
+			[4] = {
+				/**
+				 * @description: Change Accelerometer Sensitivity to 8G
+				 * @name_footnote: [^accel-commands]
+				 */
+				.name = "ACCEL-8G",
+			},
+			[5] = {
+				/**
+				 * @description: Change Accelerometer Sensitivity to 16G
+				 * @name_footnote: [^accel-commands]
+				 */
+				.name = "ACCEL-16G",
+			},
+		},
+		.i2c_cmd_info	= {
+			[0] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'C',
+			},
+			[1] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'c',
+			},
+			[2] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= '1',
+			},
+			[3] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= '2',
+			},
+			[4] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= '3',
+			},
+			[5] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= '4',
 			},
 		},
 	},

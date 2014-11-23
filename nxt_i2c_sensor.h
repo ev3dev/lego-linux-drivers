@@ -126,6 +126,7 @@ enum nxt_i2c_sensor_type {
 	HT_NXT_SUPER_PRO_SENSOR,
 	HT_NXT_SENSOR_MUX,
 	MS_8CH_SERVO,
+	MS_ABSOLUTE_IMU,
 	MS_ANGLE_SENSOR,
 	MS_LIGHT_SENSOR_ARRAY,
 	NUM_NXT_I2C_SENSORS
@@ -151,6 +152,7 @@ enum nxt_i2c_sensor_type {
 { "ht-super-pro",	HT_NXT_SUPER_PRO_SENSOR		}, \
 { "ht-nxt-smux",	HT_NXT_SENSOR_MUX		}, \
 { "ms-8ch-servo", 	MS_8CH_SERVO			}, \
+{ "ms-absolute-imu",	MS_ABSOLUTE_IMU			}, \
 { "ms-angle-sensor",	MS_ANGLE_SENSOR			}, \
 { "ms-light-array",	MS_LIGHT_SENSOR_ARRAY		}, \
 { }
