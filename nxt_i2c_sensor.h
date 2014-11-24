@@ -22,7 +22,7 @@
 #define NXT_I2C_ID_STR_LEN 8
 
 #define NXT_I2C_FW_VER_REG	0x00
-#define	NXT_I2C_VEND_ID_REG	0x08
+#define NXT_I2C_VEND_ID_REG	0x08
 #define NXT_I2C_PROD_ID_REG	0x10
 
 struct nxt_i2c_sensor_data;
@@ -35,6 +35,7 @@ struct nxt_i2c_sensor_data;
  * @set_mode_pre_cb: Called before the mode is set. Returning a negative error
  * 	value will prevent the mode from being changed.
  * @set_mode_post_cb: Called after the mode has been changed.
+ * @send_command_post_cb: Called after the command has been sent
  * @poll_cb: Called after the sensor has been polled.
  * @probe_cb: Called at the end of the driver probe function.
  * @remove_cb: Called at the beginning of the driver remove function.
@@ -42,6 +43,7 @@ struct nxt_i2c_sensor_data;
 struct nxt_i2c_sensor_ops {
 	int (*set_mode_pre_cb)(struct nxt_i2c_sensor_data *data, u8 mode);
 	void (*set_mode_post_cb)(struct nxt_i2c_sensor_data *data, u8 mode);
+	void (*send_command_post_cb)(struct nxt_i2c_sensor_data *data, u8 command);
 	void (*poll_cb)(struct nxt_i2c_sensor_data *data);
 	void (*probe_cb)(struct nxt_i2c_sensor_data *data);
 	void (*remove_cb)(struct nxt_i2c_sensor_data *data);
@@ -156,7 +158,7 @@ enum nxt_i2c_sensor_type {
 { "ms-absolute-imu",	MS_ABSOLUTE_IMU			}, \
 { "ms-angle-sensor",	MS_ANGLE_SENSOR			}, \
 { "ms-light-array",	MS_LIGHT_SENSOR_ARRAY		}, \
-{ "mi-cruizcore-xg1300",	MI_CRUIZCORE_XG1300L		}, \
+{ "mi-xg1300l",	MI_CRUIZCORE_XG1300L		}, \
 { }
 
 extern const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[];

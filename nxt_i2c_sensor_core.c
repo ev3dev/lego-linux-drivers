@@ -129,10 +129,19 @@ static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
 static int nxt_i2c_sensor_send_command(void *context, u8 command)
 {
 	struct nxt_i2c_sensor_data *sensor = context;
+	int err;
 
-	return i2c_smbus_write_byte_data(sensor->client,
+	err = i2c_smbus_write_byte_data(sensor->client,
 		sensor->info.i2c_cmd_info[command].cmd_reg,
 		sensor->info.i2c_cmd_info[command].cmd_data);
+		
+	if (err)
+		return err;
+
+	if (sensor->info.ops.send_command_post_cb)
+		sensor->info.ops.send_command_post_cb(sensor, command);
+
+	return err;
 }
 
 static ssize_t nxt_i2c_sensor_write_data(void *context, char *data, loff_t off,
