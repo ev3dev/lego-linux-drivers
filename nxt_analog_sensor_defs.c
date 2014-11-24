@@ -1,5 +1,5 @@
 /*
- * NXT analog sensor device driver for LEGO Mindstorms EV3
+ * NXT analog sensor device driver for LEGO MINSTORMS EV3
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *
@@ -110,7 +110,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				 * @value0: Voltage (0 - 5000)
 				 * @units_description: volts
 				 */
-				.name = "NXT-ANALOG-0",
+				.name = "ANALOG-0",
 				.units = "V",
 				.raw_max = 5000,
 				.pct_max = 100,
@@ -125,7 +125,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				 * @value0: Voltage (0 - 5000)
 				 * @units_description: volts
 				 */
-				.name = "NXT-ANALOG-1",
+				.name = "ANALOG-1",
 				.units = "V",
 				.raw_max = 5000,
 				.pct_max = 100,
@@ -193,7 +193,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				 * @value0: Reflected light intensity (0 to 100)
 				 * @units_description: percent
 				 */
-				.name = "NXT-REFLECT",
+				.name = "REFLECT",
 				.units = "pct",
 				.raw_min = 4116,
 				.raw_max = 543,
@@ -209,7 +209,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				 * @value0: Ambient light intensity (0 to 100)
 				 * @units_description: percent
 				 */
-				.name = "NXT-AMBIENT",
+				.name = "AMBIENT",
 				.units = "pct",
 				.raw_min = 4164,
 				.raw_max = 773,
@@ -245,7 +245,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				 * @value0: Sound pressure level (0 to 1000)
 				 * @units_description: percent
 				 */
-				.name = "NXT-SND-DB",
+				.name = "DB",
 				.units = "pct",
 				.raw_max = 5000,
 				.pct_max = 100,
@@ -260,7 +260,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				 * @value0: Sound pressure level (0 to 1000)
 				 * @units_description: percent
 				 */
-				.name = "NXT-SND_DBA",
+				.name = "DBA",
 				.units = "pct",
 				.raw_max = 5000,
 				.pct_max = 100,
@@ -300,7 +300,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				 * @value0: Proximity (0-100)
 				 * @value0_footnote: [^adjusted-value]
 				 */
-				.name = "HT-EOPD-L",
+				.name = "LONG",
 				.raw_max = 5000,
 				.pct_max = 100,
 				.si_max = 100,
@@ -313,7 +313,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				 * @value0: Proximity (0-100)
 				 * @value0_footnote: [^adjusted-value]
 				 */
-				.name = "HT-EOPD-S",
+				.name = "SHORT",
 				.raw_max = 5000,
 				.pct_max = 100,
 				.si_max = 100,
@@ -347,7 +347,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				 * @description: Raw value (non-linear)
 				 * @value0: (0-1023)
 				 */
-				.name = "HT-FORCE",
+				.name = "FORCE",
 				.raw_max = 5000,
 				.pct_max = 100,
 				.si_max = 1023,
@@ -377,7 +377,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				 * @value0: Angular speed (-540 to 400)
 				 * @units_description: degrees per second
 				 */
-				.name = "HT-GYRO",
+				.name = "GYRO",
 				.units = "d/s",
 				.raw_max = 4880,
 				.pct_max = 100,
@@ -403,7 +403,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				 * @description: Magnetic field???
 				 * @value0: ???
 				 */
-				.name = "HT-MAG",
+				.name = "MAG",
 				.raw_max = 5000,
 				.pct_max = 100,
 				.si_max = 1023,

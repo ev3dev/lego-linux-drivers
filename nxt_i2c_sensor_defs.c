@@ -32,7 +32,7 @@ struct ht_smux_input_port_data {
 	legoev3_analog_cb_func_t cb;
 };
 
-static int ht_sensor_mux_set_mode_pre_cb(struct nxt_i2c_sensor_data * sensor,
+static int ht_sensor_mux_send_cmd_pre_cb(struct nxt_i2c_sensor_data * sensor,
 					 u8 mode)
 {
 	int err;
@@ -55,7 +55,7 @@ static int ht_sensor_mux_set_mode_pre_cb(struct nxt_i2c_sensor_data * sensor,
 	return 0;
 }
 
-static void ht_sensor_mux_set_mode_post_cb(struct nxt_i2c_sensor_data *data,
+static void ht_sensor_mux_send_cmd_post_cb(struct nxt_i2c_sensor_data *data,
 					   u8 mode)
 {
 	struct ht_smux_input_port_data *ports = data->info.callback_data;
@@ -257,6 +257,8 @@ static void ms_8ch_servo_remove_cb(struct nxt_i2c_sensor_data *data)
 	}
 }
 
+/* mindsensors.com Absolute-IMU Accel/Compass/Gyro implementation */
+
 /*
  * Lookup table for rad2deg(asin(x / 128)). Used to convert raw value to degrees.
  */
@@ -302,10 +304,32 @@ static void ms_imu_poll_cb(struct nxt_i2c_sensor_data *sensor)
 	}
 }
 
+static void ms_imu_send_cmd_post_cb(struct nxt_i2c_sensor_data *sensor,
+				    u8 command)
+{
+	struct msensor_mode_info *gyro_mode_info = &sensor->info.ms_mode_info[4];
+
+	switch (command) {
+	case 1: /* ACCEL-2G */
+		gyro_mode_info->raw_max = 10000;
+		gyro_mode_info->si_max = 875;
+		break;
+	case 2: /* ACCEL-4G */
+		gyro_mode_info->raw_max = 1000;
+		gyro_mode_info->si_max = 175;
+		break;
+	case 4: /* ACCEL-8G */
+	case 5: /* ACCEL-16G */
+		gyro_mode_info->raw_max = 1000;
+		gyro_mode_info->si_max = 700;
+		break;
+	}
+}
+
 /*
- * 	Microinfinity CruizCore XG1300L gyroscope and accelerometer related functions
+ * Microinfinity CruizCore XG1300L gyroscope and accelerometer related functions
  */
-static void mi_cruizcore_xg1300l_poll_cb(struct nxt_i2c_sensor_data *sensor)
+static void mi_xg1300l_poll_cb(struct nxt_i2c_sensor_data *sensor)
 {
 	u8 *scaling_factor = sensor->info.callback_data;
 	
@@ -337,23 +361,27 @@ static void mi_cruizcore_xg1300l_poll_cb(struct nxt_i2c_sensor_data *sensor)
 	raw_as_s16[2] *= *scaling_factor;
 }
 
-static void mi_cruizcore_xg1300l_send_command_post_cb(struct nxt_i2c_sensor_data *data, u8 command)
+static void mi_xg1300l_send_cmd_post_cb(struct nxt_i2c_sensor_data *data,
+					u8 command)
 {
 	u8 *scaling_factor = data->info.callback_data;
 
-	if (command==0 || command==1) *scaling_factor=1;	/* "RESET", "ACCEL-2G"	*/
-	else if (command==2) *scaling_factor=2;  			/* "ACCEL-4G" 			*/
-	else if (command==3) *scaling_factor=4; 			/* "ACCEL-8G"				*/
+	if (command == 0 || command == 1)	/* "RESET", "ACCEL-2G"	*/
+		*scaling_factor = 1;
+	else if (command == 2)			/* "ACCEL-4G"		*/
+		*scaling_factor=2;
+	else if (command == 3)			/* "ACCEL-8G"		*/
+		*scaling_factor = 4;
 }
 
-static void mi_cruizcore_xg1300l_probe_cb(struct nxt_i2c_sensor_data *data)
+static void mi_xg1300l_probe_cb(struct nxt_i2c_sensor_data *data)
 {		
 	u8 *scaling_factor = kzalloc(sizeof(u8), GFP_KERNEL);
 	*scaling_factor = 1;
 	data->info.callback_data = scaling_factor;
 }
 
-static void mi_cruizcore_xg1300l_remove_cb(struct nxt_i2c_sensor_data *data)
+static void mi_xg1300l_remove_cb(struct nxt_i2c_sensor_data *data)
 {
 	u8 *scaling_factor = data->info.callback_data;
 
@@ -411,48 +439,6 @@ static void mi_cruizcore_xg1300l_remove_cb(struct nxt_i2c_sensor_data *data)
  * parser can be found in the ev3dev-kpkg repository.
  */
 const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
-	[UNKNOWN_I2C_SENSOR] = {
-		/**
-		 * @vendor_part_name: Unknown NXT I2C Sensor
-		 */
-		.name		= "nxt-i2c",
-		.vendor_id	= "UNKNOWN",
-		.product_id	= "unknown",
-		.num_modes	= 3,
-		.ms_mode_info	= {
-			[0] = {
-				/**
-				 * @description: Unsigned 8-bit data
-				 */
-				.name = "I2C-U8",
-			},
-			[1] = {
-				/**
-				 * @description: Signed 8-bit data
-				 */
-				.name = "I2C-S8",
-				.data_type = MSENSOR_DATA_S8,
-			},
-			[2] = {
-				/**
-				 * @description: Signed 16-bit data
-				 */
-				.name = "I2C-S16",
-				.data_type = MSENSOR_DATA_S16,
-			},
-		},
-		.i2c_mode_info	= {
-			[0] = {
-				.read_data_reg = 0x42,
-			},
-			[1] = {
-				.read_data_reg = 0x42,
-			},
-			[2] = {
-				.read_data_reg = 0x42,
-			},
-		},
-	},
 	[LEGO_NXT_ULTRASONIC_SENSOR] = {
 		/**
 		 * @vendor_name: LEGO
@@ -461,7 +447,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://www.lego.com/en-us/mindstorms/downloads/software/nxt-hdk/
 		 * @default_address: 0x01
 		 */
-		.name		= "lego-nxt-ultrasonic",
+		.name		= "lego-nxt-us",
 		.vendor_id	= "LEGO",
 		.product_id	= "Sonar",
 		.num_modes	= 5,
@@ -474,7 +460,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Distance (0 to 255)
 				 * @units_description: centimeters
 				 */
-				.name	= "NXT-US-CM",
+				.name	= "US-DIST-CM",
 				.units	= "cm",
 			},
 			[1] = {
@@ -483,7 +469,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Distance (0 to 1000)
 				 * @units_description: inches
 				 */
-				.name	= "NXT-US-IN",
+				.name	= "US-DIST-IN",
 				.units	= "in",
 				.si_max = 1000,
 				.decimals = 1,
@@ -499,7 +485,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0_footnote: [^single-measurement]
 				 * @units_description: centimeters
 				 */
-				.name	= "NXT-US-SI-CM",
+				.name	= "US-SI-CM",
 				.units	= "cm",
 			},
 			[3] = {
@@ -509,7 +495,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0_footnote: [^single-measurement]
 				 * @units_description: inches
 				 */
-				.name	= "NXT-US-SI-IN",
+				.name	= "US-SI-IN",
 				.units	= "in",
 				.si_max = 1000,
 				.decimals = 1,
@@ -524,7 +510,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Presence (0 or 1)
 				 * @value0_footnote: [^listen-value]
 				 */
-				.name	= "NXT-US-LIST",
+				.name	= "US-LISTEN",
 				.raw_max = 1,
 				.si_max  = 1,
 			},
@@ -581,7 +567,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Voltage (0 to 10000)
 				 * @units_description: volts
 				 */
-				.name = "ES-IN-VOLT",
+				.name = "IN-VOLT",
 				.units = "V",
 				.raw_max = 10000,
 				.si_max = 10000,
@@ -594,7 +580,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Current (0 to 10000)
 				 * @units_description: amps
 				 */
-				.name = "ES-IN-AMP",
+				.name = "IN-AMP",
 				.units = "A",
 				.raw_max = 10000,
 				.si_max = 10000,
@@ -607,7 +593,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Voltage (0 to 10000)
 				 * @units_description: volts
 				 */
-				.name = "ES-OUT-VOLT",
+				.name = "OUT-VOLT",
 				.units = "V",
 				.raw_max = 10000,
 				.si_max = 10000,
@@ -620,7 +606,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Current (0 to 10000)
 				 * @units_description: amps
 				 */
-				.name = "ES-OUT-AMP",
+				.name = "OUT-AMP",
 				.units = "A",
 				.raw_max = 10000,
 				.si_max = 10000,
@@ -633,7 +619,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Energy (0 to 100)
 				 * @units_description: Joules
 				 */
-				.name = "ES-JOULE",
+				.name = "JOULE",
 				.units = "J",
 				.raw_max = 100,
 				.si_max = 100,
@@ -645,7 +631,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Power (0 to 10000)
 				 * @units_description: Watts
 				 */
-				.name = "ES-IN-WATT",
+				.name = "IN-WATT",
 				.units = "W",
 				.raw_max = 10000,
 				.si_max = 10000,
@@ -658,7 +644,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Power (0 to 10000)
 				 * @units_description: Watts
 				 */
-				.name = "ES-OUT-WATT",
+				.name = "OUT-WATT",
 				.units = "W",
 				.raw_max = 10000,
 				.si_max = 10000,
@@ -676,7 +662,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value5: Input Power (0 to 10000)
 				 * @value6: Output Power (0 to 10000)
 				 */
-				.name = "ES-ALL",
+				.name = "ALL",
 				.raw_max = 10000,
 				.si_max = 10000,
 				.decimals = 3,
@@ -730,7 +716,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Proximity (-100 to 100)
 				 * @units_description: percent
 				 */
-				.name = "HT-PIR",
+				.name = "PROX",
 				.pct_min = -100,
 				.si_min = -100,
 				.si_max = 100,
@@ -762,7 +748,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Absolute Pressure (0 to 3000)
 				 * @units_description: ???
 				 */
-				.name = "HT-BAR-PRES",
+				.name = "PRESS",
 				.raw_min = 30400,
 				.raw_max = 29400,
 				.si_max = 3000,
@@ -775,7 +761,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Absolute Pressure (0 to 1000)
 				 * @units_description: degrees Celsius
 				 */
-				.name = "HT-BAR-TEMP",
+				.name = "TEMP",
 				.raw_max = 1000,
 				.si_max = 1000,
 				.decimals = 1,
@@ -821,7 +807,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Direction (0 to 9)
 				 * @value0_footnote: [^values]
 				 */
-				.name = "HT-DIR-DC",
+				.name = "DC",
 				.raw_max = 9,
 				.si_max = 9,
 			},
@@ -831,7 +817,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Direction (0 to 9)
 				 * @value0_footnote: [^values]
 				 */
-				.name = "HT-DIR-AC",
+				.name = "AC",
 				.raw_max = 9,
 				.si_max = 9,
 			},
@@ -853,7 +839,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value6: Sensor mean (0 to 9)
 				 * @value6_footnote: [^values]
 				 */
-				.name = "HT-DIR-DALL",
+				.name = "DC-ALL",
 				.data_sets = 7,
 			},
 			[3] = {
@@ -872,7 +858,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value5: Sensor 5 signal strength (0 to 9)
 				 * @value5_footnote: [^values]
 				 */
-				.name = "HT-DIR-AALL",
+				.name = "AC-ALL",
 				.data_sets = 6,
 			},
 		},
@@ -911,7 +897,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Color (0 to 17)
 				 * @value0_footnote: [^color-value]
 				 */
-				.name	= "HT-COL1-COL",
+				.name	= "COLOR",
 				.raw_max = 17,
 				.si_max = 17,
 			},
@@ -920,21 +906,21 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @description: Red component
 				 * @value0: Reflected light intensity (0 to 255)
 				 */
-				.name = "HT-COL1-RED",
+				.name = "RED",
 			},
 			[2] = {
 				/**
 				 * @description: Green component
 				 * @value0: Reflected light intensity (0 to 255)
 				 */
-				.name = "HT-COL1-GRN",
+				.name = "GREEN",
 			},
 			[3] = {
 				/**
 				 * @description: Blue component
 				 * @value0: Reflected light intensity (0 to 255)
 				 */
-				.name = "HT-COL1-BLU",
+				.name = "BLUE",
 			},
 			[4] = {
 				/**
@@ -943,7 +929,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value1: Green Component (0 to 255)
 				 * @value2: Blue Component (0 to 255)
 				 */
-				.name = "HT-COL1-RAW",
+				.name = "RAW",
 				.raw_max = USHRT_MAX,
 				.si_max = USHRT_MAX,
 				.data_sets = 3,
@@ -957,7 +943,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value2: Blue Component (0 to 255)
 				 * @value3: ??? Component (0 to 255)
 				 */
-				.name = "HT-COL1-NRM",
+				.name = "NORM",
 				.data_sets = 4,
 			},
 			[6] = {
@@ -969,7 +955,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value2: Green Component (0 to 255)
 				 * @value3: Blue Component (0 to 255)
 				 */
-				.name = "HT-COL1-ALL",
+				.name = "ALL",
 				.data_sets = 4,
 			},
 		},
@@ -1020,7 +1006,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Color (0 to 17)
 				 * @value0_footnote: [^color-value]
 				 */
-				.name	= "HT-COL2-COL",
+				.name	= "COLOR",
 				.raw_max = 17,
 				.si_max = 17,
 			},
@@ -1029,28 +1015,28 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @description: Red component
 				 * @value0: Reflected light intensity (0 to 255)
 				 */
-				.name = "HT-COL2-RED",
+				.name = "RED",
 			},
 			[2] = {
 				/**
 				 * @description: Green component
 				 * @value0: Reflected light intensity (0 to 255)
 				 */
-				.name = "HT-COL2-GRN",
+				.name = "GREEN",
 			},
 			[3] = {
 				/**
 				 * @description: Blue component
 				 * @value0: Reflected light intensity (0 to 255)
 				 */
-				.name = "HT-COL2-BLU",
+				.name = "BLUE",
 			},
 			[4] = {
 				/**
 				 * @description: White component
 				 * @value0: Reflected light intensity (0 to 255)
 				 */
-				.name = "HT-COL2-WHT",
+				.name = "WHITE",
 			},
 			[5] = {
 				/**
@@ -1060,7 +1046,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value2: Blue Component (0 to 255)
 				 * @value3: White Component (0 to 255)
 				 */
-				.name = "HT-COL2-NRM",
+				.name = "NORM",
 				.data_sets = 4,
 			},
 			[6] = {
@@ -1072,7 +1058,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value3: White Component (0 to 255)
 				 * @value4: ??? (0 to 255)
 				 */
-				.name = "HT-COL2-ALL",
+				.name = "ALL",
 				.data_sets = 5,
 			},
 			[7] = {
@@ -1083,7 +1069,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value2: Blue Component (0 to 255)
 				 * @value3: White Component (0 to 255)
 				 */
-				.name = "HT-COL2-RAW",
+				.name = "RAW",
 				.raw_max = USHRT_MAX,
 				.si_max = USHRT_MAX,
 				.data_sets = 4,
@@ -1145,7 +1131,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @units_description: degrees
 				 * @value0: Angle (0 to 180)
 				 */
-				.name = "HT-ANG-DEG2",
+				.name = "ANGLE",
 				.raw_max = 180,
 				.si_max = 180,
 				.units = "deg",
@@ -1156,7 +1142,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @units_description: degrees
 				 * @value0: Angle (-2147483648 to 2147483647)
 				 */
-				.name = "HT-ANG-ACC",
+				.name = "ACCEL",
 				.raw_min = INT_MIN,
 				.raw_max = INT_MAX,
 				.si_min = INT_MIN,
@@ -1171,7 +1157,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @units_description: revolutions per minute
 				 * @value0: Angle (-32768 to 32768)
 				 */
-				.name = "HT-ANG-RPM",
+				.name = "SPEED",
 				.raw_min = SHRT_MIN,
 				.raw_max = SHRT_MAX,
 				.si_min = SHRT_MIN,
@@ -1226,7 +1212,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Direction (-180 to 180)
 				 * @units_description: degrees
 				 */
-				.name = "HT-CMP-DEG2",
+				.name = "COMAPASS",
 				.raw_max = 180,
 				.si_max = 180,
 				.units = "deg",
@@ -1263,7 +1249,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0_footnote: [^values]<sup>,</sup>[^value-map]
 				 * @units_description: percent
 				 */
-				.name = "HT-IRRECV",
+				.name = "1-MOTOR",
 				.units = "pct",
 				.data_type = MSENSOR_DATA_S8,
 			},
@@ -1291,7 +1277,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value7_footnote: [^values]<sup>,</sup>[^value-map]
 				 * @units_description: percent
 				 */
-				.name = "HT-IRRECV-8",
+				.name = "8-MOTOR",
 				.data_sets = 8,
 				.units = "pct",
 				.data_type = MSENSOR_DATA_S8,
@@ -1327,7 +1313,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Acceleration (coarse value)
 				 * @value0_footnote: [^mode-0-value]
 				 */
-				.name = "HT-ACCL",
+				.name = "ACCEL",
 			},
 			[1] = {
 				/**
@@ -1346,7 +1332,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value5: Z-axis acceleration (least significant byte)
 				 * @value5_footnote: [^mode-1-value]
 				 */
-				.name = "HT-ACCL-ALL",
+				.name = "ALL",
 				.data_sets = 6,
 			},
 		},
@@ -1377,7 +1363,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @description: ???
 				 * @value0: ???
 				 */
-				.name = "HT-IRLINK",
+				.name = "IRLINK",
 			},
 		},
 		.i2c_mode_info	= {
@@ -1407,7 +1393,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value2: Analog input A2 (0 to 1023)
 				 * @value3: Analog input A3 (0 to 1023)
 				 */
-				.name = "HT-SPRO-AIN",
+				.name = "AIN",
 				.data_sets = 4,
 				.data_type = MSENSOR_DATA_U16,
 			},
@@ -1416,28 +1402,28 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @description: Digital inputs
 				 * @value0: Bits B0-B7 (0 to 255)
 				 */
-				.name = "HT-SPRO-DIN",
+				.name = "DIN",
 			},
 			[2] = {
 				/**
 				 * @description: Digital outputs
 				 * @value0: Bits B0-B7 (0 to 255)
 				 */
-				.name = "HT-SPRO-DOT",
+				.name = "DOUT",
 			},
 			[3] = {
 				/**
 				 * @description: Digital input/output controls
 				 * @value0: Bits B0-B7 (0 to 255)
 				 */
-				.name = "HT-SPRO-DCT",
+				.name = "DCTRL",
 			},
 			[4] = {
 				/**
 				 * @description: Strobe output
 				 * @value0: Bits S0-S3 (0 to 15)
 				 */
-				.name = "HT-SPRO-STB",
+				.name = "STROBE",
 			},
 			[5] = {
 				/**
@@ -1454,7 +1440,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: LED state
 				 * @value0_footnote: [^led-states]
 				 */
-				.name = "HT-SPRO-LED",
+				.name = "LED",
 			},
 			[6] = {
 				/**
@@ -1465,7 +1451,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value3: Voltage, most significant byte
 				 * @value4: Voltage, least significant byte
 				 */
-				.name = "HT-SPRO-AO0",
+				.name = "AOUT-0",
 				.data_sets = 5,
 			},
 			[7] = {
@@ -1477,7 +1463,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value3: Voltage, most significant byte
 				 * @value4: Voltage, least significant byte
 				 */
-				.name = "HT-SPRO-AO1",
+				.name = "AOUT-1",
 				.data_sets = 5,
 			},
 		},
@@ -1524,16 +1510,15 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.name			= "ht-nxt-smux",
 		.vendor_id		= "HiTechnc",
 		.product_id		= "SensrMUX",
-		.num_modes		= 3,
-		.num_read_only_modes	= 1,
-		.ops.set_mode_pre_cb	= ht_sensor_mux_set_mode_pre_cb,
-		.ops.set_mode_post_cb	= ht_sensor_mux_set_mode_post_cb,
+		.num_modes		= 1,
+		.ops.send_cmd_pre_cb	= ht_sensor_mux_send_cmd_pre_cb,
+		.ops.send_cmd_post_cb	= ht_sensor_mux_send_cmd_post_cb,
 		.ops.poll_cb		= ht_sensor_mux_poll_cb,
 		.ops.remove_cb		= ht_sensor_mux_remove_cb,
 		.ms_mode_info = {
 			[0] = {
 				/**
-				 * [^mode]: Actual mode:
+				 * [^state]: Run state:
 				 *
 				 * | Value | Description |
 				 * |-------|-------------|
@@ -1550,50 +1535,13 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * | 2   | Halted         |
 				 * | 3   | Error          |
 				 *
-				 * @description: Run mode (polling attached sensors)
-				 * @value0: Mode
-				 * @value0_footnote: [^mode]
+				 * @description: Status
+				 * @value0: Run state
+				 * @value0_footnote: [^state]
 				 * @value1: Status
 				 * @value1_footnote: [^status-bits]
 				 */
-				.name = "HT-SMUX-RUN",
-				.data_sets = 2,
-			},
-			[1]= {
-				/**
-				 * [^auto-detect-mode]: The sensor must be in `HT-SMUX-HALT` mode before
-				 * entering `HT-SMUX-DETECT` mode. Attempting to set `HT-SMUX-DETECT`
-				 * mode from `HT-SMUX-RUN` mode will result in an error (-EPERM).
-				 *
-				 * [^auto-detect-sensors]: Only these sensors can be auto-detected:
-				 *
-				 * - LEGO NXT Ultrasonic
-				 * - HiTechnic NXT Compass
-				 * - HiTechnic NXT Color
-				 * - HiTechnic NXT Acceleration / Tilt
-				 * - HiTechnic NXT IR Seeker
-				 * - HiTechnic Super Pro
-				 * - HiTechnic NXT Color V2
-				 * - HiTechnic NXT IR Seeker V2
-				 * @description: Start auto-detection
-				 * @name_footnote: [^auto-detect-mode]<sup>,</sup>[^auto-detect-sensors]
-				 * @value0: Mode
-				 * @value0_footnote: [^mode]
-				 * @value1: Status
-				 * @value1_footnote: [^status-bits]
-				 */
-				.name = "HT-SMUX-DETECT",
-				.data_sets = 2,
-			},
-			[2]= {
-				/**
-				 * @description: Halt mode (not polling)
-				 * @value0: Mode
-				 * @value0_footnote: [^mode]
-				 * @value1: Status
-				 * @value1_footnote: [^status-bits]
-				 */
-				.name = "HT-SMUX-HALT",
+				.name = "MUX",
 				.data_sets = 2,
 			},
 		},
@@ -1612,6 +1560,58 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.read_data_reg	= 0x20,
 				.set_mode_reg = 0x20,
 				.set_mode_data = 0,
+			},
+		},
+		.num_commands	= 3,
+		.ms_cmd_info	= {
+			[0]= {
+				/**
+				 * @description: Halt
+				 */
+				.name = "HALT",
+			},
+			[1]= {
+				/**
+				 * [^auto-detect]: The sensor mux must be halted before
+				 * sending the detect command, otherwise it will result
+				 * an error (-EPERM).
+				 *
+				 * [^auto-detect-sensors]: Only these sensors can be
+				 * automatically detected:
+				 *
+				 * - LEGO NXT Ultrasonic
+				 * - HiTechnic NXT Compass
+				 * - HiTechnic NXT Color
+				 * - HiTechnic NXT Acceleration / Tilt
+				 * - HiTechnic NXT IR Seeker
+				 * - HiTechnic Super Pro
+				 * - HiTechnic NXT Color V2
+				 * - HiTechnic NXT IR Seeker V2
+				 *
+				 * @description: Start auto-detection
+				 * @name_footnote: [^auto-detect]<sup>,</sup>[^auto-detect-sensors]
+				 */
+				.name = "DETECT",
+			},
+			[2]= {
+				/**
+				 * @description: Run
+				 */
+				.name = "RUN",
+			},
+		},
+		.i2c_cmd_info = {
+			[0] = {
+				.cmd_reg	= 0x20,
+				.cmd_data	= 0,
+			},
+			[1] = {
+				.cmd_reg	= 0x20,
+				.cmd_data	= 1,
+			},
+			[2] = {
+				.cmd_reg	= 0x20,
+				.cmd_data	= 2,
 			},
 		},
 	},
@@ -1655,7 +1655,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0_footnote: [^battery-voltage]
 				 * @units_description: volts
 				 */
-				.name = "MS-8CH-SERVO-V3",
+				.name = "V3",
 				.raw_min = 127,
 				.raw_max = 255,
 				.si_min = 4700,
@@ -1675,7 +1675,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0_footnote: [^battery-voltage]
 				 * @units_description: volts
 				 */
-				.name = "MS-8CH-SERVO",
+				.name = "OLD",
 				.raw_min = 127,
 				.raw_max = 255,
 				.si_min = 4700,
@@ -1700,7 +1700,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 *
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: AbsoluteIMU(-A/C/G)
-		 * @vendor_part_name: Gyro, MultiSensitivity Accelerometer and/or Compass
+		 * @vendor_part_name: Gyro, MultiSensitivity Accelerometer and Compass
 		 * @vendor_website: http://www.mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=169&MMN_position=30:30
 		 * @default_address: 0x11
 		 * @default_address_footnote: [^address]
@@ -1708,9 +1708,9 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.name			= "ms-absolute-imu",
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "AbsIMU",
-		.num_modes		= 8,
-		.num_read_only_modes	= 6,
+		.num_modes		= 6,
 		.ops.poll_cb		= ms_imu_poll_cb,
+		.ops.send_cmd_post_cb	= ms_imu_send_cmd_post_cb,
 		.ms_mode_info	= {
 			[0] = {
 				/**
@@ -1720,7 +1720,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value2: Y-axis angle (0 to 180)
 				 * @units_description: degrees
 				 */
-				.name		= "MS-IMU-TILT",
+				.name		= "TILT",
 				.data_sets	= 3,
 				.data_type	= MSENSOR_DATA_U8,
 				.units		= "deg",
@@ -1729,18 +1729,19 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				/**
 				 * [^accel]: Only returns data from models with an accelerometer
 				 * (AbsoluteIMU-AC/AbsoluteIMU-A).
+				 * [^gravity-units]: 1 g = 9.81 m/s<sup>2</sup>
 				 *
 				 * @name_footnote: [^accel]
 				 * @description: Acceleration
 				 * @value0: X-axis acceleration
 				 * @value1: Y-axis acceleration
 				 * @value2: Z-axis acceleration
-				 * @units_description: milli-G (G = 9.81m/s<sup>2</sup>)
+				 * @units_description: Standard gravity
 				 */
-				.name		= "MS-IMU-ACCEL",
+				.name		= "ACCEL",
 				.data_sets	= 3,
 				.data_type	= MSENSOR_DATA_S16,
-				.units		= "mG",
+				.units		= "g",
 			},
 			[2] = {
 				/**
@@ -1752,9 +1753,8 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Heading (0 to 360)
 				 * @units_description: degrees
 				 */
-				.name		= "MS-IMU-COMP",
+				.name		= "COMPASS",
 				.data_sets	= 1,
-				.decimals	= 2,
 				.units		= "deg",
 				.data_type	= MSENSOR_DATA_U16,
 			},
@@ -1766,7 +1766,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value1: Y-axis magnetic field
 				 * @value2: Z-axis magnetic field
 				 */
-				.name		= "MS-IMU-MAG",
+				.name		= "MAG",
 				.data_sets	= 3,
 				.data_type	= MSENSOR_DATA_S16,
 			},
@@ -1776,16 +1776,20 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * (AbsoluteIMU-ACG).
 				 *
 				 * @name_footnote: [^gyro]
-				 * @description: Gryo (250 deg/sec sensitivity)
+				 * @description: Gryo
 				 * @value0: X-axis rotational speed
 				 * @value1: Y-axis rotational speed
 				 * @value2: Z-axis rotational speed
 				 * @units_description: degrees per second
 				 */
-				.name		= "MS-IMU-GYRO-250",
-				.raw_max	= 1000,
+				.name		= "GYRO",
+				/*
+				 * raw_max and si_max are initial values.
+				 * These values are change by sending commands.
+				 */
+				.raw_max	= 10000,
 				.si_max		= 875,
-				.decimals	= 2,
+				.decimals	= 1,
 				.data_sets	= 3,
 				.data_type	= MSENSOR_DATA_S16,
 				.units		= "d/s",
@@ -1799,42 +1803,8 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @name_footnote: [^all]
 				 * @description: All data
 				 */
-				.name		= "MS-IMU-ALL",
+				.name		= "ALL",
 				.data_sets	= 23,
-			},
-			[6] = {
-				/**
-				 * @name_footnote: [^gyro]
-				 * @description: Gryo (500 deg/sec sensitivity)
-				 * @value0: X-axis rotational speed
-				 * @value1: Y-axis rotational speed
-				 * @value2: Z-axis rotational speed
-				 * @units_description: degrees per second
-				 */
-				.name		= "MS-IMU-GYRO-500",
-				.raw_max	= 1000,
-				.si_max		= 175,
-				.decimals	= 1,
-				.data_sets	= 3,
-				.data_type	= MSENSOR_DATA_S16,
-				.units		= "d/s",
-			},
-			[7] = {
-				/**
-				 * @name_footnote: [^gyro]
-				 * @description: Gryo (2000 deg/sec sensitivity)
-				 * @value0: X-axis rotational speed
-				 * @value1: Y-axis rotational speed
-				 * @value2: Z-axis rotational speed
-				 * @units_description: degrees per second
-				 */
-				.name		= "MS-IMU-GYRO-2000",
-				.raw_max	= 1000,
-				.si_max		= 700,
-				.decimals	= 1,
-				.data_sets	= 3,
-				.data_type	= MSENSOR_DATA_S16,
-				.units		= "d/s",
 			},
 		},
 		.i2c_mode_info	= {
@@ -1852,21 +1822,9 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[4] = {
 				.read_data_reg	= 0x53,
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= '1',
 			},
 			[5] = {
 				.read_data_reg	= 0x42,
-			},
-			[6] = {
-				.read_data_reg	= 0x53,
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= '2',
-			},
-			[7] = {
-				.read_data_reg	= 0x53,
-				.set_mode_reg	= 0x41,
-				.set_mode_data	= '3',
 			},
 		},
 		.num_commands	= 6,
@@ -1885,33 +1843,30 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[2] = {
 				/**
-				 * [^accel-commands]: The acceleration commands are only
-				 * intended for use with the `MS-IMU-ACCEL` and `MS-IMU-ALL`
-				 * modes. Sending these commands in any of the `MS-IMU-GRYO-*`
-				 * modes will cause incorrect readings.
+				 * [^accel-commands]: Wait 50 msec after sending command for sensor to reconfigure itself.
 				 *
-				 * @description: Change Accelerometer Sensitivity to 2G
+				 * @description: Change accelerometer sensitivity to 2G and gyro sensitivity to 250 deg/sec
 				 * @name_footnote: [^accel-commands]
 				 */
 				.name = "ACCEL-2G",
 			},
 			[3] = {
 				/**
-				 * @description: Change Accelerometer Sensitivity to 4G
+				 * @description: Change accelerometer sensitivity to 4G and gyro sensitivity to 500 deg/sec
 				 * @name_footnote: [^accel-commands]
 				 */
 				.name = "ACCEL-4G",
 			},
 			[4] = {
 				/**
-				 * @description: Change Accelerometer Sensitivity to 8G
+				 * @description: Change accelerometer sensitivity to 8G and gyro sensitivity to 2000 deg/sec
 				 * @name_footnote: [^accel-commands]
 				 */
 				.name = "ACCEL-8G",
 			},
 			[5] = {
 				/**
-				 * @description: Change Accelerometer Sensitivity to 16G
+				 * @description: Change accelerometer sensitivity to 16G and gyro sensitivity to 2000 deg/sec
 				 * @name_footnote: [^accel-commands]
 				 */
 				.name = "ACCEL-16G",
@@ -1952,7 +1907,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://www.mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=173
 		 * @default_address: 0x18
 		 */
-		.name			= "ms-angle-sensor",
+		.name			= "ms-angle",
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "AngSens",
 		.num_modes		= 4,
@@ -1963,7 +1918,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Angle
 				 * @units_description: degrees
 				 */
-				.name		= "MS-AS-ANGLE",
+				.name		= "ANGLE",
 				.data_sets	= 1,
 				.data_type	= MSENSOR_DATA_S32,
 				.units		= "deg",
@@ -1974,7 +1929,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Angle
 				 * @units_description: degrees
 				 */
-				.name		= "MS-AS-ANGLE2",
+				.name		= "ANGLE2",
 				.raw_max	= 360,
 				.si_max		= 1800,
 				.data_sets	= 1,
@@ -1988,7 +1943,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Rotational Speed (-4000 to 4000)
 				 * @units_description: revolutions per minute
 				 */
-				.name		= "MS-AS-RPM",
+				.name		= "SPEED",
 				.raw_max	= 100,
 				.si_max		= 100,
 				.data_sets	= 1,
@@ -2011,7 +1966,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value2: Rotational Speed
 				 * @value2_footnote: [^mode3-value2]
 				 */
-				.name		= "MS-AS-ALL",
+				.name		= "ALL",
 				.raw_max	= 100,
 				.si_max		= 100,
 				.data_sets	= 3,
@@ -2078,7 +2033,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value7: LED 7 (0 to 100)
 				 * @units_description: percent
 				 */
-				.name	= "MS-LSA-CAL",
+				.name	= "CAL",
 				.raw_max = 100,
 				.si_max = 100,
 				.data_sets = 8,
@@ -2096,7 +2051,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value6: LED 6 (0 to ???)
 				 * @value7: LED 7 (0 to ???)
 				 */
-				.name	= "MS-LSA-RAW",
+				.name	= "RAW",
 				.raw_max = USHRT_MAX,
 				.si_max = USHRT_MAX,
 				.data_sets = 8,
@@ -2195,41 +2150,43 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		},
 	},
 	[MI_CRUIZCORE_XG1300L] = {
-		/**	
-		 * [^usage]: Sample usage:
+		/**
+		 * [^ids]: CruizCore XG1300L doesn't follow LEGO guidelines by
+		 * returning vendor, product and firmware version values. As a
+		 * result, this sensor can't be automatically detected. Until
+		 * we find another way to identify the sensor, the driver has to
+		 * be loaded manually.
 		 *
-		 * CruizCore XG1300L doesn't follow LEGO guidelines and it can't be autodected.
-		 * Until we find other way to identify the sensor the driver has to be loaded manually.
-		 * 
 		 * Register I2C device:
-		 *
-		 * <pre><code>echo mi-cruizcore-xg1300 0x01 > /sys/bus/i2c/devices/i2c-<port+2>/new_device
-		 * </code></pre>
+		 * <pre>
+		 * echo mi-xg1300l 0x01 > /sys/bus/i2c/devices/i2c-<port+2>/new_device
+		 * </pre>
 		 *
 		 * @vendor_name: Microinfinity
 		 * @vendor_part_number: CruizCore XG 1300L
 		 * @vendor_part_name: Digital Gyroscope And Accelerometer
 		 * @vendor_website: http://www.minfinity.com/eng/page.php?Main=1&sub=1&tab=5
 		 * @default_address: 0x01
-		 * @default_address_footnote: [^usage]
+		 * @vendor_id_footnote: [^ids]
+		 * @product_id_footnote: [^ids]
 		 */
-		.name							= "mi-xg1300l",
-		.vendor_id						= "mnfinity", /* The sensor doesn't return vendor_id, it can't be autodetected this way */
-		.product_id					= "XG1300L",  /* The sensor doesn't return product_id, it can't be autodetected this way */
-		.num_modes						= 4,
-		.num_read_only_modes			= 4,
-		.ops.poll_cb					= mi_cruizcore_xg1300l_poll_cb,
-		.ops.send_command_post_cb 	= mi_cruizcore_xg1300l_send_command_post_cb,
-		.ops.probe_cb					= mi_cruizcore_xg1300l_probe_cb,
-		.ops.remove_cb				= mi_cruizcore_xg1300l_remove_cb,
+		.name			= "mi-xg1300l",
+		.vendor_id		= "mnfinity", /* The sensor doesn't return vendor_id, it can't be autodetected this way */
+		.product_id		= "XG1300L",  /* The sensor doesn't return product_id, it can't be autodetected this way */
+		.num_modes		= 4,
+		.num_read_only_modes	= 4,
+		.ops.poll_cb		= mi_xg1300l_poll_cb,
+		.ops.send_cmd_post_cb	= mi_xg1300l_send_cmd_post_cb,
+		.ops.probe_cb		= mi_xg1300l_probe_cb,
+		.ops.remove_cb		= mi_xg1300l_remove_cb,
 		.ms_mode_info	= {
 			[0] = {
 				/**
-				 * @description: Accumulated angle
-				 * @value0: Z-axis accumulated angle (-180 to 180)
+				 * @description: Angle
+				 * @value0: Z-axis angle (-18000 to 18000)
 				 * @units_description: degrees
 				 */
-				.name		= "ANG-ACC",
+				.name		= "ANGLE",
 				.data_sets	= 1,
 				.data_type	= MSENSOR_DATA_S16,
 				.units		= "deg",
@@ -2237,12 +2194,11 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 *
 				 * @description: Rotational speed
 				 * @value0: Z-axis rotational speed
 				 * @units_description: degrees per second
 				 */
-				.name		= "ANG-SPEED",
+				.name		= "SPEED",
 				.data_sets	= 1,
 				.data_type	= MSENSOR_DATA_S16,
 				.decimals	= 2,
@@ -2250,14 +2206,16 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[2] = {
 				/**
+				 *[^gravity-units]: 1 g ~ 9.81 m/s<sup>2</sup>
 				 *
 				 * @description: Acceleration in X, Y, Z axis
 				 * @value0: Acceleration in X axis
 				 * @value1: Acceleration in Y axis
 				 * @value2: Acceleration in Z axis
-				 * @units_description: g (1g ~ 9.81 m/s2)
+				 * @units_description: Standard gravity
+				 * @units_footnote: [^gravity-units]
 				 */
-				.name		= "ACCEL-XYZ",
+				.name		= "ACCEL",
 				.data_sets	= 3,
 				.units		= "g",
 				.data_type	= MSENSOR_DATA_S16,
@@ -2265,22 +2223,22 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[3] = {
 				/**
-				 * [^acceleration-description]: three decimal places, range as was set by last command
-				 * [^accumulated-angle-description]: two decimal places, (-180 to 180)
-				 * [^rotational-speed-description]: two decimal places
+				 * [^mode3-angle]: Two decimal places
+				 * [^mode3-speed]: Two decimal places
+				 * [^mode3-accel]: Three decimal places,
+				 * range as was set by last command
 				 *
 				 * @description: All values
-				 * @value0: Z-axis accumulated angle
-				 * @value0_footnote: [^accumulated-angle-description]
+				 * @value0: Z-axis angle (-18000 to 18000)
+				 * @value0_footnote: [^mode3-angle]
 				 * @value1: Z-axis rotational speed
-				 * @value1_footnote: [^rotational-speed-description]
+				 * @value1_footnote: [^mode3-speed]
 				 * @value2: X-axis acceleration
-				 * @value2_footnote: [^acceleration-description]
+				 * @value2_footnote: [^mode3-accel]
 				 * @value3: Y-axis acceleration
-				 * @value3_footnote: [^acceleration-description]
+				 * @value3_footnote: [^mode3-accel]
 				 * @value4: Z-axis acceleration
-				 * @value4_footnote: [^acceleration-description]
-				 *
+				 * @value4_footnote: [^mode3-accel]
 				 */
 				.name		= "ALL",
 				.data_sets	= 5,
@@ -2305,31 +2263,31 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.ms_cmd_info	= {
 			[0] = {
 				/**
-				 * [^reset-description]: recalculate bias drift, reset accumulated angle,
+				 * [^reset-description]: Recalculate bias drift, reset accumulated angle,
 				 * set accelerometer scaling factor to 2G,
 				 * this has to be done with sensor not moving
 				 * and is strongly recommended to be called manually before work
 				 *
 				 * @description: Reset device
-				 * @description_footnote: [^reset-description]
+				 * @name_footnote: [^reset-description]
 				 */
 				.name		= "RESET",
 			},
 			[1] = {
 				/**
-				 * @description: Acceleration scaling 2G
+				 * @description: Set accelerometer scaling to 2G
 				 */
 				.name		= "ACCEL-2G",
 			},
 			[2] = {
 				/**
-				 * @description: Acceleration scaling 4G
+				 * @description: Set accelerometer scaling to 4G
 				 */
 				.name		= "ACCEL-4G",
 			},
 			[3] = {
 				/**
-				 * @description: Acceleration scaling 8G
+				 * @description: Set accelerometer scaling to 8G
 				 */
 				.name		= "ACCEL-8G",
 			},

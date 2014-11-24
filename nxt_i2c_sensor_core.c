@@ -131,17 +131,22 @@ static int nxt_i2c_sensor_send_command(void *context, u8 command)
 	struct nxt_i2c_sensor_data *sensor = context;
 	int err;
 
+	if (sensor->info.ops.send_cmd_pre_cb) {
+		err = sensor->info.ops.send_cmd_pre_cb(sensor, command);
+		if (err)
+			return err;
+	}
+
 	err = i2c_smbus_write_byte_data(sensor->client,
 		sensor->info.i2c_cmd_info[command].cmd_reg,
 		sensor->info.i2c_cmd_info[command].cmd_data);
-		
 	if (err)
 		return err;
 
-	if (sensor->info.ops.send_command_post_cb)
-		sensor->info.ops.send_command_post_cb(sensor, command);
+	if (sensor->info.ops.send_cmd_post_cb)
+		sensor->info.ops.send_cmd_post_cb(sensor, command);
 
-	return err;
+	return 0;
 }
 
 static ssize_t nxt_i2c_sensor_write_data(void *context, char *data, loff_t off,
@@ -230,13 +235,6 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 	if (WARN(!apdata->in_port, "Adapter platform data missing input port."))
 		return -EINVAL;
 
-	/*
-	 * If a sensor was manually specified, lookup the info in the table.
-	 * Otherwise, if a sensor was automatically detected, then the info
-	 * is in the client platform data.
-	 */
-	if (client->dev.platform_data)
-		i2c_dev_id = client->dev.platform_data;
 	sensor_info = &nxt_i2c_sensor_defs[i2c_dev_id->driver_data];
 
 	sensor = kzalloc(sizeof(struct nxt_i2c_sensor_data), GFP_KERNEL);
@@ -375,8 +373,7 @@ static int nxt_i2c_sensor_detect(struct i2c_client *client,
 		if (!strcmp(nxt_i2c_sensor_defs[i].vendor_id, strim(vendor_id))
 			&& !strcmp(nxt_i2c_sensor_defs[i].product_id, strim(product_id)))
 		{
-			sprintf(info->type, "nxt-i2c-sensor");
-			info->platform_data = &nxt_i2c_sensor_id_table[i];
+			snprintf(info->type, I2C_NAME_SIZE, nxt_i2c_sensor_defs[i].name);
 			return 0;
 		}
 	}

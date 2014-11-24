@@ -44,7 +44,7 @@ const struct ev3_analog_sensor_info ev3_analog_sensor_defs[] = {
 				 * @value0: Voltage (0 - 5000)
 				 * @units_description: volts
 				 */
-				.name = "EV3-ANALOG",
+				.name = "ANALOG",
 				.units = "V",
 				.raw_max = 5000,
 				.pct_max = 100,
