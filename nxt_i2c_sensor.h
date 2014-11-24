@@ -129,6 +129,7 @@ enum nxt_i2c_sensor_type {
 	MS_ABSOLUTE_IMU,
 	MS_ANGLE_SENSOR,
 	MS_LIGHT_SENSOR_ARRAY,
+	MI_CRUIZCORE_XG1300L,
 	NUM_NXT_I2C_SENSORS
 };
 
@@ -155,6 +156,7 @@ enum nxt_i2c_sensor_type {
 { "ms-absolute-imu",	MS_ABSOLUTE_IMU			}, \
 { "ms-angle-sensor",	MS_ANGLE_SENSOR			}, \
 { "ms-light-array",	MS_LIGHT_SENSOR_ARRAY		}, \
+{ "mi-cruizcore-xg1300",	MI_CRUIZCORE_XG1300L		}, \
 { }
 
 extern const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[];
