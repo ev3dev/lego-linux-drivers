@@ -460,14 +460,14 @@ void ev3_tacho_motor_update_output(struct ev3_tacho_motor_data *ev3_tm)
 	int err;
 
 	if (ev3_tm->power > 0) {
-		pdata->motor_ops.set_polarity(pdata->motor_ops.context,
+		pdata->motor_ops.set_direction(pdata->motor_ops.context,
 					      ev3_tm->polarity_mode);
 		pdata->motor_ops.set_command(pdata->motor_ops.context,
 					     DC_MOTOR_COMMAND_RUN);
 		if (ev3_tm->regulation_mode == TM_REGULATION_OFF && ev3_tm->power < 10)
 			ev3_tm->power = 10;
 	} else if (ev3_tm->power < 0) {
-		pdata->motor_ops.set_polarity(pdata->motor_ops.context,
+		pdata->motor_ops.set_direction(pdata->motor_ops.context,
 					      !ev3_tm->polarity_mode);
 		pdata->motor_ops.set_command(pdata->motor_ops.context,
 					     DC_MOTOR_COMMAND_RUN);

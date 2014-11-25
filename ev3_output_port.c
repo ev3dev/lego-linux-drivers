@@ -258,14 +258,14 @@ struct ev3_output_port_data {
 	struct legoev3_port_device *motor;
 	enum ev3_output_port_mode mode;
 	enum dc_motor_command command;
-	enum dc_motor_polarity polarity;
+	enum dc_motor_direction direction;
 };
 
 int ev3_output_port_set_direction_gpios(struct ev3_output_port_data *data)
 {
 	switch(data->command) {
 	case DC_MOTOR_COMMAND_RUN:
-		if (data->polarity == DC_MOTOR_POLARITY_NORMAL) {
+		if (data->direction == DC_MOTOR_DIRECTION_FORWARD) {
 			gpio_direction_output(data->gpio[GPIO_PIN1].gpio, 1);
 			gpio_direction_input(data->gpio[GPIO_PIN2].gpio);
 		} else {
@@ -293,7 +293,7 @@ static unsigned ev3_ouput_port_get_supported_commands(void* context)
 		| BIT(DC_MOTOR_COMMAND_BRAKE);
 }
 
-static int ev3_output_port_get_command(void *context)
+static enum dc_motor_command ev3_output_port_get_command(void *context)
 {
 	struct ev3_output_port_data *data = context;
 
@@ -312,21 +312,21 @@ static int ev3_output_port_set_command(void *context,
 	return ev3_output_port_set_direction_gpios(data);
 }
 
-static enum dc_motor_polarity ev3_output_port_get_polarity(void *context)
+static enum dc_motor_direction ev3_output_port_get_direction(void *context)
 {
 	struct ev3_output_port_data *data = context;
 
-	return data->polarity;
+	return data->direction;
 }
 
-static int ev3_output_port_set_polarity(void *context,
-					enum dc_motor_polarity polarity)
+static int ev3_output_port_set_direction(void *context,
+					enum dc_motor_direction direction)
 {
 	struct ev3_output_port_data *data = context;
 
-	if (data->polarity == polarity)
+	if (data->direction == direction)
 		return 0;
-	data->polarity = polarity;
+	data->direction = direction;
 
 	return ev3_output_port_set_direction_gpios(data);
 }
@@ -386,8 +386,8 @@ void ev3_output_port_register_motor(struct work_struct *work)
 					ev3_ouput_port_get_supported_commands;
 	pdata.motor_ops.get_command = ev3_output_port_get_command;
 	pdata.motor_ops.set_command = ev3_output_port_set_command;
-	pdata.motor_ops.get_polarity = ev3_output_port_get_polarity;
-	pdata.motor_ops.set_polarity = ev3_output_port_set_polarity;
+	pdata.motor_ops.get_direction = ev3_output_port_get_direction;
+	pdata.motor_ops.set_direction = ev3_output_port_set_direction;
 	pdata.motor_ops.set_duty_cycle = ev3_output_port_set_duty_cycle;
 	pdata.motor_ops.get_duty_cycle = ev3_output_port_get_duty_cycle;
 	pdata.motor_ops.context = data;

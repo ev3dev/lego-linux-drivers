@@ -2,6 +2,7 @@
  * DC motor device class for LEGO MINDSTORMS EV3
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014 Ralph Hempel <rhempel@hempeldesigngroup.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -42,9 +43,13 @@
 * `commands` (read-only)
 * : Returns a space separated list of commands supported by the motor controller.
 * .
-* `duty_cycle` (read/write)
-* : Sets the duty cycle of the PWM signal sent to the motor. Values are -100
-*   to 100 (-100% to 100%).
+* `duty_cycle_sp` (read/write)
+* : Sets the duty cycle setpoint of the PWM signal sent to the motor. Values
+*   -100 to 100 (-100% to 100%).
+* .
+* `duty_cycle` (read)
+* : Shows the current duty cycle of the PWM signal sent to the motor. Values
+*   -100 to 100 (-100% to 100%).
 * .
 * `name` (read-only)
 * : Returns the name of the motor controller's driver.
@@ -89,7 +94,7 @@ enum hrtimer_restart dc_motor_class_ramp_timer_handler(struct hrtimer *timer)
 {
 	struct dc_motor_device *motor =
 		container_of(timer, struct dc_motor_device, ramp_timer);
-	int ramp_ns, err;
+	int ramp_ns, err, direction;
 
 	if (motor->current_duty_cycle == motor->target_duty_cycle)
 		return HRTIMER_NORESTART;
@@ -101,10 +106,24 @@ enum hrtimer_restart dc_motor_class_ramp_timer_handler(struct hrtimer *timer)
 		ramp_ns = motor->ramp_down_ms * 10000;
 		motor->current_duty_cycle--;
 	}
+
+	if (0 == ramp_ns)
+		motor->current_duty_cycle = motor->target_duty_cycle;
+
 	hrtimer_forward_now(&motor->ramp_timer, ktime_set(0, ramp_ns));
-	err = motor->ops.set_polarity(motor->ops.context,
-			motor->polarity ^ (motor->current_duty_cycle < 0));
-	WARN_ONCE(err, "Failed to set polarity.");
+
+	if (motor->polarity == DC_MOTOR_POLARITY_NORMAL )
+		direction = (motor->current_duty_cycle >= 0)
+				? DC_MOTOR_DIRECTION_FORWARD
+				: DC_MOTOR_DIRECTION_REVERSE;
+	else
+		direction = (motor->current_duty_cycle <= 0)
+				? DC_MOTOR_DIRECTION_FORWARD
+				: DC_MOTOR_DIRECTION_REVERSE;
+
+	err = motor->ops.set_direction(motor->ops.context, direction );
+	WARN_ONCE(err, "Failed to set direction.");
+
 	err = motor->ops.set_duty_cycle(motor->ops.context,
 					abs(motor->current_duty_cycle));
 	WARN_ONCE(err, "Failed to set duty cycle.");
@@ -146,7 +165,6 @@ static ssize_t ramp_up_ms_store(struct device *dev,
 	if (sscanf(buf, "%ud", &value) != 1 || value > 10000)
 		return -EINVAL;
 	motor->ramp_up_ms = value;
-	/* TODO: need to implement ramping */
 
 	return count;
 }
@@ -169,7 +187,6 @@ static ssize_t ramp_down_ms_store(struct device *dev,
 	if (sscanf(buf, "%ud", &value) != 1 || value > 10000)
 		return -EINVAL;
 	motor->ramp_down_ms = value;
-	/* TODO: need to implement ramping */
 
 	return count;
 }
@@ -186,14 +203,22 @@ static ssize_t polarity_store(struct device *dev, struct device_attribute *attr,
 			      const char *buf, size_t count)
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
-	int i, err;
+	int i;
 
 	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++) {
 		if (sysfs_streq(buf, dc_motor_polarity_values[i])) {
-			err = motor->ops.set_polarity(motor->ops.context, i);
-			if (err)
-				return err;
-			motor->polarity = i;
+			if (motor->polarity != i) {
+				/*
+				 * Force the motor state to get re-evaluated when
+				 * timer expires, makes the motor use ramping even
+				 * if we change direction mid-flight
+				 */
+				motor->current_duty_cycle = -motor->current_duty_cycle;
+
+				motor->polarity = i;
+				hrtimer_start(&motor->ramp_timer,
+					ktime_set(0, 0), HRTIMER_MODE_REL);
+			}
 			return count;
 		}
 
@@ -201,21 +226,19 @@ static ssize_t polarity_store(struct device *dev, struct device_attribute *attr,
 	return -EINVAL;
 }
 
-static ssize_t duty_cycle_show(struct device *dev,
-			       struct device_attribute *attr, char *buf)
+static ssize_t duty_cycle_sp_show(struct device *dev,
+				  struct device_attribute *attr, char *buf)
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
-	int duty_cycle;
+	int duty_cycle_sp;
 
-	duty_cycle = motor->ops.get_duty_cycle(motor->ops.context);
-	if (motor->polarity == DC_MOTOR_POLARITY_INVERTED)
-		duty_cycle = -duty_cycle;
-	return sprintf(buf, "%d\n", duty_cycle);
+	duty_cycle_sp = motor->target_duty_cycle;
+	return sprintf(buf, "%d\n", duty_cycle_sp);
 }
 
-static ssize_t duty_cycle_store(struct device *dev,
-				struct device_attribute *attr,
-				const char *buf, size_t count)
+static ssize_t duty_cycle_sp_store(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t count)
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
 	int value;
@@ -223,10 +246,29 @@ static ssize_t duty_cycle_store(struct device *dev,
 	if (sscanf(buf, "%d", &value) != 1 || value < -100 || value > 100)
 		return -EINVAL;
 	motor->target_duty_cycle = value;
+
 	if (motor->ops.get_command(motor->ops.context) == DC_MOTOR_COMMAND_RUN)
 		hrtimer_start(&motor->ramp_timer, ktime_set(0, 0), HRTIMER_MODE_REL);
 
 	return count;
+}
+
+static ssize_t duty_cycle_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	struct dc_motor_device *motor = to_dc_motor_device(dev);
+	int duty_cycle;
+	unsigned direction;
+	unsigned polarity;
+
+	duty_cycle = motor->ops.get_duty_cycle(motor->ops.context);
+	direction = motor->ops.get_direction(motor->ops.context);
+	polarity = motor->polarity;
+
+	duty_cycle *= ((direction == DC_MOTOR_DIRECTION_FORWARD) ? 1 : -1);
+	duty_cycle *= ((polarity == DC_MOTOR_POLARITY_NORMAL) ? 1 : -1);
+
+	return sprintf(buf, "%d\n", duty_cycle);
 }
 
 static ssize_t commands_show(struct device *dev, struct device_attribute *attr,
@@ -294,7 +336,8 @@ static DEVICE_ATTR_RO(port_name);
 static DEVICE_ATTR_RW(ramp_up_ms);
 static DEVICE_ATTR_RW(ramp_down_ms);
 static DEVICE_ATTR_RW(polarity);
-static DEVICE_ATTR_RW(duty_cycle);
+static DEVICE_ATTR_RW(duty_cycle_sp);
+static DEVICE_ATTR_RO(duty_cycle);
 static DEVICE_ATTR_RO(commands);
 static DEVICE_ATTR_RW(command);
 
@@ -304,6 +347,7 @@ static struct attribute *dc_motor_class_attrs[] = {
 	&dev_attr_ramp_up_ms.attr,
 	&dev_attr_ramp_down_ms.attr,
 	&dev_attr_polarity.attr,
+	&dev_attr_duty_cycle_sp.attr,
 	&dev_attr_duty_cycle.attr,
 	&dev_attr_commands.attr,
 	&dev_attr_command.attr,
