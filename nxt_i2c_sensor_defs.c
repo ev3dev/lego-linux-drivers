@@ -478,7 +478,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				/**
 				 * [^single-measurement]: The value is read when the mode is set
 				 * and does not change - even when polling is enabled. To read a
-				 * new value, set the mode again (e.g. `echo NXT-US-SI-CM > mode`).
+				 * new value, set the mode again (e.g. `echo US-SI-CM > mode`).
 				 *
 				 * @description: Single measurement
 				 * @value0: Distance (0 to 255)
