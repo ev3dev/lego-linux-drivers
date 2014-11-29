@@ -1,5 +1,5 @@
 /*
- * EV3 UART sensor driver for LEGO Mindstorms EV3
+ * EV3 UART sensor driver for LEGO MINDSTORMS EV3
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
@@ -14,26 +14,113 @@
  */
 
 /*
- * IMPORTANT: THIS FILE IS NOT TO BE COMPILED. IT IS ONLY FOR AUTOMATICALLY
- * GENERATING DOCUMENTATION ON THE EV3 UART SENSORS.
- */
-
-/*
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new sensors have the same layout. The comments
  * are also parsed to provide more information for the documentation. The
  * parser can be found in the ev3dev-kpkg repository.
  */
 
+#include "ev3_uart_sensor.h"
+
 const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
+	[LEGO_EV3_COLOR] = {
+		/**
+		 * @vendor_name: LEGO
+		 * @vendor_part_number: 45506
+		 * @vendor_part_name: EV3 Color Sensor
+		 */
+		.name		= "lego-ev3-uart-29",
+		.num_modes	= 6,
+		.num_view_modes	= 3,
+		.ms_mode_info	= {
+			[0] = {
+				/**
+				 * @description: Reflected light<br />Red LED on
+				 * @value0: Reflected light intensity (0 to 100)
+				 * @units_description: percent
+				 */
+				.name = "COL-REFLECT",
+				.units = "pct",
+			},
+			[1] = {
+				/**
+				 * @description: Ambient light<br />Red LEDs off
+				 * @value0: Ambient light intensity (0 to 100)
+				 * @units_description: percent
+				 */
+				.name = "COL-AMBIENT",
+				.units = "pct",
+			},
+			[2] = {
+				/**
+				 * [^color-values]: Color values:
+				 *
+				 * | Value | Color  |
+				 * |-------|--------|
+				 * | 0     | none   |
+				 * | 1     | black  |
+				 * | 2     | blue   |
+				 * | 3     | green  |
+				 * | 4     | yellow |
+				 * | 5     | red    |
+				 * | 6     | white  |
+				 * | 7     | brown  |
+				 *
+				 * @description: Color<br />All LEDs rapidly cycling, appears white
+				 * @value0: Detected color (0 to 7)
+				 * @value0_footnote: [^color-values]
+				 * @units_description: color
+				 */
+				.name = "COL-AMBIENT",
+				.units = "col",
+			},
+			[3] = {
+				/**
+				 * @description: Raw Reflected<br />Red LED on
+				 * @value0: ??? (0 to 1020???)
+				 * @value1: ??? (0 to 1020???)
+				 */
+				.name = "REF-RAW",
+				.data_sets = 2,
+			},
+			[4] = {
+				/**
+				 * @description: Raw Color Components<br />All LEDs rapidly cycling, appears white
+				 * @value0: Red??? (0 to 1020???)
+				 * @value1: Green??? (0 to 1020???)
+				 * @value1: Blue??? (0 to 1020???)
+				 * @units_description: color
+				 */
+				.name = "RGB-RAW",
+				.data_sets = 3,
+			},
+			[5] = {
+				/**
+				 * [^cal-mode]: This mode is not usable. When in COL-CAL mode,
+				 * the color sensor does not respond to the keep-alive sent from
+				 * the EV3 brick. As a result, the sensor will time out and reset.
+				 *
+				 * @name_footnote: [^cal-mode]
+				 * @description: Calibration ???<br />All LEDs rapidly cycling, appears white
+				 * @value0: ???
+				 * @value1: ???
+				 * @value2: ???
+				 * @value3: ???
+				 */
+				.name = "COL-CAL",
+				.data_sets = 4,
+			},
+		},
+	},
 	[LEGO_EV3_ULTRASONIC] = {
 		/**
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 45504
 		 * @vendor_part_name: EV3 Ultrasonic Sensor
 		 */
-		.name		= "ev3-uart-30",
+		.name		= "lego-ev3-uart-30",
 		.num_modes	= 5,
+		.num_view_modes	= 3,
 		.ms_mode_info	= {
 			[0] = {
 				/**
@@ -130,8 +217,9 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 		 * @vendor_part_number: 45505
 		 * @vendor_part_name: EV3 Gyro Sensor
 		 */
-		.name		= "ev3-uart-32",
+		.name		= "lego-ev3-uart-32",
 		.num_modes	= 5,
+		.num_view_modes	= 3,
 		.ms_mode_info	= {
 			[0] = {
 				/**
@@ -201,102 +289,15 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 			},
 		},
 	},
-	[LEGO_EV3_COLOR] = {
-		/**
-		 * @vendor_name: LEGO
-		 * @vendor_part_number: 45506
-		 * @vendor_part_name: EV3 Color Sensor
-		 */
-		.name		= "ev3-uart-29",
-		.num_modes	= 6,
-		.ms_mode_info	= {
-			[0] = {
-				/**
-				 * @description: Reflected light<br />Red LED on
-				 * @value0: Reflected light intensity (0 to 100)
-				 * @units_description: percent
-				 */
-				.name = "COL-REFLECT",
-				.units = "pct",
-			},
-			[1] = {
-				/**
-				 * @description: Ambient light<br />Red LEDs off
-				 * @value0: Ambient light intensity (0 to 100)
-				 * @units_description: percent
-				 */
-				.name = "COL-AMBIENT",
-				.units = "pct",
-			},
-			[2] = {
-				/**
-				 * [^color-values]: Color values:
-				 *
-				 * | Value | Color  |
-				 * |-------|--------|
-				 * | 0     | none   |
-				 * | 1     | black  |
-				 * | 2     | blue   |
-				 * | 3     | green  |
-				 * | 4     | yellow |
-				 * | 5     | red    |
-				 * | 6     | white  |
-				 * | 7     | brown  |
-				 *
-				 * @description: Color<br />All LEDs rapidly cycling, appears white
-				 * @value0: Detected color (0 to 7)
-				 * @value0_footnote: [^color-values]
-				 * @units_description: color
-				 */
-				.name = "COL-AMBIENT",
-				.units = "col",
-			},
-			[3] = {
-				/**
-				 * @description: Raw Reflected<br />Red LED on
-				 * @value0: ??? (0 to 1020???)
-				 * @value1: ??? (0 to 1020???)
-				 */
-				.name = "REF-RAW",
-				.data_sets = 2,
-			},
-			[4] = {
-				/**
-				 * @description: Raw Color Components<br />All LEDs rapidly cycling, appears white
-				 * @value0: Red??? (0 to 1020???)
-				 * @value1: Green??? (0 to 1020???)
-				 * @value1: Blue??? (0 to 1020???)
-				 * @units_description: color
-				 */
-				.name = "RGB-RAW",
-				.data_sets = 3,
-			},
-			[5] = {
-				/**
-				 * [^cal-mode]: This mode is not usable. When in COL-CAL mode,
-				 * the color sensor does not respond to the keep-alive sent from
-				 * the EV3 brick. As a result, the sensor will time out and reset.
-				 *
-				 * @name_footnote: [^cal-mode]
-				 * @description: Calibration ???<br />All LEDs rapidly cycling, appears white
-				 * @value0: ???
-				 * @value1: ???
-				 * @value2: ???
-				 * @value3: ???
-				 */
-				.name = "COL-CAL",
-				.data_sets = 4,
-			},
-		},
-	},
 	[LEGO_EV3_INFRARED] = {
 		/**
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 45509
 		 * @vendor_part_name: EV3 Infrared Sensor
 		 */
-		.name		= "ev3-uart-33",
+		.name		= "lego-ev3-uart-33",
 		.num_modes	= 6,
+		.num_view_modes	= 3,
 		.ms_mode_info	= {
 			[0] = {
 				/**
@@ -472,3 +473,4 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 		},
 	},
 };
+EXPORT_SYMBOL_GPL(legoev3_uart_defs);

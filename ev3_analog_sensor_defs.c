@@ -91,3 +91,4 @@ const struct ev3_analog_sensor_info ev3_analog_sensor_defs[] = {
 		},
 	},
 };
+EXPORT_SYMBOL_GPL(ev3_analog_sensor_defs);

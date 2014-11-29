@@ -132,6 +132,7 @@ enum nxt_i2c_sensor_type {
 	MS_8CH_SERVO,
 	MS_ABSOLUTE_IMU,
 	MS_ANGLE_SENSOR,
+	MS_EV3_SENSOR_MUX,
 	MS_LIGHT_SENSOR_ARRAY,
 	MI_CRUIZCORE_XG1300L,
 	NUM_NXT_I2C_SENSORS
@@ -158,6 +159,7 @@ enum nxt_i2c_sensor_type {
 { "ms-8ch-servo", 	MS_8CH_SERVO			}, \
 { "ms-absolute-imu",	MS_ABSOLUTE_IMU			}, \
 { "ms-angle",		MS_ANGLE_SENSOR			}, \
+{ "ms-ev3-smux",	MS_EV3_SENSOR_MUX		}, \
 { "ms-light-array",	MS_LIGHT_SENSOR_ARRAY		}, \
 { "mi-xg1300l",		MI_CRUIZCORE_XG1300L		}, \
 { }

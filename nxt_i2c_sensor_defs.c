@@ -20,6 +20,7 @@
 
 #include "nxt_i2c_sensor.h"
 #include "ht_smux.h"
+#include "ms_ev3_smux.h"
 
 /* HiTechnic NXT Sensor Multiplexer implementation */
 
@@ -326,6 +327,88 @@ static void ms_imu_send_cmd_post_cb(struct nxt_i2c_sensor_data *sensor,
 	}
 }
 
+/* mindsensors.com EV3 Sensor Multiplexer implementation */
+
+static const struct device_type ms_ev3_smux_input_port_device_type = {
+	.name	= "ms-ev3-smux-input-port",
+};
+
+struct ms_ev3_smux_input_port_data {
+	struct legoev3_port *port;
+	legoev3_analog_cb_func_t cb;
+};
+
+static void ms_ev3_smux_poll_cb(struct nxt_i2c_sensor_data *data)
+{
+	struct ms_ev3_smux_input_port_data *port_data = data->info.callback_data;
+	u8 *raw_data = data->ms.mode_info[data->ms.mode].raw_data;
+
+	/* TODO: get data size from somewhere */
+	i2c_smbus_read_i2c_block_data(data->client, MS_EV3_SMUX_DATA_REG,
+		4, raw_data);
+	if (port_data && port_data->cb && port_data->port)
+		port_data->cb(port_data->port);
+}
+
+static void ms_ev3_smux_probe_cb(struct nxt_i2c_sensor_data *data)
+{
+	struct ms_ev3_smux_input_port_data *port_data;
+	struct ms_ev3_smux_input_port_platform_data pdata;
+	char name[LEGOEV3_PORT_NAME_SIZE];
+	int channel;
+
+	port_data = kzalloc(sizeof(struct ms_ev3_smux_input_port_data),
+			    GFP_KERNEL);
+	pdata.client = data->client;
+	sprintf(name, "%s:mux", dev_name(&data->in_port->dev));
+
+	data->info.callback_data = port_data;
+
+	/*
+	 * Expects sensor to return the string "CH1" (or 2/3) at 0x18, so we
+	 * read the 3rd byte and convert ascii char to an integer.
+	*/
+	channel = i2c_smbus_read_byte_data(data->client, 0x1A);
+	if (channel < 0)
+		channel = 0;
+	else
+		channel -= '0';
+	port_data->port = legoev3_port_register(name, channel,
+		&ms_ev3_smux_input_port_device_type, &data->client->dev,
+		&pdata, sizeof(struct ms_ev3_smux_input_port_platform_data));
+
+	if (IS_ERR(port_data->port)) {
+		dev_err(&data->client->dev,
+			"Failed to register mindsensor.com EV3 Sensor Mux input port. %ld\n",
+			PTR_ERR(port_data->port));
+		data->info.callback_data = NULL;
+		kfree(port_data);
+		return;
+	}
+}
+
+static void ms_ev3_smux_remove_cb(struct nxt_i2c_sensor_data *data)
+{
+	struct ms_ev3_smux_input_port_data *port_data = data->info.callback_data;
+
+	if (port_data) {
+		legoev3_port_unregister(port_data->port);
+		data->info.callback_data = NULL;
+		kfree(port_data);
+	}
+}
+
+void ms_ev3_smux_register_poll_cb(struct i2c_client *client,
+				  legoev3_analog_cb_func_t cb)
+{
+	struct nxt_i2c_sensor_data *data = i2c_get_clientdata(client);
+	struct ms_ev3_smux_input_port_data *port_data = data->info.callback_data;
+
+	port_data->cb = cb;
+}
+EXPORT_SYMBOL_GPL(ms_ev3_smux_register_poll_cb);
+
+
 /*
  * Microinfinity CruizCore XG1300L gyroscope and accelerometer related functions
  */
@@ -407,6 +490,7 @@ static void mi_xg1300l_remove_cb(struct nxt_i2c_sensor_data *data)
  * - num_read_only_modes (default num_modes)
  * - ops.set_mode_pre_cb
  * - ops.set_mode_post_cb
+ * - ops.send_command_pre_cb
  * - ops.send_command_post_cb
  * - ops.poll_cb
  * - ops.probe_cb
@@ -2002,6 +2086,39 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.cmd_data	= 'r',
 			},
 		}
+	},
+	[MS_EV3_SENSOR_MUX] = {
+		/**
+		 * [^addresses]: This sensor appears as three separate sensors,
+		 * one for each channel on the sensor mux.
+		 *
+		 * @vendor_name: mindsensors.com
+		 * @vendor_part_number: EV3SensorMUX
+		 * @vendor_part_name: EV3 Sensor Multiplexer
+		 * @vendor_website: http://www.mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=207
+		 * @default_address: 0x50, 0x51, 0x52
+		 * @default_address_footnote: [^addresses]
+		 */
+		.name			= "ms-ev3-smux",
+		.vendor_id		= "mndsnsrs",
+		.product_id		= "Ev3SMux",
+		.num_modes		= 2,
+		.num_read_only_modes	= 1,
+		.ops.poll_cb		= ms_ev3_smux_poll_cb,
+		.ops.probe_cb		= ms_ev3_smux_probe_cb,
+		.ops.remove_cb		= ms_ev3_smux_remove_cb,
+		.ms_mode_info = {
+			[0] = {
+				/**
+				 * [^mode]: This mode does not do anything useful.
+				 *
+				 * @description: EV3 Sensor Multiplexer
+				 * @name_footnote: [^mode]
+				 */
+				.name		= "MUX",
+				.data_sets	= 0,
+			},
+		},
 	},
 	[MS_LIGHT_SENSOR_ARRAY] = {
 		/**
