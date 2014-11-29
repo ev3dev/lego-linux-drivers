@@ -172,7 +172,6 @@ struct nxt_i2c_sensor_data {
 	struct delayed_work poll_work;
 	enum nxt_i2c_sensor_type type;
 	unsigned poll_ms;
-	u8 mode;
 };
 
 #endif /* NXT_I2C_SENSOR_H_ */

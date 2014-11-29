@@ -70,15 +70,7 @@ struct ht_smux_i2c_sensor_data {
 	struct nxt_i2c_sensor_info info;
 	struct msensor_device ms;
 	enum nxt_i2c_sensor_type type;
-	u8 mode;
 };
-
-static u8 ht_smux_i2c_sensor_get_mode(void *context)
-{
-	struct ht_smux_i2c_sensor_data *sensor = context;
-
-	return sensor->mode;
-}
 
 extern void ht_smux_input_port_set_i2c_data_reg(struct legoev3_port *in_port,
 						u8 reg, u8 count);
@@ -94,7 +86,7 @@ static int ht_smux_i2c_sensor_set_mode(void *context, u8 mode)
 	 * */
 	if (sensor->info.i2c_mode_info[mode].set_mode_reg) {
 		if (sensor->info.i2c_mode_info[mode].set_mode_data
-			!= sensor->info.i2c_mode_info[sensor->mode].set_mode_data);
+			!= sensor->info.i2c_mode_info[sensor->ms.mode].set_mode_data);
 		return -EPERM;
 	}
 
@@ -103,7 +95,6 @@ static int ht_smux_i2c_sensor_set_mode(void *context, u8 mode)
 				sensor->info.ms_mode_info[mode].data_sets);
 	sensor->in_port->in_ops.set_pin1_gpio(sensor->in_port,
 				sensor->info.i2c_mode_info[mode].pin1_state);
-	sensor->mode = mode;
 
 	return 0;
 }
@@ -113,7 +104,7 @@ extern void ht_smux_input_port_copy_i2c_data(struct legoev3_port *in_port,
 
 static void ht_smux_i2c_sensor_analog_cb(void *context) {
 	struct ht_smux_i2c_sensor_data *sensor = context;
-	u8 *raw_data = sensor->ms.mode_info[sensor->mode].raw_data;
+	u8 *raw_data = sensor->ms.mode_info[sensor->ms.mode].raw_data;
 
 	ht_smux_input_port_copy_i2c_data(sensor->in_port, raw_data);
 }
@@ -153,7 +144,6 @@ static int ht_smux_i2c_sensor_probe(struct legoev3_port_device *pdev)
 		sensor->ms.num_modes = sensor->info.num_modes;
 	sensor->ms.num_view_modes = 1;
 	sensor->ms.mode_info = sensor->info.ms_mode_info;
-	sensor->ms.get_mode = ht_smux_i2c_sensor_get_mode;
 	sensor->ms.set_mode = ht_smux_i2c_sensor_set_mode;
 	sensor->ms.context = sensor;
 	sensor->ms.address = pdata->address >> 1;

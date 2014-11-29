@@ -1,5 +1,5 @@
 /*
- * NXT I2C sensor device driver for LEGO Mindstorms EV3
+ * NXT I2C sensor device driver for LEGO MINDSTORMS EV3
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
@@ -87,13 +87,6 @@ static bool allow_autodetect = 1;
 module_param(allow_autodetect, bool, 0644);
 MODULE_PARM_DESC(allow_autodetect, "Allow NXT I2C sensors to be automatically detected.");
 
-static u8 nxt_i2c_sensor_get_mode(void *context)
-{
-	struct nxt_i2c_sensor_data *sensor = context;
-
-	return sensor->mode;
-}
-
 void nxt_i2c_sensor_poll_work(struct work_struct *work);
 
 static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
@@ -117,7 +110,6 @@ static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
 
 	sensor->in_port->in_ops.set_pin1_gpio(sensor->in_port,
 				sensor->info.i2c_mode_info[mode].pin1_state);
-	sensor->mode = mode;
 	nxt_i2c_sensor_poll_work(&sensor->poll_work.work);
 
 	if (sensor->info.ops.set_mode_post_cb)
@@ -202,9 +194,9 @@ void nxt_i2c_sensor_poll_work(struct work_struct *work)
 	struct nxt_i2c_sensor_data *sensor =
 		container_of(dwork, struct nxt_i2c_sensor_data, poll_work);
 	struct nxt_i2c_sensor_mode_info *i2c_mode_info =
-		&sensor->info.i2c_mode_info[sensor->mode];
+		&sensor->info.i2c_mode_info[sensor->ms.mode];
 	struct msensor_mode_info *ms_mode_info =
-			&sensor->info.ms_mode_info[sensor->mode];
+			&sensor->info.ms_mode_info[sensor->ms.mode];
 
 	if (sensor->info.ops.poll_cb)
 		sensor->info.ops.poll_cb(sensor);
@@ -254,7 +246,6 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 	sensor->ms.mode_info = sensor->info.ms_mode_info;
 	sensor->ms.num_commands = sensor->info.num_commands;
 	sensor->ms.cmd_info = sensor->info.ms_cmd_info;
-	sensor->ms.get_mode = nxt_i2c_sensor_get_mode;
 	sensor->ms.set_mode = nxt_i2c_sensor_set_mode;
 	sensor->ms.send_command = nxt_i2c_sensor_send_command;
 	sensor->ms.write_data = nxt_i2c_sensor_write_data;
@@ -301,7 +292,7 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 
 	if (sensor->type == LEGO_NXT_ULTRASONIC_SENSOR)
 		msleep (1);
-	nxt_i2c_sensor_set_mode(sensor, sensor->mode);
+	nxt_i2c_sensor_set_mode(sensor, sensor->ms.mode);
 
 	if (sensor->info.ops.probe_cb)
 		sensor->info.ops.probe_cb(sensor);
@@ -398,7 +389,7 @@ static struct i2c_driver nxt_i2c_sensor_driver = {
 };
 module_i2c_driver(nxt_i2c_sensor_driver);
 
-MODULE_DESCRIPTION("NXT I2C sensor device driver for LEGO Mindstorms EV3");
+MODULE_DESCRIPTION("NXT I2C sensor device driver for LEGO MINDSTORMS EV3");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("legoev3:nxt-i2c-host");

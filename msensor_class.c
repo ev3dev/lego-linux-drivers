@@ -249,14 +249,8 @@ static ssize_t msensor_show_mode(struct device *dev,
 				 char *buf)
 {
 	struct msensor_device *ms = to_msensor_device(dev);
-	unsigned count = 0;
 
-	count += sprintf(buf, "%s\n",
-			 ms->mode_info[ms->get_mode(ms->context)].name);
-	if (count == 0)
-		return -ENXIO;
-
-	return count;
+	return sprintf(buf, "%s\n", ms->mode_info[ms->mode].name);
 }
 
 static ssize_t msensor_store_mode(struct device *dev,
@@ -271,6 +265,7 @@ static ssize_t msensor_store_mode(struct device *dev,
 			err = ms->set_mode(ms->context, i);
 			if (err)
 				return err;
+			ms->mode = i;
 			return count;
 		}
 	}
@@ -317,9 +312,8 @@ static ssize_t msensor_show_units(struct device *dev,
 				  char *buf)
 {
 	struct msensor_device *ms = to_msensor_device(dev);
-	int mode = ms->get_mode(ms->context);
 
-	return sprintf(buf, "%s\n",ms->mode_info[mode].units);
+	return sprintf(buf, "%s\n",ms->mode_info[ms->mode].units);
 }
 
 static ssize_t msensor_show_dp(struct device *dev,
@@ -327,9 +321,8 @@ static ssize_t msensor_show_dp(struct device *dev,
 			       char *buf)
 {
 	struct msensor_device *ms = to_msensor_device(dev);
-	int mode = ms->get_mode(ms->context);
 
-	return sprintf(buf, "%d\n", ms->mode_info[mode].decimals);
+	return sprintf(buf, "%d\n", ms->mode_info[ms->mode].decimals);
 }
 
 static ssize_t msensor_show_num_values(struct device *dev,
@@ -337,67 +330,50 @@ static ssize_t msensor_show_num_values(struct device *dev,
 				       char *buf)
 {
 	struct msensor_device *ms = to_msensor_device(dev);
-	int mode = ms->get_mode(ms->context);
 
-	return sprintf(buf, "%d\n", ms->mode_info[mode].data_sets);
+	return sprintf(buf, "%d\n", ms->mode_info[ms->mode].data_sets);
 }
 
 int msensor_raw_u8_value(struct msensor_device *ms, int index)
 {
-	int mode = ms->get_mode(ms->context);
-
-	return *(u8 *)(ms->mode_info[mode].raw_data + index);
+	return *(u8 *)(ms->mode_info[ms->mode].raw_data + index);
 }
 
 int msensor_raw_s8_value(struct msensor_device *ms, int index)
 {
-	int mode = ms->get_mode(ms->context);
-
-	return *(s8 *)(ms->mode_info[mode].raw_data + index);
+	return *(s8 *)(ms->mode_info[ms->mode].raw_data + index);
 }
 
 int msensor_raw_u16_value(struct msensor_device *ms, int index)
 {
-	int mode = ms->get_mode(ms->context);
-
-	return *(u16 *)(ms->mode_info[mode].raw_data + index * 2);
+	return *(u16 *)(ms->mode_info[ms->mode].raw_data + index * 2);
 }
 
 int msensor_raw_s16_value(struct msensor_device *ms, int index)
 {
-	int mode = ms->get_mode(ms->context);
-
-	return *(s16 *)(ms->mode_info[mode].raw_data + index * 2);
+	return *(s16 *)(ms->mode_info[ms->mode].raw_data + index * 2);
 }
 
 int msensor_raw_s16_be_value(struct msensor_device *ms, int index)
 {
-	int mode = ms->get_mode(ms->context);
-
-	return (s16)ntohs(*(u16 *)(ms->mode_info[mode].raw_data + index * 2));
+	return (s16)ntohs(*(u16 *)(ms->mode_info[ms->mode].raw_data + index * 2));
 }
 
 int msensor_raw_u32_value(struct msensor_device *ms, int index)
 {
-	int mode = ms->get_mode(ms->context);
-
-	return *(u32 *)(ms->mode_info[mode].raw_data + index * 4);
+	return *(u32 *)(ms->mode_info[ms->mode].raw_data + index * 4);
 }
 
 int msensor_raw_s32_value(struct msensor_device *ms, int index)
 {
-	int mode = ms->get_mode(ms->context);
-
-	return *(s32 *)(ms->mode_info[mode].raw_data + index * 4);
+	return *(s32 *)(ms->mode_info[ms->mode].raw_data + index * 4);
 }
 
 int msensor_raw_float_value(struct msensor_device *ms, int index)
 {
-	int mode = ms->get_mode(ms->context);
-
 	return msensor_ftoi(
-		*(u32 *)(ms->mode_info[mode].raw_data + index * 4),
-		ms->mode_info[mode].decimals);
+		*(u32 *)(ms->mode_info[ms->mode].raw_data + index * 4),
+		ms->mode_info[ms->mode].decimals);
 }
 
 static ssize_t msensor_show_value(struct device *dev,
@@ -405,8 +381,7 @@ static ssize_t msensor_show_value(struct device *dev,
                                   char *buf)
 {
 	struct msensor_device *ms = to_msensor_device(dev);
-	int mode = ms->get_mode(ms->context);
-	struct msensor_mode_info *mode_info = &ms->mode_info[mode];
+	struct msensor_mode_info *mode_info = &ms->mode_info[ms->mode];
 	long int value;
 	int index;
 
@@ -459,10 +434,9 @@ static ssize_t msensor_show_bin_data_format(struct device *dev,
                                             char *buf)
 {
 	struct msensor_device *ms = to_msensor_device(dev);
-	int mode = ms->get_mode(ms->context);
 	char *value;
 
-	switch (ms->mode_info[mode].data_type) {
+	switch (ms->mode_info[ms->mode].data_type) {
 	case MSENSOR_DATA_U8:
 		value = "u8";
 		break;
@@ -555,7 +529,6 @@ static ssize_t msensor_read_bin_data(struct file *file, struct kobject *kobj,
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct msensor_device *ms = to_msensor_device(dev);
-	int mode = ms->get_mode(ms->context);
 	size_t size = attr->size;
 
 	if (off >= size || !count)
@@ -563,7 +536,7 @@ static ssize_t msensor_read_bin_data(struct file *file, struct kobject *kobj,
 	size -= off;
 	if (count < size)
 		size = count;
-	memcpy(buf + off, ms->mode_info[mode].raw_data, size);
+	memcpy(buf + off, ms->mode_info[ms->mode].raw_data, size);
 
 	return size;
 }

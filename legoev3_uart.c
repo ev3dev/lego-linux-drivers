@@ -223,7 +223,6 @@ struct legoev3_uart_port_data {
 	struct completion set_mode_completion;
 	struct msensor_mode_info mode_info[LEGOEV3_UART_MODE_MAX + 1];
 	u8 type_id;
-	u8 mode;
 	u8 new_mode;
 	u32 raw_min;
 	u32 raw_max;
@@ -283,19 +282,6 @@ int legoev3_uart_write_byte(struct tty_struct *tty, const u8 byte)
 		tty->ops->flush_chars(tty);
 
 	return ret;
-}
-
-u8 legoev3_uart_get_mode(void* context)
-{
-	struct tty_struct *tty = context;
-	struct legoev3_uart_port_data *port;
-
-	if (!tty)
-		return -ENODEV;
-
-	port = tty->disc_data;
-
-	return port->mode;
 }
 
 int legoev3_uart_set_mode(void *context, const u8 mode)
@@ -718,13 +704,13 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 				snprintf(port->mode_info[mode].name,
 				         LEGOEV3_UART_MODE_NAME_SIZE + 1, "%s",
 				         message + 2);
-				port->mode = mode;
+				port->ms.mode = mode;
 				port->info_flags |= LEGOEV3_UART_INFO_FLAG_INFO_NAME;
 				debug_pr("mode %d name:%s\n",
 				       mode, port->ms.port_name);
 				break;
 			case LEGOEV3_UART_INFO_RAW:
-				if (port->mode != mode) {
+				if (port->ms.mode != mode) {
 					port->last_err = "Received INFO for incorrect mode.";
 					goto err_invalid_state;
 				}
@@ -741,7 +727,7 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 				       port->mode_info[mode].raw_max);
 				break;
 			case LEGOEV3_UART_INFO_PCT:
-				if (port->mode != mode) {
+				if (port->ms.mode != mode) {
 					port->last_err = "Received INFO for incorrect mode.";
 					goto err_invalid_state;
 				}
@@ -758,7 +744,7 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 				       port->mode_info[mode].pct_max);
 				break;
 			case LEGOEV3_UART_INFO_SI:
-				if (port->mode != mode) {
+				if (port->ms.mode != mode) {
 					port->last_err = "Received INFO for incorrect mode.";
 					goto err_invalid_state;
 				}
@@ -775,7 +761,7 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 				       port->mode_info[mode].si_max);
 				break;
 			case LEGOEV3_UART_INFO_UNITS:
-				if (port->mode != mode) {
+				if (port->ms.mode != mode) {
 					port->last_err = "Received INFO for incorrect mode.";
 					goto err_invalid_state;
 				}
@@ -800,7 +786,7 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 				       mode, port->mode_info[mode].units);
 				break;
 			case LEGOEV3_UART_INFO_FORMAT:
-				if (port->mode != mode) {
+				if (port->ms.mode != mode) {
 					port->last_err = "Received INFO for incorrect mode.";
 					goto err_invalid_state;
 				}
@@ -863,8 +849,8 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 						msensor_ftoi(port->si_max,
 							port->mode_info[mode].decimals);
 				}
-				if (port->mode)
-					port->mode--;
+				if (port->ms.mode)
+					port->ms.mode--;
 				debug_pr("mode %d - data_sets:%d, data_type:%d, figures:%d, decimals:%d\n",
 					 mode, port->mode_info[mode].data_sets,
 					 port->mode_info[mode].data_type,
@@ -892,9 +878,9 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 				port->last_err = "Invalid mode received.";
 				goto err_invalid_state;
 			}
-			if (mode != port->mode) {
+			if (mode != port->ms.mode) {
 				if (mode == port->new_mode)
-					port->mode = mode;
+					port->ms.mode = mode;
 				else {
 					port->last_err = "Unexpected mode.";
 					goto err_invalid_state;
@@ -933,7 +919,6 @@ static int legoev3_uart_open(struct tty_struct *tty)
 	port->new_baud_rate = LEGOEV3_UART_SPEED_MIN;
 	port->type_id = LEGOEV3_UART_TYPE_UNKNOWN;
 	port->ms.mode_info = port->mode_info;
-	port->ms.get_mode = legoev3_uart_get_mode;
 	port->ms.set_mode = legoev3_uart_set_mode;
 	port->ms.write_data = legoev3_uart_write_data;
 	port->circ_buf.buf = port->buffer;

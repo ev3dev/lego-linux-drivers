@@ -56,14 +56,14 @@ static int ht_sensor_mux_send_cmd_pre_cb(struct nxt_i2c_sensor_data * sensor,
 }
 
 static void ht_sensor_mux_send_cmd_post_cb(struct nxt_i2c_sensor_data *data,
-					   u8 mode)
+					   u8 command)
 {
 	struct ht_smux_input_port_data *ports = data->info.callback_data;
 	struct ht_smux_input_port_platform_data pdata;
 	char name[LEGOEV3_PORT_NAME_SIZE];
 	int i;
 
-	if (mode == 0 /* run mode */ && !ports) {
+	if (command == 0 /* run command */ && !ports) {
 		ports = kzalloc(sizeof(struct ht_smux_input_port_data)
 						* NUM_HT_SMUX_CH, GFP_KERNEL);
 		for (i = 0; i < NUM_HT_SMUX_CH; i++) {
@@ -98,7 +98,7 @@ static void ht_sensor_mux_send_cmd_post_cb(struct nxt_i2c_sensor_data *data,
 static void ht_sensor_mux_poll_cb(struct nxt_i2c_sensor_data *data)
 {
 	struct ht_smux_input_port_data *ports = data->info.callback_data;
-	int mode = data->ms.get_mode(data->ms.context);
+	int mode = data->ms.mode;
 	u8 *raw_data = data->ms.mode_info[mode].raw_data;
 	int i;
 
@@ -284,9 +284,9 @@ static const u8 ms_imu_tilt2deg[] = {
 static void ms_imu_poll_cb(struct nxt_i2c_sensor_data *sensor)
 {
 	struct nxt_i2c_sensor_mode_info *i2c_mode_info =
-		&sensor->info.i2c_mode_info[sensor->mode];
+		&sensor->info.i2c_mode_info[sensor->ms.mode];
 	struct msensor_mode_info *ms_mode_info =
-			&sensor->info.ms_mode_info[sensor->mode];
+			&sensor->info.ms_mode_info[sensor->ms.mode];
 
 	/*
 	 * Perform normal i2c read (just like nxt_i2c_sensor_poll_work).
@@ -297,7 +297,7 @@ static void ms_imu_poll_cb(struct nxt_i2c_sensor_data *sensor)
 		ms_mode_info->raw_data);
 
 	/* scale values for tilt mode */
-	if (sensor->mode == 0) {
+	if (sensor->ms.mode == 0) {
 		ms_mode_info->raw_data[0] = ms_imu_tilt2deg[ms_mode_info->raw_data[0]];
 		ms_mode_info->raw_data[1] = ms_imu_tilt2deg[ms_mode_info->raw_data[1]];
 		ms_mode_info->raw_data[2] = ms_imu_tilt2deg[ms_mode_info->raw_data[2]];
@@ -334,9 +334,9 @@ static void mi_xg1300l_poll_cb(struct nxt_i2c_sensor_data *sensor)
 	u8 *scaling_factor = sensor->info.callback_data;
 	
 	struct nxt_i2c_sensor_mode_info *i2c_mode_info =
-		&sensor->info.i2c_mode_info[sensor->mode];
+		&sensor->info.i2c_mode_info[sensor->ms.mode];
 	struct msensor_mode_info *ms_mode_info =
-			&sensor->info.ms_mode_info[sensor->mode];
+			&sensor->info.ms_mode_info[sensor->ms.mode];
 
 	s16 *raw_as_s16 = (s16*) ms_mode_info->raw_data;
 	
@@ -350,10 +350,10 @@ static void mi_xg1300l_poll_cb(struct nxt_i2c_sensor_data *sensor)
 
 	/* scale values for acceleration */
 
-	if(sensor->mode < 2)  /* "ANG-ACC", "ANG-SPEED" - no acceleration info */
+	if(sensor->ms.mode < 2)  /* "ANG-ACC", "ANG-SPEED" - no acceleration info */
 		return;
 	
-	if(sensor->mode == 3) /* "ALL", accelerometer data starting from fourth byte */
+	if(sensor->ms.mode == 3) /* "ALL", accelerometer data starting from fourth byte */
 		raw_as_s16 += 2;
 	
 	raw_as_s16[0] *= *scaling_factor;

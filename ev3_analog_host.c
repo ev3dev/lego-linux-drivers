@@ -1,5 +1,5 @@
 /*
- * EV3 analog host driver for LEGO Mindstorms EV3
+ * EV3 analog host driver for LEGO MINDSTORMS EV3
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *
@@ -113,7 +113,7 @@ struct legoev3_port_device_driver ev3_analog_host_driver = {
 };
 legoev3_port_device_driver(ev3_analog_host_driver);
 
-MODULE_DESCRIPTION("EV3 analog host driver for LEGO Mindstorms EV3");
+MODULE_DESCRIPTION("EV3 analog host driver for LEGO MINDSTORMS EV3");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("legoev3:ev3-analog-host");

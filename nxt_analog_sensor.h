@@ -62,7 +62,6 @@ struct nxt_analog_sensor_data {
 	struct legoev3_port *in_port;
 	struct msensor_device ms;
 	struct nxt_analog_sensor_info info;
-	u8 mode;
 };
 
 #endif /* NXT_ANALOG_SENSOR_H_ */

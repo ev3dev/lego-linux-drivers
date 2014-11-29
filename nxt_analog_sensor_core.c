@@ -64,15 +64,8 @@ static void nxt_analog_sensor_cb(void *context)
 {
 	struct nxt_analog_sensor_data *as = context;
 
-	*(int*)as->info.ms_mode_info[as->mode].raw_data =
+	*(int*)as->info.ms_mode_info[as->ms.mode].raw_data =
 				as->in_port->in_ops.get_pin1_mv(as->in_port);
-}
-
-static u8 nxt_analog_sensor_get_mode(void *context)
-{
-	struct nxt_analog_sensor_data *as = context;
-
-	return as->mode;
 }
 
 static int nxt_analog_sensor_set_mode(void *context, u8 mode)
@@ -90,7 +83,6 @@ static int nxt_analog_sensor_set_mode(void *context, u8 mode)
 	else
 		as->in_port->in_ops.register_analog_cb(as->in_port,
 						nxt_analog_sensor_cb, as);
-	as->mode = mode;
 
 	return 0;
 }
@@ -116,7 +108,6 @@ static int nxt_analog_sensor_probe(struct legoev3_port_device *sensor)
 		MSENSOR_NAME_SIZE);
 	as->ms.num_modes	= as->info.num_modes;
 	as->ms.mode_info	= as->info.ms_mode_info;
-	as->ms.get_mode		= nxt_analog_sensor_get_mode;
 	as->ms.set_mode		= nxt_analog_sensor_set_mode;
 	as->ms.context		= as;
 
