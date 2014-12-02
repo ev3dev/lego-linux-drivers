@@ -2,11 +2,17 @@
 
 obj-$(CONFIG_LEGOEV3_ANALOG)		+= legoev3_analog.o
 obj-$(CONFIG_LEGOEV3_BLUETOOTH)		+= legoev3_bluetooth.o
+
+# Port classes
+obj-$(CONFIG_LEGOEV3_MPORT)		+= mport_class.o
+
+# Ports
 obj-$(CONFIG_LEGOEV3_DEV_PORTS)		+= legoev3_ports.o
 obj-$(CONFIG_LEGOEV3_DEV_PORTS)		+= ev3_input_port.o
 obj-$(CONFIG_LEGOEV3_DEV_PORTS)		+= ev3_output_port.o
+obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= ht_smux_input_port.o
 
-# motor classes
+# Motor classes
 obj-$(CONFIG_LEGOEV3_MOTORS)		+= tacho_motor_class.o
 obj-$(CONFIG_LEGOEV3_SERVO_MOTORS)	+= servo_motor_class.o
 obj-$(CONFIG_LEGOEV3_DC_MOTORS)		+= dc_motor_class.o
@@ -31,12 +37,10 @@ obj-$(CONFIG_EV3_ANALOG_SENSORS)	+= ev3_analog_sensor.o
 
 # I2C Sensors
 obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= nxt_i2c_host.o
-nxt_i2c_sensor-objs := nxt_i2c_sensor_core.o nxt_i2c_sensor_defs.o
+nxt_i2c_sensor-objs := nxt_i2c_sensor_core.o nxt_i2c_sensor_defs.o ms_ev3_smux.o
 obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= nxt_i2c_sensor.o
-obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= ht_smux_input_port.o
 obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= ht_smux_i2c_host.o
 obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= ht_smux_i2c_sensor.o
-obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= ms_ev3_smux_input_port.o
 
 # UART Sensors
 obj-$(CONFIG_LEGOEV3_UART_SENSORS)	+= legoev3_uart.o

@@ -16,6 +16,8 @@
 #ifndef MS_EV3_SMUX_H_
 #define MS_EV3_SMUX_H_
 
+#include "nxt_i2c_sensor.h"
+
 #define MS_EV3_SMUX_MODE_REG		0x52
 #define MS_EV3_SMUX_DATA_REG		0x54
 #define MS_EV3_SMUX_ANALOG_MODE_DATA	0x0F
@@ -24,16 +26,8 @@
 #define MS_EV3_SMUX_MODE_NAME_REG	0x42
 #define MS_EV3_SMUX_MODE_NAME_SIZE	11
 
-struct ms_ev3_smux_input_port_platform_data {
-	struct i2c_client *client;
-};
-
-struct ms_ev3_smux_host_platform_data {
-	const char *inital_sensor;
-};
-
-struct ms_ev3_smux_sensor_platform_data {
-	struct i2c_client *client;
-};
+extern void ms_ev3_smux_poll_cb(struct nxt_i2c_sensor_data *data);
+extern int ms_ev3_smux_probe_cb(struct nxt_i2c_sensor_data *data);
+extern void ms_ev3_smux_remove_cb(struct nxt_i2c_sensor_data *data);
 
 #endif /* MS_EV3_SMUX_H_ */

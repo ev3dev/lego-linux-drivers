@@ -284,6 +284,12 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 	sensor->poll_ms = default_poll_ms;
 	i2c_set_clientdata(client, sensor);
 
+	if (sensor->info.ops.probe_cb) {
+		err = sensor->info.ops.probe_cb(sensor);
+		if (err < 0)
+			goto err_probe_cb;
+	}
+
 	err = register_msensor(&sensor->ms, &client->dev);
 	if (err) {
 		dev_err(&client->dev, "could not register sensor!\n");
@@ -294,11 +300,9 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 		msleep (1);
 	nxt_i2c_sensor_set_mode(sensor, sensor->ms.mode);
 
-	if (sensor->info.ops.probe_cb)
-		sensor->info.ops.probe_cb(sensor);
-
 	return 0;
 
+err_probe_cb:
 err_register_msensor:
 	i2c_set_clientdata(client, NULL);
 	kfree(sensor);

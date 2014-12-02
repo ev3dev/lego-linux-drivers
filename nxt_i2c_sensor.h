@@ -48,7 +48,7 @@ struct nxt_i2c_sensor_ops {
 	int (*send_cmd_pre_cb)(struct nxt_i2c_sensor_data *data, u8 command);
 	void (*send_cmd_post_cb)(struct nxt_i2c_sensor_data *data, u8 command);
 	void (*poll_cb)(struct nxt_i2c_sensor_data *data);
-	void (*probe_cb)(struct nxt_i2c_sensor_data *data);
+	int (*probe_cb)(struct nxt_i2c_sensor_data *data);
 	void (*remove_cb)(struct nxt_i2c_sensor_data *data);
 };
 
