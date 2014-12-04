@@ -1,8 +1,16 @@
 # LEGO Mindstorms EV3 device drivers
 
+menuconfig LEGO_DRIVERS
+	tristate "LEGO Device Drivers"
+	help
+	  Enables support LEGO MINDSTORMS and LEGO WeDo devices
+
+if LEGO_DRIVERS
+
 menuconfig LEGOEV3_DRIVERS
 	tristate "LEGO Mindstorms EV3 support"
 	depends on MACH_DAVINCI_LEGOEV3
+	default y
 	help
 	  This enables platform specific drivers for the LEGO Mindstorms EV3
 	  hardware.
@@ -22,14 +30,6 @@ config LEGOEV3_BLUETOOTH
 	help
 	  Select Y to enable on-board bluetooth on the LEGO Mindstorms EV3.
 
-config LEGOEV3_MPORT
-	tristate "Mindstorm port support"
-	default y
-	help
-	  Select Y to provide support for devices that provide input and/or
-	  output port functionality that is compatible with LEGO MINDSTORMS
-	  sensors and motors.
-
 config LEGOEV3_DEV_PORTS
 	tristate "Support for devices connected to the EV3 ports"
 	default y
@@ -37,6 +37,16 @@ config LEGOEV3_DEV_PORTS
 	help
 	  Select Y to provide support for devices that plug into the input
 	  and output ports of the EV3.
+
+endif #LEGOEV3_DRIVERS
+
+config LEGO_PORTS
+	tristate "LEGO port support"
+	default y
+	help
+	  Select Y to provide support for devices that provide input and/or
+	  output port functionality that is compatible with LEGO MINDSTORMS,
+	  LEGO WeDo and LEGO Power Functions sensors and motors.
 
 config LEGOEV3_MSENSORS
 	tristate "Mindstorms sensors support"
@@ -67,7 +77,7 @@ config LEGOEV3_I2C_SENSORS
 	help
 	  Select Y to enable support for NXT I2C sensors.
 
-config LEGOEV3_UART_SENSORS
+config EV3_UART_SENSORS
 	tristate "EV3 UART sensor support"
 	default y
 	depends on LEGOEV3_DEV_PORTS && SERIAL_SUART_OMAPL_PRU && LEGOEV3_MSENSORS
@@ -102,4 +112,4 @@ config LEGOEV3_DC_MOTORS
 	  Select Y to enable support for DC motors (includes LEGO Power
 	  Functions motors).
 
-endif #LEGOEV3_DRIVERS
+endif #LEGO_DRIVERS

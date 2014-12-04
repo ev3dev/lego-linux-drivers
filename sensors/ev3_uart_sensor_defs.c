@@ -1,5 +1,5 @@
 /*
- * EV3 UART sensor driver for LEGO MINDSTORMS EV3
+ * LEGO EV3 UART Sensor driver
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
@@ -22,7 +22,7 @@
 
 #include "ev3_uart_sensor.h"
 
-const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
+const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 	[LEGO_EV3_COLOR] = {
 		/**
 		 * @vendor_name: LEGO
@@ -32,15 +32,17 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 		.name		= "lego-ev3-uart-29",
 		.num_modes	= 6,
 		.num_view_modes	= 3,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * @description: Reflected light<br />Red LED on
 				 * @value0: Reflected light intensity (0 to 100)
 				 * @units_description: percent
 				 */
-				.name = "COL-REFLECT",
-				.units = "pct",
+				.name		= "COL-REFLECT",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S8,
+				.units		= "pct",
 			},
 			[1] = {
 				/**
@@ -48,8 +50,10 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value0: Ambient light intensity (0 to 100)
 				 * @units_description: percent
 				 */
-				.name = "COL-AMBIENT",
-				.units = "pct",
+				.name		= "COL-AMBIENT",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S8,
+				.units		= "pct",
 			},
 			[2] = {
 				/**
@@ -71,8 +75,10 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value0_footnote: [^color-values]
 				 * @units_description: color
 				 */
-				.name = "COL-AMBIENT",
-				.units = "col",
+				.name		= "COL-COLOR",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S8,
+				.units		= "col",
 			},
 			[3] = {
 				/**
@@ -80,8 +86,9 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value0: ??? (0 to 1020???)
 				 * @value1: ??? (0 to 1020???)
 				 */
-				.name = "REF-RAW",
-				.data_sets = 2,
+				.name		= "REF-RAW",
+				.data_sets	= 2,
+				.data_type	= LEGO_SENSOR_DATA_S16,
 			},
 			[4] = {
 				/**
@@ -91,8 +98,9 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value1: Blue??? (0 to 1020???)
 				 * @units_description: color
 				 */
-				.name = "RGB-RAW",
-				.data_sets = 3,
+				.name		= "RGB-RAW",
+				.data_sets	= 3,
+				.data_type	= LEGO_SENSOR_DATA_S16,
 			},
 			[5] = {
 				/**
@@ -107,8 +115,9 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value2: ???
 				 * @value3: ???
 				 */
-				.name = "COL-CAL",
-				.data_sets = 4,
+				.name		= "COL-CAL",
+				.data_sets	= 4,
+				.data_type	= LEGO_SENSOR_DATA_S32,
 			},
 		},
 	},
@@ -121,16 +130,18 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 		.name		= "lego-ev3-uart-30",
 		.num_modes	= 5,
 		.num_view_modes	= 3,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * @description: Continuous measurement<br />LEDs: On, steady
 				 * @value0: Distance (0-2550)
 				 * @units_description: centimeters
 				 */
-				.name	= "US-DIST-CM",
-				.units	= "cm",
-				.decimals = 1,
+				.name		= "US-DIST-CM",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "cm",
+				.decimals	= 1,
 			},
 			[1] = {
 				/**
@@ -138,9 +149,11 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value0: Distance (0-1003)
 				 * @units_description: inches
 				 */
-				.name	= "US-DIST-IN",
-				.units	= "in",
-				.decimals = 1,
+				.name		= "US-DIST-IN",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "in",
+				.decimals	= 1,
 			},
 			[2] = {
 				/**
@@ -152,7 +165,9 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value0: Presence (0-1)
 				 * @value0_footnote: [^listen-value]
 				 */
-				.name	= "US-LISTEN",
+				.name		= "US-LISTEN",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S8,
 			},
 			[3] = {
 				/**
@@ -169,9 +184,11 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value0_footnote: [^single-measurement]
 				 * @units_description: centimeters
 				 */
-				.name	= "US-SI-CM",
-				.units	= "cm",
-				.decimals = 1,
+				.name		= "US-SI-CM",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "cm",
+				.decimals	= 1,
 			},
 			[4] = {
 				/**
@@ -180,9 +197,11 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value0_footnote: [^single-measurement]
 				 * @units_description: inches
 				 */
-				.name	= "US-SI-IN",
-				.units	= "in",
-				.decimals = 1,
+				.name		= "US-SI-IN",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "in",
+				.decimals	= 1,
 			},
 			[5] = {
 				/**
@@ -194,9 +213,11 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value0: Distance (0-2550)
 				 * @units_description: centimeters
 				 */
-				.name	= "US-DC-CM",
-				.units	= "cm",
-				.decimals = 1,
+				.name		= "US-DC-CM",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "cm",
+				.decimals	= 1,
 			},
 			[6] = {
 				/**
@@ -205,9 +226,11 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value0: Distance (0-1003)
 				 * @units_description: inches
 				 */
-				.name	= "US-DC-IN",
-				.units	= "in",
-				.decimals = 1,
+				.name		= "US-DC-IN",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "in",
+				.decimals	= 1,
 			},
 		},
 	},
@@ -220,7 +243,7 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 		.name		= "lego-ev3-uart-32",
 		.num_modes	= 5,
 		.num_view_modes	= 3,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * [^angle-reset]: The angle in GYRO-ANG or GYRO-G&A modes can
@@ -238,8 +261,10 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value0_footnote: [^angle-overflow]<sup>,</sup>[^direction]
 				 * @units_description: degrees
 				 */
-				.name = "GYRO-ANG",
-				.units = "deg",
+				.name		= "GYRO-ANG",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "deg",
 			},
 			[1] = {
 				/**
@@ -253,8 +278,10 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value0_footnote: [^direction]
 				 * @units_description: degrees per second
 				 */
-				.name = "GYRO-RATE",
-				.units = "d/s",
+				.name		= "GYRO-RATE",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "d/s",
 			},
 			[2] = {
 				/**
@@ -262,7 +289,9 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value0: ??? (-1464 to 1535)
 				 * @value0_footnote: [^direction]
 				 */
-				.name = " GYRO-FAS",
+				.name		= " GYRO-FAS",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
 			},
 			[3] = {
 				/**
@@ -273,8 +302,9 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value1: Rotational Speed (-440 to 440)
 				 * @value1_footnote: [^direction]
 				 */
-				.name = "GYRO-G&A",
-				.data_sets = 2,
+				.name		= "GYRO-G&A",
+				.data_sets	= 2,
+				.data_type	= LEGO_SENSOR_DATA_S16,
 			},
 			[4] = {
 				/**
@@ -284,8 +314,9 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value2: ???
 				 * @value3: ???
 				 */
-				.name = "GYRO-CAL",
-				.data_sets = 4,
+				.name		= "GYRO-CAL",
+				.data_sets	= 4,
+				.data_type	= LEGO_SENSOR_DATA_S16,
 			},
 		},
 	},
@@ -298,7 +329,7 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 		.name		= "lego-ev3-uart-33",
 		.num_modes	= 6,
 		.num_view_modes	= 3,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * [^distance-value]: 100% is approximately 70cm/27in.
@@ -308,8 +339,10 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value0_footnote: [^distance-value]
 				 * @units_description: percent
 				 */
-				.name = "IR-PROX",
-				.units = "pct",
+				.name		= "IR-PROX",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S8,
+				.units		= "pct",
 			},
 			[1] = {
 				/**
@@ -338,9 +371,11 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value7_footnote: [^distance-value]<sup>,</sup>[^no-beacon]
 				 * @units_description: percent
 				 */
-				.name = "IR-SEEK",
-				.units = "pct",
-				.data_sets = 8,
+				.name		= "IR-SEEK",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S8,
+				.units		= "pct",
+				.data_sets	= 8,
 			},
 			[2] = {
 				/**
@@ -378,9 +413,11 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value3_footnote: [^remote-mode-values]
 				 * @units_description: button
 				 */
-				.name = "IR-REMOTE",
-				.units = "btn",
-				.data_sets = 4,
+				.name		= "IR-REMOTE",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S8,
+				.units		= "btn",
+				.data_sets	= 4,
 			},
 			[3] = {
 				/**
@@ -442,7 +479,9 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value0: Channel 1
 				 * @value0_footnote: [^alt-remote-mode-values]
 				 */
-				.name = "IR-REM-A",
+				.name		= "IR-REM-A",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
 			},
 			[4] = {
 				/**
@@ -456,10 +495,12 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value1: ??? (0 to 100)
 				 * @value2: ??? (0 to 100)
 				 * @value3: ??? (0 to 100)
+				 * @units_description: percent
 				 */
-				.name = "IR-S-ALT",
-				.units = "pct",
-				.data_sets = 4,
+				.name		= "IR-S-ALT",
+				.data_sets	= 4,
+				.data_type	= LEGO_SENSOR_DATA_S8,
+				.units		= "pct",
 			},
 			[5] = {
 				/**
@@ -467,10 +508,11 @@ const struct ev3_uart_sensor_info legoev3_uart_defs[] = {
 				 * @value0: ??? (0 to 1023)
 				 * @value1: ??? (0 to 1023)
 				 */
-				.name = "IR-CAL",
-				.data_sets = 2,
+				.name		= "IR-CAL",
+				.data_sets	= 2,
+				.data_type	= LEGO_SENSOR_DATA_S32,
 			},
 		},
 	},
 };
-EXPORT_SYMBOL_GPL(legoev3_uart_defs);
+EXPORT_SYMBOL_GPL(ev3_uart_sensor_defs);

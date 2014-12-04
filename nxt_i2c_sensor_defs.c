@@ -20,7 +20,7 @@
 
 #include "nxt_i2c_sensor.h"
 #include "ht_smux.h"
-#include "ms_ev3_smux.h"
+#include "sensors/ms_ev3_smux.h"
 
 /* HiTechnic NXT Sensor Multiplexer implementation */
 

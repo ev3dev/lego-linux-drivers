@@ -1,5 +1,5 @@
 /*
- * EV3 analog sensor device driver for LEGO Mindstorms EV3
+ * EV3 analog sensor device driver
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *
@@ -15,14 +15,6 @@
 
 #include "ev3_analog_sensor.h"
 
-static void ev3_touch_sensor_cb(void *context)
-{
-	struct ev3_analog_sensor_data *as = context;
-
-	as->info.ms_mode_info[0].raw_data[0] =
-		as->in_port->in_ops.get_pin6_mv(as->in_port) > 250 ? 1 : 0;
-}
-
 /*
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new sensors have the same layout. The comments
@@ -37,7 +29,7 @@ const struct ev3_analog_sensor_info ev3_analog_sensor_defs[] = {
 		 */
 		.name = "ev3-analog-XX",
 		.num_modes = 1,
-		.ms_mode_info = {
+		.mode_info = {
 			[0] = {
 				/**
 				 * @description: Raw analog value
@@ -47,11 +39,10 @@ const struct ev3_analog_sensor_info ev3_analog_sensor_defs[] = {
 				.name = "ANALOG",
 				.units = "V",
 				.raw_max = 5000,
-				.pct_max = 100,
 				.si_max = 5000,
 				.decimals = 3,
 				.data_sets = 1,
-				.data_type = MSENSOR_DATA_S32,
+				.data_type = LEGO_SENSOR_DATA_S32,
 			},
 		},
 	},
@@ -63,7 +54,7 @@ const struct ev3_analog_sensor_info ev3_analog_sensor_defs[] = {
 		 */
 		.name = "lego-ev3-touch",
 		.num_modes = 1,
-		.ms_mode_info = {
+		.mode_info = {
 			[0] = {
 				/**
 				 * [^mode0-value]: Values:
@@ -78,15 +69,7 @@ const struct ev3_analog_sensor_info ev3_analog_sensor_defs[] = {
 				 * @value0_footnote: [^mode0-value]
 				 */
 				.name = "TOUCH",
-				.raw_max = 1,
-				.pct_max = 100,
-				.si_max = 1,
 				.data_sets = 1,
-			},
-		},
-		.analog_mode_info = {
-			[0] = {
-				.analog_cb = ev3_touch_sensor_cb,
 			},
 		},
 	},
