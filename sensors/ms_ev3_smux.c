@@ -225,6 +225,8 @@ void ms_ev3_smux_remove_cb(struct nxt_i2c_sensor_data *data)
 	struct ms_ev3_smux_data *smux = data->info.callback_data;
 
 	if (smux) {
+		if (smux->sensor)
+			lego_device_unregister(smux->sensor);
 		lego_port_unregister(&smux->port);
 		data->info.callback_data = NULL;
 		kfree(smux);
