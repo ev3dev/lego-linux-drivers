@@ -1,5 +1,5 @@
 /*
- * NXT I2C sensor device driver for LEGO MINDSTORMS EV3
+ * LEGO MINDSTORMS NXT I2C sensor device driver
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
@@ -29,7 +29,7 @@
  * .
  * ### sysfs Attributes
  * .
- * These drivers provide a [msensor device], which is where all the really
+ * These drivers provide a [lego-sensor device], which is where all the really
  * useful attributes are.
  * .
  * You can find this device at `/sys/bus/legoev3/devices/in<N>:<device-name>`
@@ -58,7 +58,7 @@
  * .    in after the change was made. Default is 100 msec.
  * .
  * [supported sensors]: ../#supported-sensors
- * [msensor device]: ../msensor-class
+ * [lego-sensor device]: ../lego-sensor-class
  */
 
 #include <linux/device.h>
@@ -72,7 +72,8 @@
 #include <linux/workqueue.h>
 #include <linux/legoev3/legoev3_ports.h>
 #include <linux/legoev3/ev3_input_port.h>
-#include <linux/legoev3/msensor_class.h>
+
+#include <lego_sensor_class.h>
 
 #include "nxt_i2c_sensor.h"
 #include "ht_smux.h"
@@ -194,17 +195,17 @@ void nxt_i2c_sensor_poll_work(struct work_struct *work)
 	struct nxt_i2c_sensor_data *sensor =
 		container_of(dwork, struct nxt_i2c_sensor_data, poll_work);
 	struct nxt_i2c_sensor_mode_info *i2c_mode_info =
-		&sensor->info.i2c_mode_info[sensor->ms.mode];
-	struct msensor_mode_info *ms_mode_info =
-			&sensor->info.ms_mode_info[sensor->ms.mode];
+		&sensor->info.i2c_mode_info[sensor->sensor.mode];
+	struct lego_sensor_mode_info *mode_info =
+			&sensor->info.mode_info[sensor->sensor.mode];
 
 	if (sensor->info.ops.poll_cb)
 		sensor->info.ops.poll_cb(sensor);
 	else
 		i2c_smbus_read_i2c_block_data(sensor->client,
-			i2c_mode_info->read_data_reg, ms_mode_info->data_sets
-			* msensor_data_size[ms_mode_info->data_type],
-			ms_mode_info->raw_data);
+			i2c_mode_info->read_data_reg, mode_info->data_sets
+			* lego_sensor_data_size[mode_info->data_type],
+			mode_info->raw_data);
 
 	if (sensor->poll_ms && !delayed_work_pending(&sensor->poll_work))
 		schedule_delayed_work(&sensor->poll_work,
@@ -214,7 +215,7 @@ void nxt_i2c_sensor_poll_work(struct work_struct *work)
 static int nxt_i2c_sensor_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
-	struct nxt_i2c_sensor_data *sensor;
+	struct nxt_i2c_sensor_data *data;
 	struct i2c_legoev3_platform_data *apdata =
 					client->adapter->dev.platform_data;
 	const struct nxt_i2c_sensor_info *sensor_info;
@@ -229,29 +230,29 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 
 	sensor_info = &nxt_i2c_sensor_defs[i2c_dev_id->driver_data];
 
-	sensor = kzalloc(sizeof(struct nxt_i2c_sensor_data), GFP_KERNEL);
-	if (!sensor)
+	data = kzalloc(sizeof(struct nxt_i2c_sensor_data), GFP_KERNEL);
+	if (!data)
 		return -ENOMEM;
 
-	sensor->client = client;
-	sensor->in_port = apdata->in_port;
-	sensor->type = i2c_dev_id->driver_data;
-	memcpy(&sensor->info, sensor_info, sizeof(struct nxt_i2c_sensor_info));
+	data->client = client;
+	data->in_port = apdata->in_port;
+	data->type = i2c_dev_id->driver_data;
+	memcpy(&data->info, sensor_info, sizeof(struct nxt_i2c_sensor_info));
 
-	strncpy(sensor->ms.name, i2c_dev_id->name, MSENSOR_NAME_SIZE);
-	strncpy(sensor->ms.port_name, dev_name(&sensor->in_port->dev),
-		MSENSOR_NAME_SIZE);
-	sensor->ms.num_modes = sensor->info.num_modes;
-	sensor->ms.num_view_modes = 1;
-	sensor->ms.mode_info = sensor->info.ms_mode_info;
-	sensor->ms.num_commands = sensor->info.num_commands;
-	sensor->ms.cmd_info = sensor->info.ms_cmd_info;
-	sensor->ms.set_mode = nxt_i2c_sensor_set_mode;
-	sensor->ms.send_command = nxt_i2c_sensor_send_command;
-	sensor->ms.write_data = nxt_i2c_sensor_write_data;
-	sensor->ms.get_poll_ms = nxt_i2c_sensor_get_poll_ms;
-	sensor->ms.set_poll_ms = nxt_i2c_sensor_set_poll_ms;
-	sensor->ms.context = sensor;
+	strncpy(data->sensor.name, i2c_dev_id->name, LEGO_SENSOR_NAME_SIZE);
+	strncpy(data->sensor.port_name, dev_name(&data->in_port->dev),
+		LEGO_SENSOR_NAME_SIZE);
+	data->sensor.num_modes = data->info.num_modes;
+	data->sensor.num_view_modes = 1;
+	data->sensor.mode_info = data->info.mode_info;
+	data->sensor.num_commands = data->info.num_commands;
+	data->sensor.cmd_info = data->info.cmd_info;
+	data->sensor.set_mode = nxt_i2c_sensor_set_mode;
+	data->sensor.send_command = nxt_i2c_sensor_send_command;
+	data->sensor.write_data = nxt_i2c_sensor_write_data;
+	data->sensor.get_poll_ms = nxt_i2c_sensor_get_poll_ms;
+	data->sensor.set_poll_ms = nxt_i2c_sensor_set_poll_ms;
+	data->sensor.context = data;
 	i2c_smbus_read_i2c_block_data(client, NXT_I2C_FW_VER_REG,
 				      NXT_I2C_ID_STR_LEN, version);
 	/*
@@ -259,12 +260,12 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 	 * bug in the NXT I2C code where register 0x00 could not be read
 	 * reliably. So, we just ignore it along with the whitespace.
 	 */
-	strncpy(sensor->ms.fw_version, strim(version[0] == 0xfd ?
+	strncpy(data->sensor.fw_version, strim(version[0] == 0xfd ?
 		(version + 1) : version), NXT_I2C_ID_STR_LEN + 1);
-	sensor->ms.address = client->addr;
+	data->sensor.address = client->addr;
 
-	for (i = 0; i < sensor->ms.num_modes; i++) {
-		struct msensor_mode_info *minfo = &sensor->info.ms_mode_info[i];
+	for (i = 0; i < data->sensor.num_modes; i++) {
+		struct lego_sensor_mode_info *minfo = &data->info.mode_info[i];
 
 		if (!minfo->raw_min && !minfo->raw_max)
 			minfo->raw_max = 255;
@@ -278,50 +279,50 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 			minfo->figures = 5;
 	}
 
-	INIT_DELAYED_WORK(&sensor->poll_work, nxt_i2c_sensor_poll_work);
+	INIT_DELAYED_WORK(&data->poll_work, nxt_i2c_sensor_poll_work);
 	if (default_poll_ms && default_poll_ms < NXT_I2C_MIN_POLL_MS)
 		default_poll_ms = NXT_I2C_MIN_POLL_MS;
-	sensor->poll_ms = default_poll_ms;
-	i2c_set_clientdata(client, sensor);
+	data->poll_ms = default_poll_ms;
+	i2c_set_clientdata(client, data);
 
-	if (sensor->info.ops.probe_cb) {
-		err = sensor->info.ops.probe_cb(sensor);
+	if (data->info.ops.probe_cb) {
+		err = data->info.ops.probe_cb(data);
 		if (err < 0)
 			goto err_probe_cb;
 	}
 
-	err = register_msensor(&sensor->ms, &client->dev);
+	err = register_lego_sensor(&data->sensor, &client->dev);
 	if (err) {
 		dev_err(&client->dev, "could not register sensor!\n");
-		goto err_register_msensor;
+		goto err_register_lego_sensor;
 	}
 
-	if (sensor->type == LEGO_NXT_ULTRASONIC_SENSOR)
+	if (data->type == LEGO_NXT_ULTRASONIC_SENSOR)
 		msleep (1);
-	nxt_i2c_sensor_set_mode(sensor, sensor->ms.mode);
+	nxt_i2c_sensor_set_mode(data, data->sensor.mode);
 
 	return 0;
 
 err_probe_cb:
-err_register_msensor:
+err_register_lego_sensor:
 	i2c_set_clientdata(client, NULL);
-	kfree(sensor);
+	kfree(data);
 
 	return err;
 }
 
 static int nxt_i2c_sensor_remove(struct i2c_client *client)
 {
-	struct nxt_i2c_sensor_data *sensor = i2c_get_clientdata(client);
+	struct nxt_i2c_sensor_data *data = i2c_get_clientdata(client);
 
-	if (sensor->info.ops.remove_cb)
-		sensor->info.ops.remove_cb(sensor);
-	sensor->poll_ms = 0;
-	if (delayed_work_pending(&sensor->poll_work))
-		cancel_delayed_work_sync(&sensor->poll_work);
-	sensor->in_port->in_ops.set_pin1_gpio(sensor->in_port, 0);
-	unregister_msensor(&sensor->ms);
-	kfree(sensor);
+	if (data->info.ops.remove_cb)
+		data->info.ops.remove_cb(data);
+	data->poll_ms = 0;
+	if (delayed_work_pending(&data->poll_work))
+		cancel_delayed_work_sync(&data->poll_work);
+	data->in_port->in_ops.set_pin1_gpio(data->in_port, 0);
+	unregister_lego_sensor(&data->sensor);
+	kfree(data);
 
 	return 0;
 }
@@ -394,7 +395,7 @@ static struct i2c_driver nxt_i2c_sensor_driver = {
 };
 module_i2c_driver(nxt_i2c_sensor_driver);
 
-MODULE_DESCRIPTION("NXT I2C sensor device driver for LEGO MINDSTORMS EV3");
+MODULE_DESCRIPTION("LEGO MINDSTORMS NXT I2C sensor device driver");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("legoev3:nxt-i2c-host");

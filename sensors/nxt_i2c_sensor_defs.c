@@ -1,5 +1,5 @@
 /*
- * NXT I2C sensor device driver for LEGO MINDSTORMS EV3
+ * LEGO MINDSTORMS NXT I2C sensor device driver
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  * Copyright (C) 2014 Bartosz Meglicki <meglickib@gmail.com>
@@ -20,7 +20,7 @@
 
 #include "nxt_i2c_sensor.h"
 #include "ht_smux.h"
-#include "sensors/ms_ev3_smux.h"
+#include "ms_ev3_smux.h"
 
 /* HiTechnic NXT Sensor Multiplexer implementation */
 
@@ -70,7 +70,7 @@ static void ht_sensor_mux_send_cmd_post_cb(struct nxt_i2c_sensor_data *data,
 		for (i = 0; i < NUM_HT_SMUX_CH; i++) {
 			pdata.client = data->client;
 			pdata.channel = i;
-			pdata.sensor_data = data->ms.mode_info[0].raw_data;
+			pdata.sensor_data = data->sensor.mode_info[0].raw_data;
 			sprintf(name, "%s:mux", dev_name(&data->in_port->dev));
 
 			data->info.callback_data = ports;
@@ -99,8 +99,8 @@ static void ht_sensor_mux_send_cmd_post_cb(struct nxt_i2c_sensor_data *data,
 static void ht_sensor_mux_poll_cb(struct nxt_i2c_sensor_data *data)
 {
 	struct ht_smux_input_port_data *ports = data->info.callback_data;
-	int mode = data->ms.mode;
-	u8 *raw_data = data->ms.mode_info[mode].raw_data;
+	int mode = data->sensor.mode;
+	u8 *raw_data = data->sensor.mode_info[mode].raw_data;
 	int i;
 
 	/* i2c can only transfer up to 32 bytes at a time */
@@ -223,9 +223,9 @@ static int ms_8ch_servo_probe_cb(struct nxt_i2c_sensor_data *data)
 	for (i = 0; i < 8; i++) {
 		servos[i].id = i;
 		servos[i].sensor = data;
-		strncpy(servos[i].servo.name, data->ms.name, SERVO_MOTOR_NAME_SIZE);
+		strncpy(servos[i].servo.name, data->sensor.name, SERVO_MOTOR_NAME_SIZE);
 		snprintf(servos[i].servo.port_name, SERVO_MOTOR_NAME_SIZE,
-			 "%s:sv%d", data->ms.port_name, i + 1);
+			 "%s:sv%d", data->sensor.port_name, i + 1);
 		servos[i].servo.ops.get_position = ms_8ch_servo_get_position;
 		servos[i].servo.ops.set_position = ms_8ch_servo_set_position;
 		servos[i].servo.ops.get_rate = ms_8ch_servo_get_rate;
@@ -287,20 +287,20 @@ static const u8 ms_imu_tilt2deg[] = {
 static void ms_imu_poll_cb(struct nxt_i2c_sensor_data *sensor)
 {
 	struct nxt_i2c_sensor_mode_info *i2c_mode_info =
-		&sensor->info.i2c_mode_info[sensor->ms.mode];
-	struct msensor_mode_info *ms_mode_info =
-			&sensor->info.ms_mode_info[sensor->ms.mode];
+		&sensor->info.i2c_mode_info[sensor->sensor.mode];
+	struct lego_sensor_mode_info *ms_mode_info =
+			&sensor->info.mode_info[sensor->sensor.mode];
 
 	/*
 	 * Perform normal i2c read (just like nxt_i2c_sensor_poll_work).
 	 */
 	i2c_smbus_read_i2c_block_data(sensor->client,
 		i2c_mode_info->read_data_reg, ms_mode_info->data_sets
-		* msensor_data_size[ms_mode_info->data_type],
+		* lego_sensor_data_size[ms_mode_info->data_type],
 		ms_mode_info->raw_data);
 
 	/* scale values for tilt mode */
-	if (sensor->ms.mode == 0) {
+	if (sensor->sensor.mode == 0) {
 		ms_mode_info->raw_data[0] = ms_imu_tilt2deg[ms_mode_info->raw_data[0]];
 		ms_mode_info->raw_data[1] = ms_imu_tilt2deg[ms_mode_info->raw_data[1]];
 		ms_mode_info->raw_data[2] = ms_imu_tilt2deg[ms_mode_info->raw_data[2]];
@@ -310,7 +310,7 @@ static void ms_imu_poll_cb(struct nxt_i2c_sensor_data *sensor)
 static void ms_imu_send_cmd_post_cb(struct nxt_i2c_sensor_data *sensor,
 				    u8 command)
 {
-	struct msensor_mode_info *gyro_mode_info = &sensor->info.ms_mode_info[4];
+	struct lego_sensor_mode_info *gyro_mode_info = &sensor->info.mode_info[4];
 
 	switch (command) {
 	case 1: /* ACCEL-2G */
@@ -335,30 +335,30 @@ static void ms_imu_send_cmd_post_cb(struct nxt_i2c_sensor_data *sensor,
 static void mi_xg1300l_poll_cb(struct nxt_i2c_sensor_data *sensor)
 {
 	u8 *scaling_factor = sensor->info.callback_data;
-	
+
 	struct nxt_i2c_sensor_mode_info *i2c_mode_info =
-		&sensor->info.i2c_mode_info[sensor->ms.mode];
-	struct msensor_mode_info *ms_mode_info =
-			&sensor->info.ms_mode_info[sensor->ms.mode];
+		&sensor->info.i2c_mode_info[sensor->sensor.mode];
+	struct lego_sensor_mode_info *ms_mode_info =
+			&sensor->info.mode_info[sensor->sensor.mode];
 
 	s16 *raw_as_s16 = (s16*) ms_mode_info->raw_data;
-	
+
 	/*
 	 * Perform normal i2c read (just like nxt_i2c_sensor_poll_work).
 	 */
 	i2c_smbus_read_i2c_block_data(sensor->client,
 		i2c_mode_info->read_data_reg, ms_mode_info->data_sets
-		* msensor_data_size[ms_mode_info->data_type],
+		* lego_sensor_data_size[ms_mode_info->data_type],
 		ms_mode_info->raw_data);
 
 	/* scale values for acceleration */
 
-	if(sensor->ms.mode < 2)  /* "ANG-ACC", "ANG-SPEED" - no acceleration info */
+	if(sensor->sensor.mode < 2)  /* "ANG-ACC", "ANG-SPEED" - no acceleration info */
 		return;
-	
-	if(sensor->ms.mode == 3) /* "ALL", accelerometer data starting from fourth byte */
+
+	if(sensor->sensor.mode == 3) /* "ALL", accelerometer data starting from fourth byte */
 		raw_as_s16 += 2;
-	
+
 	raw_as_s16[0] *= *scaling_factor;
 	raw_as_s16[1] *= *scaling_factor;
 	raw_as_s16[2] *= *scaling_factor;
@@ -378,7 +378,7 @@ static void mi_xg1300l_send_cmd_post_cb(struct nxt_i2c_sensor_data *data,
 }
 
 static int  mi_xg1300l_probe_cb(struct nxt_i2c_sensor_data *data)
-{		
+{
 	u8 *scaling_factor = kzalloc(sizeof(u8), GFP_KERNEL);
 	*scaling_factor = 1;
 	data->info.callback_data = scaling_factor;
@@ -425,7 +425,7 @@ static void mi_xg1300l_remove_cb(struct nxt_i2c_sensor_data *data)
  * - ms_mode_info.si_max (default 255)
  * - ms_mode_info.units
  * - ms_mode_info.data_sets (default 1)
- * - ms_mode_info.data_type (default MSENSOR_DATA_U8)
+ * - ms_mode_info.data_type (default LEGO_SENSOR_DATA_U8)
  * - ms_mode_info.figures (default 5)
  * - ms_mode_info.decimals
  * - i2c_mode_info.set_mode_reg and mode_info.set_mode_data
@@ -459,7 +459,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.num_modes	= 5,
 		.num_read_only_modes = 2,
 		.slow		= true,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * @description: Continuous measurement
@@ -566,7 +566,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "LEGO",
 		.product_id	= "", /* LMS2012 fakes this with "Store." */
 		.num_modes	= 8,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * @description: Input Voltage
@@ -578,7 +578,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = 10000,
 				.si_max = 10000,
 				.decimals = 3,
-				.data_type = MSENSOR_DATA_S16_BE,
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
 			},
 			[1] = {
 				/**
@@ -591,7 +591,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = 10000,
 				.si_max = 10000,
 				.decimals = 3,
-				.data_type = MSENSOR_DATA_S16_BE,
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
 			},
 			[2] = {
 				/**
@@ -604,7 +604,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = 10000,
 				.si_max = 10000,
 				.decimals = 3,
-				.data_type = MSENSOR_DATA_S16_BE,
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
 			},
 			[3] = {
 				/**
@@ -617,7 +617,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = 10000,
 				.si_max = 10000,
 				.decimals = 3,
-				.data_type = MSENSOR_DATA_S16_BE,
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
 			},
 			[4] = {
 				/**
@@ -629,7 +629,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.units = "J",
 				.raw_max = 100,
 				.si_max = 100,
-				.data_type = MSENSOR_DATA_S16_BE,
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
 			},
 			[5] = {
 				/**
@@ -642,7 +642,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = 10000,
 				.si_max = 10000,
 				.decimals = 3,
-				.data_type = MSENSOR_DATA_S16_BE,
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
 			},
 			[6] = {
 				/**
@@ -655,7 +655,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = 10000,
 				.si_max = 10000,
 				.decimals = 3,
-				.data_type = MSENSOR_DATA_S16_BE,
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
 			},
 			[7] = {
 				/**
@@ -673,7 +673,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.si_max = 10000,
 				.decimals = 3,
 				.data_sets = 7,
-				.data_type = MSENSOR_DATA_S16_BE,
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
 			},
 		},
 		.i2c_mode_info	= {
@@ -715,7 +715,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HITECHNC",
 		.product_id	= "PIR",
 		.num_modes	= 1,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * @description: IR Proximity
@@ -747,7 +747,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "Barometr",
 		.num_modes	= 2,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * @description: Barometric Pressure
@@ -795,7 +795,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "NewIRDir",
 		.num_modes	= 4,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * [^values]: Direction values:
@@ -893,7 +893,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "Color",
 		.num_modes	= 7,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * [^color-value]: Color Values:<br />
@@ -939,7 +939,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = USHRT_MAX,
 				.si_max = USHRT_MAX,
 				.data_sets = 3,
-				.data_type = MSENSOR_DATA_U16,
+				.data_type = LEGO_SENSOR_DATA_U16,
 			},
 			[5] = {
 				/**
@@ -1002,7 +1002,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.product_id	= "ColorPD",
 		.num_modes	= 8,
 		.num_read_only_modes = 7,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * [^color-value]: Color Values:<br />
@@ -1079,7 +1079,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = USHRT_MAX,
 				.si_max = USHRT_MAX,
 				.data_sets = 4,
-				.data_type = MSENSOR_DATA_U16,
+				.data_type = LEGO_SENSOR_DATA_U16,
 			},
 		},
 		.i2c_mode_info	= {
@@ -1130,7 +1130,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HITECHNC",
 		.product_id	= "AnglSnsr",
 		.num_modes	= 3,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * @description: Angle
@@ -1153,7 +1153,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = INT_MAX,
 				.si_min = INT_MIN,
 				.si_max = INT_MAX,
-				.data_type = MSENSOR_DATA_S32,
+				.data_type = LEGO_SENSOR_DATA_S32,
 				.figures = 9,
 				.units = "deg",
 			},
@@ -1168,7 +1168,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = SHRT_MAX,
 				.si_min = SHRT_MIN,
 				.si_max = SHRT_MAX,
-				.data_type = MSENSOR_DATA_S16,
+				.data_type = LEGO_SENSOR_DATA_S16,
 				.units = "RPM",
 			},
 		},
@@ -1184,7 +1184,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 		.num_commands	= 1,
-		.ms_cmd_info	= {
+		.cmd_info	= {
 			[0] = {
 				/**
 				 * @description: Reset angle values
@@ -1211,7 +1211,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "Compass",
 		.num_modes	= 1,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * @description: Compass Direction
@@ -1222,7 +1222,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = 180,
 				.si_max = 180,
 				.units = "deg",
-				.data_type = MSENSOR_DATA_S8,
+				.data_type = LEGO_SENSOR_DATA_S8,
 			},
 		},
 		.i2c_mode_info	= {
@@ -1243,7 +1243,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "IRRecv",
 		.num_modes	= 2,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * [^values]: Value of -128 is brake. Speed values only occur in
@@ -1257,7 +1257,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 */
 				.name = "1-MOTOR",
 				.units = "pct",
-				.data_type = MSENSOR_DATA_S8,
+				.data_type = LEGO_SENSOR_DATA_S8,
 			},
 			[1] = {
 				/**
@@ -1286,7 +1286,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.name = "8-MOTOR",
 				.data_sets = 8,
 				.units = "pct",
-				.data_type = MSENSOR_DATA_S8,
+				.data_type = LEGO_SENSOR_DATA_S8,
 			},
 		},
 		.i2c_mode_info	= {
@@ -1310,7 +1310,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HITECHNC",
 		.product_id	= "Accel.",
 		.num_modes	= 2,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * [^mode-0-value]: Value is 8 most significant bits out of 10-bit total resolution.
@@ -1363,7 +1363,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "IRLink",
 		.num_modes	= 1,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * @description: ???
@@ -1390,7 +1390,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "SuperPro",
 		.num_modes	= 5,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * @description: Analog inputs
@@ -1401,7 +1401,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 */
 				.name = "AIN",
 				.data_sets = 4,
-				.data_type = MSENSOR_DATA_U16,
+				.data_type = LEGO_SENSOR_DATA_U16,
 			},
 			[1] = {
 				/**
@@ -1503,7 +1503,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 	[HT_NXT_SENSOR_MUX] = {
 		/**
 		 * [^more-devices]: The `ht-nxt-smux` driver loads more devices in addition to
-		 * the [msensor] device. See [ht-smux-input-port](../ht-smux-input-port) for
+		 * the [lego-sensor class] device. See [ht-smux-input-port](../ht-smux-input-port) for
 		 * more information.
 		 *
 		 * @vendor_name: HiTechnic
@@ -1521,7 +1521,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.ops.send_cmd_post_cb	= ht_sensor_mux_send_cmd_post_cb,
 		.ops.poll_cb		= ht_sensor_mux_poll_cb,
 		.ops.remove_cb		= ht_sensor_mux_remove_cb,
-		.ms_mode_info = {
+		.mode_info = {
 			[0] = {
 				/**
 				 * [^state]: Run state:
@@ -1569,7 +1569,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 		.num_commands	= 3,
-		.ms_cmd_info	= {
+		.cmd_info	= {
 			[0]= {
 				/**
 				 * @description: Halt
@@ -1627,11 +1627,14 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * documentation for more information.
 		 * [^servo-motor-devices]: The `ms-8ch-servo` driver loads separate
 		 * servo motor devices (one for each of the 8 channels) in addition
-		 * to the [msensor] device. See the [Servo Motor Class](../servo-motor-class)
-		 * for more information. The `servo_motor` class `port_name` attribute
+		 * to the [lego-sensor class] device. See the [servo-motor class]
+		 * for more information. The `servo-motor` class `port_name` attribute
 		 * will return `in<N>:sv<M>` where `<N>` is the input port the servo
 		 * controller is connected to and `<M>` is the channel as indicated
 		 * on the servo controller itself.
+		 * .
+		 * [lego-sensor class]: /docs/drivers/lego-sensor-class
+		 * [servo-motor class]: /docs/motors/servo-motor-class
 		 *
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: NxtServo
@@ -1647,7 +1650,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.num_modes		= 2,
 		.ops.probe_cb		= ms_8ch_servo_probe_cb,
 		.ops.remove_cb		= ms_8ch_servo_remove_cb,
-		.ms_mode_info		= {
+		.mode_info		= {
 			[0] = {
 				/**
 				 *
@@ -1717,7 +1720,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.num_modes		= 6,
 		.ops.poll_cb		= ms_imu_poll_cb,
 		.ops.send_cmd_post_cb	= ms_imu_send_cmd_post_cb,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * @description: Tilt
@@ -1728,7 +1731,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 */
 				.name		= "TILT",
 				.data_sets	= 3,
-				.data_type	= MSENSOR_DATA_U8,
+				.data_type	= LEGO_SENSOR_DATA_U8,
 				.units		= "deg",
 			},
 			[1] = {
@@ -1746,7 +1749,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 */
 				.name		= "ACCEL",
 				.data_sets	= 3,
-				.data_type	= MSENSOR_DATA_S16,
+				.data_type	= LEGO_SENSOR_DATA_S16,
 				.units		= "g",
 			},
 			[2] = {
@@ -1762,7 +1765,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.name		= "COMPASS",
 				.data_sets	= 1,
 				.units		= "deg",
-				.data_type	= MSENSOR_DATA_U16,
+				.data_type	= LEGO_SENSOR_DATA_U16,
 			},
 			[3] = {
 				/**
@@ -1774,7 +1777,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 */
 				.name		= "MAG",
 				.data_sets	= 3,
-				.data_type	= MSENSOR_DATA_S16,
+				.data_type	= LEGO_SENSOR_DATA_S16,
 			},
 			[4] = {
 				/**
@@ -1797,7 +1800,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.si_max		= 875,
 				.decimals	= 1,
 				.data_sets	= 3,
-				.data_type	= MSENSOR_DATA_S16,
+				.data_type	= LEGO_SENSOR_DATA_S16,
 				.units		= "d/s",
 			},
 			[5] = {
@@ -1834,7 +1837,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 		.num_commands	= 6,
-		.ms_cmd_info	= {
+		.cmd_info	= {
 			[0] = {
 				/**
 				 * @description: Begin compass calibration
@@ -1917,7 +1920,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "AngSens",
 		.num_modes		= 4,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * @description: Angle
@@ -1926,7 +1929,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 */
 				.name		= "ANGLE",
 				.data_sets	= 1,
-				.data_type	= MSENSOR_DATA_S32,
+				.data_type	= LEGO_SENSOR_DATA_S32,
 				.units		= "deg",
 			},
 			[1] = {
@@ -1940,7 +1943,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.si_max		= 1800,
 				.data_sets	= 1,
 				.decimals	= 1,
-				.data_type	= MSENSOR_DATA_S32,
+				.data_type	= LEGO_SENSOR_DATA_S32,
 				.units		= "deg",
 			},
 			[2] = {
@@ -1954,7 +1957,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.si_max		= 100,
 				.data_sets	= 1,
 				.units		= "rpm",
-				.data_type	= MSENSOR_DATA_S16,
+				.data_type	= LEGO_SENSOR_DATA_S16,
 			},
 			[3] = {
 				/**
@@ -1976,7 +1979,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max	= 100,
 				.si_max		= 100,
 				.data_sets	= 3,
-				.data_type	= MSENSOR_DATA_S32,
+				.data_type	= LEGO_SENSOR_DATA_S32,
 			},
 		},
 		.i2c_mode_info	= {
@@ -1994,7 +1997,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 		.num_commands	= 1,
-		.ms_cmd_info	= {
+		.cmd_info	= {
 			[0] = {
 				/**
 				 * @description: Reset angle values
@@ -2029,7 +2032,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.ops.poll_cb		= ms_ev3_smux_poll_cb,
 		.ops.probe_cb		= ms_ev3_smux_probe_cb,
 		.ops.remove_cb		= ms_ev3_smux_remove_cb,
-		.ms_mode_info = {
+		.mode_info = {
 			[0] = {
 				/**
 				 * [^mode]: This mode does not do anything useful.
@@ -2058,7 +2061,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "LSArray",
 		.num_modes		= 2,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * @description: Calibrated values
@@ -2094,7 +2097,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = USHRT_MAX,
 				.si_max = USHRT_MAX,
 				.data_sets = 8,
-				.data_type = MSENSOR_DATA_S16,
+				.data_type = LEGO_SENSOR_DATA_S16,
 			},
 		},
 		.i2c_mode_info	= {
@@ -2106,7 +2109,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 		.num_commands	= 7,
-		.ms_cmd_info	= {
+		.cmd_info	= {
 			[0] = {
 				/**
 				 * @description: Calibrate white
@@ -2218,7 +2221,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.ops.send_cmd_post_cb	= mi_xg1300l_send_cmd_post_cb,
 		.ops.probe_cb		= mi_xg1300l_probe_cb,
 		.ops.remove_cb		= mi_xg1300l_remove_cb,
-		.ms_mode_info	= {
+		.mode_info	= {
 			[0] = {
 				/**
 				 * @description: Angle
@@ -2227,7 +2230,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 */
 				.name		= "ANGLE",
 				.data_sets	= 1,
-				.data_type	= MSENSOR_DATA_S16,
+				.data_type	= LEGO_SENSOR_DATA_S16,
 				.units		= "deg",
 				.decimals	= 2,
 			},
@@ -2239,7 +2242,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 */
 				.name		= "SPEED",
 				.data_sets	= 1,
-				.data_type	= MSENSOR_DATA_S16,
+				.data_type	= LEGO_SENSOR_DATA_S16,
 				.decimals	= 2,
 				.units		= "d/s",
 			},
@@ -2257,7 +2260,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.name		= "ACCEL",
 				.data_sets	= 3,
 				.units		= "g",
-				.data_type	= MSENSOR_DATA_S16,
+				.data_type	= LEGO_SENSOR_DATA_S16,
 				.decimals	= 3,
 			},
 			[3] = {
@@ -2281,7 +2284,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 */
 				.name		= "ALL",
 				.data_sets	= 5,
-				.data_type	= MSENSOR_DATA_S16,
+				.data_type	= LEGO_SENSOR_DATA_S16,
 			},
 		},
 		.i2c_mode_info	= {
@@ -2299,7 +2302,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 		.num_commands	= 4,
-		.ms_cmd_info	= {
+		.cmd_info	= {
 			[0] = {
 				/**
 				 * [^reset-description]: Recalculate bias drift, reset accumulated angle,

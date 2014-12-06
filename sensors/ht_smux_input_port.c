@@ -1,5 +1,5 @@
 /*
- * HiTechnic NXT sensor multiplexer device driver for LEGO Mindstorms EV3
+ * HiTechnic NXT sensor multiplexer device driver
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *

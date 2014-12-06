@@ -1,5 +1,5 @@
 /*
- * tty line discipline for LEGO MINDSTORMS EV3 UART sensors
+ * LEGO MINDSTORMS EV3 UART Sensor tty line discipline
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *
@@ -15,19 +15,19 @@
 
 /*
  * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
  * or leading whitespace is important for the markdown syntax.
  */
 
 /**
  * DOC: website
  *
- * EV3 UART Line Discipline
+ * LEGO MINDSTORMS EV3 UART Sensor Line Discipline
  *
  * This driver is a tty [line discipline] that runs on top of a tty. It listens
  * for the information data that is sent from UART/EV3 sensors. When it receives
  * valid data, it negotiates with the sensor, telling the sensor to enter data
- * sending mode. After successful negotiation, it creates an [msensor device]
+ * sending mode. After successful negotiation, it creates an [lego-sensor class]
  * that is used to monitor and control the sensor.
  * .
  * This line discipline has been assigned the number 29. To attach this line
@@ -37,12 +37,12 @@
  * the input ports on the EV3.
  * .
  * UART/EV3 sensors do not have individual drivers like other types of sensors.
- * As a result, the name returned by the [msensor][msensor device] `name`
+ * As a result, the name returned by the [lego-sensor][lego-sensor class] `name`
  * attribute is not a real driver name. Instead it returns `ev3-uart-<N>`,
  * where `<N>` is the type id of the sensor.
  * .
  * [line discipline]: https://en.wikipedia.org/wiki/Line_discipline
- * [msensor device]: ../msensor-class
+ * [lego-sensor class]: ../lego-sensor-class
  * [works with any tty]: http://lechnology.com/2014/09/using-uart-sensors-on-any-linux/
  */
 
@@ -57,10 +57,9 @@
 #include <linux/tty.h>
 #if (defined CONFIG_LEGOEV3_DEV_PORTS || defined CONFIG_LEGOEV3_DEV_PORTS_MODULE)
 #include <linux/legoev3/legoev3_ports.h>
-#include <linux/legoev3/msensor_class.h>
-#else
-#include "msensor_class.h"
 #endif
+
+#include <lego_sensor_class.h>
 
 #ifdef DEBUG
 #define debug_pr(fmt, ...) printk(fmt, ##__VA_ARGS__)
@@ -174,7 +173,7 @@ enum legoev3_uart_info_flags {
  * struct legoev3_uart_data - Discipline data for EV3 UART Sensor communication
  * @tty: Pointer to the tty device that the sensor is connected to
  * @in_port: The input port device associated with this tty.
- * @ms: The msensor class structure for the sensor.
+ * @sensor: The lego-sensor class structure for the sensor.
  * @rx_data_work: Workqueue item for handling received data.
  * @send_ack_work: Used to send ACK after a delay.
  * @change_bitrate_work: Used to change the baud rate after a delay.
@@ -214,14 +213,14 @@ struct legoev3_uart_port_data {
 #if (defined CONFIG_LEGOEV3_DEV_PORTS || defined CONFIG_LEGOEV3_DEV_PORTS_MODULE)
 	struct legoev3_port_device *in_port;
 #endif
-	struct msensor_device ms;
+	struct lego_sensor_device sensor;
 	struct work_struct rx_data_work;
 	struct delayed_work send_ack_work;
 	struct work_struct change_bitrate_work;
 	struct hrtimer keep_alive_timer;
 	struct tasklet_struct keep_alive_tasklet;
 	struct completion set_mode_completion;
-	struct msensor_mode_info mode_info[LEGOEV3_UART_MODE_MAX + 1];
+	struct lego_sensor_mode_info mode_info[LEGOEV3_UART_MODE_MAX + 1];
 	u8 type_id;
 	u8 new_mode;
 	u32 raw_min;
@@ -250,7 +249,7 @@ u8 legoev3_uart_set_msg_hdr(u8 type, const unsigned long size, u8 cmd)
 		| (cmd & LEGOEV3_UART_MSG_CMD_MASK);
 }
 
-static struct msensor_mode_info legoev3_uart_default_mode_info = {
+static struct lego_sensor_mode_info legoev3_uart_default_mode_info = {
 	.raw_max = 1023,
 	.pct_max = 100,
 	.si_max = 1,
@@ -299,7 +298,7 @@ int legoev3_uart_set_mode(void *context, const u8 mode)
 	port = tty->disc_data;
 	if (!port->synced || !port->info_done)
 		return -ENODEV;
-	if (mode >= port->ms.num_modes)
+	if (mode >= port->sensor.num_modes)
 		return -EINVAL;
 	if (!completion_done(&port->set_mode_completion))
 		return -EBUSY;
@@ -390,7 +389,7 @@ static void legoev3_uart_send_ack(struct work_struct *work)
 	int err;
 
 	legoev3_uart_write_byte(port->tty, LEGOEV3_UART_SYS_ACK);
-	if (!port->ms.context && port->type_id <= LEGOEV3_UART_TYPE_MAX) {
+	if (!port->sensor.context && port->type_id <= LEGOEV3_UART_TYPE_MAX) {
 #if (defined CONFIG_LEGOEV3_DEV_PORTS || defined CONFIG_LEGOEV3_DEV_PORTS_MODULE)
 		/*
 		 * This is a special case for the input ports on the EV3 brick.
@@ -402,16 +401,16 @@ static void legoev3_uart_send_ack(struct work_struct *work)
 					      legoev3_uart_match_input_port);
 		if (in_port_dev) {
 			port->in_port = to_legoev3_port_device(in_port_dev);
-			strncpy(port->ms.port_name, dev_name(&port->in_port->dev),
-				MSENSOR_NAME_SIZE);
+			strncpy(port->sensor.port_name, dev_name(&port->in_port->dev),
+				LEGO_SENSOR_NAME_SIZE);
 		} else
 #endif
-			strncpy(port->ms.port_name, port->tty->name,
-				MSENSOR_NAME_SIZE);
-		port->ms.context = port->tty;
-		err = register_msensor(&port->ms, port->tty->dev);
+			strncpy(port->sensor.port_name, port->tty->name,
+				LEGO_SENSOR_NAME_SIZE);
+		port->sensor.context = port->tty;
+		err = register_lego_sensor(&port->sensor, port->tty->dev);
 		if (err < 0) {
-			port->ms.context = NULL;
+			port->sensor.context = NULL;
 #if (defined CONFIG_LEGOEV3_DEV_PORTS || defined CONFIG_LEGOEV3_DEV_PORTS_MODULE)
 			if (port->in_port) {
 				port->in_port = NULL;
@@ -527,12 +526,12 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 		chksum = 0xFF ^ cmd ^ type;
 		if ((u8)cb->buf[(cb->tail + 1) % LEGOEV3_UART_BUFFER_SIZE] != chksum)
 			continue;
-		port->ms.num_modes = 1;
-		port->ms.num_view_modes = 1;
+		port->sensor.num_modes = 1;
+		port->sensor.num_view_modes = 1;
 		for (i = 0; i <= LEGOEV3_UART_MODE_MAX; i++)
 			port->mode_info[i] = legoev3_uart_default_mode_info;
 		port->type_id = type;
-		snprintf(port->ms.name, MSENSOR_NAME_SIZE, "ev3-uart-%u", type);
+		snprintf(port->sensor.name, LEGO_SENSOR_NAME_SIZE, "ev3-uart-%u", type);
 		port->info_flags = LEGOEV3_UART_INFO_FLAG_CMD_TYPE;
 		port->synced = 1;
 		port->info_done = 0;
@@ -620,7 +619,7 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 					msg_size++;
 				break;
 			case LEGOEV3_UART_SYS_ACK:
-				if (!port->ms.num_modes) {
+				if (!port->sensor.num_modes) {
 					port->last_err = "Received ACK before all mode INFO.";
 					goto err_invalid_state;
 				}
@@ -650,13 +649,13 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 					port->last_err = "Number of modes is out of range.";
 					goto err_invalid_state;
 				}
-				port->ms.num_modes = cmd2 + 1;
+				port->sensor.num_modes = cmd2 + 1;
 				if (msg_size > 3)
-					port->ms.num_view_modes = message[2] + 1;
+					port->sensor.num_view_modes = message[2] + 1;
 				else
-					port->ms.num_view_modes = port->ms.num_modes;
+					port->sensor.num_view_modes = port->sensor.num_modes;
 				debug_pr("num_modes:%d, num_view_modes:%d\n",
-					 port->ms.num_modes, port->ms.num_view_modes);
+					 port->sensor.num_modes, port->sensor.num_view_modes);
 				break;
 			case LEGOEV3_UART_CMD_SPEED:
 				if (test_and_set_bit(LEGOEV3_UART_INFO_BIT_CMD_SPEED,
@@ -704,13 +703,13 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 				snprintf(port->mode_info[mode].name,
 				         LEGOEV3_UART_MODE_NAME_SIZE + 1, "%s",
 				         message + 2);
-				port->ms.mode = mode;
+				port->sensor.mode = mode;
 				port->info_flags |= LEGOEV3_UART_INFO_FLAG_INFO_NAME;
 				debug_pr("mode %d name:%s\n",
-				       mode, port->ms.port_name);
+				       mode, port->sensor.port_name);
 				break;
 			case LEGOEV3_UART_INFO_RAW:
-				if (port->ms.mode != mode) {
+				if (port->sensor.mode != mode) {
 					port->last_err = "Received INFO for incorrect mode.";
 					goto err_invalid_state;
 				}
@@ -727,7 +726,7 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 				       port->mode_info[mode].raw_max);
 				break;
 			case LEGOEV3_UART_INFO_PCT:
-				if (port->ms.mode != mode) {
+				if (port->sensor.mode != mode) {
 					port->last_err = "Received INFO for incorrect mode.";
 					goto err_invalid_state;
 				}
@@ -744,7 +743,7 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 				       port->mode_info[mode].pct_max);
 				break;
 			case LEGOEV3_UART_INFO_SI:
-				if (port->ms.mode != mode) {
+				if (port->sensor.mode != mode) {
 					port->last_err = "Received INFO for incorrect mode.";
 					goto err_invalid_state;
 				}
@@ -761,7 +760,7 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 				       port->mode_info[mode].si_max);
 				break;
 			case LEGOEV3_UART_INFO_UNITS:
-				if (port->ms.mode != mode) {
+				if (port->sensor.mode != mode) {
 					port->last_err = "Received INFO for incorrect mode.";
 					goto err_invalid_state;
 				}
@@ -786,7 +785,7 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 				       mode, port->mode_info[mode].units);
 				break;
 			case LEGOEV3_UART_INFO_FORMAT:
-				if (port->ms.mode != mode) {
+				if (port->sensor.mode != mode) {
 					port->last_err = "Received INFO for incorrect mode.";
 					goto err_invalid_state;
 				}
@@ -812,16 +811,16 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 				}
 				switch (message[3]) {
 				case LEGOEV3_UART_DATA_8:
-					port->mode_info[mode].data_type = MSENSOR_DATA_S8;
+					port->mode_info[mode].data_type = LEGO_SENSOR_DATA_S8;
 					break;
 				case LEGOEV3_UART_DATA_16:
-					port->mode_info[mode].data_type = MSENSOR_DATA_S16;
+					port->mode_info[mode].data_type = LEGO_SENSOR_DATA_S16;
 					break;
 				case LEGOEV3_UART_DATA_32:
-					port->mode_info[mode].data_type = MSENSOR_DATA_S32;
+					port->mode_info[mode].data_type = LEGO_SENSOR_DATA_S32;
 					break;
 				case LEGOEV3_UART_DATA_FLOAT:
-					port->mode_info[mode].data_type = MSENSOR_DATA_FLOAT;
+					port->mode_info[mode].data_type = LEGO_SENSOR_DATA_FLOAT;
 					break;
 				default:
 					port->last_err = "Invalid data type.";
@@ -831,26 +830,26 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 				port->mode_info[mode].decimals = message[5];
 				if (port->info_flags & LEGOEV3_UART_INFO_FLAG_INFO_RAW) {
 					port->mode_info[mode].raw_min =
-						msensor_ftoi(port->raw_min, 0);
+						lego_sensor_ftoi(port->raw_min, 0);
 					port->mode_info[mode].raw_max =
-						msensor_ftoi(port->raw_max, 0);
+						lego_sensor_ftoi(port->raw_max, 0);
 				}
 				if (port->info_flags & LEGOEV3_UART_INFO_FLAG_INFO_PCT) {
 					port->mode_info[mode].pct_min =
-						msensor_ftoi(port->pct_min, 0);
+						lego_sensor_ftoi(port->pct_min, 0);
 					port->mode_info[mode].pct_max =
-						msensor_ftoi(port->pct_max, 0);
+						lego_sensor_ftoi(port->pct_max, 0);
 				}
 				if (port->info_flags & LEGOEV3_UART_INFO_FLAG_INFO_SI) {
 					port->mode_info[mode].si_min =
-						msensor_ftoi(port->si_min,
+						lego_sensor_ftoi(port->si_min,
 							port->mode_info[mode].decimals);
 					port->mode_info[mode].si_max =
-						msensor_ftoi(port->si_max,
+						lego_sensor_ftoi(port->si_max,
 							port->mode_info[mode].decimals);
 				}
-				if (port->ms.mode)
-					port->ms.mode--;
+				if (port->sensor.mode)
+					port->sensor.mode--;
 				debug_pr("mode %d - data_sets:%d, data_type:%d, figures:%d, decimals:%d\n",
 					 mode, port->mode_info[mode].data_sets,
 					 port->mode_info[mode].data_type,
@@ -878,9 +877,9 @@ static void legoev3_uart_handle_rx_data(struct work_struct *work)
 				port->last_err = "Invalid mode received.";
 				goto err_invalid_state;
 			}
-			if (mode != port->ms.mode) {
+			if (mode != port->sensor.mode) {
 				if (mode == port->new_mode)
-					port->ms.mode = mode;
+					port->sensor.mode = mode;
 				else {
 					port->last_err = "Unexpected mode.";
 					goto err_invalid_state;
@@ -918,9 +917,9 @@ static int legoev3_uart_open(struct tty_struct *tty)
 	port->tty = tty;
 	port->new_baud_rate = LEGOEV3_UART_SPEED_MIN;
 	port->type_id = LEGOEV3_UART_TYPE_UNKNOWN;
-	port->ms.mode_info = port->mode_info;
-	port->ms.set_mode = legoev3_uart_set_mode;
-	port->ms.write_data = legoev3_uart_write_data;
+	port->sensor.mode_info = port->mode_info;
+	port->sensor.set_mode = legoev3_uart_set_mode;
+	port->sensor.write_data = legoev3_uart_write_data;
 	port->circ_buf.buf = port->buffer;
 	INIT_WORK(&port->rx_data_work, legoev3_uart_handle_rx_data);
 	INIT_DELAYED_WORK(&port->send_ack_work, legoev3_uart_send_ack);
@@ -985,8 +984,8 @@ static void legoev3_uart_close(struct tty_struct *tty)
 	cancel_work_sync(&port->change_bitrate_work);
 	hrtimer_cancel(&port->keep_alive_timer);
 	tasklet_kill(&port->keep_alive_tasklet);
-	if (port->ms.context) {
-		unregister_msensor(&port->ms);
+	if (port->sensor.context) {
+		unregister_lego_sensor(&port->sensor);
 	}
 #if (defined CONFIG_LEGOEV3_DEV_PORTS || defined CONFIG_LEGOEV3_DEV_PORTS_MODULE)
 	if (port->in_port)
@@ -1073,7 +1072,7 @@ static void __exit legoev3_uart_exit(void)
 }
 module_exit(legoev3_uart_exit);
 
-MODULE_DESCRIPTION("tty line discipline for LEGO MINDSTORMS EV3 sensors");
+MODULE_DESCRIPTION("LEGO MINDSTORMS EV3 sensor tty line discipline");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS_LDISC(N_LEGOEV3);

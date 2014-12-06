@@ -18,7 +18,7 @@
 
 #include <lego_port_class.h>
 
-#include "../nxt_i2c_sensor.h"
+#include "nxt_i2c_sensor.h"
 
 #define MS_EV3_SMUX_MODE_REG		0x52
 #define MS_EV3_SMUX_DATA_REG		0x54

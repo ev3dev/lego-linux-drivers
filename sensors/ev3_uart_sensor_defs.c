@@ -1,5 +1,5 @@
 /*
- * LEGO EV3 UART Sensor driver
+ * LEGO MINDSTORMS EV3 UART Sensor driver
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *

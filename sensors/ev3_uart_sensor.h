@@ -1,5 +1,5 @@
 /*
- * EV3 UART sensor device driver for LEGO MINDSTORMS EV3
+ * LEGO MINDSTORMS EV3 UART sensor device driver
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *
@@ -21,7 +21,7 @@
 /**
  * struct ev3_uart_sensor_info
  * @name: The driver name. Must match name in id_table.
- * @ms_mode_info: Array of msensor mode information for each sensor mode.
+ * @ms_mode_info: Array of lego-sensor mode information for each sensor mode.
  * @num_modes: Number of valid elements in the mode_info array.
  * @num_view_modes: Number of modes that return a single value.
  */

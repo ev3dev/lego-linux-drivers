@@ -1,5 +1,5 @@
 /*
- * EV3 Analog Sensor device driver
+ * LEGO MINDSTORMS EV3 Analog Sensor device driver
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
@@ -119,7 +119,7 @@ static int ev3_analog_sensor_remove(struct lego_device *ldev)
 	return 0;
 }
 
-static struct legoev3_port_device_id ev3_analog_sensor_device_ids [] = {
+static struct lego_device_id ev3_analog_sensor_device_ids [] = {
 	{
 		.name = "ev3-analog-01",
 		.driver_data = GENERIC_EV3_ANALOG_SENSOR,
@@ -190,7 +190,7 @@ struct lego_device_driver ev3_analog_sensor_driver = {
 };
 lego_device_driver(ev3_analog_sensor_driver);
 
-MODULE_DESCRIPTION("EV3 Analog sensor device driver");
+MODULE_DESCRIPTION("LEGO MINDSTORMS EV3 Analog sensor device driver");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("lego:ev3-analog-sensor");

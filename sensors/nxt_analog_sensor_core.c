@@ -1,5 +1,5 @@
 /*
- * NXT Analog Sensor device driver for LEGO Mindstorms EV3
+ * LEGO MINSTORMS NXT analog sensor device driver
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
@@ -29,7 +29,7 @@
  * .
  * ### sysfs Attributes
  * .
- * These drivers provide a [msensor device], which is where all the really
+ * These drivers provide a [lego-sensor device], which is where all the really
  * useful attributes are.
  * .
  * You can find this device at `/sys/bus/legoev3/devices/in<N>:<device-name>`
@@ -45,7 +45,7 @@
  * `port_name` (read-only)
  * : Returns the name of the port this host is connected to (e.g. `in1`).
  * .
- * [msensor device]: ../msensor-class
+ * [lego-sensor device]: ../lego-sensor-class
  * [supported sensors]: ../#supported-sensors
  */
 
@@ -54,7 +54,8 @@
 #include <linux/slab.h>
 #include <linux/legoev3/legoev3_ports.h>
 #include <linux/legoev3/ev3_input_port.h>
-#include <linux/legoev3/msensor_class.h>
+
+#include <lego_sensor_class.h>
 
 #include <asm/bug.h>
 
@@ -64,7 +65,7 @@ static void nxt_analog_sensor_cb(void *context)
 {
 	struct nxt_analog_sensor_data *as = context;
 
-	*(int*)as->info.ms_mode_info[as->ms.mode].raw_data =
+	*(int*)as->info.mode_info[as->sensor.mode].raw_data =
 				as->in_port->in_ops.get_pin1_mv(as->in_port);
 }
 
@@ -103,24 +104,24 @@ static int nxt_analog_sensor_probe(struct legoev3_port_device *sensor)
 
 	memcpy(&as->info, &nxt_analog_sensor_defs[sensor->entry_id->driver_data],
 	       sizeof(struct nxt_analog_sensor_info));
-	strncpy(as->ms.name, sensor->entry_id->name, MSENSOR_NAME_SIZE);
-	strncpy(as->ms.port_name, dev_name(&as->in_port->dev),
-		MSENSOR_NAME_SIZE);
-	as->ms.num_modes	= as->info.num_modes;
-	as->ms.mode_info	= as->info.ms_mode_info;
-	as->ms.set_mode		= nxt_analog_sensor_set_mode;
-	as->ms.context		= as;
+	strncpy(as->sensor.name, sensor->entry_id->name, LEGO_SENSOR_NAME_SIZE);
+	strncpy(as->sensor.port_name, dev_name(&as->in_port->dev),
+		LEGO_SENSOR_NAME_SIZE);
+	as->sensor.num_modes	= as->info.num_modes;
+	as->sensor.mode_info	= as->info.mode_info;
+	as->sensor.set_mode		= nxt_analog_sensor_set_mode;
+	as->sensor.context		= as;
 
-	err = register_msensor(&as->ms, &sensor->dev);
+	err = register_lego_sensor(&as->sensor, &sensor->dev);
 	if (err)
-		goto err_register_msensor;
+		goto err_register_lego_sensor;
 
 	dev_set_drvdata(&sensor->dev, as);
 	nxt_analog_sensor_set_mode(as, 0);
 
 	return 0;
 
-err_register_msensor:
+err_register_lego_sensor:
 	kfree(as);
 
 	return err;
@@ -128,13 +129,13 @@ err_register_msensor:
 
 static int nxt_analog_sensor_remove(struct legoev3_port_device *sensor)
 {
-	struct nxt_analog_sensor_data *as = dev_get_drvdata(&sensor->dev);
+	struct nxt_analog_sensor_data *data = dev_get_drvdata(&sensor->dev);
 
-	as->in_port->in_ops.set_pin5_gpio(as->in_port, EV3_INPUT_PORT_GPIO_FLOAT);
-	as->in_port->in_ops.register_analog_cb(as->in_port, NULL, NULL);
-	unregister_msensor(&as->ms);
+	data->in_port->in_ops.set_pin5_gpio(data->in_port, EV3_INPUT_PORT_GPIO_FLOAT);
+	data->in_port->in_ops.register_analog_cb(data->in_port, NULL, NULL);
+	unregister_lego_sensor(&data->sensor);
 	dev_set_drvdata(&sensor->dev, NULL);
-	kfree(as);
+	kfree(data);
 	return 0;
 }
 
@@ -219,7 +220,7 @@ struct legoev3_port_device_driver nxt_analog_sensor_driver = {
 };
 legoev3_port_device_driver(nxt_analog_sensor_driver);
 
-MODULE_DESCRIPTION("NXT Analog sensor device driver for LEGO Mindstorms EV3");
+MODULE_DESCRIPTION("LEGO MINSTORMS NXT analog sensor device driver");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("legoev3:nxt-analog-sensor");
+MODULE_ALIAS("lego:nxt-analog-sensor");

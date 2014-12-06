@@ -1,5 +1,5 @@
 /*
- * NXT I2C sensor device driver for LEGO Mindstorms EV3
+ * LEGO MINDSTORMS NXT I2C sensor device driver
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
@@ -17,7 +17,8 @@
 #define NXT_I2C_SENSOR_H_
 
 #include <linux/legoev3/ev3_input_port.h>
-#include <linux/legoev3/msensor_class.h>
+
+#include <lego_sensor_class.h>
 
 #define NXT_I2C_ID_STR_LEN 8
 
@@ -54,7 +55,6 @@ struct nxt_i2c_sensor_ops {
 
 /**
  * struct nxt_i2c_sensor_mode_info
- * @ms_mode_info: Mode info used by the msensor device class.
  * @set_mode_reg: The register address used to set the mode.
  * @set_mode_data: The data to write to the command register.
  * @read_data_reg: The starting register address of the data to be read.
@@ -84,12 +84,12 @@ struct nxt_i2c_sensor_cmd_info {
  * @product_id: The product ID string to match to the sensor.
  * @callback_data: Pointer for private data used by ops.
  * @ops: Optional hooks for special-case drivers.
- * @ms_mode_info: Array of mode information for each sensor mode. Used by the
- * 	msensor class.
+ * @mode_info: Array of mode information for each sensor mode. Used by the
+ * 	lego-sensor class.
  * @i2c_mode_info: Array of mode information each sensor mode. Used by this
  * 	driver.
- * @ms_cmd_info: Array of command information for each sensor command. Used by
- * 	the msensor class.
+ * @cmd_info: Array of command information for each sensor command. Used by
+ * 	the lego-sensor class.
  * @i2c_mode_info: Array of command information for each sensor command. Used by
  * 	this driver.
  * @num_modes: Number of valid elements in the mode_info array.
@@ -104,10 +104,10 @@ struct nxt_i2c_sensor_info {
 	const char *product_id;
 	void *callback_data;
 	struct nxt_i2c_sensor_ops ops;
-	struct msensor_mode_info ms_mode_info[MSENSOR_MODE_MAX + 1];
-	struct nxt_i2c_sensor_mode_info i2c_mode_info[MSENSOR_MODE_MAX + 1];
-	struct msensor_cmd_info ms_cmd_info[MSENSOR_MODE_MAX + 1];
-	struct nxt_i2c_sensor_cmd_info i2c_cmd_info[MSENSOR_MODE_MAX + 1];
+	struct lego_sensor_mode_info mode_info[LEGO_SENSOR_MODE_MAX + 1];
+	struct nxt_i2c_sensor_mode_info i2c_mode_info[LEGO_SENSOR_MODE_MAX + 1];
+	struct lego_sensor_cmd_info cmd_info[LEGO_SENSOR_MODE_MAX + 1];
+	struct nxt_i2c_sensor_cmd_info i2c_cmd_info[LEGO_SENSOR_MODE_MAX + 1];
 	int num_modes;
 	int num_read_only_modes;
 	int num_commands;
@@ -170,7 +170,7 @@ struct nxt_i2c_sensor_data {
 	struct i2c_client *client;
 	struct legoev3_port *in_port;
 	struct nxt_i2c_sensor_info info;
-	struct msensor_device ms;
+	struct lego_sensor_device sensor;
 	struct delayed_work poll_work;
 	enum nxt_i2c_sensor_type type;
 	unsigned poll_ms;

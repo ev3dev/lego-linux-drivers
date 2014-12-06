@@ -1,5 +1,5 @@
 /*
- * LEGO EV3 UART Sensor driver
+ * LEGO MINDSTORMS EV3 UART Sensor driver
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *
@@ -93,9 +93,9 @@ static int ev3_uart_sensor_probe(struct lego_device *ldev)
 	memcpy(&data->info,
 	       &ev3_uart_sensor_defs[ldev->entry_id->driver_data],
 	       sizeof(struct ev3_uart_sensor_info));
-	strncpy(data->sensor.name, ldev->entry_id->name, MSENSOR_NAME_SIZE);
+	strncpy(data->sensor.name, ldev->entry_id->name, LEGO_SENSOR_NAME_SIZE);
 	strncpy(data->sensor.port_name, ldev->port->port_name,
-		MSENSOR_NAME_SIZE);
+		LEGO_SENSOR_NAME_SIZE);
 	/* mindsensors EV3 sensor mux only supports modes that return one value */
 	if (ldev->port->type == &ms_ev3_smux_port_type)
 		data->sensor.num_modes = data->info.num_view_modes;
@@ -107,14 +107,14 @@ static int ev3_uart_sensor_probe(struct lego_device *ldev)
 
 	err = register_lego_sensor(&data->sensor, &ldev->dev);
 	if (err)
-		goto err_register_msensor;
+		goto err_register_lego_sensor;
 
 	dev_set_drvdata(&ldev->dev, data);
 	ev3_uart_sensor_set_mode(data, 0);
 
 	return 0;
 
-err_register_msensor:
+err_register_lego_sensor:
 	kfree(data);
 
 	return err;

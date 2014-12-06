@@ -215,28 +215,28 @@ EXPORT_SYMBOL_GPL(lego_sensor_itof);
 static ssize_t name_show(struct device *dev, struct device_attribute *attr,
 			 char *buf)
 {
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
-	return snprintf(buf, LEGO_SENSOR_NAME_SIZE, "%s\n", ms->name);
+	return snprintf(buf, LEGO_SENSOR_NAME_SIZE, "%s\n", sensor->name);
 }
 
 static ssize_t port_name_show(struct device *dev, struct device_attribute *attr,
 			      char *buf)
 {
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
-	return snprintf(buf, LEGO_SENSOR_NAME_SIZE, "%s\n", ms->port_name);
+	return snprintf(buf, LEGO_SENSOR_NAME_SIZE, "%s\n", sensor->port_name);
 }
 
 static ssize_t modes_show(struct device *dev, struct device_attribute *attr,
 			  char *buf)
 {
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 	int i;
 	unsigned count = 0;
 
-	for (i = 0; i < ms->num_modes; i++)
-		count += sprintf(buf + count, "%s ", ms->mode_info[i].name);
+	for (i = 0; i < sensor->num_modes; i++)
+		count += sprintf(buf + count, "%s ", sensor->mode_info[i].name);
 	if (count == 0)
 		return -ENXIO;
 	buf[count - 1] = '\n';
@@ -247,23 +247,23 @@ static ssize_t modes_show(struct device *dev, struct device_attribute *attr,
 static ssize_t mode_show(struct device *dev, struct device_attribute *attr,
 			 char *buf)
 {
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
-	return sprintf(buf, "%s\n", ms->mode_info[ms->mode].name);
+	return sprintf(buf, "%s\n", sensor->mode_info[sensor->mode].name);
 }
 
 static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 			  const char *buf, size_t count)
 {
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 	int i, err;
 
-	for (i = 0; i < ms->num_modes; i++) {
-		if (sysfs_streq(buf, ms->mode_info[i].name)) {
-			err = ms->set_mode(ms->context, i);
+	for (i = 0; i < sensor->num_modes; i++) {
+		if (sysfs_streq(buf, sensor->mode_info[i].name)) {
+			err = sensor->set_mode(sensor->context, i);
 			if (err)
 				return err;
-			ms->mode = i;
+			sensor->mode = i;
 			return count;
 		}
 	}
@@ -274,12 +274,12 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 static ssize_t commands_show(struct device *dev, struct device_attribute *attr,
 			     char *buf)
 {
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 	int i;
 	unsigned count = 0;
 
-	for (i = 0; i < ms->num_commands; i++)
-		count += sprintf(buf + count, "%s ", ms->cmd_info[i].name);
+	for (i = 0; i < sensor->num_commands; i++)
+		count += sprintf(buf + count, "%s ", sensor->cmd_info[i].name);
 	if (count == 0)
 		return -ENOSYS;
 	buf[count - 1] = '\n';
@@ -290,12 +290,12 @@ static ssize_t commands_show(struct device *dev, struct device_attribute *attr,
 static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 			     const char *buf, size_t count)
 {
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 	int i, err;
 
-	for (i = 0; i < ms->num_commands; i++) {
-		if (sysfs_streq(buf, ms->cmd_info[i].name)) {
-			err = ms->send_command(ms->context, i);
+	for (i = 0; i < sensor->num_commands; i++) {
+		if (sysfs_streq(buf, sensor->cmd_info[i].name)) {
+			err = sensor->send_command(sensor->context, i);
 			if (err)
 				return err;
 			return count;
@@ -307,74 +307,74 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 static ssize_t units_show(struct device *dev, struct device_attribute *attr,
 			  char *buf)
 {
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
-	return sprintf(buf, "%s\n",ms->mode_info[ms->mode].units);
+	return sprintf(buf, "%s\n",sensor->mode_info[sensor->mode].units);
 }
 
 static ssize_t decimals_show(struct device *dev, struct device_attribute *attr,
 			     char *buf)
 {
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
-	return sprintf(buf, "%d\n", ms->mode_info[ms->mode].decimals);
+	return sprintf(buf, "%d\n", sensor->mode_info[sensor->mode].decimals);
 }
 
 static ssize_t num_values_show(struct device *dev, struct device_attribute *attr,
 			       char *buf)
 {
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
-	return sprintf(buf, "%d\n", ms->mode_info[ms->mode].data_sets);
+	return sprintf(buf, "%d\n", sensor->mode_info[sensor->mode].data_sets);
 }
 
-inline int lego_sensor_raw_u8_value(struct lego_sensor_device *ms, int index)
+inline int lego_sensor_raw_u8_value(struct lego_sensor_device *sensor, int index)
 {
-	return *(u8 *)(ms->mode_info[ms->mode].raw_data + index);
+	return *(u8 *)(sensor->mode_info[sensor->mode].raw_data + index);
 }
 
-inline int lego_sensor_raw_s8_value(struct lego_sensor_device *ms, int index)
+inline int lego_sensor_raw_s8_value(struct lego_sensor_device *sensor, int index)
 {
-	return *(s8 *)(ms->mode_info[ms->mode].raw_data + index);
+	return *(s8 *)(sensor->mode_info[sensor->mode].raw_data + index);
 }
 
-inline int lego_sensor_raw_u16_value(struct lego_sensor_device *ms, int index)
+inline int lego_sensor_raw_u16_value(struct lego_sensor_device *sensor, int index)
 {
-	return *(u16 *)(ms->mode_info[ms->mode].raw_data + index * 2);
+	return *(u16 *)(sensor->mode_info[sensor->mode].raw_data + index * 2);
 }
 
-inline int lego_sensor_raw_s16_value(struct lego_sensor_device *ms, int index)
+inline int lego_sensor_raw_s16_value(struct lego_sensor_device *sensor, int index)
 {
-	return *(s16 *)(ms->mode_info[ms->mode].raw_data + index * 2);
+	return *(s16 *)(sensor->mode_info[sensor->mode].raw_data + index * 2);
 }
 
-inline int lego_sensor_raw_s16_be_value(struct lego_sensor_device *ms, int index)
+inline int lego_sensor_raw_s16_be_value(struct lego_sensor_device *sensor, int index)
 {
-	return (s16)ntohs(*(u16 *)(ms->mode_info[ms->mode].raw_data + index * 2));
+	return (s16)ntohs(*(u16 *)(sensor->mode_info[sensor->mode].raw_data + index * 2));
 }
 
-inline int lego_sensor_raw_u32_value(struct lego_sensor_device *ms, int index)
+inline int lego_sensor_raw_u32_value(struct lego_sensor_device *sensor, int index)
 {
-	return *(u32 *)(ms->mode_info[ms->mode].raw_data + index * 4);
+	return *(u32 *)(sensor->mode_info[sensor->mode].raw_data + index * 4);
 }
 
-inline int lego_sensor_raw_s32_value(struct lego_sensor_device *ms, int index)
+inline int lego_sensor_raw_s32_value(struct lego_sensor_device *sensor, int index)
 {
-	return *(s32 *)(ms->mode_info[ms->mode].raw_data + index * 4);
+	return *(s32 *)(sensor->mode_info[sensor->mode].raw_data + index * 4);
 }
 
-inline int lego_sensor_raw_float_value(struct lego_sensor_device *ms, int index)
+inline int lego_sensor_raw_float_value(struct lego_sensor_device *sensor, int index)
 {
 	return lego_sensor_ftoi(
-		*(u32 *)(ms->mode_info[ms->mode].raw_data + index * 4),
-		ms->mode_info[ms->mode].decimals);
+		*(u32 *)(sensor->mode_info[sensor->mode].raw_data + index * 4),
+		sensor->mode_info[sensor->mode].decimals);
 }
 
 static ssize_t value_show(struct device *dev, struct device_attribute *attr,
 			  char *buf)
 {
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
-	struct lego_sensor_mode_info *mode_info = &ms->mode_info[ms->mode];
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
+	struct lego_sensor_mode_info *mode_info = &sensor->mode_info[sensor->mode];
 	long int value;
 	int index;
 
@@ -387,28 +387,28 @@ static ssize_t value_show(struct device *dev, struct device_attribute *attr,
 
 	switch (mode_info->data_type) {
 	case LEGO_SENSOR_DATA_U8:
-		value = lego_sensor_raw_u8_value(ms, index);
+		value = lego_sensor_raw_u8_value(sensor, index);
 		break;
 	case LEGO_SENSOR_DATA_S8:
-		value = lego_sensor_raw_s8_value(ms, index);
+		value = lego_sensor_raw_s8_value(sensor, index);
 		break;
 	case LEGO_SENSOR_DATA_U16:
-		value = lego_sensor_raw_u16_value(ms, index);
+		value = lego_sensor_raw_u16_value(sensor, index);
 		break;
 	case LEGO_SENSOR_DATA_S16:
-		value = lego_sensor_raw_s16_value(ms, index);
+		value = lego_sensor_raw_s16_value(sensor, index);
 		break;
 	case LEGO_SENSOR_DATA_S16_BE:
-		value = lego_sensor_raw_s16_be_value(ms, index);
+		value = lego_sensor_raw_s16_be_value(sensor, index);
 		break;
 	case LEGO_SENSOR_DATA_U32:
-		value = lego_sensor_raw_u32_value(ms, index);
+		value = lego_sensor_raw_u32_value(sensor, index);
 		break;
 	case LEGO_SENSOR_DATA_S32:
-		value = lego_sensor_raw_s32_value(ms, index);
+		value = lego_sensor_raw_s32_value(sensor, index);
 		break;
 	case LEGO_SENSOR_DATA_FLOAT:
-		value = lego_sensor_raw_float_value(ms, index);
+		value = lego_sensor_raw_float_value(sensor, index);
 		break;
 	default:
 		return -ENXIO;
@@ -427,10 +427,10 @@ static ssize_t bin_data_format_show(struct device *dev,
 				    struct device_attribute *attr,
 				    char *buf)
 {
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 	char *value;
 
-	switch (ms->mode_info[ms->mode].data_type) {
+	switch (sensor->mode_info[sensor->mode].data_type) {
 	case LEGO_SENSOR_DATA_U8:
 		value = "u8";
 		break;
@@ -465,13 +465,13 @@ static ssize_t bin_data_format_show(struct device *dev,
 static ssize_t poll_ms_show(struct device *dev, struct device_attribute *attr,
 			    char *buf)
 {
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 	int ret;
 
-	if (!ms->get_poll_ms)
+	if (!sensor->get_poll_ms)
 		return -ENOSYS;
 
-	ret = ms->get_poll_ms(ms->context);
+	ret = sensor->get_poll_ms(sensor->context);
 	if (ret < 0)
 		return ret;
 
@@ -481,16 +481,16 @@ static ssize_t poll_ms_show(struct device *dev, struct device_attribute *attr,
 static ssize_t poll_ms_store(struct device *dev, struct device_attribute *attr,
 			     const char *buf, size_t count)
 {
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 	unsigned value;
 	int err;
 
-	if (!ms->set_poll_ms)
+	if (!sensor->set_poll_ms)
 		return -ENOSYS;
 
 	if (sscanf(buf, "%ud", &value) != 1)
 		return -EINVAL;
-	err = ms->set_poll_ms(ms->context, value);
+	err = sensor->set_poll_ms(sensor->context, value);
 	if (err < 0)
 		return err;
 
@@ -500,17 +500,17 @@ static ssize_t poll_ms_store(struct device *dev, struct device_attribute *attr,
 static ssize_t fw_version_show(struct device *dev, struct device_attribute *attr,
 			       char *buf)
 {
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
-	return snprintf(buf, LEGO_SENSOR_FW_VERSION_SIZE + 2, "%s\n", ms->fw_version);
+	return snprintf(buf, LEGO_SENSOR_FW_VERSION_SIZE + 2, "%s\n", sensor->fw_version);
 }
 
 static ssize_t address_show(struct device *dev, struct device_attribute *attr,
 			    char *buf)
 {
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
-	return sprintf(buf, "0x%02x\n", ms->address);
+	return sprintf(buf, "0x%02x\n", sensor->address);
 }
 
 static ssize_t bin_data_read(struct file *file, struct kobject *kobj,
@@ -518,7 +518,7 @@ static ssize_t bin_data_read(struct file *file, struct kobject *kobj,
 			     char *buf, loff_t off, size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 	size_t size = attr->size;
 
 	if (off >= size || !count)
@@ -526,7 +526,7 @@ static ssize_t bin_data_read(struct file *file, struct kobject *kobj,
 	size -= off;
 	if (count < size)
 		size = count;
-	memcpy(buf + off, ms->mode_info[ms->mode].raw_data, size);
+	memcpy(buf + off, sensor->mode_info[sensor->mode].raw_data, size);
 
 	return size;
 }
@@ -619,12 +619,12 @@ static umode_t lego_sensor_attr_is_visible (struct kobject *kobj,
 					struct attribute *attr, int index)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
-	struct lego_sensor_device *ms = to_lego_sensor_device(dev);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
 	if (attr == &dev_attr_poll_ms.attr)
-		return (ms->get_poll_ms || ms->set_poll_ms) ? attr->mode : 0;
+		return (sensor->get_poll_ms || sensor->set_poll_ms) ? attr->mode : 0;
 	if (attr == &dev_attr_fw_version.attr)
-		return ms->fw_version[0] ? attr->mode : 0;
+		return sensor->fw_version[0] ? attr->mode : 0;
 
 	return attr->mode;
 }
@@ -669,10 +669,10 @@ int register_lego_sensor(struct lego_sensor_device *sensor,
 }
 EXPORT_SYMBOL_GPL(register_lego_sensor);
 
-void unregister_lego_sensor(struct lego_sensor_device *ms)
+void unregister_lego_sensor(struct lego_sensor_device *sensor)
 {
-	dev_info(&ms->dev, "Unregistered\n");
-	device_unregister(&ms->dev);
+	dev_info(&sensor->dev, "Unregistered\n");
+	device_unregister(&sensor->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_lego_sensor);
 

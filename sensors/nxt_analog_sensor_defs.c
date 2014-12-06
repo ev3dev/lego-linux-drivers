@@ -1,5 +1,5 @@
 /*
- * NXT analog sensor device driver for LEGO MINSTORMS EV3
+ * LEGO MINSTORMS NXT analog sensor device driver
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *
@@ -23,7 +23,7 @@ static void nxt_touch_sensor_cb(void *context)
 	 * pin 1 is pulled up to 5V in the EV3, so anything less than close to
 	 * 5V (5000) is pressed.
 	 */
-	as->ms.mode_info[as->ms.mode].raw_data[0] =
+	as->sensor.mode_info[as->sensor.mode].raw_data[0] =
 		as->in_port->in_ops.get_pin1_mv(as->in_port) < 4800 ? 1 : 0;
 }
 
@@ -36,7 +36,7 @@ static void ht_eopd_sensor_cb(void *context)
 	 * To make the sensor value linear, we have to take the square root
 	 */
 	pin1_mv = as->in_port->in_ops.get_pin1_mv(as->in_port) * 2;
-	as->ms.mode_info[as->ms.mode].raw_data[0] = (u8)int_sqrt(pin1_mv);
+	as->sensor.mode_info[as->sensor.mode].raw_data[0] = (u8)int_sqrt(pin1_mv);
 }
 
 #define MS_TOUCH_MUX_H1    4194
@@ -83,9 +83,9 @@ static void ms_touch_mux_cb(void *context)
 		sensor2 = 1;
 		sensor3 = 1;
 	}
-	as->ms.mode_info[as->ms.mode].raw_data[0] = sensor1;
-	as->ms.mode_info[as->ms.mode].raw_data[1] = sensor2;
-	as->ms.mode_info[as->ms.mode].raw_data[2] = sensor3;
+	as->sensor.mode_info[as->sensor.mode].raw_data[0] = sensor1;
+	as->sensor.mode_info[as->sensor.mode].raw_data[1] = sensor2;
+	as->sensor.mode_info[as->sensor.mode].raw_data[2] = sensor3;
 }
 
 /*
@@ -103,7 +103,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		.name = "nxt-analog",
 		.num_modes = 2,
 		/* TODO: do we want more modes to set pin 6 gpio */
-		.ms_mode_info = {
+		.mode_info = {
 			[0] = {
 				/**
 				 * @description: Raw analog value
@@ -117,7 +117,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				.si_max = 5000,
 				.decimals = 3,
 				.data_sets = 1,
-				.data_type = MSENSOR_DATA_S32,
+				.data_type = LEGO_SENSOR_DATA_S32,
 			},
 			[1] = {
 				/**
@@ -132,7 +132,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				.si_max = 5000,
 				.decimals = 3,
 				.data_sets = 1,
-				.data_type = MSENSOR_DATA_S32,
+				.data_type = LEGO_SENSOR_DATA_S32,
 			},
 		},
 		.analog_mode_info = {
@@ -150,7 +150,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 */
 		.name = "lego-nxt-touch",
 		.num_modes = 1,
-		.ms_mode_info = {
+		.mode_info = {
 			[0] = {
 				/**
 				 * [^mode0-value]: Values:
@@ -186,7 +186,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 */
 		.name = "lego-nxt-light",
 		.num_modes = 2,
-		.ms_mode_info = {
+		.mode_info = {
 			[0] = {
 				/**
 				 * @description: Reflected light<br />LED on
@@ -201,7 +201,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				.si_max = 1000,
 				.decimals = 1,
 				.data_sets = 1,
-				.data_type = MSENSOR_DATA_S32,
+				.data_type = LEGO_SENSOR_DATA_S32,
 			},
 			[1] = {
 				/**
@@ -217,7 +217,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				.si_max = 1000,
 				.decimals = 1,
 				.data_sets = 1,
-				.data_type = MSENSOR_DATA_S32,
+				.data_type = LEGO_SENSOR_DATA_S32,
 			},
 		},
 		.analog_mode_info = {
@@ -238,7 +238,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 */
 		.name = "lego-nxt-sound",
 		.num_modes = 2,
-		.ms_mode_info = {
+		.mode_info = {
 			[0] = {
 				/**
 				 * @description: Sound pressure level<br />Flat weighting
@@ -252,7 +252,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				.si_max = 1000,
 				.decimals = 1,
 				.data_sets = 1,
-				.data_type = MSENSOR_DATA_S32,
+				.data_type = LEGO_SENSOR_DATA_S32,
 			},
 			[1] = {
 				/**
@@ -267,7 +267,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				.si_max = 1000,
 				.decimals = 1,
 				.data_sets = 1,
-				.data_type = MSENSOR_DATA_S32,
+				.data_type = LEGO_SENSOR_DATA_S32,
 			},
 		},
 		.analog_mode_info = {
@@ -288,7 +288,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 */
 		.name = "ht-nxt-eopd",
 		.num_modes = 2,
-		.ms_mode_info = {
+		.mode_info = {
 			[0] = {
 				/**
 				 * [^adjusted-value]: This value is the square root of the
@@ -305,7 +305,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				.pct_max = 100,
 				.si_max = 100,
 				.data_sets = 1,
-				.data_type = MSENSOR_DATA_S32,
+				.data_type = LEGO_SENSOR_DATA_S32,
 			},
 			[1] = {
 				/**
@@ -318,7 +318,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				.pct_max = 100,
 				.si_max = 100,
 				.data_sets = 1,
-				.data_type = MSENSOR_DATA_S32,
+				.data_type = LEGO_SENSOR_DATA_S32,
 			},
 		},
 		.analog_mode_info = {
@@ -341,7 +341,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 */
 		.name = "ht-nxt-force",
 		.num_modes = 1,
-		.ms_mode_info = {
+		.mode_info = {
 			[0] = {
 				/**
 				 * @description: Raw value (non-linear)
@@ -352,7 +352,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				.pct_max = 100,
 				.si_max = 1023,
 				.data_sets = 1,
-				.data_type = MSENSOR_DATA_S32,
+				.data_type = LEGO_SENSOR_DATA_S32,
 			},
 		},
 		/*
@@ -370,7 +370,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 */
 		.name = "ht-nxt-gyro",
 		.num_modes = 1,
-		.ms_mode_info = {
+		.mode_info = {
 			[0] = {
 				/**
 				 * @description: Angular speed
@@ -384,7 +384,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				.si_min = -540,
 				.si_max = 400,
 				.data_sets = 1,
-				.data_type = MSENSOR_DATA_S32,
+				.data_type = LEGO_SENSOR_DATA_S32,
 			},
 		},
 	},
@@ -397,7 +397,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 */
 		.name = "ht-nxt-mag",
 		.num_modes = 1,
-		.ms_mode_info = {
+		.mode_info = {
 			[0] = {
 				/**
 				 * @description: Magnetic field???
@@ -408,7 +408,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				.pct_max = 100,
 				.si_max = 1023,
 				.data_sets = 1,
-				.data_type = MSENSOR_DATA_S32,
+				.data_type = LEGO_SENSOR_DATA_S32,
 			},
 		},
 	},
@@ -421,7 +421,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 */
 		.name = "ms-nxt-touch-mux",
 		.num_modes = 1,
-		.ms_mode_info = {
+		.mode_info = {
 			[0] = {
 				/**
 				 * [^values]: Values:

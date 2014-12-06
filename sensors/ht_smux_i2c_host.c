@@ -1,5 +1,5 @@
 /*
- * HiTechnic NXT Sensor Multiplexer I2C host driver for LEGO Mindstorms EV3
+ * HiTechnic NXT Sensor Multiplexer I2C host driver
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *

@@ -1,5 +1,5 @@
 /*
- * NXT I2C sensor device driver for LEGO Mindstorms EV3
+ * HiTechnic NXT Sensor Multiplexer device driver
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
@@ -35,7 +35,7 @@
  * .
  * ### sysfs attributes
  * .
- * These sensors use the [msensor class]. Follow the link for more information.
+ * These sensors use the [lego-sensor class]. Follow the link for more information.
  * .
  * This device can be found at `/sys/bus/legoev3/devices/in<N>:mux<M>:<device-name>`
  * where `<N>` is the input port on the EV3 (1 to 4), `<M>` is the input port
@@ -50,7 +50,7 @@
  * .
  * [sensor mux]: ../hitechnic-nxt-sensor-multiplexer
  * [list of supported sensors]: ../#supported-sensors
- * [msensor class]: ../msensor-class
+ * [lego-sensor class]: ../lego-sensor-class
  */
 
 #include <linux/device.h>
@@ -60,7 +60,8 @@
 #include <linux/delay.h>
 #include <linux/bug.h>
 #include <linux/legoev3/legoev3_ports.h>
-#include <linux/legoev3/msensor_class.h>
+
+#include <lego_sensor_class.h>
 
 #include "nxt_i2c_sensor.h"
 #include "ht_smux.h"
@@ -68,7 +69,7 @@
 struct ht_smux_i2c_sensor_data {
 	struct legoev3_port *in_port;
 	struct nxt_i2c_sensor_info info;
-	struct msensor_device ms;
+	struct lego_sensor_device sensor;
 	enum nxt_i2c_sensor_type type;
 };
 
@@ -77,24 +78,24 @@ extern void ht_smux_input_port_set_i2c_data_reg(struct legoev3_port *in_port,
 
 static int ht_smux_i2c_sensor_set_mode(void *context, u8 mode)
 {
-	struct ht_smux_i2c_sensor_data *sensor = context;
+	struct ht_smux_i2c_sensor_data *data = context;
 
 	/*
 	 * Only allow modes that don't require writing to the sensor.
 	 * If we get an error here, it means we did not set num_read_only_modes
 	 * correctly in nxt_i2c_sensor_defs.c
 	 * */
-	if (sensor->info.i2c_mode_info[mode].set_mode_reg) {
-		if (sensor->info.i2c_mode_info[mode].set_mode_data
-			!= sensor->info.i2c_mode_info[sensor->ms.mode].set_mode_data);
+	if (data->info.i2c_mode_info[mode].set_mode_reg) {
+		if (data->info.i2c_mode_info[mode].set_mode_data
+			!= data->info.i2c_mode_info[data->sensor.mode].set_mode_data);
 		return -EPERM;
 	}
 
-	ht_smux_input_port_set_i2c_data_reg(sensor->in_port,
-				sensor->info.i2c_mode_info[mode].read_data_reg,
-				sensor->info.ms_mode_info[mode].data_sets);
-	sensor->in_port->in_ops.set_pin1_gpio(sensor->in_port,
-				sensor->info.i2c_mode_info[mode].pin1_state);
+	ht_smux_input_port_set_i2c_data_reg(data->in_port,
+				data->info.i2c_mode_info[mode].read_data_reg,
+				data->info.mode_info[mode].data_sets);
+	data->in_port->in_ops.set_pin1_gpio(data->in_port,
+				data->info.i2c_mode_info[mode].pin1_state);
 
 	return 0;
 }
@@ -103,10 +104,10 @@ extern void ht_smux_input_port_copy_i2c_data(struct legoev3_port *in_port,
 					     u8 *dest);
 
 static void ht_smux_i2c_sensor_analog_cb(void *context) {
-	struct ht_smux_i2c_sensor_data *sensor = context;
-	u8 *raw_data = sensor->ms.mode_info[sensor->ms.mode].raw_data;
+	struct ht_smux_i2c_sensor_data *data = context;
+	u8 *raw_data = data->sensor.mode_info[data->sensor.mode].raw_data;
 
-	ht_smux_input_port_copy_i2c_data(sensor->in_port, raw_data);
+	ht_smux_input_port_copy_i2c_data(data->in_port, raw_data);
 }
 
 extern void ht_smux_input_port_set_i2c_addr(struct legoev3_port *in_port,
@@ -114,7 +115,7 @@ extern void ht_smux_input_port_set_i2c_addr(struct legoev3_port *in_port,
 
 static int ht_smux_i2c_sensor_probe(struct legoev3_port_device *pdev)
 {
-	struct ht_smux_i2c_sensor_data *sensor;
+	struct ht_smux_i2c_sensor_data *data;
 	const struct nxt_i2c_sensor_info *sensor_info;
 	struct ht_smux_i2c_sensor_platform_data *pdata = pdev->dev.platform_data;
 	int err, i;
@@ -127,29 +128,29 @@ static int ht_smux_i2c_sensor_probe(struct legoev3_port_device *pdev)
 
 	sensor_info = &nxt_i2c_sensor_defs[pdev->entry_id->driver_data];
 
-	sensor = kzalloc(sizeof(struct ht_smux_i2c_sensor_data), GFP_KERNEL);
-	if (!sensor)
+	data = kzalloc(sizeof(struct ht_smux_i2c_sensor_data), GFP_KERNEL);
+	if (!data)
 		return -ENOMEM;
 
-	sensor->in_port = pdev->port;
-	sensor->type = pdev->entry_id->driver_data;
-	memcpy(&sensor->info, sensor_info, sizeof(struct nxt_i2c_sensor_info));
+	data->in_port = pdev->port;
+	data->type = pdev->entry_id->driver_data;
+	memcpy(&data->info, sensor_info, sizeof(struct nxt_i2c_sensor_info));
 
-	strncpy(sensor->ms.name, pdev->entry_id->name, MSENSOR_NAME_SIZE);
-	strncpy(sensor->ms.port_name, dev_name(&sensor->in_port->dev),
-		MSENSOR_NAME_SIZE);
-	if (sensor->info.num_read_only_modes)
-		sensor->ms.num_modes = sensor->info.num_read_only_modes;
+	strncpy(data->sensor.name, pdev->entry_id->name, LEGO_SENSOR_NAME_SIZE);
+	strncpy(data->sensor.port_name, dev_name(&data->in_port->dev),
+		LEGO_SENSOR_NAME_SIZE);
+	if (data->info.num_read_only_modes)
+		data->sensor.num_modes = data->info.num_read_only_modes;
 	else
-		sensor->ms.num_modes = sensor->info.num_modes;
-	sensor->ms.num_view_modes = 1;
-	sensor->ms.mode_info = sensor->info.ms_mode_info;
-	sensor->ms.set_mode = ht_smux_i2c_sensor_set_mode;
-	sensor->ms.context = sensor;
-	sensor->ms.address = pdata->address >> 1;
+		data->sensor.num_modes = data->info.num_modes;
+	data->sensor.num_view_modes = 1;
+	data->sensor.mode_info = data->info.mode_info;
+	data->sensor.set_mode = ht_smux_i2c_sensor_set_mode;
+	data->sensor.context = data;
+	data->sensor.address = pdata->address >> 1;
 
-	for (i = 0; i < sensor->ms.num_modes; i++) {
-		struct msensor_mode_info *minfo = &sensor->info.ms_mode_info[i];
+	for (i = 0; i < data->sensor.num_modes; i++) {
+		struct lego_sensor_mode_info *minfo = &data->info.mode_info[i];
 
 		if (!minfo->raw_min && !minfo->raw_max)
 			minfo->raw_max = 255;
@@ -163,37 +164,37 @@ static int ht_smux_i2c_sensor_probe(struct legoev3_port_device *pdev)
 			minfo->figures = 5;
 	}
 
-	dev_set_drvdata(&pdev->dev, sensor);
+	dev_set_drvdata(&pdev->dev, data);
 
-	err = register_msensor(&sensor->ms, &pdev->dev);
+	err = register_lego_sensor(&data->sensor, &pdev->dev);
 	if (err) {
 		dev_err(&pdev->dev, "could not register sensor!\n");
-		goto err_register_msensor;
+		goto err_register_lego_sensor;
 	}
 
-	sensor->in_port->in_ops.register_analog_cb(sensor->in_port,
-		ht_smux_i2c_sensor_analog_cb, sensor);
-	ht_smux_input_port_set_i2c_addr(sensor->in_port, pdata->address,
-					sensor->info.slow);
-	ht_smux_i2c_sensor_set_mode(sensor, 0);
+	data->in_port->in_ops.register_analog_cb(data->in_port,
+		ht_smux_i2c_sensor_analog_cb, data);
+	ht_smux_input_port_set_i2c_addr(data->in_port, pdata->address,
+					data->info.slow);
+	ht_smux_i2c_sensor_set_mode(data, 0);
 
 	return 0;
 
-err_register_msensor:
-	kfree(sensor);
+err_register_lego_sensor:
+	kfree(data);
 
 	return err;
 }
 
 static int ht_smux_i2c_sensor_remove(struct legoev3_port_device *pdev)
 {
-	struct ht_smux_i2c_sensor_data *sensor = dev_get_drvdata(&pdev->dev);
+	struct ht_smux_i2c_sensor_data *data = dev_get_drvdata(&pdev->dev);
 
-	sensor->in_port->in_ops.register_analog_cb(sensor->in_port, NULL, NULL);
-	sensor->in_port->in_ops.set_pin1_gpio(sensor->in_port, 0);
-	unregister_msensor(&sensor->ms);
+	data->in_port->in_ops.register_analog_cb(data->in_port, NULL, NULL);
+	data->in_port->in_ops.set_pin1_gpio(data->in_port, 0);
+	unregister_lego_sensor(&data->sensor);
 	dev_set_drvdata(&pdev->dev, NULL);
-	kfree(sensor);
+	kfree(data);
 
 	return 0;
 }
@@ -213,7 +214,7 @@ static struct legoev3_port_device_driver ht_smux_i2c_sensor_driver = {
 };
 legoev3_port_device_driver(ht_smux_i2c_sensor_driver);
 
-MODULE_DESCRIPTION("HiTechnic NXT Sensor Multiplexer I2C sensor device driver for LEGO Mindstorms EV3");
+MODULE_DESCRIPTION("HiTechnic NXT Sensor Multiplexer I2C sensor device driver");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("legoev3:ht-smux-i2c-sensor");
+MODULE_ALIAS("lego:ht-smux-i2c-sensor");

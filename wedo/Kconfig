@@ -1,0 +1,13 @@
+# LEGO WeDo device driver
+
+menuconfig WEDO
+	tristate "LEGO WeDo support"
+	depends on USB
+	select LEGOEV3_LEGO_SENSORS
+	select LEGOEV3_DC_MOTORS
+	help
+	  Say Y here if you want to connect a LEGO WeDo hub to your USB
+	  ports.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called wedo.

@@ -1,5 +1,5 @@
 /*
- * EV3 analog sensor device driver
+ * LEGO MINDSTORMS EV3 analog sensor device driver
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *
