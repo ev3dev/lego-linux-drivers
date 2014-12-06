@@ -34,23 +34,23 @@ struct ht_smux_input_port_data {
 };
 
 static int ht_sensor_mux_send_cmd_pre_cb(struct nxt_i2c_sensor_data * sensor,
-					 u8 mode)
+					 u8 command)
 {
-	int err;
+	int ret;
 
-	err = i2c_smbus_read_byte_data(sensor->client, HT_SMUX_STATUS_REG);
-	if (err < 0)
-		return err;
+	ret = i2c_smbus_read_byte_data(sensor->client, HT_SMUX_STATUS_REG);
+	if (ret < 0)
+		return ret;
 
 	/* can't switch to detect mode from run mode */
-	if (mode == HT_SMUX_COMMAND_DETECT && !(err & HT_SMUX_STATUS_HALT))
+	if (command == HT_SMUX_COMMAND_DETECT && !(ret & HT_SMUX_STATUS_HALT))
 		return -EPERM;
 
 	/* can't change modes while detect is in progress */
-	err = i2c_smbus_read_byte_data(sensor->client, HT_SMUX_COMMAND_REG);
-	if (err < 0)
-		return err;
-	if (err == HT_SMUX_COMMAND_DETECT)
+	ret = i2c_smbus_read_byte_data(sensor->client, HT_SMUX_COMMAND_REG);
+	if (ret < 0)
+		return ret;
+	if (ret == HT_SMUX_COMMAND_DETECT)
 		return -EBUSY;
 
 	return 0;
@@ -64,7 +64,7 @@ static void ht_sensor_mux_send_cmd_post_cb(struct nxt_i2c_sensor_data *data,
 	char name[LEGOEV3_PORT_NAME_SIZE];
 	int i;
 
-	if (command == 0 /* run command */ && !ports) {
+	if (command == HT_SMUX_COMMAND_RUN && !ports) {
 		ports = kzalloc(sizeof(struct ht_smux_input_port_data)
 						* NUM_HT_SMUX_CH, GFP_KERNEL);
 		for (i = 0; i < NUM_HT_SMUX_CH; i++) {
@@ -88,7 +88,7 @@ static void ht_sensor_mux_send_cmd_post_cb(struct nxt_i2c_sensor_data *data,
 				return;
 			}
 		}
-	} else if (ports) {
+	} else if (command == HT_SMUX_COMMAND_HALT && ports) {
 		for (i = 0; i < NUM_HT_SMUX_CH; i++)
 			legoev3_port_unregister(ports[i].port);
 		data->info.callback_data = NULL;
@@ -1608,16 +1608,16 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		},
 		.i2c_cmd_info = {
 			[0] = {
-				.cmd_reg	= 0x20,
-				.cmd_data	= 0,
+				.cmd_reg	= HT_SMUX_COMMAND_REG,
+				.cmd_data	= HT_SMUX_COMMAND_HALT,
 			},
 			[1] = {
-				.cmd_reg	= 0x20,
-				.cmd_data	= 1,
+				.cmd_reg	= HT_SMUX_COMMAND_REG,
+				.cmd_data	= HT_SMUX_COMMAND_DETECT,
 			},
 			[2] = {
-				.cmd_reg	= 0x20,
-				.cmd_data	= 2,
+				.cmd_reg	= HT_SMUX_COMMAND_REG,
+				.cmd_data	= HT_SMUX_COMMAND_RUN,
 			},
 		},
 	},
