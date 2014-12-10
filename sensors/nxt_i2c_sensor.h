@@ -139,7 +139,7 @@ enum nxt_i2c_sensor_type {
 };
 
 /*
- * This table is shared by the nxt-i2c-sensor and ht-smux-i2c-sensor modules.
+ * This table is shared by the nxt-i2c-sensor and ht-nxt-smux-i2c-sensor modules.
  */
 #define NXT_I2C_SENSOR_ID_TABLE_DATA \
 { "lego-nxt-us",	LEGO_NXT_ULTRASONIC_SENSOR	}, \

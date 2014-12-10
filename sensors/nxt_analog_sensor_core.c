@@ -32,114 +32,99 @@
  * These drivers provide a [lego-sensor device], which is where all the really
  * useful attributes are.
  * .
- * You can find this device at `/sys/bus/legoev3/devices/in<N>:<device-name>`
- * where `<N>` is the number of an input port (1 to 4) and `<device-name>` is
- * the name of one of the drivers in the `nxt-analog-sensor` module (e.g.
- * `lego-nxt-sound`). NOTE: These drivers are also used by the [HiTechnic NXT
- * Sensor Multiplexer], in which case the device name will be
- * `in<N>:mux<M>:nxt-analog-host`.
- * .
- * `device_type` (read-only)
- * : Returns `nxt-analog-sensor`
- * .
- * `port_name` (read-only)
- * : Returns the name of the port this host is connected to (e.g. `in1`).
+ * You can find this device at `/sys/bus/lego/devices/<port>:<device-name>`
+ * where `<port>` is the name of the port this device is connected to and
+ * `<device-name>` is the name of one of the drivers in the `nxt-analog-sensor`
+ * module (e.g. `lego-nxt-sound`).
  * .
  * [lego-sensor device]: ../lego-sensor-class
- * [supported sensors]: ../#supported-sensors
+ * [supported sensors]: /docs/sensors#supported-sensors
  */
 
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/slab.h>
-#include <linux/legoev3/legoev3_ports.h>
-#include <linux/legoev3/ev3_input_port.h>
 
+#include <lego.h>
+#include <lego_port_class.h>
 #include <lego_sensor_class.h>
 
-#include <asm/bug.h>
-
 #include "nxt_analog_sensor.h"
-
-static void nxt_analog_sensor_cb(void *context)
-{
-	struct nxt_analog_sensor_data *as = context;
-
-	*(int*)as->info.mode_info[as->sensor.mode].raw_data =
-				as->in_port->in_ops.get_pin1_mv(as->in_port);
-}
+#include "ht_nxt_smux.h"
 
 static int nxt_analog_sensor_set_mode(void *context, u8 mode)
 {
-	struct nxt_analog_sensor_data *as = context;
+	struct nxt_analog_sensor_data *data = context;
+	struct lego_sensor_mode_info *mode_info = &data->info.mode_info[mode];
 
-	if (mode >= as->info.num_modes)
+	if (mode >= data->info.num_modes)
 		return -EINVAL;
 
-	as->in_port->in_ops.set_pin5_gpio(as->in_port,
-				as->info.analog_mode_info[mode].pin5_state);
-	if (as->info.analog_mode_info[mode].analog_cb)
-		as->in_port->in_ops.register_analog_cb(as->in_port,
-				as->info.analog_mode_info[mode].analog_cb, as);
-	else
-		as->in_port->in_ops.register_analog_cb(as->in_port,
-						nxt_analog_sensor_cb, as);
+	if (data->ldev->port->type == &ht_nxt_smux_port_type) {
+		ht_nxt_smux_port_set_pin5_gpio(data->ldev->port,
+			data->info.analog_mode_info[mode].pin5_state);
+	}
+	lego_port_set_raw_data_ptr_and_func(data->ldev->port, mode_info->raw_data,
+		lego_sensor_get_raw_data_size(mode_info),
+		data->info.analog_mode_info[mode].analog_cb, data);
 
 	return 0;
 }
 
-static int nxt_analog_sensor_probe(struct legoev3_port_device *sensor)
+static int nxt_analog_sensor_probe(struct lego_device *ldev)
 {
-	struct nxt_analog_sensor_data *as;
+	struct nxt_analog_sensor_data *data;
 	int err;
 
-	if (WARN_ON(!sensor->entry_id))
+	if (WARN_ON(!ldev->entry_id))
 		return -EINVAL;
 
-	as = kzalloc(sizeof(struct nxt_analog_sensor_data), GFP_KERNEL);
-	if (!as)
+	data = kzalloc(sizeof(struct nxt_analog_sensor_data), GFP_KERNEL);
+	if (!data)
 		return -ENOMEM;
 
-	as->in_port = sensor->port;
+	data->ldev = ldev;
 
-	memcpy(&as->info, &nxt_analog_sensor_defs[sensor->entry_id->driver_data],
+	memcpy(&data->info, &nxt_analog_sensor_defs[ldev->entry_id->driver_data],
 	       sizeof(struct nxt_analog_sensor_info));
-	strncpy(as->sensor.name, sensor->entry_id->name, LEGO_SENSOR_NAME_SIZE);
-	strncpy(as->sensor.port_name, dev_name(&as->in_port->dev),
+	strncpy(data->sensor.name, ldev->entry_id->name, LEGO_SENSOR_NAME_SIZE);
+	strncpy(data->sensor.port_name, ldev->port->port_name,
 		LEGO_SENSOR_NAME_SIZE);
-	as->sensor.num_modes	= as->info.num_modes;
-	as->sensor.mode_info	= as->info.mode_info;
-	as->sensor.set_mode		= nxt_analog_sensor_set_mode;
-	as->sensor.context		= as;
+	data->sensor.num_modes	= data->info.num_modes;
+	data->sensor.mode_info	= data->info.mode_info;
+	data->sensor.set_mode	= nxt_analog_sensor_set_mode;
+	data->sensor.context	= data;
 
-	err = register_lego_sensor(&as->sensor, &sensor->dev);
+	err = register_lego_sensor(&data->sensor, &ldev->dev);
 	if (err)
 		goto err_register_lego_sensor;
 
-	dev_set_drvdata(&sensor->dev, as);
-	nxt_analog_sensor_set_mode(as, 0);
+	dev_set_drvdata(&ldev->dev, data);
+	nxt_analog_sensor_set_mode(data, 0);
 
 	return 0;
 
 err_register_lego_sensor:
-	kfree(as);
+	kfree(data);
 
 	return err;
 }
 
-static int nxt_analog_sensor_remove(struct legoev3_port_device *sensor)
+static int nxt_analog_sensor_remove(struct lego_device *ldev)
 {
-	struct nxt_analog_sensor_data *data = dev_get_drvdata(&sensor->dev);
+	struct nxt_analog_sensor_data *data = dev_get_drvdata(&ldev->dev);
 
-	data->in_port->in_ops.set_pin5_gpio(data->in_port, EV3_INPUT_PORT_GPIO_FLOAT);
-	data->in_port->in_ops.register_analog_cb(data->in_port, NULL, NULL);
+	if (ldev->port->type == &ht_nxt_smux_port_type) {
+		ht_nxt_smux_port_set_pin5_gpio(ldev->port, LEGO_PORT_GPIO_FLOAT);
+	}
+	lego_port_set_raw_data_ptr_and_func(ldev->port, NULL, 0, NULL, NULL);
 	unregister_lego_sensor(&data->sensor);
-	dev_set_drvdata(&sensor->dev, NULL);
+	dev_set_drvdata(&ldev->dev, NULL);
 	kfree(data);
 	return 0;
 }
 
-static struct legoev3_port_device_id nxt_analog_sensor_device_ids [] = {
+static struct lego_device_id nxt_analog_sensor_device_ids [] = {
 	{
 		.name = "nxt-analog",
 		.driver_data = GENERIC_NXT_ANALOG_SENSOR,
@@ -181,22 +166,16 @@ static struct legoev3_port_device_id nxt_analog_sensor_device_ids [] = {
 
 static ssize_t sensor_names_show(struct device_driver *driver, char *buf)
 {
-	struct legoev3_port_device_id *id = nxt_analog_sensor_device_ids;
-	ssize_t total = 0;
-	int size;
+	struct lego_device_id *id = nxt_analog_sensor_device_ids;
+	int count = 0;
 
 	while (id->name[0]) {
-		size = sprintf(buf, "%s ", id->name);
-		total += size;
-		buf += size;
+		count += sprintf(buf + count, "%s ", id->name);
 		id++;
 	}
-	buf--;
-	buf[0] = '\n';
-	buf[1] = 0;
-	total++;
+	buf[count - 1] = '\n';
 
-	return total;
+	return count;
 }
 
 DRIVER_ATTR_RO(sensor_names);
@@ -208,7 +187,7 @@ static struct attribute *nxt_analog_sensor_names_attrs[] = {
 
 ATTRIBUTE_GROUPS(nxt_analog_sensor_names);
 
-struct legoev3_port_device_driver nxt_analog_sensor_driver = {
+struct lego_device_driver nxt_analog_sensor_driver = {
 	.probe	= nxt_analog_sensor_probe,
 	.remove	= nxt_analog_sensor_remove,
 	.driver = {
@@ -218,7 +197,7 @@ struct legoev3_port_device_driver nxt_analog_sensor_driver = {
 	},
 	.id_table = nxt_analog_sensor_device_ids,
 };
-legoev3_port_device_driver(nxt_analog_sensor_driver);
+lego_device_driver(nxt_analog_sensor_driver);
 
 MODULE_DESCRIPTION("LEGO MINSTORMS NXT analog sensor device driver");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");

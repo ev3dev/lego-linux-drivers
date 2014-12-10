@@ -39,13 +39,14 @@
 
 static void lego_device_release (struct device *dev)
 {
-	struct lego_device *pdev = to_lego_device(dev);
+	struct lego_device *ldev = to_lego_device(dev);
 
-	kfree(pdev);
+	kfree(ldev->dev.platform_data);
+	kfree(ldev);
 }
 
 /**
- * lego_device_register - Register a new device on the legoev3 port bus.
+ * lego_device_register - Register a new device on the lego bus.
  * @name: The name of the device.
  * @type: The type of device.
  * @port: The port the device is attached to.
@@ -73,7 +74,7 @@ struct lego_device *lego_device_register(const char *name,
 	strncpy(ldev->name, name, LEGO_NAME_SIZE);
 	ldev->port = port;
 	snprintf(init_name, LEGO_NAME_SIZE, "%s:%s", dev_name(&ldev->port->dev),
-			   ldev->name);
+		 ldev->name);
 	ldev->dev.init_name = init_name;
 	ldev->dev.id = -1;
 	ldev->dev.parent = &ldev->port->dev;
@@ -81,7 +82,7 @@ struct lego_device *lego_device_register(const char *name,
 	ldev->dev.bus = &lego_bus_type;
 	ldev->dev.release = lego_device_release;
 	if (platform_data) {
-		pdata = devm_kmalloc(&ldev->dev, platform_data_size, GFP_KERNEL);
+		pdata = kmalloc(platform_data_size, GFP_KERNEL);
 		if (!pdata) {
 			err = -ENOMEM;
 			goto err_kalloc_pdata;
@@ -211,6 +212,7 @@ static int lego_bus_match(struct device *dev, struct device_driver *drv)
 			}
 			id++;
 		}
+		return 0;
 	}
 
 	return !strcmp(ldev->name, drv->name);

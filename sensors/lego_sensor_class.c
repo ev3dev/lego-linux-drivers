@@ -15,7 +15,7 @@
 
 /*
  * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
  * or leading whitespace is important for the markdown syntax.
  */
 

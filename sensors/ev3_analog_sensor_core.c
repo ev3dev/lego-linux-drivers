@@ -52,15 +52,10 @@
 static int ev3_analog_sensor_set_mode(void *context, u8 mode)
 {
 	struct ev3_analog_sensor_data *data = context;
-	const struct ms_ev3_smux_port_type_ops *ms_ev3_smux_ops;
+	struct lego_sensor_mode_info *mode_info = &data->info.mode_info[mode];
 
-	if (data->ldev->port->type == &ms_ev3_smux_port_type) {
-		ms_ev3_smux_ops = data->ldev->port->type->ops;
-		ms_ev3_smux_ops->set_raw_data_ptr(data->ldev->port,
-			data->sensor.mode_info[mode].raw_data,
-			lego_sensor_data_size[data->sensor.mode_info[mode].data_type]);
-		return 0;
-	}
+	lego_port_set_raw_data_ptr_and_func(data->ldev->port, mode_info->raw_data,
+		lego_sensor_get_raw_data_size(mode_info), NULL, NULL);
 
 	return -EINVAL;
 }
@@ -107,12 +102,8 @@ err_register_lego_sensor:
 static int ev3_analog_sensor_remove(struct lego_device *ldev)
 {
 	struct ev3_analog_sensor_data *data = dev_get_drvdata(&ldev->dev);
-	const struct ms_ev3_smux_port_type_ops *ms_ev3_smux_ops;
 
-	if (ldev->port->type == &ms_ev3_smux_port_type) {
-		ms_ev3_smux_ops = ldev->port->type->ops;
-		ms_ev3_smux_ops->set_raw_data_ptr(ldev->port, NULL, 0);
-	}
+	lego_port_set_raw_data_ptr_and_func(ldev->port, NULL, 0, NULL, NULL);
 	unregister_lego_sensor(&data->sensor);
 	dev_set_drvdata(&ldev->dev, NULL);
 	kfree(data);

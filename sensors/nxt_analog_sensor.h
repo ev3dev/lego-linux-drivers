@@ -16,17 +16,17 @@
 #ifndef NXT_ANALOG_SENSOR_H_
 #define NXT_ANALOG_SENSOR_H_
 
-#include <linux/legoev3/ev3_input_port.h>
-
+#include <lego_port_class.h>
 #include <lego_sensor_class.h>
 
 /**
  * struct nxt_analog_sensor_mode_info
  * @pin5_state: State of input port pin 5 for this mode.
- * @analog_cb: Analog callback function. Only needed if sensor requires special scaling.
+ * @analog_cb: Analog callback function. Only needed if sensor requires special
+ * 	handling.
  */
 struct nxt_analog_sensor_mode_info {
-	enum ev3_input_port_gpio_state pin5_state;
+	enum lego_port_gpio_state pin5_state;
 	void (*analog_cb)(void *context);
 };
 
@@ -60,7 +60,7 @@ enum nxt_analog_sensor_types {
 extern const struct nxt_analog_sensor_info nxt_analog_sensor_defs[];
 
 struct nxt_analog_sensor_data {
-	struct legoev3_port *in_port;
+	struct lego_device *ldev;
 	struct lego_sensor_device sensor;
 	struct nxt_analog_sensor_info info;
 };

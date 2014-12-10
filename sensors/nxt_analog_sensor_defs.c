@@ -17,26 +17,28 @@
 
 static void nxt_touch_sensor_cb(void *context)
 {
-	struct nxt_analog_sensor_data *as = context;
+	struct nxt_analog_sensor_data *data = context;
+	u8 *raw_data = data->sensor.mode_info[data->sensor.mode].raw_data;
+	s32 pin1_mv = *(s32 *)raw_data;
 
 	/*
 	 * pin 1 is pulled up to 5V in the EV3, so anything less than close to
 	 * 5V (5000) is pressed.
 	 */
-	as->sensor.mode_info[as->sensor.mode].raw_data[0] =
-		as->in_port->in_ops.get_pin1_mv(as->in_port) < 4800 ? 1 : 0;
+	raw_data[0] = (pin1_mv < 4800) ? 1 : 0;
 }
 
 static void ht_eopd_sensor_cb(void *context)
 {
-	struct nxt_analog_sensor_data *as = context;
-	unsigned long pin1_mv;
+	struct nxt_analog_sensor_data *data = context;
+	u8 *raw_data = data->sensor.mode_info[data->sensor.mode].raw_data;
+	s32 pin1_mv = *(s32 *)raw_data;
 
 	/*
-	 * To make the sensor value linear, we have to take the square root
+	 * To make the sensor value linear, we have to take the square root.
+	 * raw_volt max is 5000, so multiply by 2 to get max return value of 100
 	 */
-	pin1_mv = as->in_port->in_ops.get_pin1_mv(as->in_port) * 2;
-	as->sensor.mode_info[as->sensor.mode].raw_data[0] = (u8)int_sqrt(pin1_mv);
+	raw_data[0] = (u8)int_sqrt(pin1_mv * 2);
 }
 
 #define MS_TOUCH_MUX_H1    4194
@@ -56,13 +58,13 @@ static void ht_eopd_sensor_cb(void *context)
 
 static void ms_touch_mux_cb(void *context)
 {
-	struct nxt_analog_sensor_data *as = context;
-	int pin1_mv;
+	struct nxt_analog_sensor_data *data = context;
+	u8 *raw_data = data->sensor.mode_info[data->sensor.mode].raw_data;
+	s32 pin1_mv = *(s32 *)raw_data;
 	u8 sensor1 = 0;
 	u8 sensor2 = 0;
 	u8 sensor3 = 0;
 
-	pin1_mv = as->in_port->in_ops.get_pin1_mv(as->in_port);
 	if (pin1_mv >= MS_TOUCH_MUX_L1 && pin1_mv < MS_TOUCH_MUX_H1) {
 		sensor1 = 1;
 	} else if (pin1_mv >= MS_TOUCH_MUX_L2 && pin1_mv < MS_TOUCH_MUX_H2) {
@@ -83,9 +85,9 @@ static void ms_touch_mux_cb(void *context)
 		sensor2 = 1;
 		sensor3 = 1;
 	}
-	as->sensor.mode_info[as->sensor.mode].raw_data[0] = sensor1;
-	as->sensor.mode_info[as->sensor.mode].raw_data[1] = sensor2;
-	as->sensor.mode_info[as->sensor.mode].raw_data[2] = sensor3;
+	raw_data[0] = sensor1;
+	raw_data[1] = sensor2;
+	raw_data[2] = sensor3;
 }
 
 /*
@@ -136,8 +138,11 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 			},
 		},
 		.analog_mode_info = {
+			[0] = {
+				.pin5_state = LEGO_PORT_GPIO_LOW,
+			},
 			[1] = {
-				.pin5_state = EV3_INPUT_PORT_GPIO_HIGH,
+				.pin5_state = LEGO_PORT_GPIO_HIGH,
 			},
 		},
 	},
@@ -222,10 +227,10 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		},
 		.analog_mode_info = {
 			[0] = {
-				.pin5_state = EV3_INPUT_PORT_GPIO_HIGH,
+				.pin5_state = LEGO_PORT_GPIO_HIGH,
 			},
 			[1] = {
-				.pin5_state = EV3_INPUT_PORT_GPIO_LOW,
+				.pin5_state = LEGO_PORT_GPIO_LOW,
 			},
 		},
 	},
@@ -272,10 +277,10 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		},
 		.analog_mode_info = {
 			[0] = {
-				.pin5_state = EV3_INPUT_PORT_GPIO_LOW,
+				.pin5_state = LEGO_PORT_GPIO_LOW,
 			},
 			[1] = {
-				.pin5_state = EV3_INPUT_PORT_GPIO_HIGH,
+				.pin5_state = LEGO_PORT_GPIO_HIGH,
 			},
 		},
 	},
@@ -323,11 +328,11 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		},
 		.analog_mode_info = {
 			[0] = {
-				.pin5_state = EV3_INPUT_PORT_GPIO_HIGH,
+				.pin5_state = LEGO_PORT_GPIO_HIGH,
 				.analog_cb = ht_eopd_sensor_cb,
 			},
 			[1] = {
-				.pin5_state = EV3_INPUT_PORT_GPIO_LOW,
+				.pin5_state = LEGO_PORT_GPIO_LOW,
 				.analog_cb = ht_eopd_sensor_cb,
 			},
 		},

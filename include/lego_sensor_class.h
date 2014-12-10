@@ -24,7 +24,7 @@
 #define LEGO_SENSOR_MODE_NAME_SIZE	15
 #define LEGO_SENSOR_UNITS_SIZE		4
 #define LEGO_SENSOR_MODE_MAX		8
-#define LEGO_SENSOR_RAW_DATA_SIZE	128
+#define LEGO_SENSOR_RAW_DATA_SIZE	32
 
 /*
  * Be sure to add the size to lego_sensor_data_size[] when adding values
@@ -101,7 +101,7 @@ struct lego_sensor_cmd_info {
  * @set_poll_ms: Set the polling period in milliseconds (optional).
  * @context: Pointer to data structure used by callbacks.
  * @fw_version: Firmware version of sensor (optional).
- * @i2c_addr: I2C address if this is an I2C sensor (optional).
+ * @address: I2C or other address (optional).
  * @dev: The device data structure.
  */
 struct lego_sensor_device {
@@ -134,5 +134,10 @@ extern int register_lego_sensor(struct lego_sensor_device *, struct device *);
 extern void unregister_lego_sensor(struct lego_sensor_device *);
 
 extern struct class lego_sensor_class;
+
+static inline int lego_sensor_get_raw_data_size(struct lego_sensor_mode_info *mode_info)
+{
+	return mode_info->data_sets * lego_sensor_data_size[mode_info->data_type];
+}
 
 #endif /* _LEGO_SENSOR_CLASS_H_ */

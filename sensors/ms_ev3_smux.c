@@ -60,14 +60,10 @@ static const char **ms_ev3_smux_sensor_names[] = {
  * struct ms_ev3_smux_data - Driver data for an input port on the mux
  * @port: The lego_port class device for this mux port.
  * @sensor: The sensor attached to this port.
- * @raw_data: Buffer for storing data from the sensor.
- * @raw_data_size: Number of bytes in raw_data.
  */
 struct ms_ev3_smux_data {
 	struct lego_port_device port;
 	struct lego_device *sensor;
-	u8 *raw_data;
-	uint raw_data_size;
 };
 
 static const struct device_type ms_ev3_smux_device_type[] = {
@@ -133,40 +129,25 @@ void ms_ev3_smux_poll_cb(struct nxt_i2c_sensor_data *data)
 {
 	struct ms_ev3_smux_data *smux = data->info.callback_data;
 
-	if (!smux->sensor || !smux->raw_data)
+	if (!smux->sensor || !smux->port.raw_data)
 		return;
 
 	i2c_smbus_read_i2c_block_data(data->client, MS_EV3_SMUX_DATA_REG,
-		smux->raw_data_size, smux->raw_data);
+		smux->port.raw_data_size, smux->port.raw_data);
+	lego_port_call_raw_data_func(&smux->port);
 }
 
-static int ms_ev3_smux_set_uart_sensor_mode(struct lego_port_device *port,
-					    u8 mode)
+int ms_ev3_smux_set_uart_sensor_mode(struct lego_port_device *port, u8 mode)
 {
 	struct nxt_i2c_sensor_data *data = port->context;
 
 	return i2c_smbus_write_byte_data(data->client, MS_EV3_SMUX_MODE_REG,
 					 mode);
 }
-
-static void ms_ev3_smux_set_raw_data_ptr(struct lego_port_device *port,
-					 u8 *raw_data, uint size)
-{
-	struct ms_ev3_smux_data *smux =
-			container_of(port, struct ms_ev3_smux_data, port);
-
-	smux->raw_data = raw_data;
-	smux->raw_data_size = size;
-}
-
-static const struct ms_ev3_smux_port_type_ops ms_ev3_smux_port_type_ops = {
-	.set_uart_sensor_mode	= ms_ev3_smux_set_uart_sensor_mode,
-	.set_raw_data_ptr	= ms_ev3_smux_set_raw_data_ptr,
-};
+EXPORT_SYMBOL_GPL(ms_ev3_smux_set_uart_sensor_mode);
 
 const struct lego_port_type ms_ev3_smux_port_type = {
 	.name	= "ms-ev3-smux-port",
-	.ops	= &ms_ev3_smux_port_type_ops,
 };
 EXPORT_SYMBOL_GPL(ms_ev3_smux_port_type);
 

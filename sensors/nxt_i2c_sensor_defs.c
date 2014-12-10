@@ -19,140 +19,9 @@
 #include <linux/legoev3/servo_motor_class.h>
 
 #include "nxt_i2c_sensor.h"
-#include "ht_smux.h"
+#include "ht_nxt_smux.h"
 #include "ms_ev3_smux.h"
 
-/* HiTechnic NXT Sensor Multiplexer implementation */
-
-static const struct device_type ht_smux_input_port_device_type = {
-	.name	= "ht-smux-input-port",
-};
-
-struct ht_smux_input_port_data {
-	struct legoev3_port *port;
-	legoev3_analog_cb_func_t cb;
-};
-
-static int ht_sensor_mux_send_cmd_pre_cb(struct nxt_i2c_sensor_data * sensor,
-					 u8 command)
-{
-	int ret;
-
-	ret = i2c_smbus_read_byte_data(sensor->client, HT_SMUX_STATUS_REG);
-	if (ret < 0)
-		return ret;
-
-	/* can't switch to detect mode from run mode */
-	if (command == HT_SMUX_COMMAND_DETECT && !(ret & HT_SMUX_STATUS_HALT))
-		return -EPERM;
-
-	/* can't change modes while detect is in progress */
-	ret = i2c_smbus_read_byte_data(sensor->client, HT_SMUX_COMMAND_REG);
-	if (ret < 0)
-		return ret;
-	if (ret == HT_SMUX_COMMAND_DETECT)
-		return -EBUSY;
-
-	return 0;
-}
-
-static void ht_sensor_mux_send_cmd_post_cb(struct nxt_i2c_sensor_data *data,
-					   u8 command)
-{
-	struct ht_smux_input_port_data *ports = data->info.callback_data;
-	struct ht_smux_input_port_platform_data pdata;
-	char name[LEGOEV3_PORT_NAME_SIZE];
-	int i;
-
-	if (command == HT_SMUX_COMMAND_RUN && !ports) {
-		ports = kzalloc(sizeof(struct ht_smux_input_port_data)
-						* NUM_HT_SMUX_CH, GFP_KERNEL);
-		for (i = 0; i < NUM_HT_SMUX_CH; i++) {
-			pdata.client = data->client;
-			pdata.channel = i;
-			pdata.sensor_data = data->sensor.mode_info[0].raw_data;
-			sprintf(name, "%s:mux", dev_name(&data->in_port->dev));
-
-			data->info.callback_data = ports;
-			ports[i].port = legoev3_port_register(name, i + 1,
-				&ht_smux_input_port_device_type, &data->client->dev,
-				&pdata, sizeof(struct ht_smux_input_port_platform_data));
-
-			if (IS_ERR(ports[i].port)) {
-				dev_err(&data->client->dev,
-					"Failed to register HiTechnic Sensor Multiplexer input port. %ld\n",
-					PTR_ERR(ports[i].port));
-				for (i--; i >= 0; i--)
-					legoev3_port_unregister(ports[i].port);
-				kfree(ports);
-				return;
-			}
-		}
-	} else if (command == HT_SMUX_COMMAND_HALT && ports) {
-		for (i = 0; i < NUM_HT_SMUX_CH; i++)
-			legoev3_port_unregister(ports[i].port);
-		data->info.callback_data = NULL;
-		kfree(ports);
-	}
-}
-
-static void ht_sensor_mux_poll_cb(struct nxt_i2c_sensor_data *data)
-{
-	struct ht_smux_input_port_data *ports = data->info.callback_data;
-	int mode = data->sensor.mode;
-	u8 *raw_data = data->sensor.mode_info[mode].raw_data;
-	int i;
-
-	/* i2c can only transfer up to 32 bytes at a time */
-	i2c_smbus_read_i2c_block_data(data->client, HT_SMUX_COMMAND_REG,
-		32, raw_data);
-	/* only read ch1 and ch2 i2c data if an i2c sensor is connected */
-	if ((raw_data[HT_SMUX_CH1_CONFIG_REG - HT_SMUX_COMMAND_REG]
-		& HT_SMUX_CONFIG_I2C) || (raw_data[HT_SMUX_CH2_CONFIG_REG
-		- HT_SMUX_COMMAND_REG] & HT_SMUX_CONFIG_I2C))
-	{
-		i2c_smbus_read_i2c_block_data(data->client,
-			HT_SMUX_CH1_I2C_DATA_REG, 32, raw_data + 32);
-	}
-	/* only read ch3 and ch4 i2c data if an i2c sensor is connected */
-	if ((raw_data[HT_SMUX_CH3_CONFIG_REG - HT_SMUX_COMMAND_REG]
-		& HT_SMUX_CONFIG_I2C) || (raw_data[HT_SMUX_CH4_CONFIG_REG
-		- HT_SMUX_COMMAND_REG] & HT_SMUX_CONFIG_I2C))
-	{
-		i2c_smbus_read_i2c_block_data(data->client,
-			HT_SMUX_CH3_I2C_DATA_REG, 32, raw_data + 64);
-	}
-	if (ports) {
-		for (i = 0; i < NUM_HT_SMUX_CH; i++) {
-			if (ports[i].cb && ports[i].port)
-				ports[i].cb(ports[i].port);
-		}
-	}
-}
-
-static void ht_sensor_mux_remove_cb(struct nxt_i2c_sensor_data *data)
-{
-	struct ht_smux_input_port_data *ports = data->info.callback_data;
-	int i;
-
-	if (ports) {
-		for (i = 0; i < NUM_HT_SMUX_CH; i++)
-			legoev3_port_unregister(ports[i].port);
-		data->info.callback_data = NULL;
-		kfree(ports);
-	}
-}
-
-void ht_sensor_mux_register_poll_cb(struct i2c_client *client,
-				    enum ht_smux_channel channel,
-				    legoev3_analog_cb_func_t cb)
-{
-	struct nxt_i2c_sensor_data *data = i2c_get_clientdata(client);
-	struct ht_smux_input_port_data *ports = data->info.callback_data;
-
-	ports[channel].cb = cb;
-}
-EXPORT_SYMBOL_GPL(ht_sensor_mux_register_poll_cb);
 
 /* mindsensors.com 8-channel servo motor controller implementation */
 
@@ -1517,10 +1386,11 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id		= "HiTechnc",
 		.product_id		= "SensrMUX",
 		.num_modes		= 1,
-		.ops.send_cmd_pre_cb	= ht_sensor_mux_send_cmd_pre_cb,
-		.ops.send_cmd_post_cb	= ht_sensor_mux_send_cmd_post_cb,
-		.ops.poll_cb		= ht_sensor_mux_poll_cb,
-		.ops.remove_cb		= ht_sensor_mux_remove_cb,
+		.ops.send_cmd_pre_cb	= ht_nxt_smux_send_cmd_pre_cb,
+		.ops.send_cmd_post_cb	= ht_nxt_smux_send_cmd_post_cb,
+		.ops.poll_cb		= ht_nxt_smux_poll_cb,
+		.ops.probe_cb		= ht_nxt_smux_probe_cb,
+		.ops.remove_cb		= ht_nxt_smux_remove_cb,
 		.mode_info = {
 			[0] = {
 				/**
@@ -1608,16 +1478,16 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		},
 		.i2c_cmd_info = {
 			[0] = {
-				.cmd_reg	= HT_SMUX_COMMAND_REG,
-				.cmd_data	= HT_SMUX_COMMAND_HALT,
+				.cmd_reg	= HT_NXT_SMUX_COMMAND_REG,
+				.cmd_data	= HT_NXT_SMUX_COMMAND_HALT,
 			},
 			[1] = {
-				.cmd_reg	= HT_SMUX_COMMAND_REG,
-				.cmd_data	= HT_SMUX_COMMAND_DETECT,
+				.cmd_reg	= HT_NXT_SMUX_COMMAND_REG,
+				.cmd_data	= HT_NXT_SMUX_COMMAND_DETECT,
 			},
 			[2] = {
-				.cmd_reg	= HT_SMUX_COMMAND_REG,
-				.cmd_data	= HT_SMUX_COMMAND_RUN,
+				.cmd_reg	= HT_NXT_SMUX_COMMAND_REG,
+				.cmd_data	= HT_NXT_SMUX_COMMAND_RUN,
 			},
 		},
 	},

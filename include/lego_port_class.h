@@ -22,17 +22,20 @@
 #define LEGO_PORT_NAME_SIZE	30
 
 /**
+ * Used by sensor drivers to get notified when a port has new raw data available.
+ */
+typedef void (*lego_port_notify_raw_data_func_t)(void *context);
+
+/**
  * struct lego_port_type
  *
  * A static lego_port_type should be declared by each driver that registers
  * a port. This info is used by other driver to get information from the port.
  *
  * @name: The name of the type.
- * @ops: Pointer to type-defined callback operations.
  */
 struct lego_port_type {
 	const char *name;
-	const void *ops;
 };
 
 /**
@@ -55,6 +58,11 @@ struct lego_port_mode_info {
  * @get_status: Callback to get the status string. (optional)
  * @context: Pointer to pass back to callback functions.
  * @dev: The device data structure.
+ * @raw_data: Pointer to raw data storage.
+ * @raw_data_size: Size of raw_data in bytes.
+ * @notify_raw_data_func: Registered by sensor drivers to be notified of new
+ * 	raw data.
+ * @notify_raw_data_context: Send to notify_raw_data_func as parameter.
  */
 struct lego_port_device {
 	char port_name[LEGO_PORT_NAME_SIZE + 1];
@@ -68,6 +76,10 @@ struct lego_port_device {
 	void *context;
 	/* private */
 	struct device dev;
+	u8 *raw_data;
+	unsigned raw_data_size;
+	lego_port_notify_raw_data_func_t notify_raw_data_func;
+	void *notify_raw_data_context;
 };
 
 #define to_lego_port_device(_dev) container_of(_dev, struct lego_port_device, dev)
@@ -76,6 +88,31 @@ extern int lego_port_register(struct lego_port_device *lego_port,
 			      struct device *parent);
 extern void lego_port_unregister(struct lego_port_device *lego_port);
 
+static inline void
+lego_port_set_raw_data_ptr_and_func(struct lego_port_device *port,
+				    u8 *raw_data, unsigned raw_data_size,
+				    lego_port_notify_raw_data_func_t func,
+				    void *context)
+{
+	port->raw_data = raw_data;
+	port->raw_data_size = raw_data_size;
+	port->notify_raw_data_func = func;
+	port->notify_raw_data_context = context;
+}
+
+static inline void
+lego_port_call_raw_data_func(struct lego_port_device *port)
+{
+	if (port->notify_raw_data_func)
+		port->notify_raw_data_func(port->notify_raw_data_context);
+}
+
 extern struct class lego_port_class;
+
+enum lego_port_gpio_state {
+	LEGO_PORT_GPIO_FLOAT,
+	LEGO_PORT_GPIO_LOW,
+	LEGO_PORT_GPIO_HIGH,
+};
 
 #endif /* _LEGO_PORT_CLASS_H_ */

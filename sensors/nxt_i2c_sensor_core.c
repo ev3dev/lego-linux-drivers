@@ -76,7 +76,6 @@
 #include <lego_sensor_class.h>
 
 #include "nxt_i2c_sensor.h"
-#include "ht_smux.h"
 
 #define NXT_I2C_MIN_POLL_MS 50
 
@@ -203,8 +202,8 @@ void nxt_i2c_sensor_poll_work(struct work_struct *work)
 		sensor->info.ops.poll_cb(sensor);
 	else
 		i2c_smbus_read_i2c_block_data(sensor->client,
-			i2c_mode_info->read_data_reg, mode_info->data_sets
-			* lego_sensor_data_size[mode_info->data_type],
+			i2c_mode_info->read_data_reg,
+			lego_sensor_get_raw_data_size(mode_info),
 			mode_info->raw_data);
 
 	if (sensor->poll_ms && !delayed_work_pending(&sensor->poll_work))
