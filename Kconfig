@@ -112,6 +112,6 @@ config LEGOEV3_DC_MOTORS
 	  Select Y to enable support for DC motors (includes LEGO Power
 	  Functions motors).
 
-source "drivers/legoev3/wedo/Kconfig"
+source "drivers/lego/wedo/Kconfig"
 
 endif #LEGO_DRIVERS
