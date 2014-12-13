@@ -70,7 +70,9 @@
 #include <linux/err.h>
 #include <linux/gpio.h>
 #include <linux/ioport.h>
-#include <linux/legoev3/legoev3_ports.h>
+#include <linux/platform_data/legoev3.h>
+
+#include "legoev3_ports.h"
 
 struct legoev3_ports_data {
 	struct platform_device *pdev;

@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  */
 
-#include <linux/legoev3/dc_motor_class.h>
+#include <dc_motor_class.h>
 
 #include "wedo_port.h"
 

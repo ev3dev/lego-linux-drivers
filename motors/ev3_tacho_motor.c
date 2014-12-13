@@ -50,13 +50,12 @@
 #include <linux/interrupt.h>
 #include <linux/random.h>
 
-#include <linux/legoev3/legoev3_ports.h>
-#include <linux/legoev3/ev3_output_port.h>
-#include <linux/legoev3/tacho_motor_class.h>
+#include "../ev3/legoev3_ports.h"
+#include "../ev3/ev3_output_port.h"
 
 #include <mach/time.h>
 
-#include <asm/bug.h>
+#include <tacho_motor_class.h>
 
 #define TACHO_MOTOR_POLL_NS	2000000	/* 2 msec */
 

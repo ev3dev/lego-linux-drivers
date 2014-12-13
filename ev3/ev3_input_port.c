@@ -92,9 +92,11 @@
 #include <linux/workqueue.h>
 #include <linux/gpio.h>
 #include <linux/i2c-legoev3.h>
-#include <linux/legoev3/legoev3_analog.h>
-#include <linux/legoev3/legoev3_ports.h>
-#include <linux/legoev3/ev3_input_port.h>
+#include <linux/platform_data/legoev3.h>
+
+#include "legoev3_analog.h"
+#include "legoev3_ports.h"
+#include "ev3_input_port.h"
 
 #include <mach/mux.h>
 

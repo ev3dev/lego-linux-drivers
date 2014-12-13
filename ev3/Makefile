@@ -1,6 +1,7 @@
 # EV3
 
 obj-$(CONFIG_LEGOEV3_ANALOG)		+= legoev3_analog.o
+obj-$(CONFIG_BATTERY_LEGOEV3)		+= legoev3_battery.o
 obj-$(CONFIG_LEGOEV3_BLUETOOTH)		+= legoev3_bluetooth.o
 obj-$(CONFIG_LEGOEV3_DEV_PORTS)		+= legoev3_ports.o
 obj-$(CONFIG_LEGOEV3_DEV_PORTS)		+= ev3_input_port.o

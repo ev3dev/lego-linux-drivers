@@ -75,7 +75,8 @@
 
 #include <linux/device.h>
 #include <linux/module.h>
-#include <linux/legoev3/dc_motor_class.h>
+
+#include <dc_motor_class.h>
 
 const char* dc_motor_command_names[] = {
 	[DC_MOTOR_COMMAND_RUN]		= "run",

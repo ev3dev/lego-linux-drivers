@@ -18,8 +18,8 @@
 
 #include <linux/device.h>
 #include <linux/types.h>
-#include <linux/legoev3/dc_motor_class.h>
 
+#include <dc_motor_class.h>
 #include <lego_sensor_class.h>
 
 #include "wedo_port.h"

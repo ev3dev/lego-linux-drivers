@@ -15,13 +15,14 @@
  */
 
 #include <linux/i2c.h>
-#include <linux/legoev3/legoev3_ports.h>
-#include <linux/legoev3/servo_motor_class.h>
+
+#include <servo_motor_class.h>
 
 #include "nxt_i2c_sensor.h"
 #include "ht_nxt_smux.h"
 #include "ms_ev3_smux.h"
 
+#include "../ev3/legoev3_ports.h"
 
 /* mindsensors.com 8-channel servo motor controller implementation */
 

@@ -41,9 +41,11 @@
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/slab.h>
-#include <linux/legoev3/legoev3_ports.h>
-#include <linux/legoev3/ev3_output_port.h>
-#include <linux/legoev3/dc_motor_class.h>
+
+#include <dc_motor_class.h>
+
+#include "../ev3/legoev3_ports.h"
+#include "../ev3/ev3_output_port.h"
 
 struct rcx_motor_data {
 	struct dc_motor_device motor;

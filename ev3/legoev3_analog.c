@@ -40,9 +40,11 @@
 #include <linux/device.h>
 #include <linux/err.h>
 #include <linux/hrtimer.h>
-#include <linux/legoev3/legoev3_analog.h>
+#include <linux/platform_data/legoev3.h>
 
 #include <mach/legoev3.h>
+
+#include "legoev3_analog.h"
 
 #define DRVNAME "legoev3-analog"
 

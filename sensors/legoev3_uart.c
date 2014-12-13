@@ -56,7 +56,8 @@
 #include <linux/string.h>
 #include <linux/tty.h>
 #if (defined CONFIG_LEGOEV3_DEV_PORTS || defined CONFIG_LEGOEV3_DEV_PORTS_MODULE)
-#include <linux/legoev3/legoev3_ports.h>
+#include <linux/platform_data/legoev3.h>
+#include "../ev3/legoev3_ports.h"
 #endif
 
 #include <lego_sensor_class.h>

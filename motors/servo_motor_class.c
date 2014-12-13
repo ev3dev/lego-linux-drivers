@@ -87,7 +87,8 @@
 
 #include <linux/device.h>
 #include <linux/module.h>
-#include <linux/legoev3/servo_motor_class.h>
+
+#include <servo_motor_class.h>
 
 const char *servo_motor_command_values[] = {
 	[SERVO_MOTOR_COMMAND_RUN]	= "run",

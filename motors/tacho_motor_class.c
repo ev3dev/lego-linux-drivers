@@ -146,8 +146,9 @@
 
 #include <linux/device.h>
 #include <linux/module.h>
-#include <linux/legoev3/dc_motor_class.h>
-#include <linux/legoev3/tacho_motor_class.h>
+
+#include <dc_motor_class.h>
+#include <tacho_motor_class.h>
 
 struct tacho_motor_mode_item {
 	const char *name;

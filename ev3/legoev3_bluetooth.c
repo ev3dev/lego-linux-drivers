@@ -1,5 +1,5 @@
 /*
- * On-board bluetooth support for LEGO Mindstorms EV3
+ * On-board bluetooth support for LEGO MINDSTORMS EV3
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *
@@ -30,7 +30,7 @@
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
 #include <linux/pwm.h>
-#include <linux/legoev3/legoev3_bluetooth.h>
+#include <linux/platform_data/legoev3.h>
 
 #define SLOW_CLOCK_PERIOD_NS (NSEC_PER_SEC / 32768)
 
@@ -211,7 +211,7 @@ struct platform_driver legoev3_bluetooth_driver = {
 };
 module_platform_driver(legoev3_bluetooth_driver);
 
-MODULE_DESCRIPTION("Bluetooth driver for LEGO Mindstorms EV3");
+MODULE_DESCRIPTION("Bluetooth driver for LEGO MINDSTORMS EV3");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:legoev3-bluetooth");

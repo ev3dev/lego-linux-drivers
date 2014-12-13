@@ -70,12 +70,13 @@
 #include <linux/i2c.h>
 #include <linux/i2c-legoev3.h>
 #include <linux/workqueue.h>
-#include <linux/legoev3/legoev3_ports.h>
-#include <linux/legoev3/ev3_input_port.h>
 
 #include <lego_sensor_class.h>
 
 #include "nxt_i2c_sensor.h"
+
+#include "../ev3/legoev3_ports.h"
+#include "../ev3/ev3_input_port.h"
 
 #define NXT_I2C_MIN_POLL_MS 50
 

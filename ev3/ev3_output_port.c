@@ -90,12 +90,15 @@
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
-#include <linux/legoev3/dc_motor_class.h>
-#include <linux/legoev3/ev3_output_port.h>
-#include <linux/legoev3/legoev3_analog.h>
-#include <linux/legoev3/legoev3_ports.h>
+#include <linux/platform_data/legoev3.h>
 
 #include <mach/mux.h>
+
+#include <dc_motor_class.h>
+
+#include "ev3_output_port.h"
+#include "legoev3_analog.h"
+#include "legoev3_ports.h"
  
 #define OUTPUT_PORT_POLL_NS	10000000			/* 10 msec */
 #define SETTLE_CNT		(20000000/OUTPUT_PORT_POLL_NS)	/* 20 msec */

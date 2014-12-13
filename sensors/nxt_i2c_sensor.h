@@ -16,9 +16,9 @@
 #ifndef NXT_I2C_SENSOR_H_
 #define NXT_I2C_SENSOR_H_
 
-#include <linux/legoev3/ev3_input_port.h>
-
 #include <lego_sensor_class.h>
+
+#include "../ev3/ev3_input_port.h"
 
 #define NXT_I2C_ID_STR_LEN 8
 

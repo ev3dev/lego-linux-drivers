@@ -62,8 +62,9 @@
 
 #include <linux/module.h>
 #include <linux/slab.h>
-#include <linux/legoev3/legoev3_ports.h>
-#include <linux/legoev3/ev3_input_port.h>
+
+#include "../ev3/legoev3_ports.h"
+#include "../ev3/ev3_input_port.h"
 
 static int nxt_i2c_host_probe(struct legoev3_port_device *host)
 {
