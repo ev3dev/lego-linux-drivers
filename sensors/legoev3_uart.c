@@ -57,7 +57,7 @@
 #include <linux/tty.h>
 #if (defined CONFIG_LEGOEV3_DEV_PORTS || defined CONFIG_LEGOEV3_DEV_PORTS_MODULE)
 #include <linux/platform_data/legoev3.h>
-#include "../ev3/legoev3_ports.h"
+#include <lego_port_class.h>
 #endif
 
 #include <lego_sensor_class.h>
@@ -212,7 +212,7 @@ enum legoev3_uart_info_flags {
 struct legoev3_uart_port_data {
 	struct tty_struct *tty;
 #if (defined CONFIG_LEGOEV3_DEV_PORTS || defined CONFIG_LEGOEV3_DEV_PORTS_MODULE)
-	struct legoev3_port_device *in_port;
+	struct lego_port_device *in_port;
 #endif
 	struct lego_sensor_device sensor;
 	struct work_struct rx_data_work;
@@ -366,13 +366,13 @@ static ssize_t legoev3_uart_write_data(void *context, char *data, loff_t off,
 	return count;
 }
 #if (defined CONFIG_LEGOEV3_DEV_PORTS || defined CONFIG_LEGOEV3_DEV_PORTS_MODULE)
-int legoev3_uart_match_input_port(struct device *dev, void *data)
+int legoev3_uart_match_input_port(struct device *dev, const void *data)
 {
-	struct legoev3_port_device *pdev = to_legoev3_port_device(dev);
+	struct lego_port_device *pdev = to_lego_port_device(dev);
 	struct ev3_input_port_platform_data *pdata;
-	char *tty_name = data;
+	const char *tty_name = data;
 
-	if (strcmp(pdev->dev.type->name, "ev3-input-port"))
+	if (strcmp(pdev->dev.type->name, "legoev3-input-port"))
 		return 0;
 	pdata = dev->platform_data;
 
@@ -397,12 +397,12 @@ static void legoev3_uart_send_ack(struct work_struct *work)
 		 * We use the name of the input port instead of the tty to make
 		 * it easier to know which sensor is which.
 		 */
-		in_port_dev = bus_find_device(&legoev3_bus_type, NULL,
-					      port->tty->name,
-					      legoev3_uart_match_input_port);
+		in_port_dev = class_find_device(&lego_port_class, NULL,
+						port->tty->name,
+						legoev3_uart_match_input_port);
 		if (in_port_dev) {
-			port->in_port = to_legoev3_port_device(in_port_dev);
-			strncpy(port->sensor.port_name, dev_name(&port->in_port->dev),
+			port->in_port = to_lego_port_device(in_port_dev);
+			strncpy(port->sensor.port_name, port->in_port->port_name,
 				LEGO_SENSOR_NAME_SIZE);
 		} else
 #endif

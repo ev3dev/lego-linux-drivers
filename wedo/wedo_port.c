@@ -149,9 +149,8 @@ static int register_wedo_motor (struct wedo_port_device *wpd)
 	strncpy(wmd->md.name, "wedo-motor", DC_MOTOR_NAME_SIZE);
 	strncpy(wmd->md.port_name, wpd->port_name, DC_MOTOR_NAME_SIZE);
 
-	memcpy(&wmd->md.ops, &wedo_motor_ops, sizeof(struct dc_motor_ops));
-
-	wmd->md.ops.context = wmd;
+	wmd->md.ops = &wedo_motor_ops;
+	wmd->md.context = wmd;
 
 	err = register_dc_motor(&wmd->md, &wpd->dev);
 	if (err)

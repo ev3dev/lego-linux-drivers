@@ -29,15 +29,15 @@ struct legoev3_analog_device;
 extern struct legoev3_analog_device *get_legoev3_analog(void);
 extern void put_legoev3_analog(struct legoev3_analog_device *);
 extern u16 legoev3_analog_in_pin1_value(struct legoev3_analog_device *,
-					enum ev3_input_port_id);
+					enum legoev3_input_port_id);
 extern u16 legoev3_analog_in_pin6_value(struct legoev3_analog_device *,
-					enum ev3_input_port_id);
+					enum legoev3_input_port_id);
 extern u16 legoev3_analog_out_pin5_value(struct legoev3_analog_device *,
-					 enum ev3_output_port_id);
+					 enum legoev3_output_port_id);
 extern u16 legoev3_analog_batt_volt_value(struct legoev3_analog_device *);
 extern u16 legoev3_analog_batt_curr_value(struct legoev3_analog_device *);
 extern void legoev3_analog_register_in_cb(struct legoev3_analog_device *,
-					  enum ev3_input_port_id,
+					  enum legoev3_input_port_id,
 					  legoev3_analog_cb_func_t, void *);
 
 extern struct spi_driver legoev3_analog_driver;

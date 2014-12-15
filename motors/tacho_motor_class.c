@@ -208,7 +208,7 @@ static ssize_t tacho_motor_show_port_name(struct device *dev,
 {
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
 
-	return snprintf(buf, TACHO_MOTOR_PORT_NAME_SIZE, "%s\n", tm->port_name);
+	return snprintf(buf, LEGO_PORT_NAME_SIZE, "%s\n", tm->port_name);
 }
 
 static ssize_t tacho_motor_show_type(struct device *dev, struct device_attribute *attr, char *buf)
@@ -959,9 +959,9 @@ static int tacho_motor_dev_uevent(struct device *dev, struct kobj_uevent_env *en
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
 	int ret;
 
-	ret = add_uevent_var(env, "PORT=%s", tm->port_name);
+	ret = add_uevent_var(env, "PORT_NAME=%s", tm->port_name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent PORT\n");
+		dev_err(dev, "failed to add uevent PORT_NAME\n");
 		return ret;
 	}
 

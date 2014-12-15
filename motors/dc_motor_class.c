@@ -122,10 +122,10 @@ enum hrtimer_restart dc_motor_class_ramp_timer_handler(struct hrtimer *timer)
 				? DC_MOTOR_DIRECTION_FORWARD
 				: DC_MOTOR_DIRECTION_REVERSE;
 
-	err = motor->ops.set_direction(motor->ops.context, direction );
+	err = motor->ops->set_direction(motor->context, direction );
 	WARN_ONCE(err, "Failed to set direction.");
 
-	err = motor->ops.set_duty_cycle(motor->ops.context,
+	err = motor->ops->set_duty_cycle(motor->context,
 					abs(motor->current_duty_cycle));
 	WARN_ONCE(err, "Failed to set duty cycle.");
 
@@ -248,7 +248,7 @@ static ssize_t duty_cycle_sp_store(struct device *dev,
 		return -EINVAL;
 	motor->target_duty_cycle = value;
 
-	if (motor->ops.get_command(motor->ops.context) == DC_MOTOR_COMMAND_RUN)
+	if (motor->ops->get_command(motor->context) == DC_MOTOR_COMMAND_RUN)
 		hrtimer_start(&motor->ramp_timer, ktime_set(0, 0), HRTIMER_MODE_REL);
 
 	return count;
@@ -262,8 +262,8 @@ static ssize_t duty_cycle_show(struct device *dev,
 	unsigned direction;
 	unsigned polarity;
 
-	duty_cycle = motor->ops.get_duty_cycle(motor->ops.context);
-	direction = motor->ops.get_direction(motor->ops.context);
+	duty_cycle = motor->ops->get_duty_cycle(motor->context);
+	direction = motor->ops->get_direction(motor->context);
 	polarity = motor->polarity;
 
 	duty_cycle *= ((direction == DC_MOTOR_DIRECTION_FORWARD) ? 1 : -1);
@@ -280,7 +280,7 @@ static ssize_t commands_show(struct device *dev, struct device_attribute *attr,
 	int i;
 	int count = 0;
 
-	supported_commands = motor->ops.get_supported_commands(motor->ops.context);
+	supported_commands = motor->ops->get_supported_commands(motor->context);
 	for (i = 0; i < NUM_DC_MOTOR_COMMANDS; i++) {
 		if (supported_commands & BIT(i))
 			count += sprintf(buf + count, "%s ",
@@ -296,7 +296,7 @@ static ssize_t command_show(struct device *dev, struct device_attribute *attr,
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
 	int ret;
 
-	ret = motor->ops.get_command(motor->ops.context);
+	ret = motor->ops->get_command(motor->context);
 	if (ret < 0)
 		return ret;
 	return sprintf(buf, "%s\n", dc_motor_command_names[ret]);
@@ -309,12 +309,12 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 	unsigned supported_commands;
 	int i, err;
 
-	supported_commands = motor->ops.get_supported_commands(motor->ops.context);
+	supported_commands = motor->ops->get_supported_commands(motor->context);
 	for (i = 0; i < NUM_DC_MOTOR_COMMANDS; i++) {
 		if (!sysfs_streq(buf, dc_motor_command_names[i]))
 			continue;
 		if (supported_commands & BIT(i)) {
-			err = motor->ops.set_command(motor->ops.context,
+			err = motor->ops->set_command(motor->context,
 				i);
 			if (err)
 				return err;
@@ -411,12 +411,12 @@ static int dc_motor_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
 
 	ret = add_uevent_var(env, "NAME=%s", motor->name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent DEVNAME\n");
+		dev_err(dev, "failed to add uevent NAME\n");
 		return ret;
 	}
-	add_uevent_var(env, "PORT=%s", motor->port_name);
+	add_uevent_var(env, "PORT_NAME=%s", motor->port_name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent PORT\n");
+		dev_err(dev, "failed to add uevent PORT_NAME\n");
 		return ret;
 	}
 

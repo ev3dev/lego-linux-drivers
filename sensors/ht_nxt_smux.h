@@ -82,10 +82,6 @@ enum ht_nxt_smux_detected_sensor {
 	NUM_HT_NXT_SMUX_SENSOR_TYPE
 };
 
-extern void ht_nxt_smux_port_set_pin1_gpio(struct lego_port_device *port,
-					   enum lego_port_gpio_state state);
-extern void ht_nxt_smux_port_set_pin5_gpio(struct lego_port_device *port,
-					   enum lego_port_gpio_state state);
 extern void ht_nxt_smux_port_set_i2c_addr(struct lego_port_device *port, u8 addr, bool slow);
 extern void ht_nxt_smux_port_set_i2c_data_reg(struct lego_port_device *port, u8 reg, u8 count);
 
@@ -99,6 +95,6 @@ struct ht_nxt_smux_i2c_sensor_platform_data {
 	u8 address;
 };
 
-extern const struct lego_port_type ht_nxt_smux_port_type;
+extern struct device_type ht_nxt_smux_port_type;
 
 #endif /* HT_NXT_SMUX_H_ */

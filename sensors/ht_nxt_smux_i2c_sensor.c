@@ -68,15 +68,15 @@ struct ht_nxt_smux_i2c_sensor_data {
 static int ht_nxt_smux_i2c_sensor_set_mode(void *context, u8 mode)
 {
 	struct ht_nxt_smux_i2c_sensor_data *data = context;
+	struct lego_port_device *port = data->ldev->port;
 	struct lego_sensor_mode_info *mode_info = &data->info.mode_info[mode];
 	struct nxt_i2c_sensor_mode_info *i2c_mode_info = data->info.i2c_mode_info;
 
-	ht_nxt_smux_port_set_i2c_data_reg(data->ldev->port,
-		i2c_mode_info[mode].read_data_reg,
-		data->info.mode_info[mode].data_sets);
-	ht_nxt_smux_port_set_pin1_gpio(data->ldev->port,
-		i2c_mode_info[mode].pin1_state);
-	lego_port_set_raw_data_ptr_and_func(data->ldev->port, mode_info->raw_data,
+	ht_nxt_smux_port_set_i2c_data_reg(port, i2c_mode_info[mode].read_data_reg,
+					  data->info.mode_info[mode].data_sets);
+	port->nxt_i2c_ops->set_pin1_gpio(port->context,
+					 i2c_mode_info[mode].pin1_state);
+	lego_port_set_raw_data_ptr_and_func(port, mode_info->raw_data,
 		lego_sensor_get_raw_data_size(mode_info), NULL, NULL);
 
 	return 0;
@@ -159,7 +159,8 @@ static int ht_nxt_smux_i2c_sensor_remove(struct lego_device *ldev)
 	struct ht_nxt_smux_i2c_sensor_data *data = dev_get_drvdata(&ldev->dev);
 
 	lego_port_set_raw_data_ptr_and_func(ldev->port, NULL, 0, NULL, NULL);
-	ht_nxt_smux_port_set_pin1_gpio(data->ldev->port, 0);
+	ldev->port->nxt_i2c_ops->set_pin1_gpio(ldev->port->context,
+					       LEGO_PORT_GPIO_FLOAT);
 	unregister_lego_sensor(&data->sensor);
 	dev_set_drvdata(&ldev->dev, NULL);
 	kfree(data);

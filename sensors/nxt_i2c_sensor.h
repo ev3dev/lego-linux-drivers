@@ -16,9 +16,8 @@
 #ifndef NXT_I2C_SENSOR_H_
 #define NXT_I2C_SENSOR_H_
 
+#include <lego_port_class.h>
 #include <lego_sensor_class.h>
-
-#include "../ev3/ev3_input_port.h"
 
 #define NXT_I2C_ID_STR_LEN 8
 
@@ -64,7 +63,7 @@ struct nxt_i2c_sensor_mode_info {
 	u8 set_mode_reg;
 	u8 set_mode_data;
 	u8 read_data_reg;
-	enum ev3_input_port_gpio_state pin1_state;
+	enum lego_port_gpio_state pin1_state;
 };
 
 /**
@@ -168,7 +167,7 @@ extern const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[];
 
 struct nxt_i2c_sensor_data {
 	struct i2c_client *client;
-	struct legoev3_port *in_port;
+	struct lego_port_device *in_port;
 	struct nxt_i2c_sensor_info info;
 	struct lego_sensor_device sensor;
 	struct delayed_work poll_work;

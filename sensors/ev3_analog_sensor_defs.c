@@ -13,7 +13,24 @@
  * GNU General Public License for more details.
  */
 
+#include <lego.h>
+#include <lego_port_class.h>
+
 #include "ev3_analog_sensor.h"
+#include "ms_ev3_smux.h"
+
+static void lego_ev3_touch_sensor_cb(void *context)
+{
+	struct ev3_analog_sensor_data *data = context;
+	u8 *raw_data = data->info.mode_info[data->sensor.mode].raw_data;
+	s32 raw_value = *(s32 *)raw_data;
+
+	/* mindsensors.com EV3 Sensor Multiplexer returns scaled value */
+	if (data->ldev->port->dev.type == &ms_ev3_smux_port_type)
+		return;
+
+	raw_data[0] = (raw_value > 250) ? 1 : 0;
+}
 
 /*
  * Documentation is automatically generated from this struct, so formatting is
@@ -70,6 +87,11 @@ const struct ev3_analog_sensor_info ev3_analog_sensor_defs[] = {
 				 */
 				.name = "TOUCH",
 				.data_sets = 1,
+			},
+		},
+		.analog_mode_info = {
+			[0] = {
+				.analog_cb = lego_ev3_touch_sensor_cb,
 			},
 		},
 	},

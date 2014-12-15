@@ -121,5 +121,4 @@ const struct dc_motor_ops wedo_motor_ops = {
 	.set_direction		= wedo_set_direction,
 	.get_duty_cycle		= wedo_get_duty_cycle,
 	.set_duty_cycle		= wedo_set_duty_cycle,
-	.context		= NULL,
 };

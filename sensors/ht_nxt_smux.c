@@ -14,6 +14,7 @@
  */
 
 #include<linux/i2c.h>
+#include <linux/slab.h>
 
 #include <lego.h>
 #include <lego_port_class.h>
@@ -70,7 +71,7 @@ static const char* ht_nxt_smux_supported_i2c_sensor_names[] = {
 	[HT_NXT_SMUX_SENSOR_IR_SEEKER_V2]	= "ht-ir-seeker-v2",
 };
 
-const struct lego_port_type ht_nxt_smux_port_type = {
+struct device_type ht_nxt_smux_port_type = {
 	.name	= "ht-nxt-smux-port",
 };
 EXPORT_SYMBOL_GPL(ht_nxt_smux_port_type);
@@ -96,11 +97,9 @@ static inline bool ht_nxt_smux_is_running(struct nxt_i2c_sensor_data *data)
 		& HT_NXT_SMUX_STATUS_BUSY;
 }
 
-int ht_nxt_smux_port_set_config_bit(struct lego_port_device *port, u8 bit,
+int ht_nxt_smux_port_set_config_bit(struct ht_nxt_smux_port_data * data, u8 bit,
 				    bool value)
 {
-	struct ht_nxt_smux_port_data * data =
-		container_of(port, struct ht_nxt_smux_port_data, port);
 	int offset = ht_nxt_smux_config_reg[data->channel];
 	int old, new;
 
@@ -119,21 +118,31 @@ int ht_nxt_smux_port_set_config_bit(struct lego_port_device *port, u8 bit,
 	return i2c_smbus_write_byte_data(data->i2c->client, offset, new);
 }
 
-void ht_nxt_smux_port_set_pin1_gpio(struct lego_port_device *port,
-				    enum lego_port_gpio_state state)
+static int ht_nxt_smux_port_set_pin1_gpio(void *context,
+					  enum lego_port_gpio_state state)
 {
-	ht_nxt_smux_port_set_config_bit(port, HT_NXT_SMUX_CONFIG_9V_EN,
-					state == LEGO_PORT_GPIO_HIGH);
-}
-EXPORT_SYMBOL_GPL(ht_nxt_smux_port_set_pin1_gpio);
+	struct ht_nxt_smux_port_data * data = context;
 
-void ht_nxt_smux_port_set_pin5_gpio(struct lego_port_device *port,
-				    enum lego_port_gpio_state state)
-{
-	ht_nxt_smux_port_set_config_bit(port, HT_NXT_SMUX_CONFIG_DIG0,
+	return ht_nxt_smux_port_set_config_bit(data, HT_NXT_SMUX_CONFIG_9V_EN,
 					state == LEGO_PORT_GPIO_HIGH);
 }
-EXPORT_SYMBOL_GPL(ht_nxt_smux_port_set_pin5_gpio);
+
+static struct lego_port_nxt_i2c_ops ht_nxt_smux_port_nxt_i2c_ops = {
+	.set_pin1_gpio = ht_nxt_smux_port_set_pin1_gpio,
+};
+
+static int ht_nxt_smux_port_set_pin5_gpio(void *context,
+					  enum lego_port_gpio_state state)
+{
+	struct ht_nxt_smux_port_data * data = context;
+
+	return ht_nxt_smux_port_set_config_bit(data, HT_NXT_SMUX_CONFIG_DIG0,
+					state == LEGO_PORT_GPIO_HIGH);
+}
+
+static struct lego_port_nxt_analog_ops ht_nxt_smux_port_nxt_analog_ops = {
+	.set_pin5_gpio = ht_nxt_smux_port_set_pin5_gpio,
+};
 
 void ht_nxt_smux_port_set_i2c_addr(struct lego_port_device *port, u8 addr,
 				   bool slow)
@@ -145,7 +154,7 @@ void ht_nxt_smux_port_set_i2c_addr(struct lego_port_device *port, u8 addr,
 	i2c_smbus_write_byte_data(data->i2c->client,
 		offset + HT_NXT_SMUX_CFG_I2C_ADDR,
 		addr << 1);
-	ht_nxt_smux_port_set_config_bit(port, HT_NXT_SMUX_CONFIG_SLOW, slow);
+	ht_nxt_smux_port_set_config_bit(data, HT_NXT_SMUX_CONFIG_SLOW, slow);
 }
 EXPORT_SYMBOL_GPL(ht_nxt_smux_port_set_i2c_addr);
 
@@ -189,7 +198,6 @@ int ht_nxt_smux_register_i2c_sensor(struct ht_nxt_smux_port_data *data,
 	struct lego_device *new_sensor;
 
 	pdata.address = address;
-
 	new_sensor = lego_device_register(name,
 		&ht_nxt_smux_i2c_sensor_device_type, &data->port,
 		&pdata, sizeof(pdata));
@@ -252,8 +260,8 @@ static int ht_nxt_smux_port_set_mode(void *context, u8 mode)
 	struct ht_nxt_smux_port_data *data = context;
 	int ret;
 
-	ret = ht_nxt_smux_port_set_config_bit(&data->port,
-		HT_NXT_SMUX_CONFIG_I2C, mode == HT_NXT_SMUX_PORT_MODE_I2C);
+	ret = ht_nxt_smux_port_set_config_bit(data, HT_NXT_SMUX_CONFIG_I2C,
+		mode == HT_NXT_SMUX_PORT_MODE_I2C);
 	if (ret < 0)
 		return ret;
 
@@ -420,17 +428,19 @@ int ht_nxt_smux_probe_cb(struct nxt_i2c_sensor_data *data)
 	data->info.callback_data = ports;
 	for (i = 0; i < NUM_HT_NXT_SMUX_CH; i++) {
 		snprintf(ports[i].port.port_name, LEGO_PORT_NAME_SIZE,
-			 "%s:mux%d", dev_name(&data->in_port->dev), i + 1);
-		ports[i].port.type = &ht_nxt_smux_port_type;
+			 "%s:mux%d", data->in_port->port_name, i + 1);
 		ports[i].port.num_modes = NUM_HT_NXT_SMUX_PORT_MODES;
 		ports[i].port.mode_info = ht_nxt_smux_port_mode_info;
 		ports[i].port.set_mode = ht_nxt_smux_port_set_mode;
 		ports[i].port.set_device = ht_nxt_smux_port_set_device;
 		ports[i].port.context = &ports[i];
+		ports[i].port.nxt_analog_ops = &ht_nxt_smux_port_nxt_analog_ops;
+		ports[i].port.nxt_i2c_ops = &ht_nxt_smux_port_nxt_i2c_ops;
 		ports[i].i2c = data;
 		ports[i].channel = i;
 
-		ret = lego_port_register(&ports[i].port, &data->client->dev);
+		ret = lego_port_register(&ports[i].port, &ht_nxt_smux_port_type,
+					 &data->client->dev);
 		if (ret) {
 			dev_err(&data->client->dev,
 				"Failed to register ht-nxt-smux input port. (%d)\n",

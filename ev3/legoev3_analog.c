@@ -148,7 +148,7 @@ struct legoev3_analog_device {
 	struct tasklet_struct callback_tasklet;
 	u8 num_connected;
 	bool read_nxt_color[NUM_EV3_PORT_IN];
-	enum ev3_input_port_id current_nxt_color_port;
+	enum legoev3_input_port_id current_nxt_color_port;
 	enum nxt_color_read_state current_nxt_color_read_state;
 	u16 nxt_color_raw_data[NUM_EV3_PORT_IN][NUM_NXT_COLOR_READ_STATE];
 };
@@ -271,7 +271,7 @@ u16 legoev3_analog_get_value_for_ch(struct legoev3_analog_device *alg, u8 channe
 }
 
 u16 legoev3_analog_in_pin1_value(struct legoev3_analog_device *alg,
-				 enum ev3_input_port_id id)
+				 enum legoev3_input_port_id id)
 {
 	if (id >= NUM_EV3_PORT_IN) {
 		dev_crit(&alg->dev, "%s: id %d >= available ports (%d)\n",
@@ -283,7 +283,7 @@ u16 legoev3_analog_in_pin1_value(struct legoev3_analog_device *alg,
 EXPORT_SYMBOL_GPL(legoev3_analog_in_pin1_value);
 
 u16 legoev3_analog_in_pin6_value(struct legoev3_analog_device *alg,
-				 enum ev3_input_port_id id)
+				 enum legoev3_input_port_id id)
 {
 	if (id >= NUM_EV3_PORT_IN) {
 		dev_crit(&alg->dev, "%s: id %d >= available ports (%d)\n",
@@ -295,7 +295,7 @@ u16 legoev3_analog_in_pin6_value(struct legoev3_analog_device *alg,
 EXPORT_SYMBOL_GPL(legoev3_analog_in_pin6_value);
 
 u16 legoev3_analog_out_pin5_value(struct legoev3_analog_device *alg,
-				  enum ev3_output_port_id id)
+				  enum legoev3_output_port_id id)
 {
 	if (id >= NUM_EV3_PORT_OUT) {
 		dev_crit(&alg->dev, "%s: id %d >= available ports (%d)\n",
@@ -334,7 +334,7 @@ void legoev3_analog_register_cb_for_ch(struct legoev3_analog_device *alg,
 }
 
 void legoev3_analog_register_in_cb(struct legoev3_analog_device *alg,
-				   enum ev3_input_port_id id,
+				   enum legoev3_input_port_id id,
 				   legoev3_analog_cb_func_t function,
 				   void *context)
 {

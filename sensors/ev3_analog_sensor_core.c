@@ -55,7 +55,8 @@ static int ev3_analog_sensor_set_mode(void *context, u8 mode)
 	struct lego_sensor_mode_info *mode_info = &data->info.mode_info[mode];
 
 	lego_port_set_raw_data_ptr_and_func(data->ldev->port, mode_info->raw_data,
-		lego_sensor_get_raw_data_size(mode_info), NULL, NULL);
+		lego_sensor_get_raw_data_size(mode_info),
+		data->info.analog_mode_info[mode].analog_cb, data);
 
 	return -EINVAL;
 }

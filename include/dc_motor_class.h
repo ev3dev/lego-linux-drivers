@@ -57,7 +57,6 @@ enum dc_motor_direction {
  * 	negative error;
  * @get_duty_cycle: Returns the current duty cycle in percent (0 to 100).
  * @set_duty_cycle: Sets the duty cycle. Returns 0 on success or negative error.
- * @context: Pointer to data structure passed back to the functions.
  */
 struct dc_motor_ops {
 	unsigned (*get_supported_commands)(void* context);
@@ -67,7 +66,6 @@ struct dc_motor_ops {
 	int (*set_direction)(void *context, enum dc_motor_direction direction);
 	unsigned (*get_duty_cycle)(void *context);
 	int (*set_duty_cycle)(void *context, unsigned duty_cycle);
-	void *context;
 };
 
 /**
@@ -75,6 +73,7 @@ struct dc_motor_ops {
  * @name: The name of dc controller.
  * @port_name: The name of the port that this motor is connected to.
  * @ops: Function pointers to the controller that registered this dc.
+ * @context: Pointer to data structure passed back to the ops functions.
  * @dev: The device struct used by the class.
  * @ramp_up_ms: The time to ramp up from 0 to 100% in milliseconds.
  * @ramp_up_ms: The time to ramp down from 100 to 0% in milliseconds.
@@ -85,7 +84,8 @@ struct dc_motor_ops {
 struct dc_motor_device {
 	char name[DC_MOTOR_NAME_SIZE + 1];
 	char port_name[DC_MOTOR_NAME_SIZE + 1];
-	struct dc_motor_ops ops;
+	const struct dc_motor_ops *ops;
+	void *context;
 	struct device dev;
 	enum dc_motor_polarity polarity;
 	unsigned ramp_up_ms;

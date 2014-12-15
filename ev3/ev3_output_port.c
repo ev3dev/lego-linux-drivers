@@ -14,74 +14,6 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
-/**
- * DOC: website
- *
- * EV3 Output Port Driver
- *
- * Each of the four output [ports on the EV3] is treated a separate device in
- * the ev3dev kernel. The `ev3-output-port` driver is used by other drivers to
- * control the low-level hardware of the port (gpios, pwm and analog/digital
- * converters).
- * .
- * This driver is where the auto-detection for the output ports happens. The
- * pins of the port are monitored for changes in voltage. When a change is
- * detected, a series of tests are made to determine what was plugged in. The
- * port then configures itself to the correct mode and loads additional drivers.
- * Currently, this driver is only able to automatically detect the EV3/NXT
- * Large motor and the EV3 Medium motor. For other motor (and LED, etc.) types
- * the port mode must be manually set. See the sysfs attribute descriptions
- * below for more detailed information.
- * .
- * ### sysfs attributes
- * .
- * The output ports sysfs devices can be found at `/sys/bus/legoev3/devices/out<Z>`
- * where `<Z>` is the letter identifier of the port (A to D) as indicated on
- * the EV3 itself.
- * .
- * `modes` (read-only)
- * : Returns a space separated list of all of the possible modes.
- * .
- * .    - `auto`: (Default) Use auto-detection to detect when motors are
- *        connected and disconnected. The appropriate motor device/driver
- *        will be loaded.
- *      - `ev3-tacho-motor`: Force the port to load the [ev3-tacho-motor] device.
- *        The driver will default to the Large Motor settings.
- *      - `rcx-motor`: Force the port to load the [rcx-motor] device. This can
- *        be use with MINDSTORMS RCX motor, Power Functions motors and any other
- *        'plain' DC motor. By 'plain', we mean the motor is just a motor
- *        without any kind of controller.
- *      - `rxc-led`: Force the port to load the [rcx-led] device. This can be
- *        used with the MINDSTORMS RCX LED, Power Functions LEDs or any other
- *        LED connected to pins 1 and 2 of the output port.
- *      - `raw`: Exports gpios, pwm and analog/digital converter values to sysfs
- *        so that they can be controlled directly.
- * .
- * `mode` (read/write)
- * : Reading returns the currently selected mode. Writing sets the mode.
- * .
- * `state` (read/only)
- * : For modes other than `auto`, it will return the same value as `mode`. In
- *   `auto` mode it returns the mode that was determined by the auto-detection
- *   algorithm. If no sensor is connected, it will return `no-motor`. If an
- *   unsupported device is connected (like a sensor), it will return `error`.
- * .
- * `pin5_mv` (read-only)
- * : Only present in `raw` mode. Returns the reading of the analog/digital
- *   converter on pin 1 in mV (0 to 5000).
- * .
- * [ports on the EV3]: ../legoev3-ports
- * [ev3-tacho-motor]: ../ev3-tacho-motor
- * [rcx-motor]: ../rcx-motor
- * [rcx-led]: ../rcx-led
- */
-
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/gpio.h>
@@ -94,9 +26,10 @@
 
 #include <mach/mux.h>
 
+#include <lego.h>
+#include <lego_port_class.h>
 #include <dc_motor_class.h>
 
-#include "ev3_output_port.h"
 #include "legoev3_analog.h"
 #include "legoev3_ports.h"
  
@@ -123,6 +56,27 @@
 #define PIN5_MINITACHO_LOW2   250 /* [mV] a mini tacho motor is pulling low when pin5 floats */
 
 #define PIN5_NEAR_GND         100 /* [mV] lower  values mean that connection 5 is shorted to ground */
+
+/* resistor ids for EV3 output devices */
+enum ev3_out_dev_id {
+	EV3_OUT_DEV_ID_01,
+	EV3_OUT_DEV_ID_02,
+	EV3_OUT_DEV_ID_03,
+	EV3_OUT_DEV_ID_04,
+	EV3_OUT_DEV_ID_05,
+	EV3_OUT_DEV_ID_06,
+	EV3_OUT_DEV_ID_07,
+	EV3_OUT_DEV_ID_08,
+	EV3_OUT_DEV_ID_09,
+	EV3_OUT_DEV_ID_10,
+	EV3_OUT_DEV_ID_11,
+	EV3_OUT_DEV_ID_12,
+	EV3_OUT_DEV_ID_13,
+	EV3_OUT_DEV_ID_14,
+	NUM_EV3_OUT_DEV_ID,
+	EV3_OUT_DEV_ID_ERR = -1
+};
+
 
 enum gpio_index {
 	GPIO_PIN1,
@@ -165,7 +119,7 @@ static const char* ev3_output_port_state_names[] = {
 	[MOTOR_ERR]		= "error",
 };
 
-enum ev3_output_port_mode {
+enum legoev3_output_port_mode {
 	EV3_OUTPUT_PORT_MODE_AUTO,
 	EV3_OUTPUT_PORT_MODE_TACHO_MOTOR,
 	EV3_OUTPUT_PORT_MODE_DC_MOTOR,
@@ -174,26 +128,54 @@ enum ev3_output_port_mode {
 	NUM_EV3_OUTPUT_PORT_MODE
 };
 
-static const char *ev3_output_port_mode_names[] = {
-	[EV3_OUTPUT_PORT_MODE_AUTO]		= "auto",
-	[EV3_OUTPUT_PORT_MODE_TACHO_MOTOR]	= "ev3-tacho-motor",
-	[EV3_OUTPUT_PORT_MODE_DC_MOTOR]		= "rcx-motor",
-	[EV3_OUTPUT_PORT_MODE_LED]		= "rcx-led",
-	[EV3_OUTPUT_PORT_MODE_RAW]		= "raw",
-};
+/*
+ * Documentation is automatically generated from this struct, so formatting is
+ * very important. Make sure any new sensors have the same layout. The comments
+ * are also parsed to provide more information for the documentation. The
+ * parser can be found in the ev3dev-kpkg repository.
+ */
 
-static struct attribute *legoev3_output_port_device_type_attrs[] = {
-	NULL
-};
-
-struct attribute_group legoev3_output_port_device_type_attr_grp = {
-	.attrs	= legoev3_output_port_device_type_attrs,
-};
-
-const struct attribute_group *ev3_motor_device_type_attr_groups[] = {
-	&legoev3_port_device_type_attr_grp,
-	&legoev3_output_port_device_type_attr_grp,
-	NULL
+static const struct lego_port_mode_info ev3_output_port_mode_info[] = {
+	[EV3_OUTPUT_PORT_MODE_AUTO] = {
+		/**
+		 * @description: (Default) Use auto-detection to detect when
+		 * motors are connected and disconnected. The appropriate motor
+		 * device will be loaded.
+		 */
+		.name	= "auto",
+	},
+	[EV3_OUTPUT_PORT_MODE_TACHO_MOTOR] = {
+		/**
+		 * @description: Force the port to load the [ev3-tacho-motor]
+		 * device. The driver will default to the Large Motor settings.
+		 */
+		.name	= "ev3-tacho-motor",
+	},
+	[EV3_OUTPUT_PORT_MODE_DC_MOTOR] = {
+		/**
+		 * @description: Force the port to load the [rcx-motor] device.
+		 * This can be use with MINDSTORMS RCX motor, Power Functions
+		 * motors and any other 'plain' DC motor. By 'plain', we mean
+		 * the motor is just a motor without any kind of controller.
+		 */
+		.name	= "rcx-motor",
+	},
+	[EV3_OUTPUT_PORT_MODE_LED] = {
+		/**
+		 * @description: Force the port to load the [rcx-led] device.
+		 * This can be used with the MINDSTORMS RCX LED, Power Functions
+		 * LEDs or any other LED connected to pins 1 and 2 of the output
+		 * port.
+		 */
+		.name	= "rcx-led",
+	},
+	[EV3_OUTPUT_PORT_MODE_RAW] = {
+		/**
+		 * @description: Exports gpios, pwm and analog/digital converter
+		 * values to sysfs so that they can be controlled directly.
+		 */
+		.name	= "raw",
+	},
 };
 
 struct device_type ev3_motor_device_types[] = {
@@ -205,19 +187,15 @@ struct device_type ev3_motor_device_types[] = {
 	 */
 	[EV3_OUTPUT_PORT_MODE_AUTO] = {
 		.name	= "ev3-tacho-motor",
-		.groups	= ev3_motor_device_type_attr_groups,
 	},
 	[EV3_OUTPUT_PORT_MODE_TACHO_MOTOR] = {
 		.name	= "ev3-tacho-motor",
-		.groups	= ev3_motor_device_type_attr_groups,
 	},
 	[EV3_OUTPUT_PORT_MODE_DC_MOTOR] = {
 		.name	= "rcx-motor",
-		.groups	= ev3_motor_device_type_attr_groups,
 	},
 	[EV3_OUTPUT_PORT_MODE_LED] = {
 		.name	= "rcx-led",
-		.groups	= ev3_motor_device_type_attr_groups,
 	},
 };
 
@@ -240,13 +218,12 @@ struct device_type ev3_motor_device_types[] = {
  * @pin5_low_mv: Used in the polling loop to track pin 5 voltage.
  * @tacho_motor_type: The type of motor currently connected.
  * @motor: Pointer to the motor device that is connected to the output port.
- * @mode: The current mode of the output port.
  * @command: The current command for the motor driver of the output port.
  * @polarity: The current polarity for the motor driver of the output port.
  */
 struct ev3_output_port_data {
-	enum ev3_output_port_id id;
-	struct legoev3_port *out_port;
+	enum legoev3_output_port_id id;
+	struct lego_port_device out_port;
 	struct legoev3_analog_device *analog;
 	struct pwm_device *pwm;
 	struct gpio gpio[NUM_GPIO];
@@ -258,8 +235,7 @@ struct ev3_output_port_data {
 	unsigned pin5_float_mv;
 	unsigned pin5_low_mv;
 	enum motor_type tacho_motor_type;
-	struct legoev3_port_device *motor;
-	enum ev3_output_port_mode mode;
+	struct lego_device *motor;
 	enum dc_motor_command command;
 	enum dc_motor_direction direction;
 };
@@ -354,6 +330,16 @@ static int ev3_output_port_set_duty_cycle(void *context, unsigned duty)
 	return pwm_config(data->pwm, period * duty / 100, period);
 }
 
+static struct dc_motor_ops ev3_output_port_motor_ops = {
+	.get_supported_commands	= ev3_ouput_port_get_supported_commands,
+	.get_command		= ev3_output_port_get_command,
+	.set_command		= ev3_output_port_set_command,
+	.get_direction		= ev3_output_port_get_direction,
+	.set_direction		= ev3_output_port_set_direction,
+	.set_duty_cycle		= ev3_output_port_set_duty_cycle,
+	.get_duty_cycle		= ev3_output_port_get_duty_cycle,
+};
+
 void ev3_output_port_float(struct ev3_output_port_data *data)
 {
 	gpio_direction_output(data->gpio[GPIO_PIN1].gpio, 0);
@@ -368,46 +354,33 @@ void ev3_output_port_register_motor(struct work_struct *work)
 {
 	struct ev3_output_port_data *data =
 			container_of(work, struct ev3_output_port_data, work);
-	struct legoev3_port_device *motor;
+	struct lego_device *motor;
 	struct ev3_motor_platform_data pdata;
 
-	if ((data->mode == EV3_OUTPUT_PORT_MODE_AUTO
+	if ((data->out_port.mode == EV3_OUTPUT_PORT_MODE_AUTO
 	     && (data->tacho_motor_type == MOTOR_NONE
 		 || data->tacho_motor_type == MOTOR_ERR
 		 || data->tacho_motor_type >= NUM_MOTOR))
-	    || data->mode == EV3_OUTPUT_PORT_MODE_RAW)
+	    || data->out_port.mode == EV3_OUTPUT_PORT_MODE_RAW)
 	{
-		dev_err(&data->out_port->dev,
+		dev_err(&data->out_port.dev,
 			"Trying to register an invalid motor type on %s.\n",
-			dev_name(&data->out_port->dev));
+			dev_name(&data->out_port.dev));
 		return;
 	}
 
-	pdata.out_port = data->out_port;
-
-	pdata.motor_ops.get_supported_commands =
-					ev3_ouput_port_get_supported_commands;
-	pdata.motor_ops.get_command = ev3_output_port_get_command;
-	pdata.motor_ops.set_command = ev3_output_port_set_command;
-	pdata.motor_ops.get_direction = ev3_output_port_get_direction;
-	pdata.motor_ops.set_direction = ev3_output_port_set_direction;
-	pdata.motor_ops.set_duty_cycle = ev3_output_port_set_duty_cycle;
-	pdata.motor_ops.get_duty_cycle = ev3_output_port_get_duty_cycle;
-	pdata.motor_ops.context = data;
 	pdata.tacho_int_gpio  = data->gpio[GPIO_PIN5_INT].gpio;
 	pdata.tacho_dir_gpio  = data->gpio[GPIO_PIN6_DIR].gpio;
 	pdata.motor_type      = data->tacho_motor_type;
 
-	motor = legoev3_port_device_register(
-		ev3_motor_device_types[data->mode].name,
-		&ev3_motor_device_types[data->mode],
-		&data->out_port->dev, &pdata,
-		sizeof(struct ev3_motor_platform_data),
-		data->out_port);
+	motor = lego_device_register(
+		ev3_motor_device_types[data->out_port.mode].name,
+		&ev3_motor_device_types[data->out_port.mode],
+		&data->out_port, &pdata, sizeof(struct ev3_motor_platform_data));
 	if (IS_ERR(motor)) {
-		dev_err(&data->out_port->dev,
+		dev_err(&data->out_port.dev,
 			"Could not register motor on port %s.\n",
-			dev_name(&data->out_port->dev));
+			dev_name(&data->out_port.dev));
 		return;
 	}
 
@@ -421,7 +394,7 @@ void ev3_output_port_unregister_motor(struct work_struct *work)
 	struct ev3_output_port_data *data =
 			container_of(work, struct ev3_output_port_data, work);
 
-	legoev3_port_device_unregister(data->motor);
+	lego_device_unregister(data->motor);
 	data->tacho_motor_type = MOTOR_NONE;
 	data->motor = NULL;
 }
@@ -433,7 +406,7 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 	unsigned new_pin_state_flags = 0;
 	unsigned new_pin5_mv = 0;
 
-	if (data->mode != EV3_OUTPUT_PORT_MODE_AUTO)
+	if (data->out_port.mode != EV3_OUTPUT_PORT_MODE_AUTO)
 		return HRTIMER_NORESTART;
 
 	hrtimer_forward_now(timer, ktime_set(0, OUTPUT_PORT_POLL_NS));
@@ -627,10 +600,10 @@ void ev3_output_port_enable_raw_mode(struct ev3_output_port_data *data)
 {
 	int err, i;
 
-	err = sysfs_create_groups(&data->out_port->dev.kobj,
+	err = sysfs_create_groups(&data->out_port.dev.kobj,
 						ev3_output_port_raw_groups);
 	if (err)
-		dev_err(&data->out_port->dev,
+		dev_err(&data->out_port.dev,
 				"Failed to create raw mode sysfs groups.");
 	/* TODO: would be nice to create symlinks from exported gpios to out_port */
 	for (i = 0; i < NUM_GPIO; i++)
@@ -641,60 +614,23 @@ void ev3_output_port_disable_raw_mode(struct ev3_output_port_data * data)
 {
 	int i;
 
-	sysfs_remove_groups(&data->out_port->dev.kobj, ev3_output_port_raw_groups);
+	sysfs_remove_groups(&data->out_port.dev.kobj, ev3_output_port_raw_groups);
 	for (i = 0; i < NUM_GPIO; i++)
 		gpio_unexport(data->gpio[i].gpio);
 	ev3_output_port_float(data);
 }
 
-static ssize_t modes_show(struct device *dev, struct device_attribute *attr,
-			  char *buf)
+static int ev3_output_port_set_mode(void *context, u8 mode)
 {
-	int i;
-	int count = 0;
-
-	for (i = 0; i < NUM_EV3_OUTPUT_PORT_MODE; i++)
-		count += sprintf(buf + count, "%s ",
-			ev3_output_port_mode_names[i]);
-	buf[count - 1] = '\n';
-
-	return count;
-}
-
-static ssize_t mode_show(struct device *dev, struct device_attribute *attr,
-			 char *buf)
-{
-	struct ev3_output_port_data *data = dev_get_drvdata(dev);
-
-	return sprintf(buf, "%s\n", ev3_output_port_mode_names[data->mode]);
-}
-
-static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
-			  const char *buf, size_t count)
-{
-	struct ev3_output_port_data *data = dev_get_drvdata(dev);
-	enum ev3_output_port_mode new_mode = -1;
-	int i;
-
-	for (i = 0; i < NUM_EV3_OUTPUT_PORT_MODE; i++) {
-		if (sysfs_streq(buf, ev3_output_port_mode_names[i])) {
-			new_mode = i;
-			break;
-		}
-	}
-	if (new_mode == -1)
-		return -EINVAL;
-	if (new_mode == data->mode)
-		return count;
+	struct ev3_output_port_data *data = context;
 
 	cancel_work_sync(&data->work);
 
 	if (data->motor)
 		ev3_output_port_unregister_motor(&data->work);
-	if (data->mode == EV3_OUTPUT_PORT_MODE_RAW)
+	if (data->out_port.mode == EV3_OUTPUT_PORT_MODE_RAW)
 		ev3_output_port_disable_raw_mode(data);
-	data->mode = new_mode;
-	switch (new_mode) {
+	switch (mode) {
 	case EV3_OUTPUT_PORT_MODE_AUTO:
 		data->con_state = CON_STATE_INIT;
 		hrtimer_start(&data->timer, ktime_set(0, OUTPUT_PORT_POLL_NS),
@@ -716,52 +652,42 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 		WARN_ON("Unknown mode.");
 		break;
 	}
-	return count;
+	return 0;
 }
 
-static ssize_t state_show(struct device *dev, struct device_attribute *attr,
-			  char *buf)
+static const char *ev3_output_port_get_status(void *context)
 {
-	struct ev3_output_port_data *data = dev_get_drvdata(dev);
+	struct ev3_output_port_data *data = context;
 
-	if (data->mode == EV3_OUTPUT_PORT_MODE_AUTO)
-		return sprintf(buf, "%s\n",
-			ev3_output_port_state_names[data->tacho_motor_type]);
-	return sprintf(buf, "%s\n", ev3_output_port_mode_names[data->mode]);
+	if (data->out_port.mode == EV3_OUTPUT_PORT_MODE_AUTO)
+		return ev3_output_port_state_names[data->tacho_motor_type];
+
+	return ev3_output_port_mode_info[data->out_port.mode].name;
 }
 
-static DEVICE_ATTR_RO(modes);
-static DEVICE_ATTR_RW(mode);
-static DEVICE_ATTR_RO(state);
-
-static struct attribute *ev3_output_port_attrs[] = {
-	&dev_attr_modes.attr,
-	&dev_attr_mode.attr,
-	&dev_attr_state.attr,
-	NULL
+static struct device_type ev3_output_port_type = {
+	.name	= "legoev3-output-port",
 };
 
-ATTRIBUTE_GROUPS(ev3_output_port);
-
-static int ev3_output_port_probe(struct legoev3_port *port)
+struct lego_port_device
+*ev3_output_port_register(struct ev3_output_port_platform_data *pdata,
+			  struct device *parent)
 {
 	struct ev3_output_port_data *data;
-	struct ev3_output_port_platform_data *pdata = port->dev.platform_data;
 	struct pwm_device *pwm;
 	int err;
 
 	if (WARN(!pdata, "Platform data is required."))
-		return -EINVAL;
+		return ERR_PTR(-EINVAL);
 
 	data = kzalloc(sizeof(struct ev3_output_port_data), GFP_KERNEL);
 	if (!data)
-		return -ENOMEM;
+		return ERR_PTR(-ENOMEM);
 
 	data->id = pdata->id;
-	data->out_port = port;
 	data->analog = get_legoev3_analog();
 	if (IS_ERR(data->analog)) {
-		dev_err(&port->dev, "Could not get legoev3-analog device.\n");
+		dev_err(parent, "Could not get legoev3-analog device.\n");
 		err = PTR_ERR(data->analog);
 		goto err_request_legoev3_analog;
 	}
@@ -788,11 +714,49 @@ static int ev3_output_port_probe(struct legoev3_port *port)
 
 	err = gpio_request_array(data->gpio, ARRAY_SIZE(data->gpio));
 	if (err) {
-		dev_err(&port->dev, "Requesting GPIOs failed.\n");
+		dev_err(parent, "Requesting GPIOs failed.\n");
 		goto err_gpio_request_array;
 	}
 
-	dev_set_drvdata(&port->dev, data);
+	snprintf(data->out_port.port_name, LEGO_PORT_NAME_SIZE, "out%c",
+		 data->id + 'A');
+	pwm = pwm_get(NULL, data->out_port.port_name);
+	if (IS_ERR(pwm)) {
+		dev_err(parent, "Could not get pwm! (%ld)\n", PTR_ERR(pwm));
+		err = PTR_ERR(pwm);
+		goto err_pwm_get;
+	}
+
+	err = pwm_config(pwm, 0, NSEC_PER_SEC / 10000);
+	if (err) {
+		dev_err(parent,
+			"Failed to set pwm duty percent and frequency! (%d)\n",
+			err);
+		goto err_pwm_config;
+	}
+
+	err = pwm_enable(pwm);
+	if (err) {
+		dev_err(parent, "Failed to start pwm! (%d)\n", err);
+		goto err_pwm_start;
+	}
+	/* This lets us set the pwm duty cycle in an atomic context */
+	pm_runtime_irq_safe(pwm->chip->dev);
+	data->pwm = pwm;
+
+	data->out_port.num_modes = NUM_EV3_OUTPUT_PORT_MODE;
+	data->out_port.mode_info = ev3_output_port_mode_info;
+	data->out_port.set_mode = ev3_output_port_set_mode;
+	data->out_port.get_status = ev3_output_port_get_status;
+	data->out_port.motor_ops = &ev3_output_port_motor_ops;
+	data->out_port.context = data;
+	err = lego_port_register(&data->out_port, &ev3_output_port_type, parent);
+	if (err) {
+		dev_err(parent, "Failed to register lego_port_device. (%d)\n",
+			err);
+		goto err_lego_port_register;
+	}
+
 	INIT_WORK(&data->work, NULL);
 
 	data->con_state = CON_STATE_INIT;
@@ -802,101 +766,44 @@ static int ev3_output_port_probe(struct legoev3_port *port)
 	hrtimer_start(&data->timer, ktime_set(0, OUTPUT_PORT_POLL_NS),
 		      HRTIMER_MODE_REL);
 
-	pwm = pwm_get(&data->out_port->dev, NULL);
-	if (IS_ERR(pwm)) {
-		dev_err(&port->dev, "Could not get pwm! (%ld)\n", PTR_ERR(pwm));
-		err = PTR_ERR(pwm);
-		goto err_pwm_get;
-	}
+	return &data->out_port;
 
-	err = pwm_config(pwm, 0, NSEC_PER_SEC / 10000);
-	if (err) {
-		dev_err(&port->dev,
-			"Failed to set pwm duty percent and frequency! (%d)\n",
-			err);
-		goto err_pwm_config;
-	}
-
-	err = pwm_enable(pwm);
-	if (err) {
-		dev_err(&port->dev, "Failed to start pwm! (%d)\n", err);
-		goto err_pwm_start;
-	}
-	/* This lets us set the pwm duty cycle in an atomic context */
-	pm_runtime_irq_safe(pwm->chip->dev);
-
-	data->pwm = pwm;
-	err = sysfs_create_groups(&port->dev.kobj, ev3_output_port_groups);
-	if (err) {
-		dev_err(&port->dev, "Failed to create sysfs attributes. (%d)",
-			err);
-		goto err_sysfs_create_groups;
-	}
-
-	return 0;
-
-err_sysfs_create_groups:
+err_lego_port_register:
 	pwm_disable(pwm);
 err_pwm_start:
 err_pwm_config:
 	pwm_put(pwm);
 err_pwm_get:
-	hrtimer_cancel(&data->timer);
 	gpio_free_array(data->gpio, ARRAY_SIZE(data->gpio));
 err_gpio_request_array:
 	put_legoev3_analog(data->analog);
 err_request_legoev3_analog:
 	kfree(data);
 
-	return err;
+	return ERR_PTR(err);
 }
 
-static int ev3_output_port_remove(struct legoev3_port *port)
+void ev3_output_port_unregister(struct lego_port_device *port)
 {
-	struct ev3_output_port_data *data = dev_get_drvdata(&port->dev);
+	struct ev3_output_port_data *data;
 
-	sysfs_remove_groups(&port->dev.kobj, ev3_output_port_groups);
+	/* port can be null if disabled via module parameter */
+	if (!port)
+		return;
+
+	data = container_of(port, struct ev3_output_port_data, out_port);
 	pwm_disable(data->pwm);
 	pwm_put(data->pwm);
-
 	hrtimer_cancel(&data->timer);
 	cancel_work_sync(&data->work);
 	if (data->motor)
 		ev3_output_port_unregister_motor(&data->work);
-	if (data->mode == EV3_OUTPUT_PORT_MODE_RAW)
+	if (port->mode == EV3_OUTPUT_PORT_MODE_RAW)
 		ev3_output_port_disable_raw_mode(data);
+	lego_port_unregister(&data->out_port);
 	ev3_output_port_float(data);
 	gpio_free_array(data->gpio, ARRAY_SIZE(data->gpio));
 	put_legoev3_analog(data->analog);
 	dev_set_drvdata(&port->dev, NULL);
 	kfree(data);
-
-	return 0;
 }
-
-static void ev3_output_port_shutdown(struct legoev3_port *port)
-{
-	struct ev3_output_port_data *data = dev_get_drvdata(&port->dev);
-
-	pwm_disable(data->pwm);
-
-	hrtimer_cancel(&data->timer);
-	cancel_work_sync(&data->work);
-}
-
-struct legoev3_port_driver ev3_output_port_driver = {
-	.probe		= ev3_output_port_probe,
-	.remove		= ev3_output_port_remove,
-	.shutdown	= ev3_output_port_shutdown,
-	.driver = {
-		.name	= "ev3-output-port",
-		.owner	= THIS_MODULE,
-	},
-};
-EXPORT_SYMBOL_GPL(ev3_output_port_driver);
-legoev3_port_driver(ev3_output_port_driver);
-
-MODULE_DESCRIPTION("Output port driver for LEGO MINDSTORMS EV3");
-MODULE_AUTHOR("Ralph Hempel <rhempel@hempeldesigngroup.com>");
-MODULE_LICENSE("GPL");
-MODULE_ALIAS("legoev3:ev3-output-port");

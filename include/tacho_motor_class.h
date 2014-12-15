@@ -18,7 +18,7 @@
 
 #include <linux/device.h>
 
-#define TACHO_MOTOR_PORT_NAME_SIZE 30
+#include <lego_port_class.h>
 
 enum tacho_motor_regulation_mode {
 	TM_REGULATION_OFF,
@@ -78,7 +78,7 @@ struct tm_log {
 	};
 
 struct tacho_motor_device {
-	char port_name[TACHO_MOTOR_PORT_NAME_SIZE + 1];
+	char port_name[LEGO_PORT_NAME_SIZE + 1];
 	const struct function_pointers const *fp;
 	/* private */
 	struct device dev;

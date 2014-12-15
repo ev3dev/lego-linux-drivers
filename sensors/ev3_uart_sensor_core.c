@@ -63,7 +63,7 @@ static int ev3_uart_sensor_set_mode(void *context, u8 mode)
 	struct lego_sensor_mode_info *mode_info = &data->info.mode_info[mode];
 	int ret;
 
-	if (data->ldev->port->type == &ms_ev3_smux_port_type) {
+	if (data->ldev->port->dev.type == &ms_ev3_smux_port_type) {
 		ret = ms_ev3_smux_set_uart_sensor_mode(data->ldev->port, mode);
 		if (ret < 0)
 			return ret;
@@ -97,7 +97,7 @@ static int ev3_uart_sensor_probe(struct lego_device *ldev)
 	strncpy(data->sensor.port_name, ldev->port->port_name,
 		LEGO_SENSOR_NAME_SIZE);
 	/* mindsensors EV3 sensor mux only supports modes that return one value */
-	if (ldev->port->type == &ms_ev3_smux_port_type)
+	if (ldev->port->dev.type == &ms_ev3_smux_port_type)
 		data->sensor.num_modes = data->info.num_view_modes;
 	else
 		data->sensor.num_modes = data->info.num_modes;

@@ -187,16 +187,18 @@ static void lego_port_release(struct device *dev)
 
 static unsigned lego_port_class_id = 0;
 
-int lego_port_register(struct lego_port_device *port, struct device *parent)
+int lego_port_register(struct lego_port_device *port, struct device_type *type,
+		       struct device *parent)
 {
 	int err;
 
-	if (!port || !port->port_name || !port->type || !parent)
+	if (!port || !port->port_name || !type || !parent)
 		return -EINVAL;
 
 	port->dev.release = lego_port_release;
 	port->dev.parent = parent;
 	port->dev.class = &lego_port_class;
+	port->dev.type = type;
 	dev_set_name(&port->dev, "port%d", lego_port_class_id++);
 
 	err = device_register(&port->dev);
@@ -221,9 +223,9 @@ static int lego_port_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
 	struct lego_port_device *lego_port = to_lego_port_device(dev);
 	int ret;
 
-	ret = add_uevent_var(env, "PORT=%s", lego_port->port_name);
+	ret = add_uevent_var(env, "PORT_NAME=%s", lego_port->port_name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent PORT\n");
+		dev_err(dev, "failed to add uevent PORT_NAME\n");
 		return ret;
 	}
 

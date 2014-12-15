@@ -1,5 +1,5 @@
 /*
- * EV3 Tacho Motor device driver for LEGO MINDSTORMS EV3
+ * EV3 Tacho Motor device driver
  *
  * Copyright (C) 2013-2014 Ralph Hempel <rhempel@hempeldesigngroup.com>
  *
@@ -49,12 +49,13 @@
 #include <linux/irq.h>
 #include <linux/interrupt.h>
 #include <linux/random.h>
-
-#include "../ev3/legoev3_ports.h"
-#include "../ev3/ev3_output_port.h"
+#include <linux/platform_data/legoev3.h>
 
 #include <mach/time.h>
 
+#include <lego.h>
+#include <lego_port_class.h>
+#include <dc_motor_class.h>
 #include <tacho_motor_class.h>
 
 #define TACHO_MOTOR_POLL_NS	2000000	/* 2 msec */
@@ -104,9 +105,7 @@ enum ev3_tacho_motor_command {
 
 struct ev3_tacho_motor_data {
 	struct tacho_motor_device tm;
-
-	struct legoev3_port *out_port;
-	struct legoev3_port_device *motor_port;
+	struct lego_device *motor;
 
 	struct hrtimer timer;
 	struct work_struct notify_state_change_work;
@@ -122,7 +121,10 @@ struct ev3_tacho_motor_data {
 	int counts_per_pulse;
 	int pulses_per_second;
 
-	/* TODO - The class mutex interlock is not implemented - should be up at device level to allow busy indication */
+	/*
+	 * TODO - The class mutex interlock is not implemented - should be up
+	 * at device level to allow busy indication
+	 */
 
 	bool class_mutex;
 	bool irq_mutex;
@@ -337,7 +339,7 @@ static void set_samples_per_speed(struct ev3_tacho_motor_data *ev3_tm, int speed
 static irqreturn_t tacho_motor_isr(int irq, void *id)
 {
 	struct ev3_tacho_motor_data *ev3_tm = id;
-	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data;
+	struct ev3_motor_platform_data *pdata = ev3_tm->motor->dev.platform_data;
 
 	bool int_state =  gpio_get_value(pdata->tacho_int_gpio);
 	bool dir_state = !gpio_get_value(pdata->tacho_dir_gpio);
@@ -455,38 +457,31 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 
 void ev3_tacho_motor_update_output(struct ev3_tacho_motor_data *ev3_tm)
 {
-	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data;
+	struct dc_motor_ops *motor_ops = ev3_tm->motor->port->motor_ops;
+	void *context = ev3_tm->motor->port->context;
 	int err;
 
 	if (ev3_tm->power > 0) {
-		pdata->motor_ops.set_direction(pdata->motor_ops.context,
-					      ev3_tm->polarity_mode);
-		pdata->motor_ops.set_command(pdata->motor_ops.context,
-					     DC_MOTOR_COMMAND_RUN);
+		motor_ops->set_direction(context, ev3_tm->polarity_mode);
+		motor_ops->set_command(context, DC_MOTOR_COMMAND_RUN);
 		if (ev3_tm->regulation_mode == TM_REGULATION_OFF && ev3_tm->power < 10)
 			ev3_tm->power = 10;
 	} else if (ev3_tm->power < 0) {
-		pdata->motor_ops.set_direction(pdata->motor_ops.context,
-					      !ev3_tm->polarity_mode);
-		pdata->motor_ops.set_command(pdata->motor_ops.context,
-					     DC_MOTOR_COMMAND_RUN);
+		motor_ops->set_direction(context, !ev3_tm->polarity_mode);
+		motor_ops->set_command(context, DC_MOTOR_COMMAND_RUN);
 		if (ev3_tm->regulation_mode == TM_REGULATION_OFF && ev3_tm->power > -10)
 			ev3_tm->power = -10;
 	} else {
 		if (ev3_tm->stop_mode == TM_STOP_COAST)
-			pdata->motor_ops.set_command(pdata->motor_ops.context,
-						DC_MOTOR_COMMAND_COAST);
+			motor_ops->set_command(context, DC_MOTOR_COMMAND_COAST);
 		else if (TM_STOP_BRAKE == ev3_tm->stop_mode)
-			pdata->motor_ops.set_command(pdata->motor_ops.context,
-						DC_MOTOR_COMMAND_BRAKE);
+			motor_ops->set_command(context, DC_MOTOR_COMMAND_BRAKE);
 		else if (TM_STOP_HOLD == ev3_tm->stop_mode)
-			pdata->motor_ops.set_command(pdata->motor_ops.context,
-						DC_MOTOR_COMMAND_BRAKE);
+			motor_ops->set_command(context, DC_MOTOR_COMMAND_BRAKE);
 	}
 
 	/* The power sets the duty cycle - 100% power == 100% duty cycle */
-	err = pdata->motor_ops.set_duty_cycle(pdata->motor_ops.context,
-					      abs(ev3_tm->power));
+	err = motor_ops->set_duty_cycle(context, abs(ev3_tm->power));
 	WARN_ONCE(err, "Failed to set pwm duty cycle! (%d)\n", err);
 }
 
@@ -506,7 +501,7 @@ static void ev3_tacho_motor_set_power(struct ev3_tacho_motor_data *ev3_tm, int p
 
 static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
 {
-	struct ev3_motor_platform_data *pdata = ev3_tm->motor_port->dev.platform_data;
+	struct ev3_motor_platform_data *pdata = ev3_tm->motor->dev.platform_data;
 
 	/*
 	 * This is the same as initializing a motor - we will set everything
@@ -1061,8 +1056,8 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 {
 	struct ev3_tacho_motor_data *ev3_tm =
 			container_of(timer, struct ev3_tacho_motor_data, timer);
-	struct ev3_motor_platform_data *pdata =
-					ev3_tm->motor_port->dev.platform_data;
+	struct dc_motor_ops *motor_ops = ev3_tm->motor->port->motor_ops;
+	void *context = ev3_tm->motor->port->context;
 	int speed;
 	bool reprocess = true;
 
@@ -1462,12 +1457,10 @@ no_run:
 
 	if (!ev3_tm->run) {
 		if (TM_STOP_COAST == ev3_tm->stop_mode)
-			pdata->motor_ops.set_command(pdata->motor_ops.context,
-							DC_MOTOR_COMMAND_COAST);
+			motor_ops->set_command(context, DC_MOTOR_COMMAND_COAST);
 
 		else if (TM_STOP_BRAKE == ev3_tm->stop_mode)
-			pdata->motor_ops.set_command(pdata->motor_ops.context,
-							DC_MOTOR_COMMAND_BRAKE);
+			motor_ops->set_command(context, DC_MOTOR_COMMAND_BRAKE);
 
 		else if (TM_STOP_HOLD == ev3_tm->stop_mode)
 			regulate_position(ev3_tm);
@@ -2014,7 +2007,7 @@ static const struct function_pointers fp = {
 };
 
 
-static int ev3_tacho_motor_probe(struct legoev3_port_device *motor)
+static int ev3_tacho_motor_probe(struct lego_device *motor)
 {
 	struct ev3_tacho_motor_data *ev3_tm;
 	struct ev3_motor_platform_data *pdata = motor->dev.platform_data;
@@ -2022,17 +2015,17 @@ static int ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 
 	if (WARN_ON(!pdata))
 		return -EINVAL;
+	if (WARN_ON(!motor->port->motor_ops))
+		return -EINVAL;
 
 	ev3_tm = kzalloc(sizeof(struct ev3_tacho_motor_data), GFP_KERNEL);
 
 	if (!ev3_tm)
 		return -ENOMEM;
 
-	ev3_tm->out_port   = pdata->out_port;
-	ev3_tm->motor_port = motor;
+	ev3_tm->motor = motor;
 
-	strncpy(ev3_tm->tm.port_name, dev_name(&pdata->out_port->dev),
-		TACHO_MOTOR_PORT_NAME_SIZE);
+	strncpy(ev3_tm->tm.port_name, motor->port->port_name, LEGO_PORT_NAME_SIZE);
 	ev3_tm->tm.fp = &fp;
 
 	err = register_tacho_motor(&ev3_tm->tm, &motor->dev);
@@ -2043,7 +2036,7 @@ static int ev3_tacho_motor_probe(struct legoev3_port_device *motor)
 
 	/* Here's where we set up the port pins on a per-port basis */
 	if(request_irq(gpio_to_irq(pdata->tacho_int_gpio), tacho_motor_isr, 0,
-				dev_name(&pdata->out_port->dev), ev3_tm))
+				dev_name(&motor->port->dev), ev3_tm))
 		goto err_dev_request_irq;
 
 	irq_set_irq_type(gpio_to_irq(pdata->tacho_int_gpio),
@@ -2071,7 +2064,7 @@ err_register_tacho_motor:
 	return err;
 }
 
-static int ev3_tacho_motor_remove(struct legoev3_port_device *motor)
+static int ev3_tacho_motor_remove(struct lego_device *motor)
 {
 	struct ev3_motor_platform_data *pdata = motor->dev.platform_data;
 	struct ev3_tacho_motor_data *ev3_tm = dev_get_drvdata(&motor->dev);
@@ -2085,7 +2078,7 @@ static int ev3_tacho_motor_remove(struct legoev3_port_device *motor)
 	return 0;
 }
 
-struct legoev3_port_device_driver ev3_tacho_motor_driver = {
+struct lego_device_driver ev3_tacho_motor_driver = {
 	.probe	= ev3_tacho_motor_probe,
 	.remove	= ev3_tacho_motor_remove,
 	.driver = {
@@ -2093,10 +2086,10 @@ struct legoev3_port_device_driver ev3_tacho_motor_driver = {
 		.owner	= THIS_MODULE,
 	},
 };
-legoev3_port_device_driver(ev3_tacho_motor_driver);
+lego_device_driver(ev3_tacho_motor_driver);
 
-MODULE_DESCRIPTION("EV3 tacho motor driver for LEGO MINDSTORMS EV3");
+MODULE_DESCRIPTION("EV3 tacho motor driver");
 MODULE_AUTHOR("Ralph Hempel <rhempel@hempeldesigngroup.com>");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("legoev3:ev3-tacho-motor");
+MODULE_ALIAS("lego:ev3-tacho-motor");
 

@@ -1,5 +1,5 @@
 /*
- * RCX/Power Functions Motor device driver for LEGO MINDSTORMS EV3
+ * RCX/Power Functions Motor device driver
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *
@@ -42,16 +42,14 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 
+#include <lego.h>
 #include <dc_motor_class.h>
-
-#include "../ev3/legoev3_ports.h"
-#include "../ev3/ev3_output_port.h"
 
 struct rcx_motor_data {
 	struct dc_motor_device motor;
 };
 
-static int rcx_motor_probe(struct legoev3_port_device *motor)
+static int rcx_motor_probe(struct lego_device *motor)
 {
 	struct rcx_motor_data *data;
 	struct ev3_motor_platform_data *pdata = motor->dev.platform_data;
@@ -59,15 +57,16 @@ static int rcx_motor_probe(struct legoev3_port_device *motor)
 
 	if (WARN_ON(!pdata))
 		return -EINVAL;
+	if (WARN_ON(!motor->port->motor_ops))
+		return -EINVAL;
 
 	data = kzalloc(sizeof(struct rcx_motor_data), GFP_KERNEL);
 	if (IS_ERR(data))
 		return -ENOMEM;
 
 	strncpy(data->motor.name, dev_name(&motor->dev), DC_MOTOR_NAME_SIZE);
-	strncpy(data->motor.port_name, dev_name(&pdata->out_port->dev),
-							DC_MOTOR_NAME_SIZE);
-	memcpy(&data->motor.ops, &pdata->motor_ops, sizeof(struct dc_motor_ops));
+	strncpy(data->motor.port_name, motor->port->port_name, DC_MOTOR_NAME_SIZE);
+	data->motor.ops = motor->port->motor_ops;
 
 	err = register_dc_motor(&data->motor, &motor->dev);
 	if (err)
@@ -83,7 +82,7 @@ err_register_dc_motor:
 	return err;
 }
 
-static int rcx_motor_remove(struct legoev3_port_device *motor)
+static int rcx_motor_remove(struct lego_device *motor)
 {
 	struct rcx_motor_data *data = dev_get_drvdata(&motor->dev);
 
@@ -94,7 +93,7 @@ static int rcx_motor_remove(struct legoev3_port_device *motor)
 	return 0;
 }
 
-struct legoev3_port_device_driver rcx_motor_driver = {
+struct lego_device_driver rcx_motor_driver = {
 	.probe	= rcx_motor_probe,
 	.remove	= rcx_motor_remove,
 	.driver = {
@@ -102,10 +101,10 @@ struct legoev3_port_device_driver rcx_motor_driver = {
 		.owner	= THIS_MODULE,
 	},
 };
-legoev3_port_device_driver(rcx_motor_driver);
+lego_device_driver(rcx_motor_driver);
 
-MODULE_DESCRIPTION("RCX/Power Functions motor driver for LEGO MINDSTORMS EV3");
+MODULE_DESCRIPTION("RCX/Power Functions motor driver");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("legoev3:rcx-motor");
+MODULE_ALIAS("lego:rcx-motor");
 

@@ -17,6 +17,7 @@
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
+#include <linux/slab.h>
 
 #include <lego.h>
 #include <lego_port_class.h>
@@ -146,7 +147,7 @@ int ms_ev3_smux_set_uart_sensor_mode(struct lego_port_device *port, u8 mode)
 }
 EXPORT_SYMBOL_GPL(ms_ev3_smux_set_uart_sensor_mode);
 
-const struct lego_port_type ms_ev3_smux_port_type = {
+const struct device_type ms_ev3_smux_port_type = {
 	.name	= "ms-ev3-smux-port",
 };
 EXPORT_SYMBOL_GPL(ms_ev3_smux_port_type);
@@ -172,15 +173,15 @@ int ms_ev3_smux_probe_cb(struct nxt_i2c_sensor_data *data)
 	}
 	ret -= '0';
 	snprintf(smux->port.port_name, LEGO_PORT_NAME_SIZE, "%s:mux%d",
-		 dev_name(&data->in_port->dev), ret);
-	smux->port.type = &ms_ev3_smux_port_type;
+		 data->in_port->port_name, ret);
 	smux->port.num_modes = NUM_MS_EV3_SMUX_MODES;
 	smux->port.mode_info = ms_ev3_smux_mode_defs;
 	smux->port.set_mode = ms_ev3_smux_set_mode;
 	smux->port.set_device = ms_ev3_smux_set_device;
 	smux->port.context = data;
 
-	ret = lego_port_register(&smux->port, &data->client->dev);
+	ret = lego_port_register(&smux->port, &ms_ev3_smux_port_type,
+				 &data->client->dev);
 	if (ret < 0) {
 		dev_err(&data->client->dev,
 			"Failed to register lego-port. (%d)", ret);

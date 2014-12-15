@@ -1,5 +1,5 @@
 /*
- * non-MINDSTORMS sensor drivers for LEGO Mindstorms EV3
+ * non-MINDSTORMS sensor drivers
  *
  * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
  *
@@ -14,8 +14,8 @@
  */
 
 /*
- * IMPORTANT: THIS FILE IS NOT TO BE COMPILED. IT IS ONLY FOR AUTOMATICALLY
- * GENERATING DOCUMENTATION ON NON-MINDSTORMS SENSORS.
+ * IMPORTANT: THIS FILE IS NOT MEANT TO BE COMPILED. IT IS ONLY FOR
+ * AUTOMATICALLY GENERATING DOCUMENTATION ON NON-MINDSTORMS SENSORS.
  */
 
 /*
@@ -25,7 +25,7 @@
  * parser can be found in the ev3dev-kpkg repository.
  */
 
-const struct other_sensor_info lm75_defs[] = {
+const struct other_sensor_info other_sensor_defs[] = {
 	[LEGO_NXT_TEMPERATURE_SENSOR] = {
 		/**
 		 * [^addresses]: Valid addresses are 0x48..0x4F (configurable via input pins)

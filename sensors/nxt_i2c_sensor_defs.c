@@ -15,6 +15,7 @@
  */
 
 #include <linux/i2c.h>
+#include <linux/slab.h>
 
 #include <servo_motor_class.h>
 
@@ -396,31 +397,31 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x02,
 				.read_data_reg	= 0x42,
-				.pin1_state	= EV3_INPUT_PORT_GPIO_HIGH,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[1] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x02,
 				.read_data_reg	= 0x42,
-				.pin1_state	= EV3_INPUT_PORT_GPIO_HIGH,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[2] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x01,
 				.read_data_reg	= 0x42,
-				.pin1_state	= EV3_INPUT_PORT_GPIO_HIGH,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[3] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x01,
 				.read_data_reg	= 0x42,
-				.pin1_state	= EV3_INPUT_PORT_GPIO_HIGH,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[4] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x03,
 				.read_data_reg	= 0x42,
-				.pin1_state	= EV3_INPUT_PORT_GPIO_HIGH,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 		},
 	},

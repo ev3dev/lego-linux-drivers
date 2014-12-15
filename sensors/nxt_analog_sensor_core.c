@@ -50,7 +50,6 @@
 #include <lego_sensor_class.h>
 
 #include "nxt_analog_sensor.h"
-#include "ht_nxt_smux.h"
 
 static int nxt_analog_sensor_set_mode(void *context, u8 mode)
 {
@@ -60,10 +59,8 @@ static int nxt_analog_sensor_set_mode(void *context, u8 mode)
 	if (mode >= data->info.num_modes)
 		return -EINVAL;
 
-	if (data->ldev->port->type == &ht_nxt_smux_port_type) {
-		ht_nxt_smux_port_set_pin5_gpio(data->ldev->port,
+	data->ldev->port->nxt_analog_ops->set_pin5_gpio(data->ldev->port->context,
 			data->info.analog_mode_info[mode].pin5_state);
-	}
 	lego_port_set_raw_data_ptr_and_func(data->ldev->port, mode_info->raw_data,
 		lego_sensor_get_raw_data_size(mode_info),
 		data->info.analog_mode_info[mode].analog_cb, data);
@@ -77,6 +74,8 @@ static int nxt_analog_sensor_probe(struct lego_device *ldev)
 	int err;
 
 	if (WARN_ON(!ldev->entry_id))
+		return -EINVAL;
+	if (WARN_ON(!ldev->port->nxt_analog_ops))
 		return -EINVAL;
 
 	data = kzalloc(sizeof(struct nxt_analog_sensor_data), GFP_KERNEL);
@@ -114,9 +113,8 @@ static int nxt_analog_sensor_remove(struct lego_device *ldev)
 {
 	struct nxt_analog_sensor_data *data = dev_get_drvdata(&ldev->dev);
 
-	if (ldev->port->type == &ht_nxt_smux_port_type) {
-		ht_nxt_smux_port_set_pin5_gpio(ldev->port, LEGO_PORT_GPIO_FLOAT);
-	}
+	ldev->port->nxt_analog_ops->set_pin5_gpio(ldev->port->context,
+		LEGO_PORT_GPIO_FLOAT);
 	lego_port_set_raw_data_ptr_and_func(ldev->port, NULL, 0, NULL, NULL);
 	unregister_lego_sensor(&data->sensor);
 	dev_set_drvdata(&ldev->dev, NULL);

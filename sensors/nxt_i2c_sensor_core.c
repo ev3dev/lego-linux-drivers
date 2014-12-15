@@ -15,7 +15,7 @@
 
 /*
  * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
  * or leading whitespace is important for the markdown syntax.
  */
 
@@ -76,7 +76,6 @@
 #include "nxt_i2c_sensor.h"
 
 #include "../ev3/legoev3_ports.h"
-#include "../ev3/ev3_input_port.h"
 
 #define NXT_I2C_MIN_POLL_MS 50
 
@@ -109,7 +108,7 @@ static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
 			return err;
 	}
 
-	sensor->in_port->in_ops.set_pin1_gpio(sensor->in_port,
+	sensor->in_port->nxt_i2c_ops->set_pin1_gpio(sensor->in_port->context,
 				sensor->info.i2c_mode_info[mode].pin1_state);
 	nxt_i2c_sensor_poll_work(&sensor->poll_work.work);
 
@@ -227,6 +226,9 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 		return -EINVAL;
 	if (WARN(!apdata->in_port, "Adapter platform data missing input port."))
 		return -EINVAL;
+	if (WARN(!apdata->in_port->nxt_i2c_ops,
+			"Input port does not support nxt-i2c ops."))
+		return -EINVAL;
 
 	sensor_info = &nxt_i2c_sensor_defs[i2c_dev_id->driver_data];
 
@@ -320,7 +322,8 @@ static int nxt_i2c_sensor_remove(struct i2c_client *client)
 	data->poll_ms = 0;
 	if (delayed_work_pending(&data->poll_work))
 		cancel_delayed_work_sync(&data->poll_work);
-	data->in_port->in_ops.set_pin1_gpio(data->in_port, 0);
+	data->in_port->nxt_i2c_ops->set_pin1_gpio(data->in_port->context,
+		LEGO_PORT_GPIO_FLOAT);
 	unregister_lego_sensor(&data->sensor);
 	kfree(data);
 
@@ -398,4 +401,5 @@ module_i2c_driver(nxt_i2c_sensor_driver);
 MODULE_DESCRIPTION("LEGO MINDSTORMS NXT I2C sensor device driver");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("legoev3:nxt-i2c-host");
+MODULE_ALIAS("lego:nxt-i2c-sensor");
+MODULE_ALIAS("lego:nxt-i2c-host");
