@@ -187,7 +187,8 @@ static void lego_port_release(struct device *dev)
 
 static unsigned lego_port_class_id = 0;
 
-int lego_port_register(struct lego_port_device *port, struct device_type *type,
+int lego_port_register(struct lego_port_device *port,
+		       const struct device_type *type,
 		       struct device *parent)
 {
 	int err;

@@ -93,7 +93,7 @@ struct lego_port_device {
 #define to_lego_port_device(_dev) container_of(_dev, struct lego_port_device, dev)
 
 extern int lego_port_register(struct lego_port_device *lego_port,
-			      struct device_type *type,
+			      const struct device_type *type,
 			      struct device *parent);
 extern void lego_port_unregister(struct lego_port_device *lego_port);
 
