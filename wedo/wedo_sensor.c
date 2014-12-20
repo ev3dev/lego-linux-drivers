@@ -13,15 +13,7 @@
  * GNU General Public License for more details.
  */
 
-#include "wedo_sensor.h"
-#include "wedo_hub.h"
-
-static void wedo_raw_cb(void *context)
-{
-	struct wedo_sensor_data *wsd = context;
-
-	wsd->sensor.mode_info[wsd->sensor.mode].raw_data[0] = wsd->wpd->input;
-}
+#include "wedo.h"
 
 enum wedo_tilt_status_id {
 	WEDO_TILT_STATUS_UNKNOWN,
@@ -53,23 +45,23 @@ static const struct wedo_tilt_status_info wedo_tilt_status_infos[] = {
 
 #define WEDO_TILT_STATUS_DEBOUNCE 4
 
-static enum wedo_tilt_status_id wedo_update_tilt_status( struct wedo_sensor_data *wsd )
+static enum wedo_tilt_status_id wedo_update_tilt_status(struct wedo_sensor_data *wsd)
 {
 	enum wedo_tilt_status_id id;
 	int rawval = wsd->wpd->input;
 
-	for (id=0; id<WEDO_TILT_STATUS_MAX; ++id )
-		if ( rawval <= wedo_tilt_status_infos[id].max )
+	for (id = 0; id < WEDO_TILT_STATUS_MAX; ++id)
+		if (rawval <= wedo_tilt_status_infos[id].max)
 			break;
 
 	if (id != wsd->debounce_status) {
 		wsd->debounce_count = 0;
 		wsd->debounce_status = id;
 	}
-	else if (WEDO_TILT_STATUS_DEBOUNCE > wsd->debounce_count ) {
+	else if (WEDO_TILT_STATUS_DEBOUNCE > wsd->debounce_count) {
 		wsd->debounce_count++;
 	}
-	else if (WEDO_TILT_STATUS_DEBOUNCE == wsd->debounce_count ) {
+	else if (WEDO_TILT_STATUS_DEBOUNCE == wsd->debounce_count) {
 		/* Here's where we'd schedule a notification task */
 		wsd->debounce_count++;
 		wsd->status = id;
@@ -82,7 +74,7 @@ static void wedo_tilt_axis_cb(void *context)
 {
 	struct wedo_sensor_data *wsd = context;
 
-	switch (wedo_update_tilt_status (wsd))
+	switch (wedo_update_tilt_status(wsd))
 	{
 	case WEDO_TILT_STATUS_BACK:
 		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[0] = 0;
@@ -127,7 +119,7 @@ static void wedo_tilt_status_cb(void *context)
 {
 	struct wedo_sensor_data *wsd = context;
 
-	switch (wedo_update_tilt_status (wsd))
+	switch (wedo_update_tilt_status(wsd))
 	{
 	case WEDO_TILT_STATUS_BACK:
 		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[0] = 2;
@@ -251,7 +243,6 @@ const struct wedo_sensor_info wedo_sensor_defs[] = {
 				.analog_cb = wedo_tilt_axis_cb,
 			},
 			[2] = {
-				.analog_cb = wedo_raw_cb,
 			},
 		}
 	},
@@ -277,11 +268,6 @@ const struct wedo_sensor_info wedo_sensor_defs[] = {
 				.data_type = LEGO_SENSOR_DATA_U8,
 			},
 		},
-		.wedo_mode_info = {
-			[0] = {
-				.analog_cb = wedo_raw_cb,
-			},
-		}
 	},
 };
 
