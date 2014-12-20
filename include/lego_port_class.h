@@ -53,6 +53,8 @@ struct lego_port_nxt_i2c_ops {
 /**
  * struct lego_port_device
  * @port_name: Name of the port.
+ * @port_alias: Alternate name of port for mapping other devices such as a tty
+ * 	to this port device.
  * @num_modes: The number of valid modes.
  * @mode: The current mode.
  * @mode_info: Array of mode information.
@@ -72,6 +74,7 @@ struct lego_port_nxt_i2c_ops {
  */
 struct lego_port_device {
 	char port_name[LEGO_PORT_NAME_SIZE + 1];
+	const char *port_alias;
 	u8 num_modes;
 	u8 mode;
 	const struct lego_port_mode_info *mode_info;

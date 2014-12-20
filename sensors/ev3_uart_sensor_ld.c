@@ -55,11 +55,8 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/tty.h>
-#if (defined CONFIG_LEGOEV3_DEV_PORTS || defined CONFIG_LEGOEV3_DEV_PORTS_MODULE)
-#include <linux/platform_data/legoev3.h>
-#include <lego_port_class.h>
-#endif
 
+#include <lego_port_class.h>
 #include <lego_sensor_class.h>
 
 #ifdef DEBUG
@@ -212,9 +209,7 @@ enum ev3_uart_info_flags {
  */
 struct ev3_uart_port_data {
 	struct tty_struct *tty;
-#if (defined CONFIG_LEGOEV3_DEV_PORTS || defined CONFIG_LEGOEV3_DEV_PORTS_MODULE)
 	struct lego_port_device *in_port;
-#endif
 	struct lego_sensor_device sensor;
 	struct work_struct rx_data_work;
 	struct delayed_work send_ack_work;
@@ -366,33 +361,28 @@ static ssize_t ev3_uart_write_data(void *context, char *data, loff_t off,
 
 	return count;
 }
-#if (defined CONFIG_LEGOEV3_DEV_PORTS || defined CONFIG_LEGOEV3_DEV_PORTS_MODULE)
+
 int ev3_uart_match_input_port(struct device *dev, const void *data)
 {
 	struct lego_port_device *pdev = to_lego_port_device(dev);
-	struct ev3_input_port_platform_data *pdata;
 	const char *tty_name = data;
 
-	if (strcmp(pdev->dev.type->name, "legoev3-input-port"))
+	if (!pdev->port_alias)
 		return 0;
-	pdata = dev->platform_data;
 
-	return !strcmp(pdata->uart_tty, tty_name);
+	return !strcmp(pdev->port_alias, tty_name);
 }
-#endif
+
 static void ev3_uart_send_ack(struct work_struct *work)
 {
 	struct delayed_work *dwork = to_delayed_work(work);
 	struct ev3_uart_port_data *port = container_of(dwork,
 	        struct ev3_uart_port_data, send_ack_work);
-#if (defined CONFIG_LEGOEV3_DEV_PORTS || defined CONFIG_LEGOEV3_DEV_PORTS_MODULE)
 	struct device *in_port_dev;
-#endif
 	int err;
 
 	ev3_uart_write_byte(port->tty, EV3_UART_SYS_ACK);
 	if (!port->sensor.context && port->type_id <= EV3_UART_TYPE_MAX) {
-#if (defined CONFIG_LEGOEV3_DEV_PORTS || defined CONFIG_LEGOEV3_DEV_PORTS_MODULE)
 		/*
 		 * This is a special case for the input ports on the EV3 brick.
 		 * We use the name of the input port instead of the tty to make
@@ -405,28 +395,27 @@ static void ev3_uart_send_ack(struct work_struct *work)
 			port->in_port = to_lego_port_device(in_port_dev);
 			strncpy(port->sensor.port_name, port->in_port->port_name,
 				LEGO_SENSOR_NAME_SIZE);
-		} else
-#endif
+		} else {
 			strncpy(port->sensor.port_name, port->tty->name,
 				LEGO_SENSOR_NAME_SIZE);
+		}
 		port->sensor.context = port->tty;
 		err = register_lego_sensor(&port->sensor, port->tty->dev);
 		if (err < 0) {
 			port->sensor.context = NULL;
-#if (defined CONFIG_LEGOEV3_DEV_PORTS || defined CONFIG_LEGOEV3_DEV_PORTS_MODULE)
 			if (port->in_port) {
 				port->in_port = NULL;
 				put_device(&port->in_port->dev);
 			}
-#endif
 			dev_err(port->tty->dev,
 				"Could not register UART sensor on tty %s",
 				port->tty->name);
 			return;
 		}
-	} else
+	} else {
 		dev_err(port->tty->dev, "Reconnected due to: %s\n",
 			port->last_err);
+	}
 
 	mdelay(4);
 	schedule_work(&port->change_bitrate_work);
@@ -989,10 +978,8 @@ static void ev3_uart_close(struct tty_struct *tty)
 	if (port->sensor.context) {
 		unregister_lego_sensor(&port->sensor);
 	}
-#if (defined CONFIG_LEGOEV3_DEV_PORTS || defined CONFIG_LEGOEV3_DEV_PORTS_MODULE)
 	if (port->in_port)
 		put_device(&port->in_port->dev);
-#endif
 	tty->disc_data = NULL;
 	kfree(port);
 }
