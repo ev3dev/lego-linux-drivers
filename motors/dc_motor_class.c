@@ -47,12 +47,12 @@
 * : Sets the duty cycle setpoint of the PWM signal sent to the motor. Values
 *   -100 to 100 (-100% to 100%).
 * .
+* `device_name` (read-only)
+* : Returns the name of the motor device/driver.
+* .
 * `duty_cycle` (read)
 * : Shows the current duty cycle of the PWM signal sent to the motor. Values
 *   -100 to 100 (-100% to 100%).
-* .
-* `name` (read-only)
-* : Returns the name of the motor controller's driver.
 * .
 * `polarity`: (read/write)
 * : Sets the polarity of the motor. Valid values are `normal` and `inverted`.
@@ -132,8 +132,8 @@ enum hrtimer_restart dc_motor_class_ramp_timer_handler(struct hrtimer *timer)
 	return HRTIMER_RESTART;
 }
 
-static ssize_t name_show(struct device *dev, struct device_attribute *attr,
-			 char *buf)
+static ssize_t device_name_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
 
@@ -332,7 +332,7 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 	return -EINVAL;
 }
 
-static DEVICE_ATTR_RO(name);
+static DEVICE_ATTR_RO(device_name);
 static DEVICE_ATTR_RO(port_name);
 static DEVICE_ATTR_RW(ramp_up_ms);
 static DEVICE_ATTR_RW(ramp_down_ms);
@@ -343,7 +343,7 @@ static DEVICE_ATTR_RO(commands);
 static DEVICE_ATTR_RW(command);
 
 static struct attribute *dc_motor_class_attrs[] = {
-	&dev_attr_name.attr,
+	&dev_attr_device_name.attr,
 	&dev_attr_port_name.attr,
 	&dev_attr_ramp_up_ms.attr,
 	&dev_attr_ramp_down_ms.attr,
@@ -409,14 +409,14 @@ static int dc_motor_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
 	int ret;
 
-	ret = add_uevent_var(env, "NAME=%s", motor->name);
+	ret = add_uevent_var(env, "LEGO_DEVICE_NAME=%s", motor->name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_DEVICE_NAME\n");
 		return ret;
 	}
-	add_uevent_var(env, "PORT_NAME=%s", motor->port_name);
+	add_uevent_var(env, "LEGO_PORT_NAME=%s", motor->port_name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent PORT_NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_PORT_NAME\n");
 		return ret;
 	}
 

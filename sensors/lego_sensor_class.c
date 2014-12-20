@@ -71,6 +71,10 @@
 * : Returns the number of decimal places for the values in the `value<N>`
 * .    attributes of the current mode.
 * .
+* `device_name` (read-only)
+* : Returns the name of the sensor device/driver. See the list of [supported
+*   sensors] for a complete list of drivers.
+* .
 * `fw_version` (read-only)
 * : Present only for [nxt-i2c-sensor] devices. Returns the firmware version of
 * .    the sensor.
@@ -107,10 +111,6 @@
 * `units` (read-only)
 * : Returns the units of the measured value for the current mode. May return
 * .    empty string"
-* .
-* `name` (read-only)
-* : Returns the name of the sensor driver. See the list of [supported sensors]
-* .    for a complete list of drivers.
 * .
 * `value<N>` (read-only)
 * : Returns the value or values measured by the sensor. Check `num_values` to
@@ -212,8 +212,8 @@ u32 lego_sensor_itof(int i, unsigned dp)
 }
 EXPORT_SYMBOL_GPL(lego_sensor_itof);
 
-static ssize_t name_show(struct device *dev, struct device_attribute *attr,
-			 char *buf)
+static ssize_t device_name_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
 {
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
@@ -544,7 +544,7 @@ static ssize_t bin_data_write(struct file *file, struct kobject *kobj,
 	return sensor->write_data(sensor->context, buf, off, count);
 }
 
-static DEVICE_ATTR_RO(name);
+static DEVICE_ATTR_RO(device_name);
 static DEVICE_ATTR_RO(port_name);
 static DEVICE_ATTR_RO(address);
 static DEVICE_ATTR_RO(modes);
@@ -572,7 +572,7 @@ static DEVICE_ATTR(value6, S_IRUGO, value_show, NULL);
 static DEVICE_ATTR(value7, S_IRUGO, value_show, NULL);
 
 static struct attribute *lego_sensor_class_attrs[] = {
-	&dev_attr_name.attr,
+	&dev_attr_device_name.attr,
 	&dev_attr_port_name.attr,
 	&dev_attr_address.attr,
 	&dev_attr_modes.attr,
@@ -682,21 +682,21 @@ static int lego_sensor_dev_uevent(struct device *dev,
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 	int ret;
 
-	ret = add_uevent_var(env, "NAME=%s", sensor->name);
+	ret = add_uevent_var(env, "LEGO_DEVICE_NAME=%s", sensor->name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_DEVICE_NAME\n");
 		return ret;
 	}
 
-	add_uevent_var(env, "PORT_NAME=%s", sensor->port_name);
+	add_uevent_var(env, "LEGO_PORT_NAME=%s", sensor->port_name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent PORT_NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_PORT_NAME\n");
 		return ret;
 	}
 
-	add_uevent_var(env, "ADDRESS=0x%02x", sensor->address);
+	add_uevent_var(env, "LEGO_DEVICE_ADDRESS=0x%02x", sensor->address);
 	if (ret) {
-		dev_err(dev, "failed to add uevent ADDRESS\n");
+		dev_err(dev, "failed to add uevent LEGO_DEVICE_ADDRESS\n");
 		return ret;
 	}
 

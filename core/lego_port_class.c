@@ -223,9 +223,9 @@ static int lego_port_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
 	struct lego_port_device *lego_port = to_lego_port_device(dev);
 	int ret;
 
-	ret = add_uevent_var(env, "PORT_NAME=%s", lego_port->port_name);
+	ret = add_uevent_var(env, "LEGO_PORT_NAME=%s", lego_port->port_name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent PORT_NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_PORT_NAME\n");
 		return ret;
 	}
 

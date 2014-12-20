@@ -223,7 +223,10 @@ static int lego_bus_uevent(struct device *dev, struct kobj_uevent_env *env)
 	struct lego_device *ldev = to_lego_device(dev);
 	int err;
 
-	err = add_uevent_var(env, "PORT_NAME=%s", ldev->port->port_name);
+	err = add_uevent_var(env, "LEGO_DEVICE_NAME=%s", ldev->name);
+	if (err)
+		return err;
+	err = add_uevent_var(env, "LEGO_PORT_NAME=%s", ldev->port->port_name);
 	if (err)
 		return err;
 	err = add_uevent_var(env, "MODALIAS=lego:%s", dev->type->name);

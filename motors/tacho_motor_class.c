@@ -1,10 +1,10 @@
 /*
- * Tacho motor device class for LEGO MINDSTORMS EV3
+ * LEGO Tacho motor device class
  *
  * Copyright (C) 2013-2014 Ralph Hempel <rhempel@hempeldesigngroup.com>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
+ * it under the terms of the GNU General Public Liversion 2 as
  * published by the Free Software Foundation.
 
  * This program is distributed "as is" WITHOUT ANY WARRANTY of any
@@ -959,9 +959,11 @@ static int tacho_motor_dev_uevent(struct device *dev, struct kobj_uevent_env *en
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
 	int ret;
 
-	ret = add_uevent_var(env, "PORT_NAME=%s", tm->port_name);
+	/* TODO: Add LEGO_DEVICE_NAME property */
+
+	ret = add_uevent_var(env, "LEGO_PORT_NAME=%s", tm->port_name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent PORT_NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_PORT_NAME\n");
 		return ret;
 	}
 
@@ -1001,6 +1003,6 @@ static void tacho_motor_class_exit(void)
 }
 module_exit(tacho_motor_class_exit);
 
-MODULE_DESCRIPTION("Tacho Motor device class for LEGO MINDSTORMS EV3");
+MODULE_DESCRIPTION("LEGO Tacho Motor device class");
 MODULE_AUTHOR("Ralph Hempel <rhempel@hempeldesigngroup.com>");
 MODULE_LICENSE("GPL");

@@ -38,6 +38,9 @@
 *   to `run` will cause the servo to be driven to the position set in the
 *   `position` attribute. Setting to `float` will remove power from the motor.
 * .
+* `device_name` (read-only)
+* : Returns the name of the servo device/driver.
+* .
 * `max_pulse_ms` (read/write)
 * : Used to set the pulse size in milliseconds for the signal that tells the
 *   servo to drive to the maximum (clockwise) position. Default value is 2400.
@@ -57,9 +60,6 @@
 *   servo to drive to the miniumum (counter-clockwise) position. Default value
 *   is 600. Valid values are 300 to 700. You must write to the position
 *   attribute for changes to this attribute to take effect.
-* .
-* `name` (read-only)
-* : Returns the name of the servo controller's driver.
 * .
 * `polarity` (read/write)
 * : Sets the polarity of the servo. Valid values are `normal` and `inverted`.
@@ -147,8 +147,8 @@ int servo_motor_class_set_position(struct servo_motor_device *motor,
 	return 0;
 }
 
-static ssize_t name_show(struct device *dev, struct device_attribute *attr,
-			 char *buf)
+static ssize_t device_name_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
 {
 	struct servo_motor_device *motor = to_servo_motor_device(dev);
 
@@ -364,7 +364,7 @@ static ssize_t rate_store(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
-static DEVICE_ATTR_RO(name);
+static DEVICE_ATTR_RO(device_name);
 static DEVICE_ATTR_RO(port_name);
 static DEVICE_ATTR_RW(min_pulse_ms);
 static DEVICE_ATTR_RW(mid_pulse_ms);
@@ -375,7 +375,7 @@ static DEVICE_ATTR_RW(position);
 static DEVICE_ATTR_RW(rate);
 
 static struct attribute *servo_motor_class_attrs[] = {
-	&dev_attr_name.attr,
+	&dev_attr_device_name.attr,
 	&dev_attr_port_name.attr,
 	&dev_attr_min_pulse_ms.attr,
 	&dev_attr_mid_pulse_ms.attr,
@@ -444,14 +444,14 @@ static int servo_motor_dev_uevent(struct device *dev, struct kobj_uevent_env *en
 	struct servo_motor_device *servo = to_servo_motor_device(dev);
 	int ret;
 
-	ret = add_uevent_var(env, "NAME=%s", servo->name);
+	ret = add_uevent_var(env, "LEGO_DEVICE_NAME=%s", servo->name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_DEVICE_NAME\n");
 		return ret;
 	}
-	add_uevent_var(env, "PORT_NAME=%s", servo->port_name);
+	add_uevent_var(env, "LEGO_PORT_NAME=%s", servo->port_name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent PORT_NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_PORT_NAME\n");
 		return ret;
 	}
 
