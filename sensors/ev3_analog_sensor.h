@@ -19,10 +19,6 @@
 #include <lego_port_class.h>
 #include <lego_sensor_class.h>
 
-struct ev3_analog_sensor_mode_info {
-	lego_port_notify_raw_data_func_t analog_cb;
-};
-
 /**
  * struct ev3_analog_sensor_info
  * @name: The driver name. Must match name in id_table.
@@ -32,7 +28,6 @@ struct ev3_analog_sensor_mode_info {
 struct ev3_analog_sensor_info {
 	const char* name;
 	struct lego_sensor_mode_info mode_info[LEGO_SENSOR_MODE_MAX + 1];
-	struct ev3_analog_sensor_mode_info analog_mode_info[LEGO_SENSOR_MODE_MAX + 1];
 	int num_modes;
 };
 

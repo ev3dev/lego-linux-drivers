@@ -155,27 +155,12 @@ static const u8 ms_imu_tilt2deg[] = {
 	174, 175, 175, 176, 176, 176, 177, 177, 178, 178, 179, 179, 180
 };
 
-static void ms_imu_poll_cb(struct nxt_i2c_sensor_data *sensor)
+static int ms_imu_scale(void *context, struct lego_sensor_mode_info *mode_info,
+			u8 index, long int *value)
 {
-	struct nxt_i2c_sensor_mode_info *i2c_mode_info =
-		&sensor->info.i2c_mode_info[sensor->sensor.mode];
-	struct lego_sensor_mode_info *ms_mode_info =
-			&sensor->info.mode_info[sensor->sensor.mode];
+	*value = ms_imu_tilt2deg[mode_info->raw_data[index]];
 
-	/*
-	 * Perform normal i2c read (just like nxt_i2c_sensor_poll_work).
-	 */
-	i2c_smbus_read_i2c_block_data(sensor->client,
-		i2c_mode_info->read_data_reg, ms_mode_info->data_sets
-		* lego_sensor_data_size[ms_mode_info->data_type],
-		ms_mode_info->raw_data);
-
-	/* scale values for tilt mode */
-	if (sensor->sensor.mode == 0) {
-		ms_mode_info->raw_data[0] = ms_imu_tilt2deg[ms_mode_info->raw_data[0]];
-		ms_mode_info->raw_data[1] = ms_imu_tilt2deg[ms_mode_info->raw_data[1]];
-		ms_mode_info->raw_data[2] = ms_imu_tilt2deg[ms_mode_info->raw_data[2]];
-	}
+	return 0;
 }
 
 static void ms_imu_send_cmd_post_cb(struct nxt_i2c_sensor_data *sensor,
@@ -203,36 +188,23 @@ static void ms_imu_send_cmd_post_cb(struct nxt_i2c_sensor_data *sensor,
 /*
  * Microinfinity CruizCore XG1300L gyroscope and accelerometer related functions
  */
-static void mi_xg1300l_poll_cb(struct nxt_i2c_sensor_data *sensor)
+static int mi_xg1300l_scale(void *context,
+			    struct lego_sensor_mode_info *mode_info,
+			    u8 index, long int *value)
 {
-	u8 *scaling_factor = sensor->info.callback_data;
-
-	struct nxt_i2c_sensor_mode_info *i2c_mode_info =
-		&sensor->info.i2c_mode_info[sensor->sensor.mode];
-	struct lego_sensor_mode_info *ms_mode_info =
-			&sensor->info.mode_info[sensor->sensor.mode];
-
-	s16 *raw_as_s16 = (s16*) ms_mode_info->raw_data;
-
-	/*
-	 * Perform normal i2c read (just like nxt_i2c_sensor_poll_work).
-	 */
-	i2c_smbus_read_i2c_block_data(sensor->client,
-		i2c_mode_info->read_data_reg, ms_mode_info->data_sets
-		* lego_sensor_data_size[ms_mode_info->data_type],
-		ms_mode_info->raw_data);
+	struct nxt_i2c_sensor_data *data = context;
+	u8 *scaling_factor = data->info.callback_data;
+	s16 *raw_as_s16 = (s16*)mode_info->raw_data;
 
 	/* scale values for acceleration */
 
-	if(sensor->sensor.mode < 2)  /* "ANG-ACC", "ANG-SPEED" - no acceleration info */
-		return;
+	/* "ALL", accelerometer data - do not scale first 2 values */
+	if (data->sensor.mode == 3 && index < 2)
+		return lego_sensor_default_scale(mode_info, index, value);
 
-	if(sensor->sensor.mode == 3) /* "ALL", accelerometer data starting from fourth byte */
-		raw_as_s16 += 2;
+	*value = raw_as_s16[index] * *scaling_factor;
 
-	raw_as_s16[0] *= *scaling_factor;
-	raw_as_s16[1] *= *scaling_factor;
-	raw_as_s16[2] *= *scaling_factor;
+	return 0;
 }
 
 static void mi_xg1300l_send_cmd_post_cb(struct nxt_i2c_sensor_data *data,
@@ -243,7 +215,7 @@ static void mi_xg1300l_send_cmd_post_cb(struct nxt_i2c_sensor_data *data,
 	if (command == 0 || command == 1)	/* "RESET", "ACCEL-2G"	*/
 		*scaling_factor = 1;
 	else if (command == 2)			/* "ACCEL-4G"		*/
-		*scaling_factor=2;
+		*scaling_factor = 2;
 	else if (command == 3)			/* "ACCEL-8G"		*/
 		*scaling_factor = 4;
 }
@@ -1590,7 +1562,6 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "AbsIMU",
 		.num_modes		= 6,
-		.ops.poll_cb		= ms_imu_poll_cb,
 		.ops.send_cmd_post_cb	= ms_imu_send_cmd_post_cb,
 		.mode_info	= {
 			[0] = {
@@ -1602,6 +1573,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @units_description: degrees
 				 */
 				.name		= "TILT",
+				.scale		= ms_imu_scale,
 				.data_sets	= 3,
 				.data_type	= LEGO_SENSOR_DATA_U8,
 				.units		= "deg",
@@ -2089,7 +2061,6 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.product_id		= "XG1300L",  /* The sensor doesn't return product_id, it can't be autodetected this way */
 		.num_modes		= 4,
 		.num_read_only_modes	= 4,
-		.ops.poll_cb		= mi_xg1300l_poll_cb,
 		.ops.send_cmd_post_cb	= mi_xg1300l_send_cmd_post_cb,
 		.ops.probe_cb		= mi_xg1300l_probe_cb,
 		.ops.remove_cb		= mi_xg1300l_remove_cb,
@@ -2130,6 +2101,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @units_footnote: [^gravity-units]
 				 */
 				.name		= "ACCEL",
+				.scale		= mi_xg1300l_scale,
 				.data_sets	= 3,
 				.units		= "g",
 				.data_type	= LEGO_SENSOR_DATA_S16,
@@ -2155,6 +2127,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value4_footnote: [^mode3-accel]
 				 */
 				.name		= "ALL",
+				.scale		= mi_xg1300l_scale,
 				.data_sets	= 5,
 				.data_type	= LEGO_SENSOR_DATA_S16,
 			},

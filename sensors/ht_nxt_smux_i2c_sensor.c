@@ -71,13 +71,14 @@ static int ht_nxt_smux_i2c_sensor_set_mode(void *context, u8 mode)
 	struct lego_port_device *port = data->ldev->port;
 	struct lego_sensor_mode_info *mode_info = &data->info.mode_info[mode];
 	struct nxt_i2c_sensor_mode_info *i2c_mode_info = data->info.i2c_mode_info;
+	int size = lego_sensor_get_raw_data_size(mode_info);
 
 	ht_nxt_smux_port_set_i2c_data_reg(port, i2c_mode_info[mode].read_data_reg,
-					  data->info.mode_info[mode].data_sets);
+					  size);
 	port->nxt_i2c_ops->set_pin1_gpio(port->context,
 					 i2c_mode_info[mode].pin1_state);
-	lego_port_set_raw_data_ptr_and_func(port, mode_info->raw_data,
-		lego_sensor_get_raw_data_size(mode_info), NULL, NULL);
+	lego_port_set_raw_data_ptr_and_func(port, mode_info->raw_data, size,
+					    NULL, NULL);
 
 	return 0;
 }

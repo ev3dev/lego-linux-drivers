@@ -54,14 +54,6 @@ struct wedo_motor_data {
 	int duty_cycle;
 };
 
-/**
- * struct wedo_sensor_mode_info
- * @analog_cb: Analog callback function. Only needed if sensor requires special scaling.
- */
-struct wedo_sensor_mode_info {
-	void (*analog_cb)(void *context);
-};
-
 enum wedo_sensor_types {
 	WEDO_TILT_SENSOR,
 	WEDO_MOTION_SENSOR,
@@ -78,7 +70,6 @@ enum wedo_sensor_types {
 struct wedo_sensor_info {
 	const char* name;
 	struct lego_sensor_mode_info mode_info[LEGO_SENSOR_MODE_MAX + 1];
-	struct wedo_sensor_mode_info wedo_mode_info[LEGO_SENSOR_MODE_MAX + 1];
 	int num_modes;
 };
 
@@ -88,10 +79,6 @@ struct wedo_sensor_data {
 	struct wedo_port_data *wpd;
 	struct lego_sensor_device sensor;
 	struct wedo_sensor_info info;
-
-	int debounce_count;
-	int debounce_status;
-	int status;
 };
 
 enum wedo_type_id {

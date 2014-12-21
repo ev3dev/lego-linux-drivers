@@ -62,8 +62,7 @@ static int nxt_analog_sensor_set_mode(void *context, u8 mode)
 	data->ldev->port->nxt_analog_ops->set_pin5_gpio(data->ldev->port->context,
 			data->info.analog_mode_info[mode].pin5_state);
 	lego_port_set_raw_data_ptr_and_func(data->ldev->port, mode_info->raw_data,
-		lego_sensor_get_raw_data_size(mode_info),
-		data->info.analog_mode_info[mode].analog_cb, data);
+		lego_sensor_get_raw_data_size(mode_info), NULL, NULL);
 
 	return 0;
 }

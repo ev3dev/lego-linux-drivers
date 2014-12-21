@@ -417,10 +417,7 @@ void wedo_port_update_status(struct wedo_port_data *wpd)
 	case WEDO_TYPE_MOTION:
 		wsd = wpd->sensor_data;
 		if (wsd) {
-			if (wsd->info.wedo_mode_info[wsd->sensor.mode].analog_cb)
-				wsd->info.wedo_mode_info[wsd->sensor.mode].analog_cb(wsd);
-			else
-				wsd->info.mode_info[wsd->sensor.mode].raw_data[0] = wpd->input;
+			wsd->info.mode_info[wsd->sensor.mode].raw_data[0] = wpd->input;
 		}
 		break;
 	case WEDO_TYPE_MOTOR:

@@ -159,7 +159,7 @@ void ht_nxt_smux_port_set_i2c_addr(struct lego_port_device *port, u8 addr,
 EXPORT_SYMBOL_GPL(ht_nxt_smux_port_set_i2c_addr);
 
 void ht_nxt_smux_port_set_i2c_data_reg(struct lego_port_device *port, u8 reg,
-				       u8 count)
+				       u8 size)
 {
 	struct ht_nxt_smux_port_data *data =
 		container_of(port, struct ht_nxt_smux_port_data, port);
@@ -168,11 +168,11 @@ void ht_nxt_smux_port_set_i2c_data_reg(struct lego_port_device *port, u8 reg,
 	i2c_smbus_write_byte_data(data->i2c->client,
 		offset + HT_NXT_SMUX_CFG_I2C_REG,
 		reg);
-	if (count > 8)
-		count = 8;
+	/* The HT sensor mux can only read up to 8 bytes at a time */
+	if (size > 8)
+		size = 8;
 	i2c_smbus_write_byte_data(data->i2c->client,
-		offset + HT_NXT_SMUX_CFG_I2C_CNT,
-		count);
+		offset + HT_NXT_SMUX_CFG_I2C_CNT, size);
 }
 EXPORT_SYMBOL_GPL(ht_nxt_smux_port_set_i2c_data_reg);
 

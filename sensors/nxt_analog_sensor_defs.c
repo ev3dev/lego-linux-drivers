@@ -15,30 +15,34 @@
 
 #include "nxt_analog_sensor.h"
 
-static void nxt_touch_sensor_cb(void *context)
+static int nxt_touch_sensor_scale(void *context,
+				  struct lego_sensor_mode_info *mode_info,
+				  u8 index, long int *value)
 {
-	struct nxt_analog_sensor_data *data = context;
-	u8 *raw_data = data->sensor.mode_info[data->sensor.mode].raw_data;
-	s32 pin1_mv = *(s32 *)raw_data;
+	s32 pin1_mv = *(s32 *)mode_info->raw_data;
 
 	/*
 	 * pin 1 is pulled up to 5V in the EV3, so anything less than close to
 	 * 5V (5000) is pressed.
 	 */
-	raw_data[0] = (pin1_mv < 4800) ? 1 : 0;
+	*value = (pin1_mv < 4800) ? 1 : 0;
+
+	return 0;
 }
 
-static void ht_eopd_sensor_cb(void *context)
+static int ht_eopd_sensor_scale(void *context,
+				struct lego_sensor_mode_info *mode_info,
+				u8 index, long int *value)
 {
-	struct nxt_analog_sensor_data *data = context;
-	u8 *raw_data = data->sensor.mode_info[data->sensor.mode].raw_data;
-	s32 pin1_mv = *(s32 *)raw_data;
+	s32 pin1_mv = *(s32 *)mode_info->raw_data;
 
 	/*
 	 * To make the sensor value linear, we have to take the square root.
 	 * raw_volt max is 5000, so multiply by 2 to get max return value of 100
 	 */
-	raw_data[0] = (u8)int_sqrt(pin1_mv * 2);
+	*value = (u8)int_sqrt(pin1_mv * 2);
+
+	return 0;
 }
 
 #define MS_TOUCH_MUX_H1    4194
@@ -56,38 +60,51 @@ static void ht_eopd_sensor_cb(void *context)
 #define MS_TOUCH_MUX_H123  1975
 #define MS_TOUCH_MUX_L123  1721
 
-static void ms_touch_mux_cb(void *context)
-{
-	struct nxt_analog_sensor_data *data = context;
-	u8 *raw_data = data->sensor.mode_info[data->sensor.mode].raw_data;
-	s32 pin1_mv = *(s32 *)raw_data;
-	u8 sensor1 = 0;
-	u8 sensor2 = 0;
-	u8 sensor3 = 0;
+enum ms_touch_mux_port {
+	MS_TOUCH_MUX_PORT_1,
+	MS_TOUCH_MUX_PORT_2,
+	MS_TOUCH_MUX_PORT_3,
+	NUM_MS_TOUCH_MUX_PORT
+};
 
+static int ms_touch_mux_scale(void *context,
+			      struct lego_sensor_mode_info *mode_info,
+			      u8 index, long int *value)
+{
+	s32 pin1_mv = *(s32 *)mode_info->raw_data;
+	u8 values[NUM_MS_TOUCH_MUX_PORT] = { 0 };
+
+	if (index >= NUM_MS_TOUCH_MUX_PORT)
+		return -EINVAL;
+
+	/*
+	 * TODO: This could be more efficient if we only figure out the value
+	 * for the given index
+	 */
 	if (pin1_mv >= MS_TOUCH_MUX_L1 && pin1_mv < MS_TOUCH_MUX_H1) {
-		sensor1 = 1;
+		values[MS_TOUCH_MUX_PORT_1] = 1;
 	} else if (pin1_mv >= MS_TOUCH_MUX_L2 && pin1_mv < MS_TOUCH_MUX_H2) {
-		sensor2 = 1;
+		values[MS_TOUCH_MUX_PORT_2] = 1;
 	} else if (pin1_mv >= MS_TOUCH_MUX_L12 && pin1_mv < MS_TOUCH_MUX_H12) {
-		sensor1 = 1;
-		sensor2 = 1;
+		values[MS_TOUCH_MUX_PORT_1] = 1;
+		values[MS_TOUCH_MUX_PORT_2] = 1;
 	} else if (pin1_mv >= MS_TOUCH_MUX_L3 && pin1_mv < MS_TOUCH_MUX_H3) {
-		sensor3 = 1;
+		values[MS_TOUCH_MUX_PORT_3] = 1;
 	} else if (pin1_mv >= MS_TOUCH_MUX_L13 && pin1_mv < MS_TOUCH_MUX_H13) {
-		sensor1 = 1;
-		sensor3 = 1;
+		values[MS_TOUCH_MUX_PORT_1] = 1;
+		values[MS_TOUCH_MUX_PORT_3] = 1;
 	} else if (pin1_mv >= MS_TOUCH_MUX_L23 && pin1_mv < MS_TOUCH_MUX_H23) {
-		sensor2 = 1;
-		sensor3 = 1;
+		values[MS_TOUCH_MUX_PORT_2] = 1;
+		values[MS_TOUCH_MUX_PORT_3] = 1;
 	} else if (pin1_mv >= MS_TOUCH_MUX_L123 && pin1_mv < MS_TOUCH_MUX_H123) {
-		sensor1 = 1;
-		sensor2 = 1;
-		sensor3 = 1;
+		values[MS_TOUCH_MUX_PORT_1] = 1;
+		values[MS_TOUCH_MUX_PORT_2] = 1;
+		values[MS_TOUCH_MUX_PORT_3] = 1;
 	}
-	raw_data[0] = sensor1;
-	raw_data[1] = sensor2;
-	raw_data[2] = sensor3;
+
+	*value = values[index];
+
+	return 0;
 }
 
 /*
@@ -170,15 +187,8 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				 * @value0_footnote: [^mode0-value]
 				 */
 				.name = "TOUCH",
-				.raw_max = 1,
-				.pct_max = 100,
-				.si_max = 1,
+				.scale = nxt_touch_sensor_scale,
 				.data_sets = 1,
-			},
-		},
-		.analog_mode_info = {
-			[0] = {
-				.analog_cb = nxt_touch_sensor_cb,
 			},
 		},
 	},
@@ -306,9 +316,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				 * @value0_footnote: [^adjusted-value]
 				 */
 				.name = "LONG",
-				.raw_max = 5000,
-				.pct_max = 100,
-				.si_max = 100,
+				.scale = ht_eopd_sensor_scale,
 				.data_sets = 1,
 				.data_type = LEGO_SENSOR_DATA_S32,
 			},
@@ -319,9 +327,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				 * @value0_footnote: [^adjusted-value]
 				 */
 				.name = "SHORT",
-				.raw_max = 5000,
-				.pct_max = 100,
-				.si_max = 100,
+				.scale = ht_eopd_sensor_scale,
 				.data_sets = 1,
 				.data_type = LEGO_SENSOR_DATA_S32,
 			},
@@ -329,11 +335,9 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		.analog_mode_info = {
 			[0] = {
 				.pin5_state = LEGO_PORT_GPIO_HIGH,
-				.analog_cb = ht_eopd_sensor_cb,
 			},
 			[1] = {
 				.pin5_state = LEGO_PORT_GPIO_LOW,
-				.analog_cb = ht_eopd_sensor_cb,
 			},
 		},
 	},
@@ -445,15 +449,8 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				 * @value2_footnote: [^values]
 				 */
 				.name = "TOUCH-MUX",
-				.raw_max = 1,
-				.pct_max = 100,
-				.si_max = 1,
+				.scale = ms_touch_mux_scale,
 				.data_sets = 3,
-			},
-		},
-		.analog_mode_info = {
-			[0] = {
-				.analog_cb = ms_touch_mux_cb,
 			},
 		},
 	},

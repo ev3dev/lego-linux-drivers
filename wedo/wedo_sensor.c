@@ -2,6 +2,7 @@
  * Sensor Definitions for LEGO WeDo
  *
  * Copyright (C) 2014 Ralph Hempel <rhemple@hempeldesigngroup.com>
+ * Copyright (C) 2014 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -25,6 +26,12 @@ enum wedo_tilt_status_id {
 	WEDO_TILT_STATUS_MAX,
 };
 
+enum wedo_tilt_axis {
+	WEDO_TILT_AXIS_LEFT_RIGHT,
+	WEDO_TILT_AXIS_FRONT_BACK,
+	WEDO_TILT_AXIS_OK,
+};
+
 struct wedo_tilt_status_info {
 	unsigned char max;
 	unsigned char *name;
@@ -45,107 +52,71 @@ static const struct wedo_tilt_status_info wedo_tilt_status_infos[] = {
 
 #define WEDO_TILT_STATUS_DEBOUNCE 4
 
-static enum wedo_tilt_status_id wedo_update_tilt_status(struct wedo_sensor_data *wsd)
+static enum wedo_tilt_status_id
+wedo_get_tilt_status(struct lego_sensor_mode_info *mode_info)
 {
 	enum wedo_tilt_status_id id;
-	int rawval = wsd->wpd->input;
+	int rawval = mode_info->raw_data[0];
 
 	for (id = 0; id < WEDO_TILT_STATUS_MAX; ++id)
 		if (rawval <= wedo_tilt_status_infos[id].max)
 			break;
 
-	if (id != wsd->debounce_status) {
-		wsd->debounce_count = 0;
-		wsd->debounce_status = id;
-	}
-	else if (WEDO_TILT_STATUS_DEBOUNCE > wsd->debounce_count) {
-		wsd->debounce_count++;
-	}
-	else if (WEDO_TILT_STATUS_DEBOUNCE == wsd->debounce_count) {
-		/* Here's where we'd schedule a notification task */
-		wsd->debounce_count++;
-		wsd->status = id;
-	}
-
-	return wsd->status;
+	return id;
 }
 
-static void wedo_tilt_axis_cb(void *context)
+static int wedo_tilt_axis_scale(void *context,
+				struct lego_sensor_mode_info *mode_info,
+				u8 index, long int *value)
 {
-	struct wedo_sensor_data *wsd = context;
+	enum wedo_tilt_status_id id;
 
-	switch (wedo_update_tilt_status(wsd))
-	{
-	case WEDO_TILT_STATUS_BACK:
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[0] = 0;
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[1] = -1;
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[2] = 1;
+	id = wedo_get_tilt_status(mode_info);
+
+	switch (index) {
+	case WEDO_TILT_AXIS_FRONT_BACK:
+		if (id == WEDO_TILT_STATUS_BACK)
+			*value = -1;
+		else if (id == WEDO_TILT_STATUS_FRONT)
+			*value = 1;
+		else
+			*value = 0;
 		break;
-
-	case WEDO_TILT_STATUS_RIGHT:
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[0] = 1;
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[1] = 0;
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[2] = 1;
+	case WEDO_TILT_AXIS_LEFT_RIGHT:
+		if (id == WEDO_TILT_STATUS_LEFT)
+			*value = -1;
+		else if (id == WEDO_TILT_STATUS_RIGHT)
+			*value = 1;
+		else
+			*value = 0;
 		break;
-
-	case WEDO_TILT_STATUS_FRONT:
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[0] = 0;
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[1] = 1;
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[2] = 1;
+	case WEDO_TILT_AXIS_OK:
+		*value = (id == WEDO_TILT_STATUS_UNKNOWN) ? 0 : 1;
 		break;
-
-	case WEDO_TILT_STATUS_LEFT:
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[0] = -1;
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[1] = 0;
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[2] = 1;
-		break;
-
-	case WEDO_TILT_STATUS_LEVEL:
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[0] = 0;
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[1] = 0;
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[2] = 1;
-		break;
-
-	case WEDO_TILT_STATUS_UNKNOWN:
 	default:
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[0] = 0;
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[1] = 0;
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[2] = 0;
-		break;
+		return -EINVAL;
 	}
+
+	return 0;
 }
 
-static void wedo_tilt_status_cb(void *context)
+/* These values must match the values in the mode info docs */
+static const u8 wedo_tilt_user_values[] = {
+	[WEDO_TILT_STATUS_LEVEL]	= 0,
+	[WEDO_TILT_STATUS_FRONT]	= 1,
+	[WEDO_TILT_STATUS_BACK]		= 2,
+	[WEDO_TILT_STATUS_LEFT]		= 3,
+	[WEDO_TILT_STATUS_RIGHT]	= 4,
+	[WEDO_TILT_STATUS_UNKNOWN]	= 5,
+};
+
+static int wedo_tilt_scale(void *context,
+			   struct lego_sensor_mode_info *mode_info,
+			   u8 index, long int *value)
 {
-	struct wedo_sensor_data *wsd = context;
+	*value = wedo_tilt_user_values[wedo_get_tilt_status(mode_info)];
 
-	switch (wedo_update_tilt_status(wsd))
-	{
-	case WEDO_TILT_STATUS_BACK:
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[0] = 2;
-		break;
-
-	case WEDO_TILT_STATUS_RIGHT:
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[0] = 4;
-		break;
-
-	case WEDO_TILT_STATUS_FRONT:
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[0] = 1;
-		break;
-
-	case WEDO_TILT_STATUS_LEFT:
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[0] = 3;
-		break;
-
-	case WEDO_TILT_STATUS_LEVEL:
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[0] = 0;
-		break;
-
-	case WEDO_TILT_STATUS_UNKNOWN:
-	default:
-		wsd->sensor.mode_info[wsd->sensor.mode].raw_data[0] = 5;
-		break;
-	}
+	return 0;
 }
 
 const struct wedo_sensor_info wedo_sensor_defs[] = {
@@ -177,8 +148,7 @@ const struct wedo_sensor_info wedo_sensor_defs[] = {
 				 * @value0_footnote: [^tilt-values]
 				 */
 				.name = "TILT",
-				.raw_max = 5,
-				.si_max = 5,
+				.scale = wedo_tilt_scale,
 				.data_sets = 1,
 				.data_type = LEGO_SENSOR_DATA_U8,
 			},
@@ -204,10 +174,7 @@ const struct wedo_sensor_info wedo_sensor_defs[] = {
 				 * @value2_footnote: [^axis-values]
 				 */
 				.name = "TILT-AXIS",
-				.raw_min = -1,
-				.raw_max = 1,
-				.si_min = -1,
-				.si_max = 1,
+				.scale = wedo_tilt_axis_scale,
 				.data_sets = 3,
 				.data_type = LEGO_SENSOR_DATA_S8,
 			},
@@ -229,22 +196,10 @@ const struct wedo_sensor_info wedo_sensor_defs[] = {
 				 * @value0_footnote: [^raw-values]
 				 */
 				.name = "RAW",
-				.raw_max = 255,
-				.si_max = 255,
 				.data_sets = 1,
 				.data_type = LEGO_SENSOR_DATA_U8,
 			},
 		},
-		.wedo_mode_info = {
-			[0] = {
-				.analog_cb = wedo_tilt_status_cb,
-			},
-			[1] = {
-				.analog_cb = wedo_tilt_axis_cb,
-			},
-			[2] = {
-			},
-		}
 	},
 	[WEDO_MOTION_SENSOR] = {
 		/**
@@ -254,16 +209,28 @@ const struct wedo_sensor_info wedo_sensor_defs[] = {
 		 * @vendor_website: http://education.lego.com/en-us/lego-education-product-database/wedo/9583-motion-sensor
 		 */
 		.name = "wedo-motion",
-		.num_modes = 1,
+		.num_modes = 2,
 		.mode_info = {
 			[0] = {
 				/**
+				 * @description: Proximity
+				 * @value0: Proximity (0 - 100)
+				 * @units_description: percent
+				 */
+				.name = "PROX",
+				.raw_min = 71,
+				.raw_max = 219,
+				.si_max = 100,
+				.data_sets = 1,
+				.data_type = LEGO_SENSOR_DATA_U8,
+				.units	= "pct",
+			},
+			[1] = {
+				/**
 				 * @description: Raw analog value
-				 * @value0: Motion (0 - 255)
+				 * @value0: Proximity (0 - 255)
 				 */
 				.name = "RAW",
-				.raw_max = 255,
-				.si_max = 255,
 				.data_sets = 1,
 				.data_type = LEGO_SENSOR_DATA_U8,
 			},

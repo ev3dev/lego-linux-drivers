@@ -53,9 +53,11 @@ extern size_t lego_sensor_data_size[];
  * @pct_min: The maximum percentage value of the data read.
  * @si_min: The minimum scaled value of the data read.
  * @si_min: The maximum scaled value of the data read.
+ * @scale: Optional scaling function to use instead of raw/si min/max.
  * @units: Units of the scaled value.
  * @data_sets: Number of data points in raw data.
  * @data_type: Data type of raw data.
+ * @num_values: Number of value attributes to show. If 0, data_sets will be used.
  * @figures: Number of digits that should be displayed, including decimal point.
  * @decimals: Decimal point position.
  * @raw_data: Raw data read from the sensor.
@@ -68,9 +70,12 @@ struct lego_sensor_mode_info {
 	int pct_max;
 	int si_min;
 	int si_max;
+	int (*scale)(void *context, struct lego_sensor_mode_info *mode_info,
+		     u8 index, long int *value);
 	char units[LEGO_SENSOR_UNITS_SIZE + 1];
 	u8 data_sets;
 	enum lego_sensor_data_type data_type;
+	u8 num_values;
 	u8 figures;
 	u8 decimals;
 	u8 raw_data[LEGO_SENSOR_RAW_DATA_SIZE];
@@ -135,9 +140,17 @@ extern void unregister_lego_sensor(struct lego_sensor_device *);
 
 extern struct class lego_sensor_class;
 
+extern int lego_sensor_default_scale(struct lego_sensor_mode_info *mode_info,
+				     u8 index, long int *value);
+
 static inline int lego_sensor_get_raw_data_size(struct lego_sensor_mode_info *mode_info)
 {
 	return mode_info->data_sets * lego_sensor_data_size[mode_info->data_type];
+}
+
+static inline int lego_sensor_get_num_values(struct lego_sensor_mode_info *mode_info)
+{
+	return mode_info->num_values ? mode_info->num_values : mode_info->data_sets;
 }
 
 #endif /* _LEGO_SENSOR_CLASS_H_ */

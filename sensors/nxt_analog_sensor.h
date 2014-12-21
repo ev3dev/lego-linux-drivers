@@ -22,12 +22,9 @@
 /**
  * struct nxt_analog_sensor_mode_info
  * @pin5_state: State of input port pin 5 for this mode.
- * @analog_cb: Analog callback function. Only needed if sensor requires special
- * 	handling.
  */
 struct nxt_analog_sensor_mode_info {
 	enum lego_port_gpio_state pin5_state;
-	void (*analog_cb)(void *context);
 };
 
 /**

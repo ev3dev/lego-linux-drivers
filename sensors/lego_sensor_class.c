@@ -325,50 +325,54 @@ static ssize_t num_values_show(struct device *dev, struct device_attribute *attr
 {
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
-	return sprintf(buf, "%d\n", sensor->mode_info[sensor->mode].data_sets);
+	return sprintf(buf, "%d\n",
+		lego_sensor_get_num_values(&sensor->mode_info[sensor->mode]));
 }
 
-inline int lego_sensor_raw_u8_value(struct lego_sensor_device *sensor, int index)
+int lego_sensor_default_scale(struct lego_sensor_mode_info *mode_info, u8 index,
+			      long int *value)
 {
-	return *(u8 *)(sensor->mode_info[sensor->mode].raw_data + index);
-}
+	switch (mode_info->data_type) {
+	case LEGO_SENSOR_DATA_U8:
+		*value = *(u8 *)(mode_info->raw_data + index);
+		break;
+	case LEGO_SENSOR_DATA_S8:
+		*value = *(s8 *)(mode_info->raw_data + index);
+		break;
+	case LEGO_SENSOR_DATA_U16:
+		*value = *(u16 *)(mode_info->raw_data + index * 2);
+		break;
+	case LEGO_SENSOR_DATA_S16:
+		*value = *(s16 *)(mode_info->raw_data + index * 2);
+		break;
+	case LEGO_SENSOR_DATA_S16_BE:
+		*value = (s16)ntohs(*(u16 *)(mode_info->raw_data + index * 2));
+		break;
+	case LEGO_SENSOR_DATA_U32:
+		*value = *(u32 *)(mode_info->raw_data + index * 4);
+		break;
+	case LEGO_SENSOR_DATA_S32:
+		*value = *(s32 *)(mode_info->raw_data + index * 4);
+		break;
+	case LEGO_SENSOR_DATA_FLOAT:
+		*value = lego_sensor_ftoi(
+			*(u32 *)(mode_info->raw_data + index * 4),
+			mode_info->decimals);
+		break;
+	default:
+		return -ENXIO;
+	}
 
-inline int lego_sensor_raw_s8_value(struct lego_sensor_device *sensor, int index)
-{
-	return *(s8 *)(sensor->mode_info[sensor->mode].raw_data + index);
-}
+	if (mode_info->raw_min != mode_info->raw_max) {
+		*value = (*value - mode_info->raw_min)
+			* (mode_info->si_max - mode_info->si_min)
+			/ (mode_info->raw_max - mode_info->raw_min)
+			+ mode_info->si_min;
+	}
 
-inline int lego_sensor_raw_u16_value(struct lego_sensor_device *sensor, int index)
-{
-	return *(u16 *)(sensor->mode_info[sensor->mode].raw_data + index * 2);
+	return 0;
 }
-
-inline int lego_sensor_raw_s16_value(struct lego_sensor_device *sensor, int index)
-{
-	return *(s16 *)(sensor->mode_info[sensor->mode].raw_data + index * 2);
-}
-
-inline int lego_sensor_raw_s16_be_value(struct lego_sensor_device *sensor, int index)
-{
-	return (s16)ntohs(*(u16 *)(sensor->mode_info[sensor->mode].raw_data + index * 2));
-}
-
-inline int lego_sensor_raw_u32_value(struct lego_sensor_device *sensor, int index)
-{
-	return *(u32 *)(sensor->mode_info[sensor->mode].raw_data + index * 4);
-}
-
-inline int lego_sensor_raw_s32_value(struct lego_sensor_device *sensor, int index)
-{
-	return *(s32 *)(sensor->mode_info[sensor->mode].raw_data + index * 4);
-}
-
-inline int lego_sensor_raw_float_value(struct lego_sensor_device *sensor, int index)
-{
-	return lego_sensor_ftoi(
-		*(u32 *)(sensor->mode_info[sensor->mode].raw_data + index * 4),
-		sensor->mode_info[sensor->mode].decimals);
-}
+EXPORT_SYMBOL_GPL(lego_sensor_default_scale);
 
 static ssize_t value_show(struct device *dev, struct device_attribute *attr,
 			  char *buf)
@@ -376,49 +380,21 @@ static ssize_t value_show(struct device *dev, struct device_attribute *attr,
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 	struct lego_sensor_mode_info *mode_info = &sensor->mode_info[sensor->mode];
 	long int value;
-	int index;
+	int index, err;
 
 	if (strlen(attr->attr.name) < 6)
 		return -ENXIO;
 	if (sscanf(attr->attr.name + 5, "%d", &index) != 1)
 		return -ENXIO;
-	if (index < 0 || index >= mode_info->data_sets)
+	if (index < 0 || index >= lego_sensor_get_num_values(mode_info))
 		return -ENXIO;
 
-	switch (mode_info->data_type) {
-	case LEGO_SENSOR_DATA_U8:
-		value = lego_sensor_raw_u8_value(sensor, index);
-		break;
-	case LEGO_SENSOR_DATA_S8:
-		value = lego_sensor_raw_s8_value(sensor, index);
-		break;
-	case LEGO_SENSOR_DATA_U16:
-		value = lego_sensor_raw_u16_value(sensor, index);
-		break;
-	case LEGO_SENSOR_DATA_S16:
-		value = lego_sensor_raw_s16_value(sensor, index);
-		break;
-	case LEGO_SENSOR_DATA_S16_BE:
-		value = lego_sensor_raw_s16_be_value(sensor, index);
-		break;
-	case LEGO_SENSOR_DATA_U32:
-		value = lego_sensor_raw_u32_value(sensor, index);
-		break;
-	case LEGO_SENSOR_DATA_S32:
-		value = lego_sensor_raw_s32_value(sensor, index);
-		break;
-	case LEGO_SENSOR_DATA_FLOAT:
-		value = lego_sensor_raw_float_value(sensor, index);
-		break;
-	default:
-		return -ENXIO;
-	}
-
-	if (mode_info->raw_min != mode_info->raw_max)
-		value = (value - mode_info->raw_min)
-			* (mode_info->si_max - mode_info->si_min)
-			/ (mode_info->raw_max - mode_info->raw_min)
-			+ mode_info->si_min;
+	if (mode_info->scale)
+		err = mode_info->scale(sensor->context, mode_info, index, &value);
+	else
+		err = lego_sensor_default_scale(mode_info, index, &value);
+	if (err)
+		return err;
 
 	return sprintf(buf, "%ld\n", value);
 }
