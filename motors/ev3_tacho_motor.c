@@ -2025,7 +2025,7 @@ static int ev3_tacho_motor_probe(struct lego_device *motor)
 
 	ev3_tm->motor = motor;
 
-	strncpy(ev3_tm->tm.port_name, motor->port->port_name, LEGO_PORT_NAME_SIZE);
+	ev3_tm->tm.port_name = motor->port->port_name;
 	ev3_tm->tm.fp = &fp;
 
 	err = register_tacho_motor(&ev3_tm->tm, &motor->dev);

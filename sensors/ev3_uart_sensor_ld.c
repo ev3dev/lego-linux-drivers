@@ -56,6 +56,7 @@
 #include <linux/string.h>
 #include <linux/tty.h>
 
+#include <lego.h>
 #include <lego_port_class.h>
 #include <lego_sensor_class.h>
 
@@ -170,6 +171,7 @@ enum ev3_uart_info_flags {
 
 /**
  * struct ev3_uart_data - Discipline data for EV3 UART Sensor communication
+ * @device_name: The name of the device/driver.
  * @tty: Pointer to the tty device that the sensor is connected to
  * @in_port: The input port device associated with this tty.
  * @sensor: The lego-sensor class structure for the sensor.
@@ -208,6 +210,7 @@ enum ev3_uart_info_flags {
  * 	received should be ignored.
  */
 struct ev3_uart_port_data {
+	char device_name[LEGO_NAME_SIZE + 1];
 	struct tty_struct *tty;
 	struct lego_port_device *in_port;
 	struct lego_sensor_device sensor;
@@ -378,27 +381,10 @@ static void ev3_uart_send_ack(struct work_struct *work)
 	struct delayed_work *dwork = to_delayed_work(work);
 	struct ev3_uart_port_data *port = container_of(dwork,
 	        struct ev3_uart_port_data, send_ack_work);
-	struct device *in_port_dev;
 	int err;
 
 	ev3_uart_write_byte(port->tty, EV3_UART_SYS_ACK);
 	if (!port->sensor.context && port->type_id <= EV3_UART_TYPE_MAX) {
-		/*
-		 * This is a special case for the input ports on the EV3 brick.
-		 * We use the name of the input port instead of the tty to make
-		 * it easier to know which sensor is which.
-		 */
-		in_port_dev = class_find_device(&lego_port_class, NULL,
-						port->tty->name,
-						ev3_uart_match_input_port);
-		if (in_port_dev) {
-			port->in_port = to_lego_port_device(in_port_dev);
-			strncpy(port->sensor.port_name, port->in_port->port_name,
-				LEGO_SENSOR_NAME_SIZE);
-		} else {
-			strncpy(port->sensor.port_name, port->tty->name,
-				LEGO_SENSOR_NAME_SIZE);
-		}
 		port->sensor.context = port->tty;
 		err = register_lego_sensor(&port->sensor, port->tty->dev);
 		if (err < 0) {
@@ -522,7 +508,7 @@ static void ev3_uart_handle_rx_data(struct work_struct *work)
 		for (i = 0; i <= EV3_UART_MODE_MAX; i++)
 			port->mode_info[i] = ev3_uart_default_mode_info;
 		port->type_id = type;
-		snprintf(port->sensor.name, LEGO_SENSOR_NAME_SIZE, "ev3-uart-%u", type);
+		snprintf(port->device_name, LEGO_SENSOR_NAME_SIZE, "ev3-uart-%u", type);
 		port->info_flags = EV3_UART_INFO_FLAG_CMD_TYPE;
 		port->synced = 1;
 		port->info_done = 0;
@@ -900,6 +886,7 @@ static int ev3_uart_open(struct tty_struct *tty)
 {
 	struct ktermios old_termios = tty->termios;
 	struct ev3_uart_port_data *port;
+	struct device *in_port_dev;
 
 	port = kzalloc(sizeof(struct ev3_uart_port_data), GFP_KERNEL);
 	if (!port)
@@ -908,6 +895,21 @@ static int ev3_uart_open(struct tty_struct *tty)
 	port->tty = tty;
 	port->new_baud_rate = EV3_UART_SPEED_MIN;
 	port->type_id = EV3_UART_TYPE_UNKNOWN;
+	port->sensor.name = port->device_name;
+	/*
+	 * This is a special case for the input ports on the EV3 brick.
+	 * We use the name of the input port instead of the tty to make
+	 * it easier to know which sensor is which.
+	 */
+	in_port_dev = class_find_device(&lego_port_class, NULL,
+					port->tty->name,
+					ev3_uart_match_input_port);
+	if (in_port_dev) {
+		port->in_port = to_lego_port_device(in_port_dev);
+		port->sensor.port_name = port->in_port->port_name;
+	} else {
+		port->sensor.port_name = port->tty->name;
+	}
 	port->sensor.mode_info = port->mode_info;
 	port->sensor.set_mode = ev3_uart_set_mode;
 	port->sensor.write_data = ev3_uart_write_data;

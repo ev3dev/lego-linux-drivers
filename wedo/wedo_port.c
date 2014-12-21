@@ -100,9 +100,8 @@ static int register_wedo_sensor(struct wedo_port_data *wpd,
 	memcpy(&wsd->info, &wedo_sensor_defs[type],
 		sizeof(struct wedo_sensor_info));
 
-	strncpy(wsd->sensor.name, wsd->info.name, LEGO_SENSOR_NAME_SIZE);
-	strncpy(wsd->sensor.port_name, wpd->port.port_name,
-	LEGO_SENSOR_NAME_SIZE);
+	wsd->sensor.name = wsd->info.name;
+	wsd->sensor.port_name = wpd->port.port_name;
 
 	dev_info(&wpd->port.dev, "name %s port_name %s\n", wsd->sensor.name,
 		 wsd->sensor.port_name);
@@ -157,8 +156,8 @@ static int register_wedo_motor(struct wedo_port_data *wpd)
 
 	wmd->wpd = wpd;
 
-	strncpy(wmd->md.name, "wedo-motor", DC_MOTOR_NAME_SIZE);
-	strncpy(wmd->md.port_name, wpd->port.port_name, DC_MOTOR_NAME_SIZE);
+	wmd->md.name = "wedo-motor";
+	wmd->md.port_name = wpd->port.port_name;
 
 	wmd->md.ops = &wedo_motor_ops;
 	wmd->md.context = wmd;

@@ -85,9 +85,8 @@ static int nxt_analog_sensor_probe(struct lego_device *ldev)
 
 	memcpy(&data->info, &nxt_analog_sensor_defs[ldev->entry_id->driver_data],
 	       sizeof(struct nxt_analog_sensor_info));
-	strncpy(data->sensor.name, ldev->entry_id->name, LEGO_SENSOR_NAME_SIZE);
-	strncpy(data->sensor.port_name, ldev->port->port_name,
-		LEGO_SENSOR_NAME_SIZE);
+	data->sensor.name = ldev->entry_id->name;
+	data->sensor.port_name = ldev->port->port_name;
 	data->sensor.num_modes	= data->info.num_modes;
 	data->sensor.mode_info	= data->info.mode_info;
 	data->sensor.set_mode	= nxt_analog_sensor_set_mode;

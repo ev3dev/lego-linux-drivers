@@ -64,8 +64,8 @@ struct servo_motor_ops {
  * @position: The current position of the motor.
  */
 struct servo_motor_device {
-	char name[SERVO_MOTOR_NAME_SIZE + 1];
-	char port_name[SERVO_MOTOR_NAME_SIZE + 1];
+	const char *name;
+	const char *port_name;
 	struct servo_motor_ops ops;
 	void *context;
 	/* private */

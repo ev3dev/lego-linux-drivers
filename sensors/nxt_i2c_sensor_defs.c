@@ -17,6 +17,7 @@
 #include <linux/i2c.h>
 #include <linux/slab.h>
 
+#include <lego_port_class.h>
 #include <servo_motor_class.h>
 
 #include "nxt_i2c_sensor.h"
@@ -29,6 +30,7 @@
 
 struct ms_8ch_servo_data {
 	int id;
+	char port_name[LEGO_PORT_NAME_SIZE + 1];
 	struct nxt_i2c_sensor_data *sensor;
 	struct servo_motor_device servo;
 };
@@ -94,9 +96,10 @@ static int ms_8ch_servo_probe_cb(struct nxt_i2c_sensor_data *data)
 	for (i = 0; i < 8; i++) {
 		servos[i].id = i;
 		servos[i].sensor = data;
-		strncpy(servos[i].servo.name, data->sensor.name, SERVO_MOTOR_NAME_SIZE);
-		snprintf(servos[i].servo.port_name, SERVO_MOTOR_NAME_SIZE,
+		servos[i].servo.name = data->sensor.name;
+		snprintf(servos[i].port_name, SERVO_MOTOR_NAME_SIZE,
 			 "%s:sv%d", data->sensor.port_name, i + 1);
+		servos[i].servo.port_name = servos[i].port_name;
 		servos[i].servo.ops.get_position = ms_8ch_servo_get_position;
 		servos[i].servo.ops.set_position = ms_8ch_servo_set_position;
 		servos[i].servo.ops.get_rate = ms_8ch_servo_get_rate;

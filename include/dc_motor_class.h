@@ -82,8 +82,8 @@ struct dc_motor_ops {
  * @target_duty_cycle: The requested duty cycle.
  */
 struct dc_motor_device {
-	char name[DC_MOTOR_NAME_SIZE + 1];
-	char port_name[DC_MOTOR_NAME_SIZE + 1];
+	const char *name;
+	const char *port_name;
 	const struct dc_motor_ops *ops;
 	void *context;
 	struct device dev;

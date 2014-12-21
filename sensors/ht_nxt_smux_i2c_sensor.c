@@ -107,9 +107,8 @@ static int ht_nxt_smux_i2c_sensor_probe(struct lego_device *ldev)
 	data->type = ldev->entry_id->driver_data;
 	memcpy(&data->info, sensor_info, sizeof(struct nxt_i2c_sensor_info));
 
-	strncpy(data->sensor.name, ldev->entry_id->name, LEGO_SENSOR_NAME_SIZE);
-	strncpy(data->sensor.port_name, data->ldev->port->port_name,
-		LEGO_SENSOR_NAME_SIZE);
+	data->sensor.name = ldev->entry_id->name;
+	data->sensor.port_name = data->ldev->port->port_name;
 	if (data->info.num_read_only_modes)
 		data->sensor.num_modes = data->info.num_read_only_modes;
 	else

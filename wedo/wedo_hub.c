@@ -146,6 +146,7 @@ static const struct wedo_hub_sensor_info wedo_hub_sensor_defs[] = {
 struct usb_wedo {
 	struct usb_device	*usb_device;
 	struct usb_interface	*usb_interface;
+	char 			port_name[LEGO_PORT_NAME_SIZE + 1];
 	struct lego_sensor_device wedo_hub;
 	struct wedo_hub_sensor_info wedo_hub_info;
 	struct wedo_port_data	*wedo_ports[WEDO_PORT_MAX];
@@ -395,9 +396,10 @@ static int wedo_probe(struct usb_interface *interface,
 
 	memcpy(&wedo->wedo_hub_info, wedo_hub_sensor_defs,
 	       sizeof (struct wedo_hub_sensor_info));
-	snprintf(wedo->wedo_hub.name, LEGO_NAME_SIZE, "wedo-hub");
-	snprintf(wedo->wedo_hub.port_name, LEGO_PORT_NAME_SIZE, "usb%s",
+	wedo->wedo_hub.name = "wedo-hub";
+	snprintf(wedo->port_name, LEGO_PORT_NAME_SIZE, "usb%s",
 		 dev_name(&interface->dev));
+	wedo->wedo_hub.port_name = wedo->port_name;
 	wedo->wedo_hub.num_modes = NUM_WEDO_HUB_MODES;
 	wedo->wedo_hub.num_view_modes = NUM_WEDO_HUB_MODES;
 	wedo->wedo_hub.mode_info = wedo->wedo_hub_info.mode_info;

@@ -78,7 +78,7 @@ struct tm_log {
 	};
 
 struct tacho_motor_device {
-	char port_name[LEGO_PORT_NAME_SIZE + 1];
+	const char *port_name;
 	const struct function_pointers const *fp;
 	/* private */
 	struct device dev;

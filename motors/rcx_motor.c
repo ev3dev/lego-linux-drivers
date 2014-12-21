@@ -64,8 +64,8 @@ static int rcx_motor_probe(struct lego_device *motor)
 	if (IS_ERR(data))
 		return -ENOMEM;
 
-	strncpy(data->motor.name, dev_name(&motor->dev), DC_MOTOR_NAME_SIZE);
-	strncpy(data->motor.port_name, motor->port->port_name, DC_MOTOR_NAME_SIZE);
+	data->motor.name = motor->name;
+	data->motor.port_name = motor->port->port_name;
 	data->motor.ops = motor->port->motor_ops;
 
 	err = register_dc_motor(&data->motor, &motor->dev);

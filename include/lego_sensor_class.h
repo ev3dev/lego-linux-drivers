@@ -110,8 +110,8 @@ struct lego_sensor_cmd_info {
  * @dev: The device data structure.
  */
 struct lego_sensor_device {
-	char name[LEGO_SENSOR_NAME_SIZE + 1];
-	char port_name[LEGO_SENSOR_NAME_SIZE + 1];
+	const char *name;
+	const char *port_name;
 	u8 num_modes;
 	u8 num_view_modes;
 	u8 mode;

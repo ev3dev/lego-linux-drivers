@@ -93,9 +93,8 @@ static int ev3_uart_sensor_probe(struct lego_device *ldev)
 	memcpy(&data->info,
 	       &ev3_uart_sensor_defs[ldev->entry_id->driver_data],
 	       sizeof(struct ev3_uart_sensor_info));
-	strncpy(data->sensor.name, ldev->entry_id->name, LEGO_SENSOR_NAME_SIZE);
-	strncpy(data->sensor.port_name, ldev->port->port_name,
-		LEGO_SENSOR_NAME_SIZE);
+	data->sensor.name = ldev->entry_id->name;
+	data->sensor.port_name = ldev->port->port_name;
 	/* mindsensors EV3 sensor mux only supports modes that return one value */
 	if (ldev->port->dev.type == &ms_ev3_smux_port_type)
 		data->sensor.num_modes = data->info.num_view_modes;
