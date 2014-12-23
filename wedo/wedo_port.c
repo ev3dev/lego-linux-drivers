@@ -103,7 +103,7 @@ static int register_wedo_sensor(struct wedo_port_data *wpd,
 	wsd->sensor.name = wsd->info.name;
 	wsd->sensor.port_name = wpd->port.port_name;
 
-	dev_info(&wpd->port.dev, "name %s port_name %s\n", wsd->sensor.name,
+	dev_info(&wpd->port.dev, "LEGO WeDo %s bound to %s\n", wsd->sensor.name,
 		 wsd->sensor.port_name);
 
 	wsd->sensor.num_modes = wsd->info.num_modes;
@@ -156,8 +156,11 @@ static int register_wedo_motor(struct wedo_port_data *wpd)
 
 	wmd->wpd = wpd;
 
-	wmd->md.name = "wedo-motor";
+	wmd->md.name = "motor";
 	wmd->md.port_name = wpd->port.port_name;
+
+	dev_info(&wpd->port.dev, "LEGO WeDo %s bound to %s\n", wmd->md.name,
+		 wmd->md.port_name);
 
 	wmd->md.ops = &wedo_motor_ops;
 	wmd->md.context = wmd;
@@ -226,7 +229,7 @@ static int register_wedo_led(struct wedo_port_data *wpd)
 
 	wld->wpd = wpd;
 
-	snprintf(wld->name, LEGO_NAME_SIZE, "wedo::%s", wpd->port.port_name);
+	snprintf(wld->name, LEGO_NAME_SIZE, "%s", wpd->port.port_name);
 	wld->cdev.name = wld->name;
 	wld->cdev.max_brightness = 127;
 	wld->cdev.brightness_set = wedo_port_led_brightness_set;
@@ -236,7 +239,7 @@ static int register_wedo_led(struct wedo_port_data *wpd)
 	if (err)
 		goto err_led_classdev_register;
 
-	dev_info(&wpd->port.dev, "Bound wedo lightbrick as led %s\n",
+	dev_info(&wpd->port.dev, "LEGO WeDo lightbrick bound to %s\n",
 		 dev_name(wld->cdev.dev));
 
 	wpd->led_data = wld;
