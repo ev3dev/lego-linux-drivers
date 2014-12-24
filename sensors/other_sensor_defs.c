@@ -25,7 +25,7 @@
  * parser can be found in the ev3dev-kpkg repository.
  */
 
-const struct other_sensor_info other_sensor_defs[] = {
+const struct other_sensor_info lm75_defs[] = {
 	[LEGO_NXT_TEMPERATURE_SENSOR] = {
 		/**
 		 * [^addresses]: Valid addresses are 0x48..0x4F (configurable via input pins)

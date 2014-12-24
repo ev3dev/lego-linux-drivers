@@ -43,7 +43,7 @@
  * EV3 Input and Output Ports
  *
  * By default, a sysfs device is created for each input and output port on the
- * EV3. See the [ev3-input-port] and [ev3-output-port] drivers for more
+ * EV3. See the [legoev3-input-port] and [legoev3-output-port] drivers for more
  * information on how these work.
  * .
  * ### Module parameters
@@ -59,8 +59,8 @@
  *   device and gpios used by the port free to be controlled directly or used
  *   by other drivers.
  * .
- * [ev3-input-port]: ../ev3-input-port
- * [ev3-output-port]: ../ev3-output-port
+ * [legoev3-input-port]: docs/ports/legoev3-input-port
+ * [legoev3-output-port]: docs/ports/legoev3-output-port
  */
 
 #include <linux/device.h>

@@ -15,7 +15,7 @@
 
 /*
  * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
  * or leading whitespace is important for the markdown syntax.
  */
 
@@ -25,17 +25,14 @@
  * NXT Analog Sensor Driver
  *
  * The `nxt-analog-sensor` module provides all of the drivers for Analog/NXT
- * sensors. You can find the complete list [here][supported sensors].
+ * sensors. You can find the complete list [here][supported sensors]. These
+ * drivers scale the analog voltage read from the sensor to a useful value.
  * .
- * ### sysfs Attributes
+ * ### sysfs
  * .
- * These drivers provide a [lego-sensor device], which is where all the really
- * useful attributes are.
- * .
- * You can find this device at `/sys/bus/lego/devices/<port>:<device-name>`
- * where `<port>` is the name of the port this device is connected to and
- * `<device-name>` is the name of one of the drivers in the `nxt-analog-sensor`
- * module (e.g. `lego-nxt-sound`).
+ * You can find the devices bound to this driver in the directory
+ * `/sys/bus/lego/drivers/nxt-analog-sensor`. However, these drivers provide a
+ * [lego-sensor device], which is where all the really useful attributes are.
  * .
  * [lego-sensor device]: ../lego-sensor-class
  * [supported sensors]: /docs/sensors#supported-sensors

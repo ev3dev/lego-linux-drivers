@@ -22,7 +22,7 @@
 /**
  * DOC: website
  *
- * LEGO MINDSTORMS EV3 UART Sensor Line Discipline
+ * EV3 UART Sensor Line Discipline
  *
  * This driver is a tty [line discipline] that runs on top of a tty. It listens
  * for the information data that is sent from UART/EV3 sensors. When it receives
@@ -32,14 +32,15 @@
  * .
  * This line discipline has been assigned the number 29. To attach this line
  * discipline to a tty, run `ldattach 29 /dev/tty<N>` where `<N>` is the name
- * of the tty you want to connect to.  **NOTE:** This driver [works with any tty],
- * which means the sensor does not necessarily have to be plugged into one of
- * the input ports on the EV3.
+ * of the tty you want to connect to.  **NOTE:** This driver [works with any
+ * tty], which means the sensor does not necessarily have to be plugged into
+ * one of the input ports on the EV3.
  * .
- * UART/EV3 sensors do not have individual drivers like other types of sensors.
- * As a result, the name returned by the [lego-sensor][lego-sensor class] `name`
- * attribute is not a real driver name. Instead it returns `ev3-uart-<N>`,
- * where `<N>` is the type id of the sensor.
+ * UART/EV3 sensors do not require individual drivers like other types of
+ * sensors. Instead, all of the needed info to sent from the sensor in a common
+ * format.  As a result, the name returned by the [lego-sensor][lego-sensor
+ * class] `device_name` attribute is not a real driver name. Instead it returns
+ * `ev3-uart-<N>`, where `<N>` is the type id of the sensor.
  * .
  * [line discipline]: https://en.wikipedia.org/wiki/Line_discipline
  * [lego-sensor class]: ../lego-sensor-class
@@ -184,7 +185,6 @@ enum ev3_uart_info_flags {
  * 	the sensor that the mode was actually changed.
  * @mode_info: Array of information about each mode of the sensor
  * @type_id: Type id returned by the sensor
- * @mode: The current mode.
  * @new_mode: The mode requested by set_mode.
  * @raw_min: Min/max values are sent as float data types. This holds the value
  * 	until we read the number of decimal places needed to convert this

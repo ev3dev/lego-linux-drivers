@@ -1348,9 +1348,11 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 	},
 	[HT_NXT_SENSOR_MUX] = {
 		/**
-		 * [^more-devices]: The `ht-nxt-smux` driver loads more devices in addition to
-		 * the [lego-sensor class] device. See [ht-smux-input-port](../ht-smux-input-port) for
-		 * more information.
+		 * [^more-devices]: The `ht-nxt-smux` driver loads more devices
+		 * in addition to the [lego-sensor] class device. See
+		 * [ht-nxt-smux-port] for more information.
+		 * ^
+		 * [ht-nxt-smux-port]: /docs/ports/ht-nxt-smux-port
 		 *
 		 * @vendor_name: HiTechnic
 		 * @vendor_part_number: NSX2020

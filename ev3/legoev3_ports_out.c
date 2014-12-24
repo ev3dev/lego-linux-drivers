@@ -130,49 +130,76 @@ enum legoev3_output_port_mode {
 
 /*
  * Documentation is automatically generated from this struct, so formatting is
- * very important. Make sure any new sensors have the same layout. The comments
+ * very important. Make sure any new modes have the same layout. The comments
  * are also parsed to provide more information for the documentation. The
  * parser can be found in the ev3dev-kpkg repository.
  */
 
-static const struct lego_port_mode_info ev3_output_port_mode_info[] = {
+static const struct lego_port_mode_info legoev3_output_port_mode_info[] = {
+	/**
+	 * @description: EV3 Output Port
+	 * @module: legoev3-ports
+	 * @connection_types: tacho-motor, dc-motor, led
+	 * @prefix: out
+	 */
 	[EV3_OUTPUT_PORT_MODE_AUTO] = {
 		/**
-		 * @description: (Default) Use auto-detection to detect when
-		 * motors are connected and disconnected. The appropriate motor
-		 * device will be loaded.
+		 * [^auto-mode]: Only the EV3/NXT large motors and the EV3
+		 * medium motor can be automatically detected. All other devices
+		 * must be manually configured.
+		 *
+		 * @description: Automatically detect motors when they are connected.
+		 * @name_footnote: [^auto-mode]
 		 */
 		.name	= "auto",
 	},
 	[EV3_OUTPUT_PORT_MODE_TACHO_MOTOR] = {
 		/**
-		 * @description: Force the port to load the [ev3-tacho-motor]
-		 * device. The driver will default to the Large Motor settings.
+		 * [^ev3-tacho-motor-mode]: Currently only supports loading the
+		 * driver with EV3/NXT Large Motor settings. In the future, you
+		 * will be able to change the driver using `set_device`.
+		 * ^
+		 * [ev3-tacho-motor]: /docs/drivers/ev3-tacho-motor
+		 *
+		 * @description: Load the [ev3-tacho-motor] device.
+		 * @name_footnote: [^ev3-tacho-motor-mode]
 		 */
 		.name	= "ev3-tacho-motor",
 	},
 	[EV3_OUTPUT_PORT_MODE_DC_MOTOR] = {
 		/**
-		 * @description: Force the port to load the [rcx-motor] device.
-		 * This can be use with MINDSTORMS RCX motor, Power Functions
-		 * motors and any other 'plain' DC motor. By 'plain', we mean
-		 * the motor is just a motor without any kind of controller.
+		 * [^rcx-motor-mode]: This can be use with MINDSTORMS RCX
+		 * motors, Power Functions motors and any other 'plain' DC
+		 * motor. By 'plain', we mean the motor is just a motor without
+		 * any feedback.
+		 * ^
+		 * [rcx-motor]: /docs/drivers/rcx-motor
+		 *
+		 * @description: Load the [rcx-motor] device.
+		 * @name_footnote: [^rcx-motor-mode]
 		 */
 		.name	= "rcx-motor",
 	},
 	[EV3_OUTPUT_PORT_MODE_LED] = {
 		/**
-		 * @description: Force the port to load the [rcx-led] device.
-		 * This can be used with the MINDSTORMS RCX LED, Power Functions
-		 * LEDs or any other LED connected to pins 1 and 2 of the output
-		 * port.
+		 * [^rcx-led-mode]: This can be used with MINDSTORMS RCX LEDs,
+		 * Power Functions LEDs or any other LED connected to pins 1
+		 * and 2 of the output port.
+		 * ^
+		 * [rcx-led]: /docs/drivers/rcx-led
+		 *
+		 * @description: Load the [rcx-led] device.
+		 * @name_footnote: [^rcx-led-mode]
 		 */
 		.name	= "rcx-led",
 	},
 	[EV3_OUTPUT_PORT_MODE_RAW] = {
 		/**
-		 * @description: Exports gpios, pwm and analog/digital converter
+		 * [^raw-mode]: Exports gpios, pwm and analog/digital converter
 		 * values to sysfs so that they can be controlled directly.
+		 *
+		 * @description: Provide access to low level drivers.
+		 * @name_footnote: [^raw-mode]
 		 */
 		.name	= "raw",
 	},
@@ -219,7 +246,7 @@ struct device_type ev3_motor_device_types[] = {
  * @tacho_motor_type: The type of motor currently connected.
  * @motor: Pointer to the motor device that is connected to the output port.
  * @command: The current command for the motor driver of the output port.
- * @polarity: The current polarity for the motor driver of the output port.
+ * @direction: The current direction for the motor driver of the output port.
  */
 struct ev3_output_port_data {
 	enum legoev3_output_port_id id;
@@ -662,7 +689,7 @@ static const char *ev3_output_port_get_status(void *context)
 	if (data->out_port.mode == EV3_OUTPUT_PORT_MODE_AUTO)
 		return ev3_output_port_state_names[data->tacho_motor_type];
 
-	return ev3_output_port_mode_info[data->out_port.mode].name;
+	return legoev3_output_port_mode_info[data->out_port.mode].name;
 }
 
 static struct device_type ev3_output_port_type = {
@@ -745,7 +772,7 @@ struct lego_port_device
 	data->pwm = pwm;
 
 	data->out_port.num_modes = NUM_EV3_OUTPUT_PORT_MODE;
-	data->out_port.mode_info = ev3_output_port_mode_info;
+	data->out_port.mode_info = legoev3_output_port_mode_info;
 	data->out_port.set_mode = ev3_output_port_set_mode;
 	data->out_port.get_status = ev3_output_port_get_status;
 	data->out_port.motor_ops = &ev3_output_port_motor_ops;

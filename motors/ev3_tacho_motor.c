@@ -15,7 +15,7 @@
 
 /*
  * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
  * or leading whitespace is important for the markdown syntax.
  */
 
@@ -28,18 +28,12 @@
  * other compatible motor with an [incremental rotary encoder] for position
  * and direction feedback that is connected to an output port. We call them
  * "tacho" motors because that is what the LMS2012 source code calls them. You
- * can find the sysfs device at `/sys/bus/legoev3/devices/<port>:ev3-tacho-motor`
- * where `<port>` is the the name of the output port the motor is connected to
- * (e.g. `outA`). There is not much of interest there though - all the useful
- * stuff is in the [tacho-motor] class.
- * .
- * This device is loaded automatically when a motor is plugged in and the
- * [ev3-output-port] is set to `auto` or when [ev3-output-port] is set to
- * `ev3-tacho-motor` mode.
+ * can find the devices bound to this driver in the directory
+ * `/sys/bus/lego/drivers/ev3-tacho-motor /`. There is not much of interest
+ * there though - all of the useful stuff is in the [tacho-motor] class.
  * .
  * [tacho-motor]: ../taco-motor-class
  * [incremental rotary encoder]: https://en.wikipedia.org/wiki/Rotary_encoder#Incremental_rotary_encoder
- * [ev3-output-port]: ../ev3-output-port
  */
 
 #include <linux/device.h>

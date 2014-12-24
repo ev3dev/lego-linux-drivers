@@ -26,16 +26,15 @@
  *
  * This driver provides a [dc-motor] interface for RCX motors, Power Functions
  * motors or any other 9V rated DC motor connected to an output port. You can
- * find the sysfs device at `/sys/bus/legoev3/devices/<port>:rcx-motor` where
- * `<port>` is the the name of the output port the motor is connected to (e.g.
- * `outA`). There is not much of interest there though - all the useful stuff
- * is in the [dc-motor] class.
+ * find the devices bound to this driver in the directory
+ * `/sys/bus/lego/drivers/rcx-motor`. There is not much of interest there
+ * though - all the useful stuff is in the [dc-motor] class.
  * .
- * This device is loaded when an [ev3-output-port] is set to `rcx-motor` mode.
- * It is not automatically detected.
+ * This device is loaded when an [legoev3-output-port] is set to `rcx-motor`
+ * mode. It is not automatically detected.
  * .
  * [dc-motor]: ../dc-motor-class
- * [ev3-output-port]: ../ev3-output-port
+ * [legoev3-output-port]: docs/ports/legoev3-output-port
  */
 
 #include <linux/device.h>

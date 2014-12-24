@@ -30,11 +30,49 @@ enum ms_ev3_smux_mode {
 	NUM_MS_EV3_SMUX_MODES
 };
 
-static const struct lego_port_mode_info ms_ev3_smux_mode_defs[] = {
+/*
+ * Documentation is automatically generated from this struct, so formatting is
+ * very important. Make sure any new modes have the same layout. The comments
+ * are also parsed to provide more information for the documentation. The
+ * parser can be found in the ev3dev-kpkg repository.
+ */
+
+static const struct lego_port_mode_info ms_ev3_smux_port_mode_info[] = {
+	/**
+	 * @description: mindsensors.com EV3 Sensor Multiplexer Input Port
+	 * @connection_types: UART/EV3, Analog/EV3
+	 * @prefix: mux
+	 */
 	[MS_EV3_SMUX_MODE_UART] = {
+		/**
+		 * [^uart-mode]: UART sensor types are not automatically
+		 * detected. By default, the `lego-ev3-uart-29` driver (LEGO
+		 * EV3 Color Sensor) will be loaded when this mode is set.
+		 * Use `set_device` to load other sensor devices/drivers.
+		 *
+		 * Supported sensors are:
+		 *
+		 * | Sensor Name         | Device/Driver Name |
+		 * |---------------------|--------------------|
+		 * | LEGO EV3 Color      | `lego-ev3-uart-29` |
+		 * | LEGO EV3 Ultrasonic | `lego-ev3-uart-30` |
+		 * | LEGO EV3 GYRO       | `lego-ev3-uart-32` |
+		 * | LEGO EV3 Infrared   | `lego-ev3-uart-33` |
+		 *
+		 * @description: UART/EV3 sensor
+		 * @name_footnote: [^uart-mode]
+		 */
 		.name	= "uart",
 	},
 	[MS_EV3_SMUX_MODE_ANALOG] = {
+		/**
+		 * [^analog-mode]: Currently only the LEGO EV3 Touch sensor is
+		 * supported. The `lego-ev3-touch` device/driver is loaded when
+		 * this mode is set.
+		 *
+		 * @description: Analog/EV3 sensor
+		 * @name_footnote: [^analog-mode]
+		 */
 		.name	= "analog",
 	},
 };
@@ -175,7 +213,7 @@ int ms_ev3_smux_probe_cb(struct nxt_i2c_sensor_data *data)
 	snprintf(smux->port.port_name, LEGO_PORT_NAME_SIZE, "%s:mux%d",
 		 data->in_port->port_name, ret);
 	smux->port.num_modes = NUM_MS_EV3_SMUX_MODES;
-	smux->port.mode_info = ms_ev3_smux_mode_defs;
+	smux->port.mode_info = ms_ev3_smux_port_mode_info;
 	smux->port.set_mode = ms_ev3_smux_set_mode;
 	smux->port.set_device = ms_ev3_smux_set_device;
 	smux->port.context = data;

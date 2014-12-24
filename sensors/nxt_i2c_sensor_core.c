@@ -27,22 +27,6 @@
  * The `nxt-i2c-sensor` module provides all of the drivers for I2C/NXT
  * sensors. You can find the complete list [here][supported sensors].
  * .
- * ### sysfs Attributes
- * .
- * These drivers provide a [lego-sensor device], which is where all the really
- * useful attributes are.
- * .
- * You can find this device at `/sys/bus/legoev3/devices/in<N>:<device-name>`
- * where `<N>` is the number of an input port (1 to 4) and `<device-name>` is
- * the name of one of the drivers in the `nxt-analog-sensor` module (e.g.
- * `lego-nxt-sound`).
- * .
- * `device_type` (read-only)
- * : Returns `nxt-i2c-sensor`
- * .
- * `port_name` (read-only)
- * : Returns the name of the port this host is connected to (e.g. `in1`).
- * .
  * ### Module Parameters
  * .
  * Note: These parameters can be changed at runtime at
@@ -56,6 +40,12 @@
  * .    will disable polling by default. Values of less that the minimum 50
  * .    msec will be rounded up to 50 msec. Changes only affect sensors plugged
  * .    in after the change was made. Default is 100 msec.
+ * .
+ * ### sysfs
+ * .
+ * You can find devices bound to this driver in the directory
+ * `/sys/bus/i2c/drivers/nxt-i2c-sensor/`. However, these drivers provide a
+ * [lego-sensor device], which is where all the really useful attributes are.
  * .
  * [supported sensors]: ../#supported-sensors
  * [lego-sensor device]: ../lego-sensor-class

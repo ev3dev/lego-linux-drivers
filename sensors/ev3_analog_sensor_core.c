@@ -27,16 +27,14 @@
  * The `ev3-analog-sensor` module provides all of the drivers for Analog/EV3
  * sensors. You can find the complete list [here][supported sensors].
  * .
- * These drivers provide a [lego-sensor class] device, which is where all the
- * really useful attributes are.
+ * ### sysfs
  * .
- * You can find this device at `/sys/bus/lego/devices/port<N>:<device-name>`
- * where `<N>` is the number of a [lego-port class] device and `<device-name>`
- * is the name of one of the drivers in the `ev3-analog-sensor` module (e.g.
- * `lego-ev3-touch`).
+ * You can find all of the the devices bound to this driver in the directory
+ * `/sys/bus/lego/drivers/ev3-analog-sensor/`. However, these drivers provide a
+ * [lego-sensor class] device, which is where all the really useful attributes
+ * are.
  * .
  * [lego-sensor class]: ../lego-sensor-class
- * [lego-port class]: ../lego-port-class
  * [supported sensors]: ../#supported-sensors
  */
 

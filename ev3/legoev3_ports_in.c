@@ -281,66 +281,87 @@ struct ev3_input_port_mode_name {
 
 /*
  * Documentation is automatically generated from this struct, so formatting is
- * very important. Make sure any new sensors have the same layout. The comments
+ * very important. Make sure any new modes have the same layout. The comments
  * are also parsed to provide more information for the documentation. The
  * parser can be found in the ev3dev-kpkg repository.
  */
 
-static const struct lego_port_mode_info ev3_input_port_mode_info[] = {
+static const struct lego_port_mode_info legoev3_input_port_mode_info[] = {
+	/**
+	 * @description: EV3 Input Port
+	 * @module: legoev3-ports
+	 * @connection_types: UART/EV3, UART/Other, I2C/NXT, I2C/Other, Analog/EV3, Analog/NXT
+	 * @prefix: in
+	 */
 	[EV3_INPUT_PORT_MODE_AUTO] = {
 		/**
-		 * @description: (Default) Use auto-detection to detect when
-		 * sensors are connected and disconnected. The appropriate
-		 * sensor device will be loaded.
+		 * [^auto-mode]: In auto mode, the port will attempt to
+		 * automatically detect the type of sensor that was connected
+		 * and load the appropriate driver. See the list of [supported
+		 * sensors] to determine if a sensor can be automatically
+		 * detected.
+		 * ^
+		 * [supported sensors]: /docs/sensors/#supported-sensors
+		 *
+		 * @description: Automatically detect sensors.
+		 * @name_footnote: [^auto-mode]
 		 */
 		.name	= "auto",
 	},
 	[EV3_INPUT_PORT_MODE_NXT_ANALOG] = {
 		/**
-		 * @description: Force the port to load the [nxt-analog] device.
+		 * [^nxt-analog-mode]: This loads the [generic NXT/Analog sensor]
+		 * [nxt-analog] driver. Use `set_device` to load the appropriate
+		 * device/driver.
+		 * ^
+		 * [nxt-analog]: /docs/sensors/generic-nxt-analog-sensor
+		 *
+		 * @description: Load the [nxt-analog] device.
+		 * @name_footnote: [^nxt-analog-mode]
 		 */
 		.name	= "nxt-analog",
 	},
 	[EV3_INPUT_PORT_MODE_NXT_COLOR] = {
 		/**
-		 * @description: Force the port to load the [nxt-color-sensor]
-		 * device.
+		 * [^nxt-color-mode]: NXT Color sensor driver has not been
+		 * implemented yet, so right now, this mode does nothing.
+		 *
+		 * @description: Load the [nxt-color-sensor] device.
+		 * @name_footnote: [^nxt-color-mode]
 		 */
 		.name=	"nxt-color",
 	},
 	[EV3_INPUT_PORT_MODE_NXT_I2C] ={
 		/**
-		 * @description: Force the port to load the [nxt-i2c-sensor]
-		 * device and configure the port for I2C communications.
+		 * @description: Configure for I2C communications and load the [nxt-i2c-host] device.
 		 */
 		.name	= "nxt-i2c",
 	},
 	[EV3_INPUT_PORT_MODE_EV3_ANALOG] = {
 		/**
-		 * @description: Force the port to load the [ev3-analog] device.
+		 * @description: Load the [ev3-analog] device.
 		 */
 		.name	= "ev3-analog",
 	},
 	[EV3_INPUT_PORT_MODE_EV3_UART] = {
 		/**
-		 * @description: Force the port to load the [ev3-uart-sensor]
-		 * device and configure the port for UART communications.
+		 * @description: Configure for UART communications and load the [ev3-uart-host] device.
 		 */
 		.name	= "ev3-uart",
 	},
 	[EV3_INPUT_PORT_MODE_OTHER_UART] = {
 		/**
-		 * @description: Force the port to be configured for UART
-		 * communications but do not load any device. This makes the
-		 * UART available to communicate with something other than
-		 * UART/EV3 sensors.
+		 * @description: Configure for UART communications but do not load any device.
 		 */
 		.name	= "other-uart",
 	},
 	[EV3_INPUT_PORT_MODE_RAW] = {
 		/**
-		 * @description: Exports gpios and analog/digital converter
-		 * values to sysfs so that they can be controlled directly.
+		 * [^raw-mode]: Exports gpios and analog/digital converter values
+		 * to sysfs so that they can be controlled directly.
+		 *
+		 * @description: Provide access to low level drivers.
+		 * @name_footnote: [^raw-mode]
 		 */
 		.name	= "raw",
 	},
@@ -395,7 +416,7 @@ static struct device_type ev3_input_port_type = {
 /**
  * struct ev3_input_port_data - Driver data for an input port on the EV3 brick
  * @id: Unique identifier for the port.
- * @in_port: Pointer to the legoev3_port that is bound to this instance.
+ * @port: Pointer to the legoev3_port that is bound to this instance.
  * @analog: pointer to the legoev3-analog device for accessing data from the
  *	analog/digital converter.
  * @gpio: Array of gpio pins used by this input port.
@@ -1002,7 +1023,7 @@ struct lego_port_device
 	snprintf(data->port.port_name, LEGO_PORT_NAME_SIZE, "in%d", pdata->id);
 	data->port.port_alias = pdata->uart_tty;
 	data->port.num_modes = NUM_EV3_INPUT_PORT_MODE;
-	data->port.mode_info = ev3_input_port_mode_info;
+	data->port.mode_info = legoev3_input_port_mode_info;
 	data->port.set_mode = ev3_input_port_set_mode;
 	data->port.get_status = ev3_input_port_get_status;
 	data->port.nxt_analog_ops = &ev3_input_port_nxt_analog_ops;

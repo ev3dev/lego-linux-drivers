@@ -126,6 +126,7 @@ const struct wedo_sensor_info wedo_sensor_defs[] = {
 		 * @vendor_part_number: 9584
 		 * @vendor_part_name: WeDo Tilt Sensor
 		 * @vendor_website: http://education.lego.com/en-us/lego-education-product-database/wedo/9584-tilt-sensor
+		 * @module: wedo
 		 */
 		.name = "wedo-tilt",
 		.num_modes = 3,
@@ -207,6 +208,7 @@ const struct wedo_sensor_info wedo_sensor_defs[] = {
 		 * @vendor_part_number: 9583
 		 * @vendor_part_name: WeDo Motion Sensor
 		 * @vendor_website: http://education.lego.com/en-us/lego-education-product-database/wedo/9583-motion-sensor
+		 * @module: wedo
 		 */
 		.name = "wedo-motion",
 		.num_modes = 2,

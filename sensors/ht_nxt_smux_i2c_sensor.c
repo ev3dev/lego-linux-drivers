@@ -25,24 +25,25 @@
  * HiTechnic NXT Sensor Multiplexer I2C sensor driver
  *
  * A `ht-smux-i2c-sensor` device is loaded by the [ht-nxt-smux] driver
- * when it is detected by the [sensor mux] (automatic detection only works with
- * the sensors listed in the linked page) or when the sensor is set via the
- * [ht-smux-i2c-host] device. You can use any one of the sensors that has the
- * `nxt-i2c-sensor` module from the [list of supported sensors]. Keep in mind
- * though that the [sensor mux] operates in a read-only mode with I2C sensors.
- * Some modes of I2C sensors require writing data to the sensor and as a result,
- * these modes will not be usable via the [sensor mux].
+ * when it is detected by the sensor mux (automatic detection only works with
+ * the sensors listed in the linked page) or when manually specified by setting
+ * the [ht-nxt-smux-port] to `i2c` mode and writing the device name to
+ * `set_device`. You can use any one of the sensors that has the `nxt-i2c-sensor`
+ * module from the [list of supported sensors]. Keep in mind though that the
+ * sensor mux operates in a read-only mode with I2C sensors. You will not be
+ * able to use commands with these sensors. Additionally, some modes of I2C
+ * sensors require writing data to the sensor and as a result, these modes will
+ * not be usable either.
  * .
  * ### sysfs attributes
  * .
- * These sensors use the [lego-sensor class]. Follow the link for more information.
- * .
- * This device can be found at `/sys/bus/lego/devices/in<N>:mux<M>:<device-name>`
- * where `<N>` is the input port on the EV3 (1 to 4), `<M>` is the input port
- * on the sensor mux (1 to 4) and `<device-name`> is the name of the sensor
- * (e.g. `lego-nxt-ultrasonic`).
+ * Devices bound to this driver can be found in the directory
+ * `/sys/bus/lego/drivers/ht-nxt-smux-i2c-sensor/`. However, these sensors use
+ * the [lego-sensor class] which is where the useful stuff is. Follow the link
+ * for more information.
  * .
  * [ht-nxt-smux]: /docs/sensors/hitechnic-nxt-sensor-multiplexer
+ * [ht-nxt-smux-port]: /docs/ports/ht-nxt-smux-port
  * [list of supported sensors]: /docs/sensors#supported-sensors
  * [lego-sensor class]: ../lego-sensor-class
  */
