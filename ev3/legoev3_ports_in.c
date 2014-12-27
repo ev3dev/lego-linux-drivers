@@ -390,7 +390,7 @@ const char *ev3_input_port_sensor_table[] = {
 	[SENSOR_TYPE_ID_NXT_LIGHT]	= "lego-nxt-light",
 	[SENSOR_TYPE_ID_NXT_ANALOG]	= "nxt-analog",
 	[SENSOR_TYPE_ID_NXT_COLOR]	= "lego-nxt-color",
-	[SENSOR_TYPE_ID_NXT_I2C]	= "nxt-i2c",
+	[SENSOR_TYPE_ID_NXT_I2C]	= "nxt-i2c-host",
 	[SENSOR_TYPE_ID_EV3_ANALOG_01]	= "ev3-analog",
 	[SENSOR_TYPE_ID_EV3_TOUCH]	= "lego-ev3-touch",
 	[SENSOR_TYPE_ID_EV3_ANALOG_03]	= "ev3-analog",
@@ -405,7 +405,7 @@ const char *ev3_input_port_sensor_table[] = {
 	[SENSOR_TYPE_ID_EV3_ANALOG_12]	= "ev3-analog",
 	[SENSOR_TYPE_ID_EV3_ANALOG_13]	= "ev3-analog",
 	[SENSOR_TYPE_ID_EV3_ANALOG_14]	= "ev3-analog",
-	[SENSOR_TYPE_ID_EV3_UART]	= "ev3-uart",
+	[SENSOR_TYPE_ID_EV3_UART]	= "ev3-uart-host",
 	[SENSOR_TYPE_ID_UNKNOWN]	= NULL,
 };
 
