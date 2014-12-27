@@ -49,7 +49,8 @@ const struct wedo_id_info wedo_id_infos[] = {
 	[WEDO_TYPE_TILT]	= {  47 , "tilt"	},
 	[WEDO_TYPE_FUTURE]	= {  67 , "future"	},
 	[WEDO_TYPE_RAW]		= {  87 , "raw"		},
-	[WEDO_TYPE_TOUCH]	= { 109 , "touch"	},
+	[WEDO_TYPE_TOUCH]	= { 100 , "touch"	},
+	[WEDO_TYPE_SERVO]	= { 109 , "servo"	},
 	[WEDO_TYPE_SOUND]	= { 131 , "sound"	},
 	[WEDO_TYPE_TEMP]	= { 152 , "temp"	},
 	[WEDO_TYPE_LIGHT]	= { 169 , "light"	},
@@ -289,6 +290,7 @@ static int register_wedo_device(struct wedo_port_data *wpd,
 	case WEDO_TYPE_MOTION:
 		err = register_wedo_sensor(wpd, WEDO_MOTION_SENSOR);
 		break;
+	case WEDO_TYPE_SERVO:
 	case WEDO_TYPE_MOTOR:
 		err = register_wedo_motor(wpd);
 		break;
@@ -422,6 +424,7 @@ void wedo_port_update_status(struct wedo_port_data *wpd)
 			wsd->info.mode_info[wsd->sensor.mode].raw_data[0] = wpd->input;
 		}
 		break;
+	case WEDO_TYPE_SERVO:
 	case WEDO_TYPE_MOTOR:
 		wmd = wpd->motor_data;
 		/* TODO: may need to change duty_cycle after reset */
