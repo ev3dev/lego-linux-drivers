@@ -73,7 +73,7 @@ struct lego_device *lego_device_register(const char *name,
 
 	strncpy(ldev->name, name, LEGO_NAME_SIZE);
 	ldev->port = port;
-	snprintf(init_name, LEGO_NAME_SIZE, "%s:%s", dev_name(&ldev->port->dev),
+	snprintf(init_name, LEGO_NAME_SIZE, "%s:%s", &ldev->port->port_name,
 		 ldev->name);
 	ldev->dev.init_name = init_name;
 	ldev->dev.id = -1;
