@@ -55,6 +55,15 @@ struct servo_motor_ops {
  * @name: The name of servo controller.
  * @port_name: The name of the port that this motor is connected to.
  * @ops: Function pointers to the controller that registered this servo.
+ * @fixed_min_pulse_ms: Fixed value for min_pulse_ms if it cannot be changed,
+ * 	otherwise 0. Setting this value will cause writing the min_pulse_ms
+ * 	attribute to return -EOPNOTSUPP.
+ * @fixed_mid_pulse_ms: Fixed value for mid_pulse_ms if it cannot be changed,
+ * 	otherwise 0. Setting this value will cause writing the min_pulse_ms
+ * 	attribute to return -EOPNOTSUPP.
+ * @fixed_max_pulse_ms: Fixed value for max_pulse_ms if it cannot be changed,
+ * 	otherwise 0. Setting this value will cause writing the min_pulse_ms
+ * 	attribute to return -EOPNOTSUPP.
  * @context: Data struct passed back to the ops.
  * @min_pulse_ms: The size of the pulse to drive the motor to 0 degrees.
  * @mid_pulse_ms: The size of the pulse to drive the motor to 90 degrees.
@@ -67,12 +76,15 @@ struct servo_motor_device {
 	const char *name;
 	const char *port_name;
 	struct servo_motor_ops ops;
+	int fixed_min_pulse_ms;
+	int fixed_mid_pulse_ms;
+	int fixed_max_pulse_ms;
 	void *context;
 	/* private */
 	struct device dev;
-	unsigned min_pulse_ms;
-	unsigned mid_pulse_ms;
-	unsigned max_pulse_ms;
+	int min_pulse_ms;
+	int mid_pulse_ms;
+	int max_pulse_ms;
 	enum servo_motor_command command;
 	enum servo_motor_polarity polarity;
 	int position;

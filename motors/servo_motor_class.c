@@ -2,6 +2,7 @@
  * Servo motor device class for LEGO MINDSTORMS EV3
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014 Ralph Hempel <rhemple@hempeldesigngroup.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -100,9 +101,16 @@ const char *servo_motor_polarity_values[] = {
 	[SERVO_MOTOR_POLARITY_INVERTED]	= "inverted",
 };
 
-inline int servo_motor_class_scale(unsigned in_min, unsigned in_max,
-				   unsigned out_min, unsigned out_max,
-				   unsigned value)
+inline bool has_fixed_pulse_ms(struct servo_motor_device *sd)
+{
+	return (   (0 != sd->fixed_min_pulse_ms)
+		|| (0 != sd->fixed_mid_pulse_ms)
+		|| (0 != sd->fixed_max_pulse_ms) );
+}
+
+inline int servo_motor_class_scale(int in_min, int in_max,
+				   int out_min, int out_max,
+				   int value)
 {
 	long scaled = value - in_min;
 	scaled *= out_max - out_min;
@@ -168,7 +176,7 @@ static ssize_t min_pulse_ms_show(struct device *dev,
 {
 	struct servo_motor_device *motor = to_servo_motor_device(dev);
 
-	return sprintf(buf, "%u\n", motor->min_pulse_ms);
+	return sprintf(buf, "%d\n", motor->min_pulse_ms);
 }
 
 static ssize_t min_pulse_ms_store(struct device *dev,
@@ -176,9 +184,12 @@ static ssize_t min_pulse_ms_store(struct device *dev,
 				  const char *buf, size_t count)
 {
 	struct servo_motor_device *motor = to_servo_motor_device(dev);
-	unsigned value;
+	int value;
 
-	if (sscanf(buf, "%ud", &value) != 1 || value > 700 || value < 300)
+	if (has_fixed_pulse_ms (motor))
+		return -ENOSYS;
+
+	if (sscanf(buf, "%d", &value) != 1 || value > 700 || value < 300)
 		return -EINVAL;
 	motor->min_pulse_ms = value;
 
@@ -190,19 +201,22 @@ static ssize_t mid_pulse_ms_show(struct device *dev,
 {
 	struct servo_motor_device *motor = to_servo_motor_device(dev);
 
-	return sprintf(buf, "%u\n", motor->mid_pulse_ms);
+	return sprintf(buf, "%d\n", motor->mid_pulse_ms);
 }
 
 static ssize_t mid_pulse_ms_store(struct device *dev,
 				  struct device_attribute *attr,
 				  const char *buf, size_t count)
 {
-	struct servo_motor_device *servo = to_servo_motor_device(dev);
-	unsigned value;
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
+	int value;
 
-	if (sscanf(buf, "%ud", &value) != 1 || value > 1700 || value < 1300)
+	if (has_fixed_pulse_ms (motor))
+		return -ENOSYS;
+
+	if (sscanf(buf, "%d", &value) != 1 || value > 1700 || value < 1300)
 		return -EINVAL;
-	servo->mid_pulse_ms = value;
+	motor->mid_pulse_ms = value;
 
 	return count;
 }
@@ -212,7 +226,7 @@ static ssize_t max_pulse_ms_show(struct device *dev,
 {
 	struct servo_motor_device *motor = to_servo_motor_device(dev);
 
-	return snprintf(buf, SERVO_MOTOR_NAME_SIZE, "%u\n", motor->max_pulse_ms);
+	return snprintf(buf, SERVO_MOTOR_NAME_SIZE, "%d\n", motor->max_pulse_ms);
 }
 
 static ssize_t max_pulse_ms_store(struct device *dev,
@@ -222,7 +236,10 @@ static ssize_t max_pulse_ms_store(struct device *dev,
 	struct servo_motor_device *motor = to_servo_motor_device(dev);
 	unsigned value;
 
-	if (sscanf(buf, "%ud", &value) != 1 || value > 2700 || value < 2300)
+	if (has_fixed_pulse_ms (motor))
+		return -ENOSYS;
+
+	if (sscanf(buf, "%d", &value) != 1 || value > 2700 || value < 2300)
 		return -EINVAL;
 	motor->max_pulse_ms = value;
 
@@ -300,11 +317,8 @@ static ssize_t position_show(struct device *dev, struct device_attribute *attr,
 	int ret;
 
 	ret = motor->ops.get_position(motor->context);
-	if (ret < 0)
-		return ret;
-	if (ret == 0)
-		ret = motor->position;
-	else if (ret < motor->mid_pulse_ms)
+
+	if (ret < motor->mid_pulse_ms)
 		ret =  servo_motor_class_scale(motor->min_pulse_ms,
 			motor->mid_pulse_ms, -100, 0, ret);
 	else
@@ -414,9 +428,17 @@ int register_servo_motor(struct servo_motor_device *servo, struct device *parent
 	servo->dev.parent = parent;
 	servo->dev.class = &servo_motor_class;
 	dev_set_name(&servo->dev, "motor%d", servo_motor_class_id++);
-	servo->min_pulse_ms = 600;
-	servo->mid_pulse_ms = 1500;
-	servo->max_pulse_ms = 2400;
+	
+	if (has_fixed_pulse_ms (servo)) {
+		servo->min_pulse_ms = servo->fixed_min_pulse_ms;
+		servo->mid_pulse_ms = servo->fixed_mid_pulse_ms;
+		servo->max_pulse_ms = servo->fixed_max_pulse_ms;
+	} else {
+		servo->min_pulse_ms = 600;
+		servo->mid_pulse_ms = 1500;
+		servo->max_pulse_ms = 2400;
+	}
+
 	ret = servo_motor_class_get_command(servo);
 	if (ret < 0)
 		return ret;
