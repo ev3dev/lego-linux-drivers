@@ -45,7 +45,7 @@ enum servo_motor_polarity {
  */
 struct servo_motor_ops {
 	int (*get_position)(void* context);
-	int (*set_position)(void* context, int position);
+	int (*set_position)(void* context, int scaled_position, int raw_position);
 	int (*get_rate)(void* context);
 	int (*set_rate)(void* context, unsigned rate);
 };

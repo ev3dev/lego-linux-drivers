@@ -43,7 +43,7 @@ static int ms_8ch_servo_get_position(void* context)
 	return i2c_smbus_read_word_data(client, 0x42 + servo->id * 2);
 }
 
-static int ms_8ch_servo_set_position(void* context, int value)
+static int ms_8ch_servo_set_position(void* context, int value, int raw_value)
 {
 	struct ms_8ch_servo_data *servo = context;
 	struct i2c_client *client = servo->sensor->client;

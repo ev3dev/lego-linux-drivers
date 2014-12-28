@@ -2,6 +2,7 @@
  * Servo motor device class for LEGO MINDSTORMS EV3
  *
  * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014 Ralph Hempel <rhemple@hempeldesigngroup.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -142,7 +143,7 @@ int servo_motor_class_set_position(struct servo_motor_device *motor,
 			scaled_position = servo_motor_class_scale(-100, 0,
 				motor->min_pulse_ms, motor->mid_pulse_ms,
 				new_position);
-		return motor->ops.set_position(motor->context, scaled_position);
+		return motor->ops.set_position(motor->context, scaled_position, new_position);
 	}
 	return 0;
 }
@@ -254,7 +255,7 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 			err = servo_motor_class_set_position(motor, motor->position,
 							     motor->polarity);
 		else
-			err = motor->ops.set_position(motor->context, 0);
+			err = motor->ops.set_position(motor->context, 0, 0);
 		if (err)
 			return err;
 		return size;

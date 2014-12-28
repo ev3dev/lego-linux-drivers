@@ -22,6 +22,7 @@
 #include <lego_port_class.h>
 #include <lego_sensor_class.h>
 #include <dc_motor_class.h>
+#include <servo_motor_class.h>
 
 enum wedo_ports {
 	WEDO_PORT_1,
@@ -52,6 +53,17 @@ struct wedo_motor_data {
 	enum dc_motor_command command;
 	enum dc_motor_direction direction;
 	int duty_cycle;
+};
+
+extern struct servo_motor_ops wedo_servo_ops;
+
+struct wedo_servo_data {
+	struct wedo_port_data *wpd;
+	struct servo_motor_device sd;
+
+	enum servo_motor_command command;
+	int raw_position;
+	int scaled_position;
 };
 
 enum wedo_sensor_types {
@@ -107,6 +119,7 @@ struct wedo_port_data {
 	struct wedo_sensor_data *sensor_data;
 	struct wedo_motor_data *motor_data;
 	struct wedo_led_data *led_data;
+	struct wedo_servo_data *servo_data;
 	struct work_struct register_device_work;
 	unsigned type_debounce;
 	enum wedo_type_id new_type_id;

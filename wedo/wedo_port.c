@@ -22,6 +22,7 @@
 #include <lego_port_class.h>
 #include <lego_sensor_class.h>
 #include <dc_motor_class.h>
+#include <servo_motor_class.h>
 
 #include "wedo.h"
 
@@ -122,7 +123,7 @@ static int register_wedo_sensor(struct wedo_port_data *wpd,
 
 	return 0;
 
-	err_register_lego_sensor: kfree(wsd);
+err_register_lego_sensor: kfree(wsd);
 
 	return err;
 }
@@ -174,7 +175,7 @@ static int register_wedo_motor(struct wedo_port_data *wpd)
 
 	return 0;
 
-	err_register_dc_motor: kfree(wmd);
+err_register_dc_motor: kfree(wmd);
 
 	return err;
 }
@@ -247,7 +248,7 @@ static int register_wedo_led(struct wedo_port_data *wpd)
 
 	return 0;
 
-	err_led_classdev_register: kfree(wld);
+err_led_classdev_register: kfree(wld);
 
 	return err;
 }
@@ -262,6 +263,62 @@ static void unregister_wedo_led(struct wedo_port_data *wpd)
 	led_classdev_unregister(&wld->cdev);
 	wpd->led_data = NULL;
 	kfree(wld);
+}
+
+/*
+ * These functions handle registering servo_motor devices on WeDo ports
+ */
+
+static int register_wedo_servo(struct wedo_port_data *wpd)
+{
+	struct wedo_servo_data *wsd;
+	int err;
+
+	if (wpd->servo_data)
+		return -EINVAL;
+
+	wsd = kzalloc(sizeof(struct wedo_servo_data), GFP_KERNEL);
+	if (!wsd)
+		return -ENOMEM;
+
+	wsd->wpd = wpd;
+
+	wsd->sd.name = "servo";
+	wsd->sd.port_name = wpd->port.port_name;
+
+	dev_info(&wpd->port.dev, "LEGO WeDo %s bound to %s\n", wsd->sd.name,
+		 wsd->sd.port_name);
+
+	wsd->sd.ops.get_position = wedo_servo_ops.get_position;
+	wsd->sd.ops.set_position = wedo_servo_ops.set_position;
+//	wsd->sd.ops.get_rate = wedo_servo_ops.get_rate;
+//	wsd->sd.ops.set_rate = wedo_servo_ops.set_rate;
+
+	wsd->sd.context = wsd;
+
+	err = register_servo_motor(&wsd->sd, &wpd->port.dev);
+	if (err)
+		goto err_register_servo_motor;
+
+	wpd->servo_data = wsd;
+
+	return 0;
+
+err_register_servo_motor: kfree(wsd);
+
+	return err;
+}
+
+static void unregister_wedo_servo(struct wedo_port_data *wpd)
+{
+	struct wedo_servo_data *wsd = wpd->servo_data;
+
+	if (!wsd)
+		return;
+
+	unregister_servo_motor(&wsd->sd);
+	wpd->servo_data = NULL;
+	kfree(wsd);
 }
 
 /*
@@ -291,6 +348,8 @@ static int register_wedo_device(struct wedo_port_data *wpd,
 		err = register_wedo_sensor(wpd, WEDO_MOTION_SENSOR);
 		break;
 	case WEDO_TYPE_SERVO:
+		err = register_wedo_servo(wpd);
+		break;
 	case WEDO_TYPE_MOTOR:
 		err = register_wedo_motor(wpd);
 		break;
@@ -308,6 +367,7 @@ static void unregister_wedo_device(struct wedo_port_data *wpd)
 {
 	unregister_wedo_sensor(wpd);
 	unregister_wedo_motor(wpd);
+	unregister_wedo_servo(wpd);
 	unregister_wedo_led(wpd);
 
 	wedo_port_update_output(wpd, 0);
@@ -414,6 +474,7 @@ void wedo_port_update_status(struct wedo_port_data *wpd)
 
 	struct wedo_sensor_data *wsd = NULL;
 	struct wedo_motor_data *wmd = NULL;
+	struct wedo_servo_data *wvd = NULL;
 
 	switch (wpd->type_id) {
 
@@ -425,6 +486,9 @@ void wedo_port_update_status(struct wedo_port_data *wpd)
 		}
 		break;
 	case WEDO_TYPE_SERVO:
+		wvd = wpd->servo_data;
+		/* TODO: may need to change position after reset */
+		break;
 	case WEDO_TYPE_MOTOR:
 		wmd = wpd->motor_data;
 		/* TODO: may need to change duty_cycle after reset */
