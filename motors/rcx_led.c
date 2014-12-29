@@ -35,7 +35,7 @@
  * It is not automatically detected.
  * .
  * [leds]: https://github.com/ev3dev/ev3dev/wiki/Using-the-LEDs
- * [ev3-output-port]: ../ev3-output-port
+ * [ev3-output-port]: docs/ports/legoev3-output-port
  */
 
 #include <linux/device.h>
