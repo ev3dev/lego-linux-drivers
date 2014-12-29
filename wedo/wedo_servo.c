@@ -17,28 +17,39 @@
 #include "wedo.h"
 
 /*
- * The WeDo motor only has the 5V drive voltage of a USB port
- * and no ability to regulate the speed. We can modulate the
- * speed, but regulation requires velocity or position feedback
- * which the PF motor does not have
+ * The Power Functions Servo Motor (#88004) is normally intended
+ * to be used with the IR Remote Control Receiver (#8884) or the
+ * Rechargeable Battery Box (8878).
  *
- * The port accepts values from 0 to 127 for output level, but
- * the motor won't actually start turning until the value is
- * around 30.
+ * This driver allows the motor to be used with the WeDo as well.
  *
- * The duty_cycle value of 1-100 will be scaled from 1-127.
+ * The following descriptive text is taken from:
  *
- * The DIRECTION and duty cycle determine how the motor turns
+ * <http://powerfunctions.lego.com/en-us/ElementSpecs/88004.aspx#88004>
  *
- * A duty cycle of 0 when the motor is executing the "run"
- * command sets the output equivalent to "coast" or 0x00.
+ * The output can, from its center position (vertical), turn up to 90 degrees
+ * clockwise and counter-clockwise with 7 steps in each direction. In total
+ * you have 15 positions:
  *
- * If the motor is set to "brake" then the output is set to 0x80.
- *
- * Note well that the power level to the motor is contained in
- * the lower 7 bits of the value that is sent to the hub. The
- * high bit is the direction when the motor is running and the
- * brake bit when the duty cycle is 0.
+ * - 1 center position
+ * - 7 positions clockwise
+ * - 7 positions counter-clockwise
+ * 
+ * When the Servo Motor is controlled with full power in either direction
+ * it will turn to the full 90 degrees position (for example with the IR
+ * Remote Control).
+ * 
+ * When it is controlled with power steps in either direction it will turn
+ * through the 7 positions corresponding to the 7 power levels (for example
+ * with the IR Speed Remote Control or the Rechargeable Battery Box).
+ * 
+ * The Servo Motor delivers a maximum torque of 250 mNm (300 mA). Without
+ * load it rotates with 360 degrees per second. This corresponds to the
+ * output turning from center to horizontal position in 0,25 seconds.
+ * 
+ * The current consumption will depend heavily on the load it is driving.
+ * Under normal conditions it can be around 150 mA and it should never
+ * exceed 300 mA.
  */
 
 static void wedo_servo_update_output(struct wedo_servo_data *wsd)
