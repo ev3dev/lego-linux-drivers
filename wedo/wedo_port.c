@@ -123,7 +123,8 @@ static int register_wedo_sensor(struct wedo_port_data *wpd,
 
 	return 0;
 
-err_register_lego_sensor: kfree(wsd);
+err_register_lego_sensor:
+	kfree(wsd);
 
 	return err;
 }
@@ -175,7 +176,8 @@ static int register_wedo_motor(struct wedo_port_data *wpd)
 
 	return 0;
 
-err_register_dc_motor: kfree(wmd);
+err_register_dc_motor:
+	kfree(wmd);
 
 	return err;
 }
@@ -248,7 +250,8 @@ static int register_wedo_led(struct wedo_port_data *wpd)
 
 	return 0;
 
-err_led_classdev_register: kfree(wld);
+err_led_classdev_register:
+	kfree(wld);
 
 	return err;
 }
@@ -304,7 +307,8 @@ static int register_wedo_servo(struct wedo_port_data *wpd)
 
 	return 0;
 
-err_register_servo_motor: kfree(wsd);
+err_register_servo_motor:
+	kfree(wsd);
 
 	return err;
 }
