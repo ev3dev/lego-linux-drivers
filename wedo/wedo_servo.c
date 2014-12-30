@@ -58,7 +58,10 @@ static void wedo_servo_update_output(struct wedo_servo_data *wsd)
 
 	switch (wsd->command) {
 	case SERVO_MOTOR_COMMAND_RUN:
-		output = (wsd->raw_position * WEDO_OUTPUT_MAX_DUTY_CYCLE) / 100;
+		output = wsd->scaled_position;
+                break;
+	case SERVO_MOTOR_COMMAND_FLOAT:
+		output = 0x80;
                 break;
 	default:
 		break;
@@ -102,9 +105,7 @@ static int wedo_servo_get_position(void *context)
 	return wsd->scaled_position;
 }
 
-static int wedo_servo_set_position(void *context,
-				    int scaled_position,
-				    int raw_position)
+static int wedo_servo_set_position(void *context, int scaled_position )
 {
 	struct wedo_servo_data *wsd = context;
 
@@ -112,7 +113,6 @@ static int wedo_servo_set_position(void *context,
 		return 0;
 
 	wsd->scaled_position = scaled_position;
-	wsd->raw_position = raw_position;
 
 	wedo_servo_update_output(wsd);
 
@@ -132,7 +132,7 @@ static int wedo_servo_set_rate(void *context, unsigned duty_cycle)
 struct servo_motor_ops wedo_servo_ops = {
 	.get_position		= wedo_servo_get_position,
 	.set_position		= wedo_servo_set_position,
-//	.get_rate		= wedo_servo_get_rate,
-//	.set_rate		= wedo_servo_set_rate,
+	.get_rate		= wedo_servo_get_rate,
+	.set_rate		= wedo_servo_set_rate,
 };
 

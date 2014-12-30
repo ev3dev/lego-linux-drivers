@@ -292,10 +292,19 @@ static int register_wedo_servo(struct wedo_port_data *wpd)
 	dev_info(&wpd->port.dev, "LEGO WeDo %s bound to %s\n", wsd->sd.name,
 		 wsd->sd.port_name);
 
+	/* Initialize the servo_motor_device_struct - the non-zero
+	 * fixed_*_pulse_ms values tell the servo driver that this
+	 * motor cannot be "calibrated".
+	 */
+ 
+	wsd->sd.fixed_min_pulse_ms = -127;
+	wsd->sd.fixed_mid_pulse_ms = 0;
+	wsd->sd.fixed_max_pulse_ms = 127;
+
 	wsd->sd.ops.get_position = wedo_servo_ops.get_position;
 	wsd->sd.ops.set_position = wedo_servo_ops.set_position;
-//	wsd->sd.ops.get_rate = wedo_servo_ops.get_rate;
-//	wsd->sd.ops.set_rate = wedo_servo_ops.set_rate;
+	wsd->sd.ops.get_rate = wedo_servo_ops.get_rate;
+	wsd->sd.ops.set_rate = wedo_servo_ops.set_rate;
 
 	wsd->sd.context = wsd;
 

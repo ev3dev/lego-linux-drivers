@@ -62,7 +62,6 @@ struct wedo_servo_data {
 	struct servo_motor_device sd;
 
 	enum servo_motor_command command;
-	int raw_position;
 	int scaled_position;
 };
 
