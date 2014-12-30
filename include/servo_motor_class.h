@@ -45,7 +45,7 @@ enum servo_motor_polarity {
  */
 struct servo_motor_ops {
 	int (*get_position)(void* context);
-	int (*set_position)(void* context, int scaled_position, int raw_position);
+	int (*set_position)(void* context, int scaled_position);
 	int (*get_rate)(void* context);
 	int (*set_rate)(void* context, unsigned rate);
 };
@@ -55,10 +55,19 @@ struct servo_motor_ops {
  * @name: The name of servo controller.
  * @port_name: The name of the port that this motor is connected to.
  * @ops: Function pointers to the controller that registered this servo.
+ * @fixed_min_pulse_ms:  Fixed pulse to drive the motor to 0 degrees - if this
+ *				value is non-zero then disable writes to any
+ *                              of the *_pulse_ms attributes.
+ * @fixed_mid_pulse_ms: Fixed pulse to drive the motor to 90 degrees - if this
+ *				value is non-zero then disable writes to any
+ *                              of the *_pulse_ms attributes.
+ * @fixed_max_pulse_ms: Fixed pulse to drive the motor to 180 degrees - if this
+ *				value is non-zero then disable writes to any
+ *                              of the *_pulse_ms attributes.
  * @context: Data struct passed back to the ops.
- * @min_pulse_ms: The size of the pulse to drive the motor to 0 degrees.
- * @mid_pulse_ms: The size of the pulse to drive the motor to 90 degrees.
- * @max_pulse_ms: The size of the pulse to drive the motor to 180 degrees.
+ * @min_pulse_ms: Variable pulse to drive the motor to 0 degrees.
+ * @mid_pulse_ms: Variable pulse to drive the motor to 90 degrees.
+ * @max_pulse_ms: Variable pulse to drive the motor to 180 degrees.
  * @command: The current command for the motor.
  * @polarity: The polarity of the motor.
  * @position: The current position of the motor.
@@ -67,12 +76,15 @@ struct servo_motor_device {
 	const char *name;
 	const char *port_name;
 	struct servo_motor_ops ops;
+	signed fixed_min_pulse_ms;
+	signed fixed_mid_pulse_ms;
+	signed fixed_max_pulse_ms;
 	void *context;
 	/* private */
 	struct device dev;
-	unsigned min_pulse_ms;
-	unsigned mid_pulse_ms;
-	unsigned max_pulse_ms;
+	signed min_pulse_ms;
+	signed mid_pulse_ms;
+	signed max_pulse_ms;
 	enum servo_motor_command command;
 	enum servo_motor_polarity polarity;
 	int position;
