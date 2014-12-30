@@ -123,7 +123,7 @@ int servo_motor_class_get_command(struct servo_motor_device *motor)
 {
 	int ret;
 
-	ret = motor->ops.get_position(motor->context);
+	ret = motor->ops->get_position(motor->context);
 	if (ret < 0)
 		return ret;
 
@@ -150,7 +150,7 @@ int servo_motor_class_set_position(struct servo_motor_device *motor,
 			scaled_position = servo_motor_class_scale(-100, 0,
 				motor->min_pulse_ms, motor->mid_pulse_ms,
 				new_position);
-		return motor->ops.set_position(motor->context, scaled_position);
+		return motor->ops->set_position(motor->context, scaled_position);
 	}
 	return 0;
 }
@@ -271,7 +271,7 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 			err = servo_motor_class_set_position(motor, motor->position,
 							     motor->polarity);
 		else
-			err = motor->ops.set_position(motor->context, 0);
+			err = motor->ops->set_position(motor->context, 0);
 		if (err)
 			return err;
 		return size;
@@ -316,7 +316,7 @@ static ssize_t position_show(struct device *dev, struct device_attribute *attr,
 	struct servo_motor_device *motor = to_servo_motor_device(dev);
 	int ret;
 
-	ret = motor->ops.get_position(motor->context);
+	ret = motor->ops->get_position(motor->context);
 
 	if (ret < motor->mid_pulse_ms)
 		ret =  servo_motor_class_scale(motor->min_pulse_ms,
@@ -351,9 +351,9 @@ static ssize_t rate_show(struct device *dev, struct device_attribute *attr,
 	struct servo_motor_device *motor = to_servo_motor_device(dev);
 	int ret;
 
-	if (!motor->ops.get_rate)
+	if (!motor->ops->get_rate)
 		return -ENOSYS;
-	ret = motor->ops.get_rate(motor->context);
+	ret = motor->ops->get_rate(motor->context);
 	if (ret < 0)
 		return ret;
 	return sprintf(buf, "%d\n", ret);
@@ -366,12 +366,12 @@ static ssize_t rate_store(struct device *dev, struct device_attribute *attr,
 	unsigned value;
 	int err;
 
-	if (!motor->ops.set_rate)
+	if (!motor->ops->set_rate)
 		return -ENOSYS;
 
 	if (sscanf(buf, "%ud", &value) != 1)
 		return -EINVAL;
-	err = motor->ops.set_rate(motor->context, value);
+	err = motor->ops->set_rate(motor->context, value);
 	if (err < 0)
 		return err;
 

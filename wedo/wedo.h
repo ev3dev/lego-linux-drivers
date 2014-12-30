@@ -44,7 +44,7 @@ extern void unregister_wedo_port(struct wedo_port_data *wpd);
 extern void wedo_port_update_status(struct wedo_port_data *wpd);
 extern void wedo_port_update_output(struct wedo_port_data *wpd, signed char value);
 
-extern struct dc_motor_ops wedo_motor_ops;
+extern const struct dc_motor_ops wedo_motor_ops;
 
 struct wedo_motor_data {
 	struct wedo_port_data *wpd;
@@ -55,7 +55,7 @@ struct wedo_motor_data {
 	int duty_cycle;
 };
 
-extern struct servo_motor_ops wedo_servo_ops;
+extern const struct servo_motor_ops wedo_servo_ops;
 
 struct wedo_servo_data {
 	struct wedo_port_data *wpd;

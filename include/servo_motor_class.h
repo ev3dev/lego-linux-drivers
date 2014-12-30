@@ -75,7 +75,7 @@ struct servo_motor_ops {
 struct servo_motor_device {
 	const char *name;
 	const char *port_name;
-	struct servo_motor_ops ops;
+	const struct servo_motor_ops *ops;
 	int fixed_min_pulse_ms;
 	int fixed_mid_pulse_ms;
 	int fixed_max_pulse_ms;
