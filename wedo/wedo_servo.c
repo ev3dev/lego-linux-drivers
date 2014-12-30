@@ -70,34 +70,6 @@ static void wedo_servo_update_output(struct wedo_servo_data *wsd)
 	wedo_port_update_output(wsd->wpd, output);
 }
 
-/*
-static unsigned wedo_servo_get_supported_commands(void* context)
-{
-	return BIT(SERVO_MOTOR_COMMAND_RUN);
-}
-
-static unsigned wedo_servo_get_command(void* context)
-{
-	struct wedo_servo_data *wsd = context;
-
-	return wsd->command;
-}
-
-static int wedo_servo_set_command(void* context, unsigned command)
-{
-	struct wedo_servo_data *wsd = context;
-
-	if (wsd->command == command)
-		return 0;
-
-	wsd->command = command;
-
-	wedo_servo_update_output(wsd);
-
-	return 0;
-}
-*/
-
 static int wedo_servo_get_position(void *context)
 {
 	struct wedo_servo_data *wsd = context;
@@ -119,20 +91,8 @@ static int wedo_servo_set_position(void *context, int scaled_position )
 	return 0;
 }
 
-static int wedo_servo_get_rate(void *context)
-{
-	return -ENOSYS;
-}
-
-static int wedo_servo_set_rate(void *context, unsigned duty_cycle)
-{
-	return -ENOSYS;
-}
-
-struct servo_motor_ops wedo_servo_ops = {
+const struct servo_motor_ops wedo_servo_ops = {
 	.get_position		= wedo_servo_get_position,
 	.set_position		= wedo_servo_set_position,
-	.get_rate		= wedo_servo_get_rate,
-	.set_rate		= wedo_servo_set_rate,
 };
 

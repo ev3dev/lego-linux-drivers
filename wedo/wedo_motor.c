@@ -134,7 +134,7 @@ static int wedo_motor_set_duty_cycle(void *context, unsigned duty_cycle)
 	return 0;
 }
 
-struct dc_motor_ops wedo_motor_ops = {
+const struct dc_motor_ops wedo_motor_ops = {
 	.get_supported_commands	= wedo_motor_get_supported_commands,
 	.get_command		= wedo_motor_get_command,
 	.set_command		= wedo_motor_set_command,

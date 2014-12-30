@@ -301,10 +301,7 @@ static int register_wedo_servo(struct wedo_port_data *wpd)
 	wsd->sd.fixed_mid_pulse_ms = 0;
 	wsd->sd.fixed_max_pulse_ms = 127;
 
-	wsd->sd.ops.get_position = wedo_servo_ops.get_position;
-	wsd->sd.ops.set_position = wedo_servo_ops.set_position;
-	wsd->sd.ops.get_rate = wedo_servo_ops.get_rate;
-	wsd->sd.ops.set_rate = wedo_servo_ops.set_rate;
+	wsd->sd.ops = &wedo_servo_ops;
 
 	wsd->sd.context = wsd;
 
