@@ -81,7 +81,7 @@
 *   range of the servo). Units are in milliseconds. Example: Setting the rate
 *   to 1000 means that it will take a 180 degree servo 2 second to move from 0
 *   to 180 degrees. Note: Some servo controllers may not support this in which
-*   case reading and writing will fail with -ENOSYS. In continuous rotation
+*   case reading and writing will fail with -EOPNOTSUPP. In continuous rotation
 *   servos, this value will affect the rate at which the speed ramps up or down.
 */
 
@@ -338,7 +338,7 @@ static ssize_t rate_show(struct device *dev, struct device_attribute *attr,
 	int ret;
 
 	if (!motor->ops.get_rate)
-		return -ENOSYS;
+		return -EOPNOTSUPP;
 	ret = motor->ops.get_rate(motor->context);
 	if (ret < 0)
 		return ret;
@@ -353,7 +353,7 @@ static ssize_t rate_store(struct device *dev, struct device_attribute *attr,
 	int err;
 
 	if (!motor->ops.set_rate)
-		return -ENOSYS;
+		return -EOPNOTSUPP;
 
 	if (sscanf(buf, "%ud", &value) != 1)
 		return -EINVAL;

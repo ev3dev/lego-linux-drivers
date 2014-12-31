@@ -66,13 +66,13 @@
  * : Sets the time in milliseconds that it take the motor to ramp down from 100%
  *   to 0%. Valid values are 0 to 10000 (10 seconds). Default is 0. If the
  *   controller does not support ramping, then reading and writing will fail
- *   with -ENOSYS.
+ *   with -EOPNOTSUPP.
  * .
  * `ramp_up_ms` (read/write)
  * : Sets the time in milliseconds that it take the motor to up ramp from 0% to
  *   100%. Valid values are 0 to 10000 (10 seconds). Default is 0. If the
  *   controller does not support ramping, then reading and writing will fail
- *   with -ENOSYS.
+ *   with -EOPNOTSUPP.
  */
 
 #include <linux/device.h>

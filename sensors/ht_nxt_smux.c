@@ -313,7 +313,7 @@ static int ht_nxt_smux_port_set_mode(void *context, u8 mode)
 static int ht_nxt_smux_port_set_device(void *context, const char *name)
 {
 	struct ht_nxt_smux_port_data *data = context;
-	struct lego_device *new_sensor = ERR_PTR(-ENOSYS);
+	struct lego_device *new_sensor = ERR_PTR(-EOPNOTSUPP);
 	char *blank, end;
 	char i2c_name[I2C_NAME_SIZE] = { 0 };
 	struct ht_nxt_smux_i2c_sensor_platform_data pdata;

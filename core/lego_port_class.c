@@ -69,7 +69,7 @@
  * : For modes that support it, writing the name of a driver will cause a new
  *   device to be registered for that driver and attached to this port. For
  *   example, since Analog/NXT sensors cannot be auto-detected, you must use
- *   this attribute to load the correct driver. Returns -ENOSYS if setting a
+ *   this attribute to load the correct driver. Returns -EOPNOTSUPP if setting a
  *   device is not supported.
  */
 
@@ -143,7 +143,7 @@ static ssize_t set_device_store(struct device *dev,
 	int ret;
 
 	if (!port->set_device)
-		return -ENOSYS;
+		return -EOPNOTSUPP;
 
 	strncpy(name, buf, LEGO_PORT_NAME_SIZE);
 	ret = port->set_device(port->context, strstrip(name));

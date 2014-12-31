@@ -74,7 +74,7 @@
  * .
  * `commands` (read-only)
  * : Returns a space separated list of the valid commands for the sensor.
- *   Returns -ENOSYS if no commands are supported.
+ *   Returns -EOPNOTSUPP if no commands are supported.
  * .
  * .
  * `decimals` (read-only)
@@ -281,7 +281,7 @@ static ssize_t commands_show(struct device *dev, struct device_attribute *attr,
 	for (i = 0; i < sensor->num_commands; i++)
 		count += sprintf(buf + count, "%s ", sensor->cmd_info[i].name);
 	if (count == 0)
-		return -ENOSYS;
+		return -EOPNOTSUPP;
 	buf[count - 1] = '\n';
 
 	return count;
@@ -445,7 +445,7 @@ static ssize_t poll_ms_show(struct device *dev, struct device_attribute *attr,
 	int ret;
 
 	if (!sensor->get_poll_ms)
-		return -ENOSYS;
+		return -EOPNOTSUPP;
 
 	ret = sensor->get_poll_ms(sensor->context);
 	if (ret < 0)
@@ -462,7 +462,7 @@ static ssize_t poll_ms_store(struct device *dev, struct device_attribute *attr,
 	int err;
 
 	if (!sensor->set_poll_ms)
-		return -ENOSYS;
+		return -EOPNOTSUPP;
 
 	if (sscanf(buf, "%ud", &value) != 1)
 		return -EINVAL;
@@ -515,7 +515,7 @@ static ssize_t bin_data_write(struct file *file, struct kobject *kobj,
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
 	if (!sensor->write_data)
-		return -ENOSYS;
+		return -EOPNOTSUPP;
 
 	return sensor->write_data(sensor->context, buf, off, count);
 }
