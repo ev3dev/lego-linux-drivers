@@ -950,6 +950,28 @@ static int ev3_input_port_set_mode(void *context, u8 mode)
 	return 0;
 }
 
+static int ev3_input_port_set_device(void *context, const char *device_name)
+{
+	struct ev3_input_port_data *data = context;
+	struct lego_device *new_sensor;
+
+	if (data->sensor_type != SENSOR_NXT_ANALOG)
+		return -EOPNOTSUPP;
+
+	lego_device_unregister(data->sensor);
+	data->sensor = NULL;
+
+	new_sensor = lego_device_register(device_name,
+		&ev3_input_port_sensor_types[data->sensor_type],
+		&data->port, NULL, 0);
+	if (IS_ERR(new_sensor))
+		return PTR_ERR(new_sensor);
+
+	data->sensor = new_sensor;
+
+	return 0;
+}
+
 static const char *ev3_input_port_get_status(void *context)
 {
 	struct ev3_input_port_data *data = context;
@@ -1024,6 +1046,7 @@ struct lego_port_device
 	data->port.num_modes = NUM_EV3_INPUT_PORT_MODE;
 	data->port.mode_info = legoev3_input_port_mode_info;
 	data->port.set_mode = ev3_input_port_set_mode;
+	data->port.set_device = ev3_input_port_set_device;
 	data->port.get_status = ev3_input_port_get_status;
 	data->port.nxt_analog_ops = &ev3_input_port_nxt_analog_ops;
 	data->port.nxt_i2c_ops = &ev3_input_port_nxt_i2c_ops;
