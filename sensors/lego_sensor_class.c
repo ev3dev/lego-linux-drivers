@@ -85,8 +85,8 @@
  *   sensors] for a complete list of drivers.
  * .
  * `fw_version` (read-only)
- * : Present only for [nxt-i2c-sensor] devices. Returns the firmware version of
- *   the sensor.
+ * : Returns the firmware version of the sensor if available. Currently only
+ *   I2C/NXT sensors support this.
  * .
  * `mode` (read/write)
  * : Returns the current mode. Writing one of the values returned by `modes`
@@ -100,9 +100,10 @@
  *   for the current mode.
  * .
  * `poll_ms` (read/write)
- * : Present only for [nxt-i2c-sensor] devices. Returns the polling period of
- *   the sensor in milliseconds. Writing sets the polling period. Setting to
- *   0 disables polling. Minimum value is hard coded as 50 msec.
+ * : Returns the polling period of the sensor in milliseconds. Writing sets the
+ *   polling period. Setting to 0 disables polling. Minimum value is hard
+ *   coded as 50 msec. Returns -EOPNOTSUPP if changing polling is not supported.
+ *   Currently only I2C/NXT sensors support changing the polling period.
  * .
  * `port_name` (read-only)
  * : Returns the name of the port that the sensor is connected to.
@@ -532,6 +533,8 @@ static ssize_t bin_data_write(struct file *file, struct kobject *kobj,
 static DEVICE_ATTR_RO(device_name);
 static DEVICE_ATTR_RO(port_name);
 static DEVICE_ATTR_RO(address);
+static DEVICE_ATTR_RW(poll_ms);
+static DEVICE_ATTR_RO(fw_version);
 static DEVICE_ATTR_RO(modes);
 static DEVICE_ATTR_RW(mode);
 static DEVICE_ATTR_RO(commands);
@@ -560,6 +563,8 @@ static struct attribute *lego_sensor_class_attrs[] = {
 	&dev_attr_device_name.attr,
 	&dev_attr_port_name.attr,
 	&dev_attr_address.attr,
+	&dev_attr_poll_ms.attr,
+	&dev_attr_fw_version.attr,
 	&dev_attr_modes.attr,
 	&dev_attr_mode.attr,
 	&dev_attr_commands.attr,
@@ -591,37 +596,8 @@ static const struct attribute_group lego_sensor_class_group = {
 	.bin_attrs	= lego_sensor_class_bin_attrs,
 };
 
-static DEVICE_ATTR_RW(poll_ms);
-static DEVICE_ATTR_RO(fw_version);
-
-struct attribute *lego_sensor_class_optional_attrs[] = {
-	&dev_attr_poll_ms.attr,
-	&dev_attr_fw_version.attr,
-	NULL
-};
-
-static umode_t lego_sensor_attr_is_visible (struct kobject *kobj,
-					struct attribute *attr, int index)
-{
-	struct device *dev = container_of(kobj, struct device, kobj);
-	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
-
-	if (attr == &dev_attr_poll_ms.attr)
-		return (sensor->get_poll_ms || sensor->set_poll_ms) ? attr->mode : 0;
-	if (attr == &dev_attr_fw_version.attr)
-		return sensor->fw_version[0] ? attr->mode : 0;
-
-	return attr->mode;
-}
-
-static const struct attribute_group lego_sensor_class_optional_group = {
-	.is_visible	= lego_sensor_attr_is_visible,
-	.attrs		= lego_sensor_class_optional_attrs,
-};
-
 static const struct attribute_group *lego_sensor_class_groups[] = {
 	&lego_sensor_class_group,
-	&lego_sensor_class_optional_group,
 	NULL
 };
 
