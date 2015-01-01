@@ -674,9 +674,6 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 	unsigned new_pin_state_flags = 0;
 	unsigned new_pin1_mv = 0;
 
-	if (data->port.mode != EV3_INPUT_PORT_MODE_AUTO)
-		return HRTIMER_NORESTART;
-
 	hrtimer_forward_now(timer, ktime_set(0, INPUT_PORT_POLL_NS));
 	data->timer_loop_cnt++;
 
@@ -890,6 +887,7 @@ static int ev3_input_port_set_mode(void *context, u8 mode)
 	 * be necessary to unload and reload the same sensor.
 	 */
 
+	hrtimer_cancel(&data->timer);
 	cancel_work_sync(&data->work);
 
 	if (data->port.mode == EV3_INPUT_PORT_MODE_OTHER_UART)
