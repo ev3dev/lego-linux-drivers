@@ -71,6 +71,11 @@
  *   example, since Analog/NXT sensors cannot be auto-detected, you must use
  *   this attribute to load the correct driver. Returns -EOPNOTSUPP if setting a
  *   device is not supported.
+ * .
+ * ### Events
+ * .
+ * In addition to the usual "add" and "remove" events, the kernel "change"
+ * event is emitted when the mode is changed.
  */
 
 #include <linux/err.h>
@@ -108,6 +113,7 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 		return ret;
 
 	port->mode = new_mode;
+	kobject_uevent(&dev->kobj, KOBJ_CHANGE);
 
 	return count;
 }

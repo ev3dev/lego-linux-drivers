@@ -118,6 +118,11 @@
  *   error. The values are fixed point numbers, so check `decimals` to see if
  *   you need to divide to get the actual value.
  * .
+ * ### Events
+ * .
+ * In addition to the usual "add" and "remove" events, the kernel "change"
+ * event is emitted when the mode is changed.
+ * .
  * [nxt-i2c-sensor]: ../nxt-i2c-sensor
  * [supported sensors]: /docs/sensors#supported-sensors
  */
@@ -264,6 +269,7 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 			if (err)
 				return err;
 			sensor->mode = i;
+			kobject_uevent(&dev->kobj, KOBJ_CHANGE);
 			return count;
 		}
 	}
