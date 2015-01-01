@@ -1,7 +1,7 @@
 /*
  * LEGO sensor device class
  *
- * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -76,7 +76,6 @@
  * : Returns a space separated list of the valid commands for the sensor.
  *   Returns -EOPNOTSUPP if no commands are supported.
  * .
- * .
  * `decimals` (read-only)
  * : Returns the number of decimal places for the values in the `value<N>`
  *   attributes of the current mode.
@@ -121,7 +120,9 @@
  * ### Events
  * .
  * In addition to the usual "add" and "remove" events, the kernel "change"
- * event is emitted when the mode is changed.
+ * event is emitted when `mode` or `poll_ms` is changed. The `value<N>`
+ * attributes change too rapidly to be handled this way and therefore do not
+ * trigger any uevents.
  * .
  * [nxt-i2c-sensor]: ../nxt-i2c-sensor
  * [supported sensors]: /docs/sensors#supported-sensors
@@ -475,6 +476,8 @@ static ssize_t poll_ms_store(struct device *dev, struct device_attribute *attr,
 	err = sensor->set_poll_ms(sensor->context, value);
 	if (err < 0)
 		return err;
+
+	kobject_uevent(&dev->kobj, KOBJ_CHANGE);
 
 	return count;
 }
