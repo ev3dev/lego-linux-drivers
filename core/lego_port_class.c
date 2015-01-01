@@ -1,7 +1,7 @@
 /*
  * LEGO port class driver
  *
- * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -72,10 +72,16 @@
  *   this attribute to load the correct driver. Returns -EOPNOTSUPP if setting a
  *   device is not supported.
  * .
+ * `status`: (read-only)
+ * : In most cases, reading status will return the same value as `mode`. In
+ *   cases where there is an `auto` mode additional values may be returned,
+ *   such as `no-device` or `error`. See individual port driver documentation
+ *   for the full list of possible values.
+ * .
  * ### Events
  * .
  * In addition to the usual "add" and "remove" events, the kernel "change"
- * event is emitted when the mode is changed.
+ * event is emitted when `mode` or `status` changes.
  */
 
 #include <linux/err.h>
