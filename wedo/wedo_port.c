@@ -345,7 +345,7 @@ struct lego_port_mode_info wedo_port_mode_info[] = {
 		/**
 		 * @description: Automatic
 		 */
-		.name = "AUTO",
+		.name = "auto",
 	},
 };
 
