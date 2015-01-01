@@ -234,6 +234,7 @@ struct device_type ev3_motor_device_types[] = {
  *	analog/digital converter.
  * @pwm: Pointer to the pwm device that is bound to this port
  * @gpio: Array of gpio pins used by this input port.
+ * @change_uevent_work: Needed when change is triggered in atomic context.
  * @work: Worker for registering and unregistering sensors when they are
  *	connected and disconnected.
  * @timer: Polling timer to monitor the port connect/disconnect.
@@ -254,6 +255,7 @@ struct ev3_output_port_data {
 	struct legoev3_analog_device *analog;
 	struct pwm_device *pwm;
 	struct gpio gpio[NUM_GPIO];
+	struct work_struct change_uevent_work;
 	struct work_struct work;
 	struct hrtimer timer;
 	unsigned timer_loop_cnt;
@@ -377,6 +379,14 @@ void ev3_output_port_float(struct ev3_output_port_data *data)
 	data->command = DC_MOTOR_COMMAND_COAST;
 }
 
+void ev3_output_port_change_uevent_work(struct work_struct *work)
+{
+	struct ev3_output_port_data *data =
+		container_of(work, struct ev3_output_port_data, change_uevent_work);
+
+	kobject_uevent(&data->out_port.dev.kobj, KOBJ_CHANGE);
+}
+
 void ev3_output_port_register_motor(struct work_struct *work)
 {
 	struct ev3_output_port_data *data =
@@ -430,11 +440,9 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 {
 	struct ev3_output_port_data *data =
 			container_of(timer, struct ev3_output_port_data, timer);
+	enum motor_type prev_motor_type = data->tacho_motor_type;
 	unsigned new_pin_state_flags = 0;
 	unsigned new_pin5_mv = 0;
-
-	if (data->out_port.mode != EV3_OUTPUT_PORT_MODE_AUTO)
-		return HRTIMER_NORESTART;
 
 	hrtimer_forward_now(timer, ktime_set(0, OUTPUT_PORT_POLL_NS));
 	data->timer_loop_cnt++;
@@ -601,6 +609,12 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 		data->con_state = CON_STATE_INIT;
 		break;
 	}
+	/*
+	 * data->tacho_motor_type determines the status for the lego-port class
+	 * so we need to trigger a change uevent when it changes.
+	 */
+	if (prev_motor_type != data->tacho_motor_type)
+		schedule_work(&data->change_uevent_work);
 
 	return HRTIMER_RESTART;
 }
@@ -651,6 +665,7 @@ static int ev3_output_port_set_mode(void *context, u8 mode)
 {
 	struct ev3_output_port_data *data = context;
 
+	hrtimer_cancel(&data->timer);
 	cancel_work_sync(&data->work);
 
 	if (data->motor)
@@ -784,6 +799,7 @@ struct lego_port_device
 		goto err_lego_port_register;
 	}
 
+	INIT_WORK(&data->change_uevent_work, ev3_output_port_change_uevent_work);
 	INIT_WORK(&data->work, NULL);
 
 	data->con_state = CON_STATE_INIT;
@@ -822,6 +838,7 @@ void ev3_output_port_unregister(struct lego_port_device *port)
 	pwm_disable(data->pwm);
 	pwm_put(data->pwm);
 	hrtimer_cancel(&data->timer);
+	cancel_work_sync(&data->change_uevent_work);
 	cancel_work_sync(&data->work);
 	if (data->motor)
 		ev3_output_port_unregister_motor(&data->work);

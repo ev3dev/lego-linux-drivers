@@ -296,6 +296,12 @@ static int register_wedo_device(struct wedo_port_data *wpd,
 		break;
 	}
 
+	/*
+	 * wpd->type_id determines lego-port class status, so we need to trigger
+	 * a change uevent when we change the type_id.
+	 */
+	kobject_uevent(&wpd->port.dev.kobj, KOBJ_CHANGE);
+
 	return err;
 }
 
