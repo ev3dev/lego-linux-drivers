@@ -184,6 +184,8 @@ enum ev3_uart_info_flags {
  * @set_mode_completion: Used to block until confirmation has been received from
  * 	the sensor that the mode was actually changed.
  * @mode_info: Array of information about each mode of the sensor
+ * @requested_mode: Mode that was requested by user. Used to restore previous
+ * 	mode in case of a reconnect.
  * @type_id: Type id returned by the sensor
  * @new_mode: The mode requested by set_mode.
  * @raw_min: Min/max values are sent as float data types. This holds the value
@@ -221,6 +223,7 @@ struct ev3_uart_port_data {
 	struct tasklet_struct keep_alive_tasklet;
 	struct completion set_mode_completion;
 	struct lego_sensor_mode_info mode_info[EV3_UART_MODE_MAX + 1];
+	u8 requested_mode;
 	u8 type_id;
 	u8 new_mode;
 	u32 raw_min;
@@ -326,6 +329,8 @@ int ev3_uart_set_mode(void *context, const u8 mode)
 	if (!ret)
 		return -ETIMEDOUT;
 
+	port->requested_mode = mode;
+
 	return 0;
 }
 
@@ -379,8 +384,8 @@ int ev3_uart_match_input_port(struct device *dev, const void *data)
 static void ev3_uart_send_ack(struct work_struct *work)
 {
 	struct delayed_work *dwork = to_delayed_work(work);
-	struct ev3_uart_port_data *port = container_of(dwork,
-	        struct ev3_uart_port_data, send_ack_work);
+	struct ev3_uart_port_data *port =
+		container_of(dwork, struct ev3_uart_port_data, send_ack_work);
 	int err;
 
 	ev3_uart_write_byte(port->tty, EV3_UART_SYS_ACK);
@@ -423,6 +428,9 @@ static void ev3_uart_change_bitrate(struct work_struct *work)
 	if (port->info_done) {
 		hrtimer_start(&port->keep_alive_timer, ktime_set(0, 1000000),
 							HRTIMER_MODE_REL);
+		/* restore the previous user-selected mode */
+		if (port->sensor.mode != port->requested_mode)
+			ev3_uart_set_mode(port->tty, port->requested_mode);
 	}
 }
 
