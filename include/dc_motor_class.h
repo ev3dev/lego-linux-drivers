@@ -70,7 +70,7 @@ struct dc_motor_ops {
 
 /**
  * struct dc_motor_device
- * @name: The name of dc controller.
+ * @name: The name of the driver that loaded this device.
  * @port_name: The name of the port that this motor is connected to.
  * @ops: Function pointers to the controller that registered this dc.
  * @context: Pointer to data structure passed back to the ops functions.

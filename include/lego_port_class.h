@@ -52,6 +52,7 @@ struct lego_port_nxt_i2c_ops {
 
 /**
  * struct lego_port_device
+ * @name: Name of the driver that loaded this device.
  * @port_name: Name of the port.
  * @port_alias: Alternate name of port for mapping other devices such as a tty
  * 	to this port device.
@@ -73,6 +74,7 @@ struct lego_port_nxt_i2c_ops {
  * @notify_raw_data_context: Send to notify_raw_data_func as parameter.
  */
 struct lego_port_device {
+	const char *name;
 	char port_name[LEGO_PORT_NAME_SIZE + 1];
 	const char *port_alias;
 	u8 num_modes;

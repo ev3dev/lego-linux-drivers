@@ -80,7 +80,7 @@
  * : Returns the number of decimal places for the values in the `value<N>`
  *   attributes of the current mode.
  * .
- * `device_name` (read-only)
+ * `driver_name` (read-only)
  * : Returns the name of the sensor device/driver. See the list of [supported
  *   sensors] for a complete list of drivers.
  * .
@@ -219,7 +219,7 @@ u32 lego_sensor_itof(int i, unsigned dp)
 }
 EXPORT_SYMBOL_GPL(lego_sensor_itof);
 
-static ssize_t device_name_show(struct device *dev,
+static ssize_t driver_name_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
@@ -530,7 +530,7 @@ static ssize_t bin_data_write(struct file *file, struct kobject *kobj,
 	return sensor->write_data(sensor->context, buf, off, count);
 }
 
-static DEVICE_ATTR_RO(device_name);
+static DEVICE_ATTR_RO(driver_name);
 static DEVICE_ATTR_RO(port_name);
 static DEVICE_ATTR_RO(address);
 static DEVICE_ATTR_RW(poll_ms);
@@ -560,7 +560,7 @@ static DEVICE_ATTR(value6, S_IRUGO, value_show, NULL);
 static DEVICE_ATTR(value7, S_IRUGO, value_show, NULL);
 
 static struct attribute *lego_sensor_class_attrs[] = {
-	&dev_attr_device_name.attr,
+	&dev_attr_driver_name.attr,
 	&dev_attr_port_name.attr,
 	&dev_attr_address.attr,
 	&dev_attr_poll_ms.attr,
@@ -643,9 +643,9 @@ static int lego_sensor_dev_uevent(struct device *dev,
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 	int ret;
 
-	ret = add_uevent_var(env, "LEGO_DEVICE_NAME=%s", sensor->name);
+	ret = add_uevent_var(env, "LEGO_DRIVER_NAME=%s", sensor->name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent LEGO_DEVICE_NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_DRIVER_NAME\n");
 		return ret;
 	}
 

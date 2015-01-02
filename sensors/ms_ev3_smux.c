@@ -210,6 +210,7 @@ int ms_ev3_smux_probe_cb(struct nxt_i2c_sensor_data *data)
 		goto err_get_channel;
 	}
 	ret -= '0';
+	smux->port.name = ms_ev3_smux_port_type.name;
 	snprintf(smux->port.port_name, LEGO_PORT_NAME_SIZE, "%s:mux%d",
 		 data->in_port->port_name, ret);
 	smux->port.num_modes = NUM_MS_EV3_SMUX_MODES;

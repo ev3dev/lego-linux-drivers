@@ -52,6 +52,10 @@
  * related to the actual port at all - use the `port_name` attribute to find
  * a specific port.
  * .
+ * `driver_name` (read-only)
+ * : Returns the name of the driver that loaded this device. You can find the
+ *   complete list of drivers in the [list of port drivers].
+ * .
  * `modes` (read-only)
  * : Returns a space separated list of the available modes of the port.
  * .
@@ -82,6 +86,8 @@
  * .
  * In addition to the usual "add" and "remove" events, the kernel "change"
  * event is emitted when `mode` or `status` changes.
+ * .
+ * [list of port drivers]: /docs/ports/#list-of-port-drivers
  */
 
 #include <linux/err.h>
@@ -138,6 +144,14 @@ static ssize_t modes_show(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
+static ssize_t driver_name_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct lego_port_device *lego_port = to_lego_port_device(dev);
+
+	return sprintf(buf, "%s\n", lego_port->name);
+}
+
 static ssize_t port_name_show(struct device *dev, struct device_attribute *attr,
 			      char *buf)
 {
@@ -178,6 +192,7 @@ static ssize_t status_show(struct device *dev, struct device_attribute *attr,
 
 static DEVICE_ATTR_RW(mode);
 static DEVICE_ATTR_RO(modes);
+static DEVICE_ATTR_RO(driver_name);
 static DEVICE_ATTR_RO(port_name);
 static DEVICE_ATTR_WO(set_device);
 static DEVICE_ATTR_RO(status);
@@ -185,6 +200,7 @@ static DEVICE_ATTR_RO(status);
 static struct attribute *lego_port_class_attrs[] = {
 	&dev_attr_modes.attr,
 	&dev_attr_mode.attr,
+	&dev_attr_driver_name.attr,
 	&dev_attr_port_name.attr,
 	&dev_attr_set_device.attr,
 	&dev_attr_status.attr,
@@ -205,7 +221,7 @@ int lego_port_register(struct lego_port_device *port,
 {
 	int err;
 
-	if (!port || !port->port_name || !type || !parent)
+	if (!port || !port->name || !port->port_name || !type || !parent)
 		return -EINVAL;
 
 	port->dev.release = lego_port_release;
@@ -235,6 +251,12 @@ static int lego_port_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	struct lego_port_device *lego_port = to_lego_port_device(dev);
 	int ret;
+
+	ret = add_uevent_var(env, "LEGO_DRIVER_NAME=%s", lego_port->name);
+	if (ret) {
+		dev_err(dev, "failed to add uevent LEGO_DRIVER_NAME\n");
+		return ret;
+	}
 
 	ret = add_uevent_var(env, "LEGO_PORT_NAME=%s", lego_port->port_name);
 	if (ret) {

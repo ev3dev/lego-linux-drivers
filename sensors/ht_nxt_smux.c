@@ -464,6 +464,7 @@ int ht_nxt_smux_probe_cb(struct nxt_i2c_sensor_data *data)
 
 	data->info.callback_data = ports;
 	for (i = 0; i < NUM_HT_NXT_SMUX_CH; i++) {
+		ports[i].port.name = ht_nxt_smux_port_type.name;
 		snprintf(ports[i].port.port_name, LEGO_PORT_NAME_SIZE,
 			 "%s:mux%d", data->in_port->port_name, i + 1);
 		ports[i].port.num_modes = NUM_HT_NXT_SMUX_PORT_MODES;

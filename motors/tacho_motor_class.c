@@ -959,7 +959,7 @@ static int tacho_motor_dev_uevent(struct device *dev, struct kobj_uevent_env *en
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
 	int ret;
 
-	/* TODO: Add LEGO_DEVICE_NAME property */
+	/* TODO: Add LEGO_DRIVER_NAME property */
 
 	ret = add_uevent_var(env, "LEGO_PORT_NAME=%s", tm->port_name);
 	if (ret) {

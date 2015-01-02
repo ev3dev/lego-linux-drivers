@@ -73,7 +73,7 @@ struct lego_device *lego_device_register(const char *name,
 
 	strncpy(ldev->name, name, LEGO_NAME_SIZE);
 	ldev->port = port;
-	snprintf(init_name, LEGO_NAME_SIZE, "%s:%s", &ldev->port->port_name,
+	snprintf(init_name, LEGO_NAME_SIZE, "%s:%s", ldev->port->port_name,
 		 ldev->name);
 	ldev->dev.init_name = init_name;
 	ldev->dev.id = -1;
@@ -223,7 +223,7 @@ static int lego_bus_uevent(struct device *dev, struct kobj_uevent_env *env)
 	struct lego_device *ldev = to_lego_device(dev);
 	int err;
 
-	err = add_uevent_var(env, "LEGO_DEVICE_NAME=%s", ldev->name);
+	err = add_uevent_var(env, "LEGO_DRIVER_NAME=%s", ldev->name);
 	if (err)
 		return err;
 	err = add_uevent_var(env, "LEGO_PORT_NAME=%s", ldev->port->port_name);

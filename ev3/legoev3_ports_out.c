@@ -760,6 +760,7 @@ struct lego_port_device
 		goto err_gpio_request_array;
 	}
 
+	data->out_port.name = ev3_output_port_type.name;
 	snprintf(data->out_port.port_name, LEGO_PORT_NAME_SIZE, "out%c",
 		 data->id + 'A');
 	pwm = pwm_get(NULL, data->out_port.port_name);
