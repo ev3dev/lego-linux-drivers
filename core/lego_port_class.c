@@ -37,11 +37,11 @@
  * .
  * In most cases, ports are able to automatically detect what type of sensor
  * or motor is connected. In some cases though, this must be manually specified
- * using the `mode` and `set_sensor` attributes. The `mode` attribute affects
+ * using the `mode` and `set_device` attributes. The `mode` attribute affects
  * how the port communicates with the connected device. For example the input
  * ports on the EV3 brick can communicate using UART, I2C or analog voltages,
  * but not all at the same time, so the mode must be set to the one that is
- * appropriate for the connected sensor. The `set_sensor` attribute is used to
+ * appropriate for the connected sensor. The `set_device` attribute is used to
  * specify the exact type of sensor that is connected. Note: the mode must be
  * correctly set before setting the sensor type.
  * .

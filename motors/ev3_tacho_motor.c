@@ -32,7 +32,7 @@
  * `/sys/bus/lego/drivers/ev3-tacho-motor /`. There is not much of interest
  * there though - all of the useful stuff is in the [tacho-motor] class.
  * .
- * [tacho-motor]: ../taco-motor-class
+ * [tacho-motor]: ../tacho-motor-class
  * [incremental rotary encoder]: https://en.wikipedia.org/wiki/Rotary_encoder#Incremental_rotary_encoder
  */
 
