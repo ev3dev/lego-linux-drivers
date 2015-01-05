@@ -66,6 +66,7 @@ static int rcx_motor_probe(struct lego_device *motor)
 	data->motor.name = motor->name;
 	data->motor.port_name = motor->port->port_name;
 	data->motor.ops = motor->port->motor_ops;
+	data->motor.context = motor->port->context;
 
 	err = register_dc_motor(&data->motor, &motor->dev);
 	if (err)

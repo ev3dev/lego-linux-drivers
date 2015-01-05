@@ -229,7 +229,7 @@ struct device_type ev3_motor_device_types[] = {
 /**
  * struct ev3_output_port_data - Driver data for an output port on the EV3 brick
  * @id: Unique identifier for the port.
- * @out_port: Pointer to the legoev3_port that is bound to this instance.
+ * @out_port: lego-port class device that represents this port.
  * @analog: pointer to the legoev3-analog device for accessing data from the
  *	analog/digital converter.
  * @pwm: Pointer to the pwm device that is bound to this port
