@@ -83,9 +83,9 @@ struct lego_port_device {
 	int (*set_mode)(void *context, u8 mode);
 	int (*set_device)(void *context, const char *device_name);
 	const char *(*get_status)(void *context);
-	struct lego_port_nxt_analog_ops *nxt_analog_ops;
-	struct lego_port_nxt_i2c_ops *nxt_i2c_ops;
-	struct dc_motor_ops *motor_ops;
+	const struct lego_port_nxt_analog_ops *nxt_analog_ops;
+	const struct lego_port_nxt_i2c_ops *nxt_i2c_ops;
+	const struct dc_motor_ops *motor_ops;
 	void *context;
 	/* private */
 	struct device dev;

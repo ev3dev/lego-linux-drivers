@@ -451,7 +451,7 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 
 void ev3_tacho_motor_update_output(struct ev3_tacho_motor_data *ev3_tm)
 {
-	struct dc_motor_ops *motor_ops = ev3_tm->motor->port->motor_ops;
+	const struct dc_motor_ops *motor_ops = ev3_tm->motor->port->motor_ops;
 	void *context = ev3_tm->motor->port->context;
 	int err;
 
@@ -1050,7 +1050,7 @@ static enum hrtimer_restart ev3_tacho_motor_timer_callback(struct hrtimer *timer
 {
 	struct ev3_tacho_motor_data *ev3_tm =
 			container_of(timer, struct ev3_tacho_motor_data, timer);
-	struct dc_motor_ops *motor_ops = ev3_tm->motor->port->motor_ops;
+	const struct dc_motor_ops *motor_ops = ev3_tm->motor->port->motor_ops;
 	void *context = ev3_tm->motor->port->context;
 	int speed;
 	bool reprocess = true;

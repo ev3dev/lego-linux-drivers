@@ -82,6 +82,13 @@ static int ms_8ch_servo_set_rate(void* context, unsigned value)
 	return i2c_smbus_write_word_data(client, 0x52 + servo->id * 2, scaled);
 }
 
+const struct servo_motor_ops ms_8ch_servo_servo_ops = {
+	.get_position		= ms_8ch_servo_get_position,
+	.set_position		= ms_8ch_servo_set_position,
+	.get_rate		= ms_8ch_servo_get_rate,
+	.set_rate		= ms_8ch_servo_set_rate,
+};
+
 static int ms_8ch_servo_probe_cb(struct nxt_i2c_sensor_data *data)
 {
 	struct ms_8ch_servo_data *servos;
@@ -100,10 +107,9 @@ static int ms_8ch_servo_probe_cb(struct nxt_i2c_sensor_data *data)
 		snprintf(servos[i].port_name, SERVO_MOTOR_NAME_SIZE,
 			 "%s:sv%d", data->sensor.port_name, i + 1);
 		servos[i].servo.port_name = servos[i].port_name;
-		servos[i].servo.ops.get_position = ms_8ch_servo_get_position;
-		servos[i].servo.ops.set_position = ms_8ch_servo_set_position;
-		servos[i].servo.ops.get_rate = ms_8ch_servo_get_rate;
-		servos[i].servo.ops.set_rate = ms_8ch_servo_set_rate;
+
+		servos[i].servo.ops = &ms_8ch_servo_servo_ops;
+
 		servos[i].servo.context = &servos[i];
 		err = register_servo_motor(&servos[i].servo, &data->client->dev);
 		if (err)
