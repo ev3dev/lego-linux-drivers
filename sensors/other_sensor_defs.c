@@ -76,11 +76,11 @@ const struct other_sensor_info gpio_pcf857xr_defs[] = {
 		 * do
 		 *     if [[ "$(cat $chip/label)" == "pcf8547" ]]
 		 *     then
-		 *         base=$(cat $chip/export/base)
+		 *         base=$(cat $chip/base)
 		 *         # Pins are active low
 		 *         for i in {0..7}
 		 *         do
-		 *             gpio=$(($base + $gpio))
+		 *             gpio=$(($base + $i))
 		 *             echo $gpio > /sys/class/gpio/export
 		 *             # gpios on this chip are active low
 		 *             echo 1 > /sys/class/gpio/gpio$gpio/active_low
