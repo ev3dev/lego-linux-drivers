@@ -91,7 +91,7 @@ struct lego_sensor_cmd_info {
 
 /**
  * struct lego_sensor_device
- * @name: Name of the sensor (same as device/driver name, e.g. nxt-touch)
+ * @name: Name of the driver that loaded this device, e.g. nxt-touch
  * @port_name: The name of the port that this sensor is connected to.
  * @num_modes: The number of valid modes.
  * @num_view_modes: The number of valid modes for data logging.

@@ -1,7 +1,7 @@
 /*
  * LEGO sensor device class
  *
- * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -69,25 +69,25 @@
  * .    - `s16_be`: Signed 16-bit integer, big endian
  * .    - `s32`: Signed 32-bit integer (int)
  * .    - `float`: IEEE 754 32-bit floating point (float)
+ * .
  * `command` (write-only)
  * : Sends a command to the sensor.
  * .
  * `commands` (read-only)
  * : Returns a space separated list of the valid commands for the sensor.
- *   Returns -ENOSYS if no commands are supported.
- * .
+ *   Returns -EOPNOTSUPP if no commands are supported.
  * .
  * `decimals` (read-only)
  * : Returns the number of decimal places for the values in the `value<N>`
  *   attributes of the current mode.
  * .
- * `device_name` (read-only)
+ * `driver_name` (read-only)
  * : Returns the name of the sensor device/driver. See the list of [supported
  *   sensors] for a complete list of drivers.
  * .
  * `fw_version` (read-only)
- * : Present only for [nxt-i2c-sensor] devices. Returns the firmware version of
- *   the sensor.
+ * : Returns the firmware version of the sensor if available. Currently only
+ *   I2C/NXT sensors support this.
  * .
  * `mode` (read/write)
  * : Returns the current mode. Writing one of the values returned by `modes`
@@ -101,9 +101,10 @@
  *   for the current mode.
  * .
  * `poll_ms` (read/write)
- * : Present only for [nxt-i2c-sensor] devices. Returns the polling period of
- *   the sensor in milliseconds. Writing sets the polling period. Setting to
- *   0 disables polling. Minimum value is hard coded as 50 msec.
+ * : Returns the polling period of the sensor in milliseconds. Writing sets the
+ *   polling period. Setting to 0 disables polling. Minimum value is hard
+ *   coded as 50 msec. Returns -EOPNOTSUPP if changing polling is not supported.
+ *   Currently only I2C/NXT sensors support changing the polling period.
  * .
  * `port_name` (read-only)
  * : Returns the name of the port that the sensor is connected to.
@@ -117,6 +118,13 @@
  *   see how many values there are. Values with N >= num_values will return an
  *   error. The values are fixed point numbers, so check `decimals` to see if
  *   you need to divide to get the actual value.
+ * .
+ * ### Events
+ * .
+ * In addition to the usual "add" and "remove" events, the kernel "change"
+ * event is emitted when `mode` or `poll_ms` is changed. The `value<N>`
+ * attributes change too rapidly to be handled this way and therefore do not
+ * trigger any uevents.
  * .
  * [nxt-i2c-sensor]: ../nxt-i2c-sensor
  * [supported sensors]: /docs/sensors#supported-sensors
@@ -212,7 +220,7 @@ u32 lego_sensor_itof(int i, unsigned dp)
 }
 EXPORT_SYMBOL_GPL(lego_sensor_itof);
 
-static ssize_t device_name_show(struct device *dev,
+static ssize_t driver_name_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
@@ -264,6 +272,7 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 			if (err)
 				return err;
 			sensor->mode = i;
+			kobject_uevent(&dev->kobj, KOBJ_CHANGE);
 			return count;
 		}
 	}
@@ -281,7 +290,7 @@ static ssize_t commands_show(struct device *dev, struct device_attribute *attr,
 	for (i = 0; i < sensor->num_commands; i++)
 		count += sprintf(buf + count, "%s ", sensor->cmd_info[i].name);
 	if (count == 0)
-		return -ENOSYS;
+		return -EOPNOTSUPP;
 	buf[count - 1] = '\n';
 
 	return count;
@@ -445,7 +454,7 @@ static ssize_t poll_ms_show(struct device *dev, struct device_attribute *attr,
 	int ret;
 
 	if (!sensor->get_poll_ms)
-		return -ENOSYS;
+		return -EOPNOTSUPP;
 
 	ret = sensor->get_poll_ms(sensor->context);
 	if (ret < 0)
@@ -462,13 +471,15 @@ static ssize_t poll_ms_store(struct device *dev, struct device_attribute *attr,
 	int err;
 
 	if (!sensor->set_poll_ms)
-		return -ENOSYS;
+		return -EOPNOTSUPP;
 
 	if (sscanf(buf, "%ud", &value) != 1)
 		return -EINVAL;
 	err = sensor->set_poll_ms(sensor->context, value);
 	if (err < 0)
 		return err;
+
+	kobject_uevent(&dev->kobj, KOBJ_CHANGE);
 
 	return count;
 }
@@ -515,14 +526,16 @@ static ssize_t bin_data_write(struct file *file, struct kobject *kobj,
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
 	if (!sensor->write_data)
-		return -ENOSYS;
+		return -EOPNOTSUPP;
 
 	return sensor->write_data(sensor->context, buf, off, count);
 }
 
-static DEVICE_ATTR_RO(device_name);
+static DEVICE_ATTR_RO(driver_name);
 static DEVICE_ATTR_RO(port_name);
 static DEVICE_ATTR_RO(address);
+static DEVICE_ATTR_RW(poll_ms);
+static DEVICE_ATTR_RO(fw_version);
 static DEVICE_ATTR_RO(modes);
 static DEVICE_ATTR_RW(mode);
 static DEVICE_ATTR_RO(commands);
@@ -548,9 +561,11 @@ static DEVICE_ATTR(value6, S_IRUGO, value_show, NULL);
 static DEVICE_ATTR(value7, S_IRUGO, value_show, NULL);
 
 static struct attribute *lego_sensor_class_attrs[] = {
-	&dev_attr_device_name.attr,
+	&dev_attr_driver_name.attr,
 	&dev_attr_port_name.attr,
 	&dev_attr_address.attr,
+	&dev_attr_poll_ms.attr,
+	&dev_attr_fw_version.attr,
 	&dev_attr_modes.attr,
 	&dev_attr_mode.attr,
 	&dev_attr_commands.attr,
@@ -582,37 +597,8 @@ static const struct attribute_group lego_sensor_class_group = {
 	.bin_attrs	= lego_sensor_class_bin_attrs,
 };
 
-static DEVICE_ATTR_RW(poll_ms);
-static DEVICE_ATTR_RO(fw_version);
-
-struct attribute *lego_sensor_class_optional_attrs[] = {
-	&dev_attr_poll_ms.attr,
-	&dev_attr_fw_version.attr,
-	NULL
-};
-
-static umode_t lego_sensor_attr_is_visible (struct kobject *kobj,
-					struct attribute *attr, int index)
-{
-	struct device *dev = container_of(kobj, struct device, kobj);
-	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
-
-	if (attr == &dev_attr_poll_ms.attr)
-		return (sensor->get_poll_ms || sensor->set_poll_ms) ? attr->mode : 0;
-	if (attr == &dev_attr_fw_version.attr)
-		return sensor->fw_version[0] ? attr->mode : 0;
-
-	return attr->mode;
-}
-
-static const struct attribute_group lego_sensor_class_optional_group = {
-	.is_visible	= lego_sensor_attr_is_visible,
-	.attrs		= lego_sensor_class_optional_attrs,
-};
-
 static const struct attribute_group *lego_sensor_class_groups[] = {
 	&lego_sensor_class_group,
-	&lego_sensor_class_optional_group,
 	NULL
 };
 
@@ -658,9 +644,9 @@ static int lego_sensor_dev_uevent(struct device *dev,
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 	int ret;
 
-	ret = add_uevent_var(env, "LEGO_DEVICE_NAME=%s", sensor->name);
+	ret = add_uevent_var(env, "LEGO_DRIVER_NAME=%s", sensor->name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent LEGO_DEVICE_NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_DRIVER_NAME\n");
 		return ret;
 	}
 

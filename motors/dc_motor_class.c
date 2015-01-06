@@ -44,8 +44,9 @@
  * : Returns a space separated list of commands supported by the motor
  *   controller.
  * .
- * `device_name` (read-only)
- * : Returns the name of the motor device/driver.
+ * `driver_name` (read-only)
+ * : Returns the name of the motor driver that loaded this device. See the list
+ *   of [supported devices] for a list of drivers.
  * .
  * `duty_cycle` (read)
  * : Shows the current duty cycle of the PWM signal sent to the motor. Values
@@ -66,13 +67,15 @@
  * : Sets the time in milliseconds that it take the motor to ramp down from 100%
  *   to 0%. Valid values are 0 to 10000 (10 seconds). Default is 0. If the
  *   controller does not support ramping, then reading and writing will fail
- *   with -ENOSYS.
+ *   with -EOPNOTSUPP.
  * .
  * `ramp_up_ms` (read/write)
  * : Sets the time in milliseconds that it take the motor to up ramp from 0% to
  *   100%. Valid values are 0 to 10000 (10 seconds). Default is 0. If the
  *   controller does not support ramping, then reading and writing will fail
- *   with -ENOSYS.
+ *   with -EOPNOTSUPP.
+ * .
+ * [supported devices]: /docs/motors/#supported-devices
  */
 
 #include <linux/device.h>
@@ -134,7 +137,7 @@ enum hrtimer_restart dc_motor_class_ramp_timer_handler(struct hrtimer *timer)
 	return HRTIMER_RESTART;
 }
 
-static ssize_t device_name_show(struct device *dev,
+static ssize_t driver_name_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
@@ -334,7 +337,7 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 	return -EINVAL;
 }
 
-static DEVICE_ATTR_RO(device_name);
+static DEVICE_ATTR_RO(driver_name);
 static DEVICE_ATTR_RO(port_name);
 static DEVICE_ATTR_RW(ramp_up_ms);
 static DEVICE_ATTR_RW(ramp_down_ms);
@@ -345,7 +348,7 @@ static DEVICE_ATTR_RO(commands);
 static DEVICE_ATTR_RW(command);
 
 static struct attribute *dc_motor_class_attrs[] = {
-	&dev_attr_device_name.attr,
+	&dev_attr_driver_name.attr,
 	&dev_attr_port_name.attr,
 	&dev_attr_ramp_up_ms.attr,
 	&dev_attr_ramp_down_ms.attr,
@@ -411,9 +414,9 @@ static int dc_motor_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
 	int ret;
 
-	ret = add_uevent_var(env, "LEGO_DEVICE_NAME=%s", motor->name);
+	ret = add_uevent_var(env, "LEGO_DRIVER_NAME=%s", motor->name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent LEGO_DEVICE_NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_DRIVER_NAME\n");
 		return ret;
 	}
 	add_uevent_var(env, "LEGO_PORT_NAME=%s", motor->port_name);

@@ -52,7 +52,7 @@ struct servo_motor_ops {
 
 /**
  * struct servo_motor_device
- * @name: The name of servo controller.
+ * @name: The name of the driver that loaded this device.
  * @port_name: The name of the port that this motor is connected to.
  * @ops: Function pointers to the controller that registered this servo.
  * @context: Data struct passed back to the ops.

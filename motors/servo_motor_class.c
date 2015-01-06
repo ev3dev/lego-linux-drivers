@@ -38,8 +38,9 @@
 *   to `run` will cause the servo to be driven to the position set in the
 *   `position` attribute. Setting to `float` will remove power from the motor.
 * .
-* `device_name` (read-only)
-* : Returns the name of the servo device/driver.
+ * `driver_name` (read-only)
+ * : Returns the name of the motor driver that loaded this device. See the list
+ *   of [supported devices] for a list of drivers.
 * .
 * `max_pulse_ms` (read/write)
 * : Used to set the pulse size in milliseconds for the signal that tells the
@@ -81,8 +82,10 @@
 *   range of the servo). Units are in milliseconds. Example: Setting the rate
 *   to 1000 means that it will take a 180 degree servo 2 second to move from 0
 *   to 180 degrees. Note: Some servo controllers may not support this in which
-*   case reading and writing will fail with -ENOSYS. In continuous rotation
+*   case reading and writing will fail with -EOPNOTSUPP. In continuous rotation
 *   servos, this value will affect the rate at which the speed ramps up or down.
+ * .
+ * [supported devices]: /docs/motors/#supported-devices
 */
 
 #include <linux/device.h>
@@ -147,7 +150,7 @@ int servo_motor_class_set_position(struct servo_motor_device *motor,
 	return 0;
 }
 
-static ssize_t device_name_show(struct device *dev,
+static ssize_t driver_name_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	struct servo_motor_device *motor = to_servo_motor_device(dev);
@@ -338,7 +341,7 @@ static ssize_t rate_show(struct device *dev, struct device_attribute *attr,
 	int ret;
 
 	if (!motor->ops.get_rate)
-		return -ENOSYS;
+		return -EOPNOTSUPP;
 	ret = motor->ops.get_rate(motor->context);
 	if (ret < 0)
 		return ret;
@@ -353,7 +356,7 @@ static ssize_t rate_store(struct device *dev, struct device_attribute *attr,
 	int err;
 
 	if (!motor->ops.set_rate)
-		return -ENOSYS;
+		return -EOPNOTSUPP;
 
 	if (sscanf(buf, "%ud", &value) != 1)
 		return -EINVAL;
@@ -364,7 +367,7 @@ static ssize_t rate_store(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
-static DEVICE_ATTR_RO(device_name);
+static DEVICE_ATTR_RO(driver_name);
 static DEVICE_ATTR_RO(port_name);
 static DEVICE_ATTR_RW(min_pulse_ms);
 static DEVICE_ATTR_RW(mid_pulse_ms);
@@ -375,7 +378,7 @@ static DEVICE_ATTR_RW(position);
 static DEVICE_ATTR_RW(rate);
 
 static struct attribute *servo_motor_class_attrs[] = {
-	&dev_attr_device_name.attr,
+	&dev_attr_driver_name.attr,
 	&dev_attr_port_name.attr,
 	&dev_attr_min_pulse_ms.attr,
 	&dev_attr_mid_pulse_ms.attr,
@@ -444,9 +447,9 @@ static int servo_motor_dev_uevent(struct device *dev, struct kobj_uevent_env *en
 	struct servo_motor_device *servo = to_servo_motor_device(dev);
 	int ret;
 
-	ret = add_uevent_var(env, "LEGO_DEVICE_NAME=%s", servo->name);
+	ret = add_uevent_var(env, "LEGO_DRIVER_NAME=%s", servo->name);
 	if (ret) {
-		dev_err(dev, "failed to add uevent LEGO_DEVICE_NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_DRIVER_NAME\n");
 		return ret;
 	}
 	add_uevent_var(env, "LEGO_PORT_NAME=%s", servo->port_name);

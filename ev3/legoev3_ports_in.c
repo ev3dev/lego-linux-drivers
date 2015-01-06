@@ -427,6 +427,7 @@ static struct device_type ev3_input_port_type = {
  * @i2c_pdev_info: Platform device information for creating a new i2c-gpio
  *	device each time we connect an i2c sensor.
  * @i2c_pdev: I2C platform device.
+ * @change_uevent_work: Needed when change is triggered in atomic context.
  * @work: Worker for registering and unregistering sensors when they are
  *	connected and disconnected.
  * @timer: Polling timer to monitor the port.
@@ -448,6 +449,7 @@ struct ev3_input_port_data {
 	struct i2c_legoev3_platform_data i2c_data;
 	struct platform_device_info i2c_pdev_info;
 	struct platform_device *i2c_pdev;
+	struct work_struct change_uevent_work;
 	struct work_struct work;
 	struct hrtimer timer;
 	unsigned timer_loop_cnt;
@@ -667,15 +669,21 @@ void ev3_input_port_unregister_sensor(struct work_struct *work)
 	ev3_input_port_disable_uart(data);
 }
 
+void ev3_input_port_change_uevent_work(struct work_struct *work)
+{
+	struct ev3_input_port_data *data =
+		container_of(work, struct ev3_input_port_data, change_uevent_work);
+
+	kobject_uevent(&data->port.dev.kobj, KOBJ_CHANGE);
+}
+
 static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 {
 	struct ev3_input_port_data *data =
 			container_of(timer, struct ev3_input_port_data, timer);
+	enum sensor_type prev_sensor_type = data->sensor_type;
 	unsigned new_pin_state_flags = 0;
 	unsigned new_pin1_mv = 0;
-
-	if (data->port.mode != EV3_INPUT_PORT_MODE_AUTO)
-		return HRTIMER_NORESTART;
 
 	hrtimer_forward_now(timer, ktime_set(0, INPUT_PORT_POLL_NS));
 	data->timer_loop_cnt++;
@@ -806,7 +814,14 @@ static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 		data->con_state = CON_STATE_INIT;
 		break;
 	}
-	if (data->sensor_type
+	/*
+	 * data->sensor_type is used for lego-port class status, so we need to
+	 * trigger a uevent when it changes.
+	 */
+	if (prev_sensor_type != data->sensor_type)
+		schedule_work(&data->change_uevent_work);
+
+	if (data->sensor_type != SENSOR_NONE
 	    && data->timer_loop_cnt >= REMOVE_CNT && !work_busy(&data->work))
 	{
 		if (data->sensor) {
@@ -890,6 +905,7 @@ static int ev3_input_port_set_mode(void *context, u8 mode)
 	 * be necessary to unload and reload the same sensor.
 	 */
 
+	hrtimer_cancel(&data->timer);
 	cancel_work_sync(&data->work);
 
 	if (data->port.mode == EV3_INPUT_PORT_MODE_OTHER_UART)
@@ -948,6 +964,28 @@ static int ev3_input_port_set_mode(void *context, u8 mode)
 		/* should never get here, but keeps compiler happy */
 		break;
 	}
+
+	return 0;
+}
+
+static int ev3_input_port_set_device(void *context, const char *device_name)
+{
+	struct ev3_input_port_data *data = context;
+	struct lego_device *new_sensor;
+
+	if (data->sensor_type != SENSOR_NXT_ANALOG)
+		return -EOPNOTSUPP;
+
+	lego_device_unregister(data->sensor);
+	data->sensor = NULL;
+
+	new_sensor = lego_device_register(device_name,
+		&ev3_input_port_sensor_types[data->sensor_type],
+		&data->port, NULL, 0);
+	if (IS_ERR(new_sensor))
+		return PTR_ERR(new_sensor);
+
+	data->sensor = new_sensor;
 
 	return 0;
 }
@@ -1020,12 +1058,14 @@ struct lego_port_device
 	data->i2c_pdev_info.data	= &data->i2c_data;
 	data->i2c_pdev_info.size_data	= sizeof(data->i2c_data);
 
+	data->port.name = ev3_input_port_type.name;
 	snprintf(data->port.port_name, LEGO_PORT_NAME_SIZE, "in%d",
 		 pdata->id + 1);
 	data->port.port_alias = pdata->uart_tty;
 	data->port.num_modes = NUM_EV3_INPUT_PORT_MODE;
 	data->port.mode_info = legoev3_input_port_mode_info;
 	data->port.set_mode = ev3_input_port_set_mode;
+	data->port.set_device = ev3_input_port_set_device;
 	data->port.get_status = ev3_input_port_get_status;
 	data->port.nxt_analog_ops = &ev3_input_port_nxt_analog_ops;
 	data->port.nxt_i2c_ops = &ev3_input_port_nxt_i2c_ops;
@@ -1036,6 +1076,7 @@ struct lego_port_device
 		goto err_lego_port_register;
 	}
 
+	INIT_WORK(&data->change_uevent_work, ev3_input_port_change_uevent_work);
 	INIT_WORK(&data->work, NULL);
 	hrtimer_init(&data->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	data->timer.function = ev3_input_port_timer_callback;
@@ -1067,6 +1108,7 @@ void ev3_input_port_unregister(struct lego_port_device *port)
 	data =container_of(port, struct ev3_input_port_data, port);
 
 	hrtimer_cancel(&data->timer);
+	cancel_work_sync(&data->change_uevent_work);
 	cancel_work_sync(&data->work);
 	if (port->mode == EV3_INPUT_PORT_MODE_OTHER_UART)
 		ev3_input_port_disable_uart(data);

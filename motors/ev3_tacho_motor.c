@@ -32,7 +32,7 @@
  * `/sys/bus/lego/drivers/ev3-tacho-motor /`. There is not much of interest
  * there though - all of the useful stuff is in the [tacho-motor] class.
  * .
- * [tacho-motor]: ../taco-motor-class
+ * [tacho-motor]: ../tacho-motor-class
  * [incremental rotary encoder]: https://en.wikipedia.org/wiki/Rotary_encoder#Incremental_rotary_encoder
  */
 
@@ -526,9 +526,9 @@ static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
 
 	/* TODO: These need to get converted to an id lookup table like sensors */
 
-	if (pdata->motor_type == MOTOR_MINITACHO)
+	if (TACHO_MOTOR_EV3_MEDIUM == pdata->motor_type_id)
 		ev3_tm->motor_type = MOTOR_TYPE_MINITACHO;
-	else if (pdata->motor_type == MOTOR_TACHO)
+	else if (TACHO_MOTOR_EV3_LARGE == pdata->motor_type_id)
 		ev3_tm->motor_type = MOTOR_TYPE_TACHO;
 	else
 		ev3_tm->motor_type = MOTOR_TYPE_TACHO;
@@ -537,7 +537,7 @@ static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
 		ev3_tm->pid.speed_regulation_P  = 1000;
 		ev3_tm->pid.speed_regulation_I  = 60;
 		ev3_tm->pid.speed_regulation_D  = 0;
-	} else if (pdata->motor_type == MOTOR_TACHO) {
+	} else if (TACHO_MOTOR_EV3_LARGE == pdata->motor_type_id) {
 		ev3_tm->pid.speed_regulation_P  = 1000;
 		ev3_tm->pid.speed_regulation_I  = 60;
 		ev3_tm->pid.speed_regulation_D  = 0;
@@ -547,9 +547,9 @@ static void ev3_tacho_motor_reset(struct ev3_tacho_motor_data *ev3_tm)
 		ev3_tm->pid.speed_regulation_D  = 0;
 	}
 
-	ev3_tm->pid.speed_regulation_K  = 9000;
+	ev3_tm->pid.speed_regulation_K	= 9000;
 
-	ev3_tm->pid.prev_pulses_per_second 	= 0;
+	ev3_tm->pid.prev_pulses_per_second = 0;
 
 	ev3_tm->pid.prev_position_error	= 0;
 	ev3_tm->speed_reg_sp		= 0;

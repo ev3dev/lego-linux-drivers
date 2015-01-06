@@ -111,14 +111,6 @@ enum pin_state_flag {
 	NUM_PIN_STATE_FLAG
 };
 
-static const char* ev3_output_port_state_names[] = {
-	[MOTOR_NONE]		= "no-motor",
-	[MOTOR_NEWTACHO]	= "ev3-motor",
-	[MOTOR_MINITACHO]	= "ev3-motor",
-	[MOTOR_TACHO]		= "ev3-motor",
-	[MOTOR_ERR]		= "error",
-};
-
 enum legoev3_output_port_mode {
 	EV3_OUTPUT_PORT_MODE_AUTO,
 	EV3_OUTPUT_PORT_MODE_TACHO_MOTOR,
@@ -205,35 +197,43 @@ static const struct lego_port_mode_info legoev3_output_port_mode_info[] = {
 	},
 };
 
+
+enum motor_type {
+	MOTOR_NONE,
+	MOTOR_TACHO,
+	MOTOR_DC,
+	MOTOR_LED,
+	MOTOR_ERR,
+	NUM_MOTOR
+};
+
 struct device_type ev3_motor_device_types[] = {
-	/*
-	 * TODO: if we ever add auto-detection of something other than a tacho
-	 * motor, we will need to drop ..._MODE_AUTO here and test for auto
-	 * mode and do a lookup based on the motor_type in the ...register_motor
-	 * function.
-	 */
-	[EV3_OUTPUT_PORT_MODE_AUTO] = {
-		.name	= "ev3-tacho-motor",
+	[MOTOR_NONE] = {
+		.name	= "no-motor",
 	},
-	[EV3_OUTPUT_PORT_MODE_TACHO_MOTOR] = {
-		.name	= "ev3-tacho-motor",
+	[MOTOR_TACHO] = {
+		.name	= legoev3_output_port_mode_info[EV3_OUTPUT_PORT_MODE_TACHO_MOTOR].name,
 	},
-	[EV3_OUTPUT_PORT_MODE_DC_MOTOR] = {
-		.name	= "rcx-motor",
+	[MOTOR_DC] = {
+		.name	= legoev3_output_port_mode_info[EV3_OUTPUT_PORT_MODE_DC_MOTOR].name,
 	},
-	[EV3_OUTPUT_PORT_MODE_LED] = {
-		.name	= "rcx-led",
+	[MOTOR_LED] = {
+		.name	= legoev3_output_port_mode_info[EV3_OUTPUT_PORT_MODE_LED].name,
 	},
+	[MOTOR_ERR] = {
+		.name	= "error",
+	}
 };
 
 /**
  * struct ev3_output_port_data - Driver data for an output port on the EV3 brick
  * @id: Unique identifier for the port.
- * @out_port: Pointer to the legoev3_port that is bound to this instance.
+ * @out_port: lego-port class device that represents this port.
  * @analog: pointer to the legoev3-analog device for accessing data from the
  *	analog/digital converter.
  * @pwm: Pointer to the pwm device that is bound to this port
  * @gpio: Array of gpio pins used by this input port.
+ * @change_uevent_work: Needed when change is triggered in atomic context.
  * @work: Worker for registering and unregistering sensors when they are
  *	connected and disconnected.
  * @timer: Polling timer to monitor the port connect/disconnect.
@@ -243,7 +243,8 @@ struct device_type ev3_motor_device_types[] = {
  *	state of the port's pins.
  * @pin5_float_mv: Used in the polling loop to track pin 5 voltage.
  * @pin5_low_mv: Used in the polling loop to track pin 5 voltage.
- * @tacho_motor_type: The type of motor currently connected.
+ * @motor_type: The type of motor that was detected or manually set by the mode.
+ * @tacho_motor_type: The type of tacho motor that was detected.
  * @motor: Pointer to the motor device that is connected to the output port.
  * @command: The current command for the motor driver of the output port.
  * @direction: The current direction for the motor driver of the output port.
@@ -254,6 +255,7 @@ struct ev3_output_port_data {
 	struct legoev3_analog_device *analog;
 	struct pwm_device *pwm;
 	struct gpio gpio[NUM_GPIO];
+	struct work_struct change_uevent_work;
 	struct work_struct work;
 	struct hrtimer timer;
 	unsigned timer_loop_cnt;
@@ -261,7 +263,8 @@ struct ev3_output_port_data {
 	unsigned pin_state_flags:NUM_PIN_STATE_FLAG;
 	unsigned pin5_float_mv;
 	unsigned pin5_low_mv;
-	enum motor_type tacho_motor_type;
+	enum motor_type motor_type;
+	enum tacho_motor_type_id tacho_motor_type;
 	struct lego_device *motor;
 	enum dc_motor_command command;
 	enum dc_motor_direction direction;
@@ -377,6 +380,14 @@ void ev3_output_port_float(struct ev3_output_port_data *data)
 	data->command = DC_MOTOR_COMMAND_COAST;
 }
 
+void ev3_output_port_change_uevent_work(struct work_struct *work)
+{
+	struct ev3_output_port_data *data =
+		container_of(work, struct ev3_output_port_data, change_uevent_work);
+
+	kobject_uevent(&data->out_port.dev.kobj, KOBJ_CHANGE);
+}
+
 void ev3_output_port_register_motor(struct work_struct *work)
 {
 	struct ev3_output_port_data *data =
@@ -384,11 +395,9 @@ void ev3_output_port_register_motor(struct work_struct *work)
 	struct lego_device *motor;
 	struct ev3_motor_platform_data pdata;
 
-	if ((data->out_port.mode == EV3_OUTPUT_PORT_MODE_AUTO
-	     && (data->tacho_motor_type == MOTOR_NONE
-		 || data->tacho_motor_type == MOTOR_ERR
-		 || data->tacho_motor_type >= NUM_MOTOR))
-	    || data->out_port.mode == EV3_OUTPUT_PORT_MODE_RAW)
+	if (data->motor_type == MOTOR_NONE
+		|| data->motor_type == MOTOR_ERR
+		|| data->motor_type >= NUM_MOTOR)
 	{
 		dev_err(&data->out_port.dev,
 			"Trying to register an invalid motor type on %s.\n",
@@ -396,13 +405,13 @@ void ev3_output_port_register_motor(struct work_struct *work)
 		return;
 	}
 
-	pdata.tacho_int_gpio  = data->gpio[GPIO_PIN5_INT].gpio;
-	pdata.tacho_dir_gpio  = data->gpio[GPIO_PIN6_DIR].gpio;
-	pdata.motor_type      = data->tacho_motor_type;
+	pdata.tacho_int_gpio = data->gpio[GPIO_PIN5_INT].gpio;
+	pdata.tacho_dir_gpio = data->gpio[GPIO_PIN6_DIR].gpio;
+	pdata.motor_type_id = data->tacho_motor_type;
 
 	motor = lego_device_register(
-		ev3_motor_device_types[data->out_port.mode].name,
-		&ev3_motor_device_types[data->out_port.mode],
+		ev3_motor_device_types[data->motor_type].name,
+		&ev3_motor_device_types[data->motor_type],
 		&data->out_port, &pdata, sizeof(struct ev3_motor_platform_data));
 	if (IS_ERR(motor)) {
 		dev_err(&data->out_port.dev,
@@ -422,7 +431,7 @@ void ev3_output_port_unregister_motor(struct work_struct *work)
 			container_of(work, struct ev3_output_port_data, work);
 
 	lego_device_unregister(data->motor);
-	data->tacho_motor_type = MOTOR_NONE;
+	data->motor_type = MOTOR_NONE;
 	data->motor = NULL;
 }
 
@@ -430,11 +439,9 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 {
 	struct ev3_output_port_data *data =
 			container_of(timer, struct ev3_output_port_data, timer);
+	enum motor_type prev_motor_type = data->motor_type;
 	unsigned new_pin_state_flags = 0;
 	unsigned new_pin5_mv = 0;
-
-	if (data->out_port.mode != EV3_OUTPUT_PORT_MODE_AUTO)
-		return HRTIMER_NORESTART;
 
 	hrtimer_forward_now(timer, ktime_set(0, OUTPUT_PORT_POLL_NS));
 	data->timer_loop_cnt++;
@@ -444,7 +451,7 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 		if (!data->motor) {
 			ev3_output_port_float(data);
 			data->timer_loop_cnt = 0;
-			data->tacho_motor_type = MOTOR_NONE;
+			data->motor_type = MOTOR_NONE;
 			data->con_state = CON_STATE_INIT_SETTLE;
 		}
 		break;
@@ -501,41 +508,37 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 				&& (data->pin_state_flags & (0x01 << PIN_STATE_FLAG_PIN6_HIGH)))
 			{
 				/* NXT TOUCH SENSOR, NXT SOUND SENSOR or NEW UART SENSOR */
-				data->tacho_motor_type = MOTOR_ERR;
+				data->motor_type = MOTOR_ERR;
 				data->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
 
 			} else if (data->pin5_float_mv < PIN5_NEAR_GND) {
 				/* NEW DUMB SENSOR */
-				data->tacho_motor_type = MOTOR_ERR;
+				data->motor_type = MOTOR_ERR;
 				data->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
 
 			} else if ((data->pin5_float_mv >= PIN5_LIGHT_LOW)
 				&& (data->pin5_float_mv <= PIN5_LIGHT_HIGH))
 			{
 				/* NXT LIGHT SENSOR */
-				data->tacho_motor_type = MOTOR_ERR;
+				data->motor_type = MOTOR_ERR;
 				data->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
 
 			} else if ((data->pin5_float_mv >= PIN5_IIC_LOW)
 				&& (data->pin5_float_mv <= PIN5_IIC_HIGH))
 			{
 				/* NXT IIC SENSOR */
-				data->tacho_motor_type = MOTOR_ERR;
+				data->motor_type = MOTOR_ERR;
 				data->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
 
 			} else if (data->pin5_float_mv < PIN5_BALANCE_LOW) {
-
+				data->motor_type = MOTOR_TACHO;
 				if (data->pin5_float_mv > PIN5_MINITACHO_HIGH2) {
-					data->tacho_motor_type = MOTOR_NEWTACHO;
-
+					data->tacho_motor_type = TACHO_MOTOR_EV3_NEW;
 				} else if (data->pin5_float_mv > PIN5_MINITACHO_LOW2) {
-					data->tacho_motor_type = MOTOR_MINITACHO;
-
+					data->tacho_motor_type = TACHO_MOTOR_EV3_MEDIUM;
 				} else {
-					data->tacho_motor_type = MOTOR_TACHO;
-
+					data->tacho_motor_type = TACHO_MOTOR_EV3_LARGE;
 				}
-
 				data->con_state = CON_STATE_DEVICE_CONNECTED;
 
 			} else {
@@ -549,10 +552,10 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 			&& (data->pin5_float_mv < PIN5_BALANCE_LOW))
 		{
 			/* NEW ACTUATOR */
-			data->tacho_motor_type = MOTOR_ERR;
+			data->motor_type = MOTOR_ERR;
 			data->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
 		} else {
-			data->tacho_motor_type = MOTOR_ERR;
+			data->motor_type = MOTOR_ERR;
 			data->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
 		}
 		break;
@@ -564,12 +567,15 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 			data->timer_loop_cnt = 0;
 			gpio_direction_output(data->gpio[GPIO_PIN5].gpio, 0);
 
-			if (data->pin5_low_mv < PIN5_MINITACHO_LOW1)
-				data->tacho_motor_type = MOTOR_ERR;
-			else if (data->pin5_low_mv < PIN5_MINITACHO_HIGH1)
-				data->tacho_motor_type = MOTOR_MINITACHO;
-			else
-				data->tacho_motor_type = MOTOR_TACHO;
+			if (data->pin5_low_mv < PIN5_MINITACHO_LOW1) {
+				data->motor_type = MOTOR_ERR;
+			} else {
+				data->motor_type = MOTOR_TACHO;
+				if (data->pin5_low_mv < PIN5_MINITACHO_HIGH1)
+					data->motor_type = TACHO_MOTOR_EV3_MEDIUM;
+				else
+					data->motor_type = TACHO_MOTOR_EV3_LARGE;
+			}
 
 			data->con_state = CON_STATE_DEVICE_CONNECTED;
 		}
@@ -577,7 +583,7 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 
 	case CON_STATE_DEVICE_CONNECTED:
 		data->timer_loop_cnt = 0;
-		if (data->tacho_motor_type != MOTOR_ERR && !work_busy(&data->work)) {
+		if (data->motor_type != MOTOR_ERR && !work_busy(&data->work)) {
 			INIT_WORK(&data->work, ev3_output_port_register_motor);
 			schedule_work(&data->work);
 			data->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
@@ -601,6 +607,12 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 		data->con_state = CON_STATE_INIT;
 		break;
 	}
+	/*
+	 * data->tacho_motor_type determines the status for the lego-port class
+	 * so we need to trigger a change uevent when it changes.
+	 */
+	if (prev_motor_type != data->motor_type)
+		schedule_work(&data->change_uevent_work);
 
 	return HRTIMER_RESTART;
 }
@@ -651,6 +663,7 @@ static int ev3_output_port_set_mode(void *context, u8 mode)
 {
 	struct ev3_output_port_data *data = context;
 
+	hrtimer_cancel(&data->timer);
 	cancel_work_sync(&data->work);
 
 	if (data->motor)
@@ -664,12 +677,16 @@ static int ev3_output_port_set_mode(void *context, u8 mode)
 			      HRTIMER_MODE_REL);
 		break;
 	case EV3_OUTPUT_PORT_MODE_TACHO_MOTOR:
-		data->tacho_motor_type = MOTOR_TACHO;
+		data->motor_type = MOTOR_TACHO;
+		data->tacho_motor_type = TACHO_MOTOR_EV3_LARGE;
 		ev3_output_port_register_motor(&data->work);
 		break;
 	case EV3_OUTPUT_PORT_MODE_DC_MOTOR:
+		data->motor_type = MOTOR_DC;
+		ev3_output_port_register_motor(&data->work);
+		break;
 	case EV3_OUTPUT_PORT_MODE_LED:
-		data->tacho_motor_type = MOTOR_NONE;
+		data->motor_type = MOTOR_LED;
 		ev3_output_port_register_motor(&data->work);
 		break;
 	case EV3_OUTPUT_PORT_MODE_RAW:
@@ -687,7 +704,7 @@ static const char *ev3_output_port_get_status(void *context)
 	struct ev3_output_port_data *data = context;
 
 	if (data->out_port.mode == EV3_OUTPUT_PORT_MODE_AUTO)
-		return ev3_output_port_state_names[data->tacho_motor_type];
+		return ev3_motor_device_types[data->motor_type].name;
 
 	return legoev3_output_port_mode_info[data->out_port.mode].name;
 }
@@ -745,6 +762,7 @@ struct lego_port_device
 		goto err_gpio_request_array;
 	}
 
+	data->out_port.name = ev3_output_port_type.name;
 	snprintf(data->out_port.port_name, LEGO_PORT_NAME_SIZE, "out%c",
 		 data->id + 'A');
 	pwm = pwm_get(NULL, data->out_port.port_name);
@@ -784,6 +802,7 @@ struct lego_port_device
 		goto err_lego_port_register;
 	}
 
+	INIT_WORK(&data->change_uevent_work, ev3_output_port_change_uevent_work);
 	INIT_WORK(&data->work, NULL);
 
 	data->con_state = CON_STATE_INIT;
@@ -822,6 +841,7 @@ void ev3_output_port_unregister(struct lego_port_device *port)
 	pwm_disable(data->pwm);
 	pwm_put(data->pwm);
 	hrtimer_cancel(&data->timer);
+	cancel_work_sync(&data->change_uevent_work);
 	cancel_work_sync(&data->work);
 	if (data->motor)
 		ev3_output_port_unregister_motor(&data->work);

@@ -34,6 +34,9 @@
  * `/sys/bus/lego/drivers/nxt-analog-sensor`. However, these drivers provide a
  * [lego-sensor device], which is where all the really useful attributes are.
  * .
+ * `driver_names` (read-only)
+ * : Returns a space-separated list of all Analog/NXT sensor driver names.
+ * .
  * [lego-sensor device]: ../lego-sensor-class
  * [supported sensors]: /docs/sensors#supported-sensors
  */
@@ -157,7 +160,7 @@ static struct lego_device_id nxt_analog_sensor_device_ids [] = {
 	{  }
 };
 
-static ssize_t sensor_names_show(struct device_driver *driver, char *buf)
+static ssize_t driver_names_show(struct device_driver *driver, char *buf)
 {
 	struct lego_device_id *id = nxt_analog_sensor_device_ids;
 	int count = 0;
@@ -171,14 +174,14 @@ static ssize_t sensor_names_show(struct device_driver *driver, char *buf)
 	return count;
 }
 
-DRIVER_ATTR_RO(sensor_names);
+DRIVER_ATTR_RO(driver_names);
 
-static struct attribute *nxt_analog_sensor_names_attrs[] = {
-	&driver_attr_sensor_names.attr,
+static struct attribute *nxt_analog_driver_names_attrs[] = {
+	&driver_attr_driver_names.attr,
 	NULL,
 };
 
-ATTRIBUTE_GROUPS(nxt_analog_sensor_names);
+ATTRIBUTE_GROUPS(nxt_analog_driver_names);
 
 struct lego_device_driver nxt_analog_sensor_driver = {
 	.probe	= nxt_analog_sensor_probe,
@@ -186,7 +189,7 @@ struct lego_device_driver nxt_analog_sensor_driver = {
 	.driver = {
 		.name	= "nxt-analog-sensor",
 		.owner	= THIS_MODULE,
-		.groups	= nxt_analog_sensor_names_groups,
+		.groups	= nxt_analog_driver_names_groups,
 	},
 	.id_table = nxt_analog_sensor_device_ids,
 };

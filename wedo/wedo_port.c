@@ -296,6 +296,12 @@ static int register_wedo_device(struct wedo_port_data *wpd,
 		break;
 	}
 
+	/*
+	 * wpd->type_id determines lego-port class status, so we need to trigger
+	 * a change uevent when we change the type_id.
+	 */
+	kobject_uevent(&wpd->port.dev.kobj, KOBJ_CHANGE);
+
 	return err;
 }
 
@@ -339,7 +345,7 @@ struct lego_port_mode_info wedo_port_mode_info[] = {
 		/**
 		 * @description: Automatic
 		 */
-		.name = "AUTO",
+		.name = "auto",
 	},
 };
 
@@ -372,6 +378,7 @@ struct wedo_port_data *register_wedo_port(struct usb_interface *interface,
 		return ERR_PTR(-ENOMEM);
 
 	wpd->usb = interface;
+	wpd->port.name = wedo_port_type.name;
 	snprintf(wpd->port.port_name, LEGO_PORT_NAME_SIZE, "usb%s:wedo%d",
 		 dev_name(&interface->dev), port_num);
 	wpd->port.num_modes = 1;

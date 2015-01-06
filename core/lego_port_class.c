@@ -1,7 +1,7 @@
 /*
  * LEGO port class driver
  *
- * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -37,11 +37,11 @@
  * .
  * In most cases, ports are able to automatically detect what type of sensor
  * or motor is connected. In some cases though, this must be manually specified
- * using the `mode` and `set_sensor` attributes. The `mode` attribute affects
+ * using the `mode` and `set_device` attributes. The `mode` attribute affects
  * how the port communicates with the connected device. For example the input
  * ports on the EV3 brick can communicate using UART, I2C or analog voltages,
  * but not all at the same time, so the mode must be set to the one that is
- * appropriate for the connected sensor. The `set_sensor` attribute is used to
+ * appropriate for the connected sensor. The `set_device` attribute is used to
  * specify the exact type of sensor that is connected. Note: the mode must be
  * correctly set before setting the sensor type.
  * .
@@ -51,6 +51,10 @@
  * incremented each time a new port is registered. Note: The number is not
  * related to the actual port at all - use the `port_name` attribute to find
  * a specific port.
+ * .
+ * `driver_name` (read-only)
+ * : Returns the name of the driver that loaded this device. You can find the
+ *   complete list of drivers in the [list of port drivers].
  * .
  * `modes` (read-only)
  * : Returns a space separated list of the available modes of the port.
@@ -69,8 +73,21 @@
  * : For modes that support it, writing the name of a driver will cause a new
  *   device to be registered for that driver and attached to this port. For
  *   example, since Analog/NXT sensors cannot be auto-detected, you must use
- *   this attribute to load the correct driver. Returns -ENOSYS if setting a
+ *   this attribute to load the correct driver. Returns -EOPNOTSUPP if setting a
  *   device is not supported.
+ * .
+ * `status`: (read-only)
+ * : In most cases, reading status will return the same value as `mode`. In
+ *   cases where there is an `auto` mode additional values may be returned,
+ *   such as `no-device` or `error`. See individual port driver documentation
+ *   for the full list of possible values.
+ * .
+ * ### Events
+ * .
+ * In addition to the usual "add" and "remove" events, the kernel "change"
+ * event is emitted when `mode` or `status` changes.
+ * .
+ * [list of port drivers]: /docs/ports/#list-of-port-drivers
  */
 
 #include <linux/err.h>
@@ -108,6 +125,7 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 		return ret;
 
 	port->mode = new_mode;
+	kobject_uevent(&dev->kobj, KOBJ_CHANGE);
 
 	return count;
 }
@@ -124,6 +142,14 @@ static ssize_t modes_show(struct device *dev, struct device_attribute *attr,
 	buf[count - 1] = '\n';
 
 	return count;
+}
+
+static ssize_t driver_name_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct lego_port_device *lego_port = to_lego_port_device(dev);
+
+	return sprintf(buf, "%s\n", lego_port->name);
 }
 
 static ssize_t port_name_show(struct device *dev, struct device_attribute *attr,
@@ -143,7 +169,7 @@ static ssize_t set_device_store(struct device *dev,
 	int ret;
 
 	if (!port->set_device)
-		return -ENOSYS;
+		return -EOPNOTSUPP;
 
 	strncpy(name, buf, LEGO_PORT_NAME_SIZE);
 	ret = port->set_device(port->context, strstrip(name));
@@ -166,6 +192,7 @@ static ssize_t status_show(struct device *dev, struct device_attribute *attr,
 
 static DEVICE_ATTR_RW(mode);
 static DEVICE_ATTR_RO(modes);
+static DEVICE_ATTR_RO(driver_name);
 static DEVICE_ATTR_RO(port_name);
 static DEVICE_ATTR_WO(set_device);
 static DEVICE_ATTR_RO(status);
@@ -173,6 +200,7 @@ static DEVICE_ATTR_RO(status);
 static struct attribute *lego_port_class_attrs[] = {
 	&dev_attr_modes.attr,
 	&dev_attr_mode.attr,
+	&dev_attr_driver_name.attr,
 	&dev_attr_port_name.attr,
 	&dev_attr_set_device.attr,
 	&dev_attr_status.attr,
@@ -193,7 +221,7 @@ int lego_port_register(struct lego_port_device *port,
 {
 	int err;
 
-	if (!port || !port->port_name || !type || !parent)
+	if (!port || !port->name || !port->port_name || !type || !parent)
 		return -EINVAL;
 
 	port->dev.release = lego_port_release;
@@ -223,6 +251,12 @@ static int lego_port_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	struct lego_port_device *lego_port = to_lego_port_device(dev);
 	int ret;
+
+	ret = add_uevent_var(env, "LEGO_DRIVER_NAME=%s", lego_port->name);
+	if (ret) {
+		dev_err(dev, "failed to add uevent LEGO_DRIVER_NAME\n");
+		return ret;
+	}
 
 	ret = add_uevent_var(env, "LEGO_PORT_NAME=%s", lego_port->port_name);
 	if (ret) {
