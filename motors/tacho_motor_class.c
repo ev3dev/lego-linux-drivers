@@ -256,7 +256,7 @@ ssize_t tacho_motor_store_position(struct device *dev, struct device_attribute *
 
         return size;
 }
-
+#if 0
 static ssize_t tacho_motor_show_states(struct device *dev, struct device_attribute *attr, char *buf)
 {
         unsigned int i;
@@ -270,7 +270,7 @@ static ssize_t tacho_motor_show_states(struct device *dev, struct device_attribu
 
         return size;
 }
-
+#endif
 static ssize_t tacho_motor_show_state(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
@@ -812,16 +812,20 @@ static ssize_t tacho_motor_store_reset(struct device *dev, struct device_attribu
         return size;
 }
 
-static ssize_t tacho_motor_show_log(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t tacho_motor_show_log(struct device *dev,
+				    struct device_attribute *attr, char *buf)
 {
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+	struct tacho_motor_device *tm =
+		container_of(dev, struct tacho_motor_device, dev);
 
 	size_t size = 0;
 	int i;
 
 	for (i=0; i<tm->log.index; ++i ) {
-		size += scnprintf( &(buf[size]), PAGE_SIZE-size, "%08X %04X %04X\n", tm->log.timestamp[i], tm->log.event[i], tm->log.data[i] );
-        }
+		size += scnprintf( &(buf[size]), PAGE_SIZE-size,
+			"%08lX %04X %04X\n", tm->log.timestamp[i],
+			tm->log.event[i], tm->log.data[i] );
+	}
 
 	return size;
 }
