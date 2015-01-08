@@ -23,7 +23,7 @@ config LEGOEV3_ANALOG
 	help
 	  Select Y to enable the EV3's built-in analog/digital converter.
 
-config BATTERY_LEGOEV3
+config LEGOEV3_BATTERY
 	tristate "LEGO MINDSTORMS EV3 battery driver"
 	depends on LEGOEV3_ANALOG
 	help
@@ -43,6 +43,16 @@ config LEGOEV3_DEV_PORTS
 	help
 	  Select Y to provide support for devices that plug into the input
 	  and output ports of the EV3.
+
+config LEGOEV3_SOUND
+	tristate "LEGO Mindstorms EV3 speaker driver"
+	depends on MACH_DAVINCI_LEGOEV3 && PWM_TIEHRPWM && LEGOEV3_FIQ
+	select SND_PCM
+	help
+	  Say Y here if you want to use the LEGO Mindstorms EV3 speaker.
+
+	  To compile this driver as a module, choose M here: the module will be
+	  called snd-legoev3.
 
 endif #LEGOEV3_DRIVERS
 
