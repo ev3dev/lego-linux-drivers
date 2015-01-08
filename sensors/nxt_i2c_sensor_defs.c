@@ -2046,6 +2046,232 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
+	[MS_LINE_LEADER] = {
+		/**
+		 * [^address]: The address is programmable. See manufacturer
+		 * documentation for more information.
+		 *
+		 * @vendor_name: mindsensors.com
+		 * @vendor_part_number: LineLeader
+		 * @vendor_part_name: Line Follower Sensor
+		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=111
+		 * @default_address: 0x01
+		 * @default_address_footnote: [^address]
+		 */
+		.name			= "ms-line-leader",
+		.vendor_id		= "mndsnsrs",
+		.product_id		= "LineLdr",
+		.num_modes		= 4,
+		.mode_info	= {
+			[0] = {
+				/**
+				 * [^pid-mode-value0]: "Steering" is the power value
+				 * returned by the sensor to correct your course. Add
+				 * this value to your left motor and subtract from
+				 * right motor.
+				 *
+				 * @description: Line Follower
+				 * @value0: Steering
+				 * @value0_footnote: [^pid-mode-value0]
+				 */
+				.name = "PID",
+			},
+			[1] = {
+				/**
+				 * [^pid-mode-value1]: "Average" is the weighted average
+				 * of the sensor reading. The average is a weighted
+				 * average of the bits set to 1 based on the position.
+				 * i.e. left most bit has weight of 10, second bit has
+				 * weight of 20.
+				 * [^pid-mode-value2]: "Result" is a byte value of
+				 * the sensor reading. Each bit corresponding to the
+				 * sensor where the line is seen is set to 1, or else
+				 * the bit is zero.
+				 *
+				 * @description: Line Follower - all values
+				 * @value0: Steering
+				 * @value0_footnote: [^pid-mode-value0]
+				 * @value1: Average
+				 * @value1_footnote: [^pid-mode-value1]
+				 * @value2: Result
+				 * @value2_footnote: [^pid-mode-value2]
+				 */
+				.name = "PID-ALL",
+				.data_sets = 3,
+			},
+			[2] = {
+				/**
+				 * @description: Calibrated values
+				 * @value0: LED 0 (0 to 100)
+				 * @value1: LED 1 (0 to 100)
+				 * @value2: LED 2 (0 to 100)
+				 * @value3: LED 3 (0 to 100)
+				 * @value4: LED 4 (0 to 100)
+				 * @value5: LED 5 (0 to 100)
+				 * @value6: LED 6 (0 to 100)
+				 * @value7: LED 7 (0 to 100)
+				 * @units_description: percent
+				 */
+				.name	= "CAL",
+				.raw_max = 100,
+				.si_max = 100,
+				.data_sets = 8,
+				.units	= "pct",
+			},
+			[3] = {
+				/**
+				 * @description: Raw values
+				 * @value0: LED 0 (0 to ???)
+				 * @value1: LED 1 (0 to ???)
+				 * @value2: LED 2 (0 to ???)
+				 * @value3: LED 3 (0 to ???)
+				 * @value4: LED 4 (0 to ???)
+				 * @value5: LED 5 (0 to ???)
+				 * @value6: LED 6 (0 to ???)
+				 * @value7: LED 7 (0 to ???)
+				 */
+				.name	= "RAW",
+				.raw_max = USHRT_MAX,
+				.si_max = USHRT_MAX,
+				.data_sets = 8,
+				.data_type = LEGO_SENSOR_DATA_S16,
+			},
+		},
+		.i2c_mode_info	= {
+			[0] = {
+				.read_data_reg	= 0x42,
+			},
+			[1] = {
+				.read_data_reg	= 0x42,
+			},
+			[2] = {
+				.read_data_reg	= 0x49,
+			},
+			[3] = {
+				.read_data_reg	= 0x74,
+			},
+		},
+		.num_commands	= 10,
+		.cmd_info	= {
+			[0] = {
+				/**
+				 * @description: Calibrate white
+				 */
+				.name = "CAL-WHITE",
+			},
+			[1] = {
+				/**
+				 * @description: Calibrate black
+				 */
+				.name = "CAL-BLACK",
+			},
+			[2] = {
+				/**
+				 * [^sleep]: `poll_ms` must be set to `0` in order for sensor to sleep.
+				 *
+				 * @name_footnote: [^sleep]
+				 * @description: Put sensor to sleep
+				 */
+				.name = "SLEEP",
+			},
+			[3] = {
+				/**
+				 * [^wake]: Will return an error (-ENXIO) if sensor is actually asleep.
+				 * Completes successfully if sensor is already awake.
+				 *
+				 * @name_footnote: [^wake]
+				 * @description: Wake up the sensor
+				 */
+				.name = "WAKE",
+			},
+			[4] = {
+				/**
+				 * @description: Color inversion (White line on a black background)
+				 */
+				.name = "INV-COL",
+			},
+			[5] = {
+				/**
+				 * @description: Reset Color inversion (black line on a white background).
+				 */
+				.name = "RST-COL",
+			},
+			[6] = {
+				/**
+				 * [^snapshot-command]: The "SNAP" command looks at the line
+				 * under the sensor and stores the width and position of the
+				 * line in sensor’s memory. Subsequently, sensor will use
+				 * these characteristics of line to track it. This command
+				 * inverts the colors if it sees a white line on black background.
+				 * (PID parameters are not affected).
+				 *
+				 * @name_footnote: [^snapshot-command]
+				 * @description: Take a snapshot.
+				 */
+				.name = "SNAP",
+			},
+			[7] = {
+				/**
+				 * @description: Configures sensor for 60Hz electrical mains
+				 */
+				.name = "60HZ",
+			},
+			[8] = {
+				/**
+				 * @description: Configures sensor for 50Hz electrical mains
+				 */
+				.name = "50HZ",
+			},
+			[9] = {
+				/**
+				 * @description: Configures sensor for any (50/60Hz) electrical mains
+				 */
+				.name = "UNIVERSAL",
+			},
+		},
+		.i2c_cmd_info	= {
+			[0] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'W',
+			},
+			[1] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'B',
+			},
+			[2] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'D',
+			},
+			[3] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'P',
+			},
+			[4] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'I',
+			},
+			[5] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'R',
+			},
+			[6] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'S',
+			},
+			[7] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'A',
+			},
+			[8] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'E',
+			},
+			[9] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'U',
+			},
+		},
+	},
 	[MI_CRUIZCORE_XG1300L] = {
 		/**
 		 * [^ids]: CruizCore XG1300L doesn't follow LEGO guidelines by

@@ -133,6 +133,7 @@ enum nxt_i2c_sensor_type {
 	MS_ANGLE_SENSOR,
 	MS_EV3_SENSOR_MUX,
 	MS_LIGHT_SENSOR_ARRAY,
+	MS_LINE_LEADER,
 	MI_CRUIZCORE_XG1300L,
 	NUM_NXT_I2C_SENSORS
 };
@@ -160,6 +161,7 @@ enum nxt_i2c_sensor_type {
 { "ms-angle",		MS_ANGLE_SENSOR			}, \
 { "ms-ev3-smux",	MS_EV3_SENSOR_MUX		}, \
 { "ms-light-array",	MS_LIGHT_SENSOR_ARRAY		}, \
+{ "ms-line-leader",	MS_LINE_LEADER			}, \
 { "mi-xg1300l",		MI_CRUIZCORE_XG1300L		}, \
 { }
 
