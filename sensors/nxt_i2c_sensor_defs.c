@@ -2075,6 +2075,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0_footnote: [^pid-mode-value0]
 				 */
 				.name = "PID",
+				.data_type = LEGO_SENSOR_DATA_S8,
 			},
 			[1] = {
 				/**
@@ -2098,6 +2099,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 */
 				.name = "PID-ALL",
 				.data_sets = 3,
+				.data_type = LEGO_SENSOR_DATA_S8,
 			},
 			[2] = {
 				/**
