@@ -95,7 +95,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				 * @description: Raw Color Components<br />All LEDs rapidly cycling, appears white
 				 * @value0: Red??? (0 to 1020???)
 				 * @value1: Green??? (0 to 1020???)
-				 * @value1: Blue??? (0 to 1020???)
+				 * @value2: Blue??? (0 to 1020???)
 				 * @units_description: color
 				 */
 				.name		= "RGB-RAW",
