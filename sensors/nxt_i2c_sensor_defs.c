@@ -1938,7 +1938,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 * @description: Raw values
+				 * @description: Uncalibrated values
 				 * @value0: LED 0 (0 to ???)
 				 * @value1: LED 1 (0 to ???)
 				 * @value2: LED 2 (0 to ???)
@@ -2071,11 +2071,13 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * right motor.
 				 *
 				 * @description: Line Follower
-				 * @value0: Steering
+				 * @value0: Steering (-100 to 100)
 				 * @value0_footnote: [^pid-mode-value0]
+				 * @units_description: percent
 				 */
 				.name = "PID",
 				.data_type = LEGO_SENSOR_DATA_S8,
+				.units	= "pct",
 			},
 			[1] = {
 				/**
@@ -2090,11 +2092,11 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * the bit is zero.
 				 *
 				 * @description: Line Follower - all values
-				 * @value0: Steering
+				 * @value0: Steering (-100 to 100)
 				 * @value0_footnote: [^pid-mode-value0]
-				 * @value1: Average
+				 * @value1: Average (0 to 80)
 				 * @value1_footnote: [^pid-mode-value1]
-				 * @value2: Result
+				 * @value2: Result (as bits)
 				 * @value2_footnote: [^pid-mode-value2]
 				 */
 				.name = "PID-ALL",
@@ -2122,7 +2124,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[3] = {
 				/**
-				 * @description: Raw values
+				 * @description: Uncalibrated values
 				 * @value0: LED 0 (0 to ???)
 				 * @value1: LED 1 (0 to ???)
 				 * @value2: LED 2 (0 to ???)
