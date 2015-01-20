@@ -572,9 +572,9 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 			} else {
 				data->motor_type = MOTOR_TACHO;
 				if (data->pin5_low_mv < PIN5_MINITACHO_HIGH1)
-					data->motor_type = TACHO_MOTOR_EV3_MEDIUM;
+					data->tacho_motor_type = TACHO_MOTOR_EV3_MEDIUM;
 				else
-					data->motor_type = TACHO_MOTOR_EV3_LARGE;
+					data->tacho_motor_type = TACHO_MOTOR_EV3_LARGE;
 			}
 
 			data->con_state = CON_STATE_DEVICE_CONNECTED;
