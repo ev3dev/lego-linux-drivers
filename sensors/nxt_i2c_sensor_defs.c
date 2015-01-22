@@ -1,7 +1,7 @@
 /*
  * LEGO MINDSTORMS NXT I2C sensor device driver
  *
- * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2015 David Lechner <david@lechnology.com>
  * Copyright (C) 2014 Bartosz Meglicki <meglickib@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -1487,7 +1487,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * will return `in<N>:sv<M>` where `<N>` is the input port the servo
 		 * controller is connected to and `<M>` is the channel as indicated
 		 * on the servo controller itself.
-		 * .
+		 * ^
 		 * [lego-sensor class]: /docs/drivers/lego-sensor-class
 		 * [servo-motor class]: /docs/motors/servo-motor-class
 		 *
@@ -1871,6 +1871,14 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		/**
 		 * [^addresses]: This sensor appears as three separate sensors,
 		 * one for each channel on the sensor mux.
+		 * [^port-and-sensor-devices]: In addition to loading three
+		 * [lego-sensor] devices for the sensor mux itself, three
+		 * [lego-port] devices are added as well. These [ms-ev3-smux-port]
+		 * devices must be used to manually specify the type of sensor
+		 * that is attached to each port.
+		 * ^
+		 * [lego-port]: /docs/drivers/lego-port-class
+		 * [ms-ev3-smux-port]: /docs/ports/ms-ev3-smux-port
 		 *
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: EV3SensorMUX
@@ -1878,6 +1886,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://www.mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=207
 		 * @default_address: 0x50, 0x51, 0x52
 		 * @default_address_footnote: [^addresses]
+		 * @device_class_footnote: [^port-and-sensor-devices]
 		 */
 		.name			= "ms-ev3-smux",
 		.vendor_id		= "mndsnsrs",
