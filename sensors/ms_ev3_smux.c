@@ -22,6 +22,7 @@
 #include <lego.h>
 #include <lego_port_class.h>
 
+#include "ev3_uart_sensor.h"
 #include "ms_ev3_smux.h"
 
 enum ms_ev3_smux_mode {
@@ -78,10 +79,10 @@ static const struct lego_port_mode_info ms_ev3_smux_port_mode_info[] = {
 };
 
 static const char *ms_ev3_smux_uart_sensor_names[] = {
-	"lego-ev3-uart-29", /* Color      */
-	"lego-ev3-uart-30", /* Ultrasonic */
-	"lego-ev3-uart-32", /* Gyro       */
-	"lego-ev3-uart-33", /* Infrared   */
+	EV3_UART_SENSOR_NAME("29"), /* Color      */
+	EV3_UART_SENSOR_NAME("30"), /* Ultrasonic */
+	EV3_UART_SENSOR_NAME("32"), /* Gyro       */
+	EV3_UART_SENSOR_NAME("33"), /* Infrared   */
 	NULL
 };
 
