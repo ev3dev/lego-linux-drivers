@@ -40,7 +40,7 @@
  * sensors. Instead, all of the needed info to sent from the sensor in a common
  * format.  As a result, the name returned by the [lego-sensor][lego-sensor
  * class] `device_name` attribute is not a real driver name. Instead it returns
- * `ev3-uart-<N>`, where `<N>` is the type id of the sensor.
+ * `lego-ev3-uart-<N>`, where `<N>` is the type id of the sensor.
  * .
  * [line discipline]: https://en.wikipedia.org/wiki/Line_discipline
  * [lego-sensor class]: ../lego-sensor-class
@@ -60,6 +60,8 @@
 #include <lego.h>
 #include <lego_port_class.h>
 #include <lego_sensor_class.h>
+
+#include "ev3_uart_sensor.h"
 
 #ifdef DEBUG
 #define debug_pr(fmt, ...) printk(fmt, ##__VA_ARGS__)
@@ -516,7 +518,7 @@ static void ev3_uart_handle_rx_data(struct work_struct *work)
 		for (i = 0; i <= EV3_UART_MODE_MAX; i++)
 			port->mode_info[i] = ev3_uart_default_mode_info;
 		port->type_id = type;
-		snprintf(port->device_name, LEGO_SENSOR_NAME_SIZE, "ev3-uart-%u", type);
+		snprintf(port->device_name, LEGO_SENSOR_NAME_SIZE, EV3_UART_SENSOR_NAME("%u"), type);
 		port->info_flags = EV3_UART_INFO_FLAG_CMD_TYPE;
 		port->synced = 1;
 		port->info_done = 0;
