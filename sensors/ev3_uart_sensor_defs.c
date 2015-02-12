@@ -29,7 +29,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 		 * @vendor_part_number: 45506
 		 * @vendor_part_name: EV3 Color Sensor
 		 */
-		.name		= "lego-ev3-uart-29",
+		.name		= EV3_UART_SENSOR_NAME("29"),
 		.num_modes	= 6,
 		.num_view_modes	= 3,
 		.mode_info	= {
@@ -127,7 +127,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 		 * @vendor_part_number: 45504
 		 * @vendor_part_name: EV3 Ultrasonic Sensor
 		 */
-		.name		= "lego-ev3-uart-30",
+		.name		= EV3_UART_SENSOR_NAME("30"),
 		.num_modes	= 5,
 		.num_view_modes	= 3,
 		.mode_info	= {
@@ -240,7 +240,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 		 * @vendor_part_number: 45505
 		 * @vendor_part_name: EV3 Gyro Sensor
 		 */
-		.name		= "lego-ev3-uart-32",
+		.name		= EV3_UART_SENSOR_NAME("32"),
 		.num_modes	= 5,
 		.num_view_modes	= 3,
 		.mode_info	= {
@@ -289,7 +289,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				 * @value0: ??? (-1464 to 1535)
 				 * @value0_footnote: [^direction]
 				 */
-				.name		= " GYRO-FAS",
+				.name		= "GYRO-FAS",
 				.data_sets	= 1,
 				.data_type	= LEGO_SENSOR_DATA_S16,
 			},
@@ -326,7 +326,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 		 * @vendor_part_number: 45509
 		 * @vendor_part_name: EV3 Infrared Sensor
 		 */
-		.name		= "lego-ev3-uart-33",
+		.name		= EV3_UART_SENSOR_NAME("33"),
 		.num_modes	= 6,
 		.num_view_modes	= 3,
 		.mode_info	= {

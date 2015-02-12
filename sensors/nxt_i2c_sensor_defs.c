@@ -1489,7 +1489,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * on the servo controller itself.
 		 * ^
 		 * [lego-sensor class]: /docs/drivers/lego-sensor-class
-		 * [servo-motor class]: /docs/motors/servo-motor-class
+		 * [servo-motor class]: /docs/drivers/servo-motor-class
 		 *
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: NxtServo

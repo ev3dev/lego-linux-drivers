@@ -131,10 +131,10 @@ static int ev3_uart_sensor_remove(struct lego_device *ldev)
 }
 
 static const struct lego_device_id ev3_uart_sensor_device_ids[] = {
-	{ "lego-ev3-uart-29",	LEGO_EV3_COLOR		},
-	{ "lego-ev3-uart-30",	LEGO_EV3_ULTRASONIC	},
-	{ "lego-ev3-uart-32",	LEGO_EV3_GYRO		},
-	{ "lego-ev3-uart-33",	LEGO_EV3_INFRARED	},
+	{ EV3_UART_SENSOR_NAME("29"),	LEGO_EV3_COLOR		},
+	{ EV3_UART_SENSOR_NAME("30"),	LEGO_EV3_ULTRASONIC	},
+	{ EV3_UART_SENSOR_NAME("32"),	LEGO_EV3_GYRO		},
+	{ EV3_UART_SENSOR_NAME("33"),	LEGO_EV3_INFRARED	},
 };
 
 struct lego_device_driver ev3_uart_sensor_driver = {

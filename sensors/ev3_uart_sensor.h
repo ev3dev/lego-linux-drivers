@@ -18,6 +18,8 @@
 
 #include <lego_sensor_class.h>
 
+#define EV3_UART_SENSOR_NAME(type_id) "lego-ev3-uart-" type_id
+
 /**
  * struct ev3_uart_sensor_info
  * @name: The driver name. Must match name in id_table.
