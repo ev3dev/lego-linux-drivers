@@ -289,7 +289,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				 * @value0: ??? (-1464 to 1535)
 				 * @value0_footnote: [^direction]
 				 */
-				.name		= " GYRO-FAS",
+				.name		= "GYRO-FAS",
 				.data_sets	= 1,
 				.data_type	= LEGO_SENSOR_DATA_S16,
 			},
