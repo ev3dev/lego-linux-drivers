@@ -1328,27 +1328,35 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.i2c_mode_info	= {
 			[0] = {
 				.read_data_reg = 0x42,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[1] = {
 				.read_data_reg	= 0x4C,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[2] = {
 				.read_data_reg	= 0x4D,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[3] = {
 				.read_data_reg	= 0x4E,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[4] = {
 				.read_data_reg	= 0x50,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[5] = {
 				.read_data_reg	= 0x51,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[6] = {
 				.read_data_reg	= 0x52,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[7] = {
 				.read_data_reg	= 0x57,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 		},
 	},
@@ -2153,15 +2161,19 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.i2c_mode_info	= {
 			[0] = {
 				.read_data_reg	= 0x42,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[1] = {
 				.read_data_reg	= 0x42,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[2] = {
 				.read_data_reg	= 0x49,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[3] = {
 				.read_data_reg	= 0x74,
+				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 		},
 		.num_commands	= 10,
