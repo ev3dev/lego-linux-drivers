@@ -1,7 +1,7 @@
 /*
  * HiTechnic NXT sensor multiplexer device driver
  *
- * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -97,15 +97,15 @@ static u8 ht_nxt_smux_i2c_data_reg[] = {
 
 static const char* ht_nxt_smux_supported_i2c_sensor_names[] = {
 	[HT_NXT_SMUX_SENSOR_ANALOG]		= NULL,
-	[HT_NXT_SMUX_SENSOR_LEGO_ULTRASONIC]	= "lego-nxt-us",
-	[HT_NXT_SMUX_SENSOR_HT_COMPASS]		= "ht-nxt-compass",
-	[HT_NXT_SMUX_SENSOR_HT_COLOR]		= "ht-nxt-color",
-	[HT_NXT_SMUX_SENSOR_HT_ACCEL]		= "ht-nxt-accel",
-	[HT_NXT_SMUX_SENSOR_HT_IR_SEEKER]	= "ht-nxt-ir-seeker",
-	[HT_NXT_SMUX_SENSOR_HT_PROTO_BOARD]	= "ht-super-pro",
-	[HT_NXT_SMUX_SENSOR_HT_COLOR_V2]	= "ht-nxt-color-v2",
+	[HT_NXT_SMUX_SENSOR_LEGO_ULTRASONIC]	= LEGO_NXT_ULTRASONIC_SENSOR_NAME,
+	[HT_NXT_SMUX_SENSOR_HT_COMPASS]		= HT_NXT_COMPASS_SENSOR_NAME,
+	[HT_NXT_SMUX_SENSOR_HT_COLOR]		= HT_NXT_COLOR_SENSOR_NAME,
+	[HT_NXT_SMUX_SENSOR_HT_ACCEL]		= HT_NXT_ACCELERATION_TILT_SENSOR_NAME,
+	[HT_NXT_SMUX_SENSOR_HT_IR_SEEKER]	= HT_NXT_IR_SEEKER_SENSOR_NAME,
+	[HT_NXT_SMUX_SENSOR_HT_PROTO_BOARD]	= HT_NXT_SUPER_PRO_SENSOR_NAME,
+	[HT_NXT_SMUX_SENSOR_HT_COLOR_V2]	= HT_NXT_COLOR_SENSOR_V2_NAME,
 	[HT_NXT_SMUX_SENSOR_RESERVED]		= NULL,
-	[HT_NXT_SMUX_SENSOR_IR_SEEKER_V2]	= "ht-ir-seeker-v2",
+	[HT_NXT_SMUX_SENSOR_IR_SEEKER_V2]	= HT_NXT_IR_SEEKER_SENSOR_V2_NAME,
 };
 
 struct device_type ht_nxt_smux_port_type = {

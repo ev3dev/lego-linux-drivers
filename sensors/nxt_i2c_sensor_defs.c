@@ -305,7 +305,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://www.lego.com/en-us/mindstorms/downloads/software/nxt-hdk/
 		 * @default_address: 0x01
 		 */
-		.name		= "lego-nxt-us",
+		.name		= LEGO_NXT_ULTRASONIC_SENSOR_NAME,
 		.vendor_id	= "LEGO",
 		.product_id	= "Sonar",
 		.num_modes	= 5,
@@ -414,7 +414,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://education.lego.com/en-us/lego-education-product-database/machines-and-mechanisms/9668-energy-display
 		 * @default_address: 0x02
 		 */
-		.name		= "lego-power-storage",
+		.name		= LEGO_POWER_STORAGE_SENSOR_NAME,
 		.vendor_id	= "LEGO",
 		.product_id	= "", /* LMS2012 fakes this with "Store." */
 		.num_modes	= 8,
@@ -563,7 +563,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NIS1070
 		 * @default_address: 0x01
 		 */
-		.name		= "ht-nxt-pir",
+		.name		= HT_NXT_PIR_SENSOR_NAME,
 		.vendor_id	= "HITECHNC",
 		.product_id	= "PIR",
 		.num_modes	= 1,
@@ -595,7 +595,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NBR1036
 		 * @default_address: 0x01
 		 */
-		.name		= "ht-nxt-barometric",
+		.name		= HT_NXT_BAROMETRIC_SENSOR_NAME,
 		.vendor_id	= "HiTechnc",
 		.product_id	= "Barometr",
 		.num_modes	= 2,
@@ -643,7 +643,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NSK1042
 		 * @default_address: 0x08
 		 */
-		.name		= "ht-nxt-ir-seeker-v2",
+		.name		= HT_NXT_IR_SEEKER_SENSOR_V2_NAME,
 		.vendor_id	= "HiTechnc",
 		.product_id	= "NewIRDir",
 		.num_modes	= 4,
@@ -741,7 +741,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_part_name: NXT Color Sensor
 		 * @default_address: 0x01
 		 */
-		.name		= "ht-nxt-color",
+		.name		= HT_NXT_COLOR_SENSOR_NAME,
 		.vendor_id	= "HiTechnc",
 		.product_id	= "Color",
 		.num_modes	= 7,
@@ -849,7 +849,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NCO1038
 		 * @default_address: 0x01
 		 */
-		.name		= "ht-nxt-color-v2",
+		.name		= HT_NXT_COLOR_SENSOR_V2_NAME,
 		.vendor_id	= "HiTechnc",
 		.product_id	= "ColorPD",
 		.num_modes	= 8,
@@ -978,7 +978,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NAA1030
 		 * @default_address: 0x01
 		 */
-		.name		= "ht-nxt-angle",
+		.name		= HT_NXT_ANGLE_SENSOR_NAME,
 		.vendor_id	= "HITECHNC",
 		.product_id	= "AnglSnsr",
 		.num_modes	= 3,
@@ -1059,7 +1059,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NMC1034
 		 * @default_address: 0x01
 		 */
-		.name		= "ht-nxt-compass",
+		.name		= HT_NXT_COMPASS_SENSOR_NAME,
 		.vendor_id	= "HITECHNC",
 		.product_id	= "Compass",
 		.num_modes	= 1,
@@ -1091,7 +1091,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NIR1032
 		 * @default_address: 0x01
 		 */
-		.name		= "ht-nxt-ir-receiver",
+		.name		= HT_NXT_IR_RECEIVER_SENSOR_NAME,
 		.vendor_id	= "HiTechnc",
 		.product_id	= "IRRecv",
 		.num_modes	= 2,
@@ -1158,7 +1158,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NAC1040
 		 * @default_address: 0x01
 		 */
-		.name		= "ht-nxt-accel",
+		.name		= HT_NXT_ACCELERATION_TILT_SENSOR_NAME,
 		.vendor_id	= "HITECHNC",
 		.product_id	= "Accel.",
 		.num_modes	= 2,
@@ -1211,7 +1211,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NIL1046
 		 * @default_address: 0x01
 		 */
-		.name		= "ht-nxt-ir-link",
+		.name		= HT_NXT_IR_LINK_SENSOR_NAME,
 		.vendor_id	= "HiTechnc",
 		.product_id	= "IRLink",
 		.num_modes	= 1,
@@ -1238,7 +1238,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=SPR2010
 		 * @default_address: 0x08
 		 */
-		.name		= "ht-super-pro",
+		.name		= HT_NXT_SUPER_PRO_SENSOR_NAME,
 		.vendor_id	= "HiTechnc",
 		.product_id	= "SuperPro",
 		.num_modes	= 5,
@@ -1367,7 +1367,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @default_address: 0x08
 		 * @device_class_footnote: [^more-devices]
 		 */
-		.name			= "ht-nxt-smux",
+		.name			= HT_NXT_SENSOR_MUX_NAME,
 		.vendor_id		= "HiTechnc",
 		.product_id		= "SensrMUX",
 		.num_modes		= 1,
@@ -1499,7 +1499,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @default_address_footnote: [^address]
 		 * @device_class_footnote: [^servo-motor-devices]
 		 */
-		.name			= "ms-8ch-servo",
+		.name			= MS_8CH_SERVO_NAME,
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "NXTServo",
 		.num_modes		= 2,
@@ -1569,7 +1569,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @default_address: 0x11
 		 * @default_address_footnote: [^address]
 		 */
-		.name			= "ms-absolute-imu",
+		.name			= MS_ABSOLUTE_IMU_NAME,
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "AbsIMU",
 		.num_modes		= 6,
@@ -1771,7 +1771,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://www.mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=173
 		 * @default_address: 0x18
 		 */
-		.name			= "ms-angle",
+		.name			= MS_ANGLE_SENSOR_NAME,
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "AngSens",
 		.num_modes		= 4,
@@ -1888,7 +1888,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @default_address_footnote: [^addresses]
 		 * @device_class_footnote: [^port-and-sensor-devices]
 		 */
-		.name			= "ms-ev3-smux",
+		.name			= MS_EV3_SENSOR_MUX_NAME,
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "Ev3SMux",
 		.num_modes		= 2,
@@ -1921,7 +1921,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @default_address: 0x0A
 		 * @default_address_footnote: [^address]
 		 */
-		.name			= "ms-light-array",
+		.name			= MS_LIGHT_SENSOR_ARRAY_NAME,
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "LSArray",
 		.num_modes		= 2,
@@ -2067,7 +2067,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @default_address: 0x01
 		 * @default_address_footnote: [^address]
 		 */
-		.name			= "ms-line-leader",
+		.name			= MS_LINE_LEADER_NAME,
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "LineLdr",
 		.num_modes		= 4,
@@ -2306,7 +2306,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_id_footnote: [^ids]
 		 * @product_id_footnote: [^ids]
 		 */
-		.name			= "mi-xg1300l",
+		.name			= MI_CRUIZCORE_XG1300L_NAME,
 		.vendor_id		= "mnfinity", /* The sensor doesn't return vendor_id, it can't be autodetected this way */
 		.product_id		= "XG1300L",  /* The sensor doesn't return product_id, it can't be autodetected this way */
 		.num_modes		= 4,

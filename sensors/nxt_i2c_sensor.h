@@ -1,7 +1,7 @@
 /*
  * LEGO MINDSTORMS NXT I2C sensor device driver
  *
- * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -118,6 +118,7 @@ enum nxt_i2c_sensor_type {
 	LEGO_POWER_STORAGE_SENSOR,
 	HT_NXT_PIR_SENSOR,
 	HT_NXT_BAROMETRIC_SENSOR,
+	HT_NXT_IR_SEEKER_SENSOR,
 	HT_NXT_IR_SEEKER_SENSOR_V2,
 	HT_NXT_COLOR_SENSOR,
 	HT_NXT_COLOR_SENSOR_V2,
@@ -139,31 +140,61 @@ enum nxt_i2c_sensor_type {
 };
 
 /*
+ * I2C driver names have a fixed size of 19 chars. That includes the null
+ * termination, so no more than 18 chars here!
+ */
+#define LEGO_NXT_ULTRASONIC_SENSOR_NAME		"lego-nxt-us"
+#define LEGO_POWER_STORAGE_SENSOR_NAME		"lego-power-storage"
+#define HT_NXT_PIR_SENSOR_NAME			"ht-nxt-pir"
+#define HT_NXT_BAROMETRIC_SENSOR_NAME		"ht-nxt-barometric"
+#define HT_NXT_IR_SEEKER_SENSOR_NAME		"ht-nxt-ir-seek"
+#define HT_NXT_IR_SEEKER_SENSOR_V2_NAME		"ht-nxt-ir-seek-v2"
+#define HT_NXT_COLOR_SENSOR_NAME		"ht-nxt-color"
+#define HT_NXT_COLOR_SENSOR_V2_NAME		"ht-nxt-color-v2"
+#define HT_NXT_ANGLE_SENSOR_NAME		"ht-nxt-angle"
+#define HT_NXT_COMPASS_SENSOR_NAME		"ht-nxt-compass"
+#define HT_NXT_IR_RECEIVER_SENSOR_NAME		"ht-nxt-ir-receiver"
+#define HT_NXT_ACCELERATION_TILT_SENSOR_NAME	"ht-nxt-accel"
+#define HT_NXT_IR_LINK_SENSOR_NAME		"ht-nxt-ir-link"
+#define HT_NXT_SUPER_PRO_SENSOR_NAME		"ht-super-pro"
+#define HT_NXT_SENSOR_MUX_NAME			"ht-nxt-smux"
+#define MS_8CH_SERVO_NAME			"ms-8ch-servo"
+#define MS_ABSOLUTE_IMU_NAME			"ms-absolute-imu"
+#define MS_ANGLE_SENSOR_NAME			"ms-angle"
+#define MS_EV3_SENSOR_MUX_NAME			"ms-ev3-smux"
+#define MS_LIGHT_SENSOR_ARRAY_NAME		"ms-light-array"
+#define MS_LINE_LEADER_NAME			"ms-line-leader"
+#define MI_CRUIZCORE_XG1300L_NAME		"mi-xg1300l"
+
+#define NXT_I2C_SENSOR_ID(type) { type##_NAME, type }
+
+/*
  * This table is shared by the nxt-i2c-sensor and ht-nxt-smux-i2c-sensor modules.
  */
 #define NXT_I2C_SENSOR_ID_TABLE_DATA \
-{ "lego-nxt-us",	LEGO_NXT_ULTRASONIC_SENSOR	}, \
-{ "lego-power-storage",	LEGO_POWER_STORAGE_SENSOR	}, \
-{ "ht-nxt-pir",		HT_NXT_PIR_SENSOR		}, \
-{ "ht-nxt-barometric",	HT_NXT_BAROMETRIC_SENSOR	}, \
-{ "ht-ir-seeker-v2",	HT_NXT_IR_SEEKER_SENSOR_V2	}, \
-{ "ht-nxt-color",	HT_NXT_COLOR_SENSOR		}, \
-{ "ht-nxt-color-v2",	HT_NXT_COLOR_SENSOR_V2		}, \
-{ "ht-nxt-angle",	HT_NXT_ANGLE_SENSOR		}, \
-{ "ht-nxt-compass",	HT_NXT_COMPASS_SENSOR		}, \
-{ "ht-nxt-ir-receiver",	HT_NXT_IR_RECEIVER_SENSOR	}, \
-{ "ht-nxt-accel",	HT_NXT_ACCELERATION_TILT_SENSOR	}, \
-{ "ht-nxt-ir-link",	HT_NXT_IR_LINK_SENSOR		}, \
-{ "ht-super-pro",	HT_NXT_SUPER_PRO_SENSOR		}, \
-{ "ht-nxt-smux",	HT_NXT_SENSOR_MUX		}, \
-{ "ms-8ch-servo", 	MS_8CH_SERVO			}, \
-{ "ms-absolute-imu",	MS_ABSOLUTE_IMU			}, \
-{ "ms-angle",		MS_ANGLE_SENSOR			}, \
-{ "ms-ev3-smux",	MS_EV3_SENSOR_MUX		}, \
-{ "ms-light-array",	MS_LIGHT_SENSOR_ARRAY		}, \
-{ "ms-line-leader",	MS_LINE_LEADER			}, \
-{ "mi-xg1300l",		MI_CRUIZCORE_XG1300L		}, \
-{ }
+	NXT_I2C_SENSOR_ID(LEGO_NXT_ULTRASONIC_SENSOR),		\
+	NXT_I2C_SENSOR_ID(LEGO_POWER_STORAGE_SENSOR),		\
+	NXT_I2C_SENSOR_ID(HT_NXT_PIR_SENSOR),			\
+	NXT_I2C_SENSOR_ID(HT_NXT_BAROMETRIC_SENSOR),		\
+/*	NXT_I2C_SENSOR_ID(HT_NXT_IR_SEEKER_SENSOR),*/		\
+	NXT_I2C_SENSOR_ID(HT_NXT_IR_SEEKER_SENSOR_V2),		\
+	NXT_I2C_SENSOR_ID(HT_NXT_COLOR_SENSOR),			\
+	NXT_I2C_SENSOR_ID(HT_NXT_COLOR_SENSOR_V2),		\
+	NXT_I2C_SENSOR_ID(HT_NXT_ANGLE_SENSOR),			\
+	NXT_I2C_SENSOR_ID(HT_NXT_COMPASS_SENSOR),		\
+	NXT_I2C_SENSOR_ID(HT_NXT_IR_RECEIVER_SENSOR),		\
+	NXT_I2C_SENSOR_ID(HT_NXT_ACCELERATION_TILT_SENSOR),	\
+	NXT_I2C_SENSOR_ID(HT_NXT_IR_LINK_SENSOR),		\
+	NXT_I2C_SENSOR_ID(HT_NXT_SUPER_PRO_SENSOR),		\
+	NXT_I2C_SENSOR_ID(HT_NXT_SENSOR_MUX),			\
+	NXT_I2C_SENSOR_ID(MS_8CH_SERVO),			\
+	NXT_I2C_SENSOR_ID(MS_ABSOLUTE_IMU),			\
+	NXT_I2C_SENSOR_ID(MS_ANGLE_SENSOR),			\
+	NXT_I2C_SENSOR_ID(MS_EV3_SENSOR_MUX),			\
+	NXT_I2C_SENSOR_ID(MS_LIGHT_SENSOR_ARRAY),		\
+	NXT_I2C_SENSOR_ID(MS_LINE_LEADER),			\
+	NXT_I2C_SENSOR_ID(MI_CRUIZCORE_XG1300L),		\
+	{ }
 
 extern const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[];
 
