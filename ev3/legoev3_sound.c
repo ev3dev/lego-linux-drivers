@@ -29,6 +29,7 @@
 #include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include <linux/pwm.h>
 #include <linux/slab.h>
 #include <linux/timer.h>
@@ -704,6 +705,8 @@ static int snd_legoev3_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to get pwm!\n");
 		return PTR_ERR(pwm);
 	}
+	/* This lets us set the pwm duty cycle in an atomic context */
+	pm_runtime_irq_safe(pwm->chip->dev);
 
 	err = gpio_request_one(pdata->amp_gpio, GPIOF_OUT_INIT_LOW, "snd_ena");
 	if (err) {
