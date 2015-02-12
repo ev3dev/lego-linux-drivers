@@ -1060,7 +1060,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @default_address: 0x01
 		 */
 		.name		= "ht-nxt-compass",
-		.vendor_id	= "HiTechnc",
+		.vendor_id	= "HITECHNC",
 		.product_id	= "Compass",
 		.num_modes	= 1,
 		.mode_info	= {
@@ -1070,7 +1070,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value0: Direction (-180 to 180)
 				 * @units_description: degrees
 				 */
-				.name = "COMAPASS",
+				.name = "COMPASS",
 				.raw_max = 180,
 				.si_max = 180,
 				.units = "deg",
