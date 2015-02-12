@@ -245,10 +245,10 @@ static ssize_t snd_legoev3_store_tone(struct device *dev,
 
 /*--- input device (beep) ---*/
 
-static int snd_legoev3_beep_event(struct input_dev *dev, unsigned int type,
-                                  unsigned int code, int hz)
+static int snd_legoev3_beep_event(struct input_dev *input, unsigned int type,
+				  unsigned int code, int hz)
 {
-	struct snd_legoev3 *chip = input_get_drvdata(dev);
+	struct snd_legoev3 *chip = input_get_drvdata(input);
 
 	switch(code) {
 	case SND_BELL:
@@ -268,27 +268,27 @@ static int snd_legoev3_beep_event(struct input_dev *dev, unsigned int type,
 static int snd_legoev3_input_device_create(struct snd_card *card)
 {
 	struct snd_legoev3 *chip = card->private_data;
-	struct input_dev *dev;
+	struct input_dev *input;
 	int err;
 
-	dev = input_allocate_device();
-	if (IS_ERR(dev))
-		return PTR_ERR(dev);
+	input = input_allocate_device();
+	if (IS_ERR(input))
+		return PTR_ERR(input);
 
-	dev->name = "EV3 speaker beep";
-	dev->dev.parent = chip->card->dev;
-	dev->evbit[0] = BIT(EV_SND);
-	dev->sndbit[0] = BIT(SND_BELL) | BIT(SND_TONE);
-	dev->event = snd_legoev3_beep_event;
+	input->name = "EV3 speaker beep";
+	input->dev.parent = chip->card->dev;
+	input->event = snd_legoev3_beep_event;
+	input_set_capability(input, EV_SND, SND_BELL);
+	input_set_capability(input, EV_SND, SND_TONE);
 
-	err = input_register_device(dev);
+	err = input_register_device(input);
 	if (err < 0) {
-		input_free_device(dev);
+		input_free_device(input);
 		return err;
 	}
 
-	input_set_drvdata(dev, chip);
-	chip->input_dev = dev;
+	input_set_drvdata(input, chip);
+	chip->input_dev = input;
 
 	hrtimer_init(&chip->tone_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	chip->tone_timer.function = snd_legoev3_cb_stop_tone;
