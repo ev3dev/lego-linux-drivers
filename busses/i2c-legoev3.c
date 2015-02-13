@@ -1,6 +1,6 @@
 /*
- * I2C bus driver for LEGO Mindstorms EV3
- * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
+ * I2C bus driver for LEGO MINDSTORMS EV3
+ * Copyright (C) 2013-2015 David Lechner <david@lechnology.com>
  *
  * Based on i2c-gpio.c:
  * Copyright (C) 2007 Atmel Corporation
@@ -42,15 +42,19 @@ static int i2c_legoev3_xfer(struct i2c_adapter *i2c_adap,
 			    struct i2c_msg *msgs, int num)
 {
 	struct i2c_legoev3_algo_data *adata = i2c_adap->algo_data;
-	int err;
+	int ret;
 
 	INIT_COMPLETION(adata->done);
-	err = legoev3_fiq_start_xfer(adata->pdata->port_id, msgs, num,
+	ret = legoev3_fiq_start_xfer(adata->pdata->port_id, msgs, num,
 				     i2c_legoev3_complete, adata);
-	if (err)
-		return err;
+	if (ret < 0)
+		return ret;
 
-	wait_for_completion_interruptible(&adata->done);
+	ret = wait_for_completion_timeout(&adata->done, i2c_adap->timeout);
+	if (!ret) {
+		legoev3_fiq_cancel_xfer(adata->pdata->port_id);
+		return -ETIMEDOUT;
+	}
 
 	return adata->xfer_result;
 }
@@ -95,7 +99,7 @@ static int __devinit i2c_legoev3_probe(struct platform_device *pdev)
 	adap->class = I2C_CLASS_LEGOEV3;
 	adap->algo = &i2c_legoev3_algo;
 	adap->algo_data = adata;
-	adap->timeout = HZ / 100; /* 10 ms - not implemented */
+	adap->timeout = HZ; /* 1 second */
 	adap->dev.parent = &pdev->dev;
 	adap->dev.platform_data = pdata;
 	adap->nr = pdev->id;
