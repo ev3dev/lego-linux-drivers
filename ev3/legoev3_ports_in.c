@@ -1,7 +1,7 @@
 /*
  * EV3 Input port driver for LEGO MINDSTORMS EV3
  *
- * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -29,6 +29,8 @@
 
 #include "legoev3_analog.h"
 #include "legoev3_ports.h"
+#include "../sensors/ev3_analog_sensor.h"
+#include "../sensors/nxt_analog_sensor.h"
 
 #define INPUT_PORT_POLL_NS	10000000	/* 10 msec */
 #define SETTLE_CNT		2		/* 20 msec */
@@ -254,7 +256,7 @@ enum sensor_type {
 
 static const char* ev3_input_port_state_names[] = {
 	[SENSOR_NONE]		= "no-sensor",
-	[SENSOR_NXT_ANALOG]	= "nxt-analog",
+	[SENSOR_NXT_ANALOG]	= GENERIC_NXT_ANALOG_SENSOR_NAME,
 	[SENSOR_NXT_COLOR]	= "nxt-color",
 	[SENSOR_NXT_I2C]	= "nxt-i2c",
 	[SENSOR_EV3_ANALOG]	= "ev3-analog",
@@ -319,7 +321,7 @@ static const struct lego_port_mode_info legoev3_input_port_mode_info[] = {
 		 * @description: Load the [nxt-analog] device.
 		 * @name_footnote: [^nxt-analog-mode]
 		 */
-		.name	= "nxt-analog",
+		.name	= GENERIC_NXT_ANALOG_SENSOR_NAME,
 	},
 	[EV3_INPUT_PORT_MODE_NXT_COLOR] = {
 		/**
@@ -386,13 +388,13 @@ struct device_type ev3_input_port_sensor_types[] = {
 };
 
 const char *ev3_input_port_sensor_table[] = {
-	[SENSOR_TYPE_ID_NXT_TOUCH]	= "lego-nxt-touch",
-	[SENSOR_TYPE_ID_NXT_LIGHT]	= "lego-nxt-light",
-	[SENSOR_TYPE_ID_NXT_ANALOG]	= "nxt-analog",
+	[SENSOR_TYPE_ID_NXT_TOUCH]	= LEGO_NXT_TOUCH_SENSOR_NAME,
+	[SENSOR_TYPE_ID_NXT_LIGHT]	= LEGO_NXT_LIGHT_SENSOR_NAME,
+	[SENSOR_TYPE_ID_NXT_ANALOG]	= GENERIC_NXT_ANALOG_SENSOR_NAME,
 	[SENSOR_TYPE_ID_NXT_COLOR]	= "lego-nxt-color",
 	[SENSOR_TYPE_ID_NXT_I2C]	= "nxt-i2c-host",
 	[SENSOR_TYPE_ID_EV3_ANALOG_01]	= "ev3-analog",
-	[SENSOR_TYPE_ID_EV3_TOUCH]	= "lego-ev3-touch",
+	[SENSOR_TYPE_ID_EV3_TOUCH]	= LEGO_EV3_TOUCH_SENSOR_NAME,
 	[SENSOR_TYPE_ID_EV3_ANALOG_03]	= "ev3-analog",
 	[SENSOR_TYPE_ID_EV3_ANALOG_04]	= "ev3-analog",
 	[SENSOR_TYPE_ID_EV3_ANALOG_05]	= "ev3-analog",

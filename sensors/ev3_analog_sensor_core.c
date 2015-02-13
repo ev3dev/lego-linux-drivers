@@ -1,7 +1,7 @@
 /*
  * LEGO MINDSTORMS EV3 Analog Sensor device driver
  *
- * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -107,64 +107,32 @@ static int ev3_analog_sensor_remove(struct lego_device *ldev)
 	return 0;
 }
 
+#define EV3_ANALOG_SENSOR_ID(type) {	\
+	.name		= type##_NAME,	\
+	.driver_data	= type,		\
+}
+
+#define EV3_ANALOG_SENSOR_GENERIC(type) {		\
+	.name		= type##_NAME,			\
+	.driver_data	= GENERIC_EV3_ANALOG_SENSOR,	\
+}
+
 static struct lego_device_id ev3_analog_sensor_device_ids [] = {
-	{
-		.name = "ev3-analog-01",
-		.driver_data = GENERIC_EV3_ANALOG_SENSOR,
-	},
-	{
-		.name = "lego-ev3-touch",
-		.driver_data = LEGO_EV3_TOUCH_SENSOR,
-	},
-	{
-		.name = "ev3-analog-03",
-		.driver_data = GENERIC_EV3_ANALOG_SENSOR,
-	},
-	{
-		.name = "ev3-analog-04",
-		.driver_data = GENERIC_EV3_ANALOG_SENSOR,
-	},
-	{
-		.name = "ev3-analog-05",
-		.driver_data = GENERIC_EV3_ANALOG_SENSOR,
-	},
-	{
-		.name = "ev3-analog-06",
-		.driver_data = GENERIC_EV3_ANALOG_SENSOR,
-	},
-	{
-		.name = "ev3-analog-07",
-		.driver_data = GENERIC_EV3_ANALOG_SENSOR,
-	},
-	{
-		.name = "ev3-analog-08",
-		.driver_data = GENERIC_EV3_ANALOG_SENSOR,
-	},
-	{
-		.name = "ev3-analog-09",
-		.driver_data = GENERIC_EV3_ANALOG_SENSOR,
-	},
-	{
-		.name = "ev3-analog-10",
-		.driver_data = GENERIC_EV3_ANALOG_SENSOR,
-	},
-	{
-		.name = "ev3-analog-11",
-		.driver_data = GENERIC_EV3_ANALOG_SENSOR,
-	},
-	{
-		.name = "ev3-analog-12",
-		.driver_data = GENERIC_EV3_ANALOG_SENSOR,
-	},
-	{
-		.name = "ev3-analog-13",
-		.driver_data = GENERIC_EV3_ANALOG_SENSOR,
-	},
-	{
-		.name = "ev3-analog-14",
-		.driver_data = GENERIC_EV3_ANALOG_SENSOR,
-	},
-	{  }
+	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_01),
+	EV3_ANALOG_SENSOR_ID(LEGO_EV3_TOUCH_SENSOR),
+	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_03),
+	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_04),
+	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_05),
+	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_06),
+	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_07),
+	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_08),
+	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_09),
+	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_10),
+	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_11),
+	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_12),
+	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_13),
+	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_14),
+	{ }
 };
 
 struct lego_device_driver ev3_analog_sensor_driver = {

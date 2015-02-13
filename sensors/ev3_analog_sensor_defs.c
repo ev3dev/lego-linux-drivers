@@ -1,7 +1,7 @@
 /*
  * LEGO MINDSTORMS EV3 analog sensor device driver
  *
- * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -47,7 +47,7 @@ const struct ev3_analog_sensor_info ev3_analog_sensor_defs[] = {
 		/**
 		 * @vendor_part_name: Generic EV3 Analog Sensor
 		 */
-		.name = "ev3-analog-XX",
+		.name = GENERIC_EV3_ANALOG_SENSOR_NAME,
 		.num_modes = 1,
 		.mode_info = {
 			[0] = {
@@ -72,7 +72,7 @@ const struct ev3_analog_sensor_info ev3_analog_sensor_defs[] = {
 		 * @vendor_part_number: 45507
 		 * @vendor_part_name: EV3 Touch Sensor
 		 */
-		.name = "lego-ev3-touch",
+		.name = LEGO_EV3_TOUCH_SENSOR_NAME,
 		.num_modes = 1,
 		.mode_info = {
 			[0] = {

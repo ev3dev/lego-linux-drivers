@@ -1,7 +1,7 @@
 /*
  * mindsensors.com EV3 Sensor Multiplexer device driver
  *
- * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -22,6 +22,7 @@
 #include <lego.h>
 #include <lego_port_class.h>
 
+#include "ev3_analog_sensor.h"
 #include "ev3_uart_sensor.h"
 #include "ms_ev3_smux.h"
 
@@ -87,7 +88,7 @@ static const char *ms_ev3_smux_uart_sensor_names[] = {
 };
 
 static const char *ms_ev3_smux_analog_sensor_names[] = {
-	"lego-ev3-touch",
+	LEGO_EV3_TOUCH_SENSOR_NAME,
 	NULL
 };
 

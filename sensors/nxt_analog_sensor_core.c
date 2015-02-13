@@ -1,7 +1,7 @@
 /*
  * LEGO MINSTORMS NXT analog sensor device driver
  *
- * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -120,44 +120,22 @@ static int nxt_analog_sensor_remove(struct lego_device *ldev)
 	return 0;
 }
 
+#define NXT_ANALOG_SENSOR_ID(type) {	\
+	.name		= type##_NAME,	\
+	.driver_data	= type,		\
+}
+
 static struct lego_device_id nxt_analog_sensor_device_ids [] = {
-	{
-		.name = "nxt-analog",
-		.driver_data = GENERIC_NXT_ANALOG_SENSOR,
-	},
-	{
-		.name = "lego-nxt-touch",
-		.driver_data = LEGO_NXT_TOUCH_SENSOR,
-	},
-	{
-		.name = "lego-nxt-light",
-		.driver_data = LEGO_NXT_LIGHT_SENSOR,
-	},
-	{
-		.name = "lego-nxt-sound",
-		.driver_data = LEGO_NXT_SOUND_SENSOR,
-	},
-	{
-		.name = "ht-nxt-eopd",
-		.driver_data = HT_EOPD_SENSOR,
-	},
-	{
-		.name = "ht-nxt-force",
-		.driver_data = HT_FORCE_SENSOR,
-	},
-	{
-		.name = "ht-nxt-gyro",
-		.driver_data = HT_GYRO_SENSOR,
-	},
-	{
-		.name = "ht-nxt-mag",
-		.driver_data = HT_MAGNETIC_SENSOR,
-	},
-	{
-		.name = "ms-nxt-touch-mux",
-		.driver_data = MS_TOUCH_SENSOR_MUX,
-	},
-	{  }
+	NXT_ANALOG_SENSOR_ID(GENERIC_NXT_ANALOG_SENSOR),
+	NXT_ANALOG_SENSOR_ID(LEGO_NXT_TOUCH_SENSOR),
+	NXT_ANALOG_SENSOR_ID(LEGO_NXT_LIGHT_SENSOR),
+	NXT_ANALOG_SENSOR_ID(LEGO_NXT_SOUND_SENSOR),
+	NXT_ANALOG_SENSOR_ID(HT_EOPD_SENSOR),
+	NXT_ANALOG_SENSOR_ID(HT_FORCE_SENSOR),
+	NXT_ANALOG_SENSOR_ID(HT_GYRO_SENSOR),
+	NXT_ANALOG_SENSOR_ID(HT_MAGNETIC_SENSOR),
+	NXT_ANALOG_SENSOR_ID(MS_TOUCH_SENSOR_MUX),
+	{ }
 };
 
 static ssize_t driver_names_show(struct device_driver *driver, char *buf)

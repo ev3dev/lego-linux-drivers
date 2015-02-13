@@ -1,7 +1,7 @@
 /*
  * LEGO MINSTORMS NXT analog sensor device driver
  *
- * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -53,6 +53,16 @@ enum nxt_analog_sensor_types {
 	HT_MAGNETIC_SENSOR,
 	MS_TOUCH_SENSOR_MUX,
 };
+
+#define GENERIC_NXT_ANALOG_SENSOR_NAME	"nxt-analog"
+#define LEGO_NXT_TOUCH_SENSOR_NAME	"lego-nxt-touch"
+#define LEGO_NXT_LIGHT_SENSOR_NAME	"lego-nxt-light"
+#define LEGO_NXT_SOUND_SENSOR_NAME	"lego-nxt-sound"
+#define HT_EOPD_SENSOR_NAME		"ht-nxt-eopd"
+#define HT_FORCE_SENSOR_NAME		"ht-nxt-force"
+#define HT_GYRO_SENSOR_NAME		"ht-nxt-gyro"
+#define HT_MAGNETIC_SENSOR_NAME		"ht-nxt-mag"
+#define MS_TOUCH_SENSOR_MUX_NAME	"ms-nxt-touch-mux"
 
 extern const struct nxt_analog_sensor_info nxt_analog_sensor_defs[];
 

@@ -1,7 +1,7 @@
 /*
  * LEGO MINSTORMS NXT analog sensor device driver
  *
- * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -119,7 +119,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		/**
 		 * @vendor_part_name: Generic NXT Analog Sensor
 		 */
-		.name = "nxt-analog",
+		.name = GENERIC_NXT_ANALOG_SENSOR_NAME,
 		.num_modes = 2,
 		/* TODO: do we want more modes to set pin 6 gpio */
 		.mode_info = {
@@ -170,7 +170,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 * @vendor_part_name: NXT Touch Sensor
 		 * @vendor_website: http://www.lego.com/en-us/mindstorms/downloads/software/nxt-hdk/
 		 */
-		.name = "lego-nxt-touch",
+		.name = LEGO_NXT_TOUCH_SENSOR_NAME,
 		.num_modes = 1,
 		.mode_info = {
 			[0] = {
@@ -199,7 +199,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 * @vendor_part_name: NXT Light Sensor
 		 * @vendor_website: http://www.lego.com/en-us/mindstorms/downloads/software/nxt-hdk/
 		 */
-		.name = "lego-nxt-light",
+		.name = LEGO_NXT_LIGHT_SENSOR_NAME,
 		.num_modes = 2,
 		.mode_info = {
 			[0] = {
@@ -251,7 +251,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 * @vendor_part_name: NXT Sound Sensor
 		 * @vendor_website: http://www.lego.com/en-us/mindstorms/downloads/software/nxt-hdk/
 		 */
-		.name = "lego-nxt-sound",
+		.name = LEGO_NXT_SOUND_SENSOR_NAME,
 		.num_modes = 2,
 		.mode_info = {
 			[0] = {
@@ -301,7 +301,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 * @vendor_part_name: NXT EOPD
 		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NEO1048
 		 */
-		.name = "ht-nxt-eopd",
+		.name = HT_EOPD_SENSOR_NAME,
 		.num_modes = 2,
 		.mode_info = {
 			[0] = {
@@ -348,7 +348,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 * @vendor_part_name: NXT Force Sensor
 		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NFS1074
 		 */
-		.name = "ht-nxt-force",
+		.name = HT_FORCE_SENSOR_NAME,
 		.num_modes = 1,
 		.mode_info = {
 			[0] = {
@@ -377,7 +377,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 * @vendor_part_name: NXT Gyro Sensor
 		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NGY1044
 		 */
-		.name = "ht-nxt-gyro",
+		.name = HT_GYRO_SENSOR_NAME,
 		.num_modes = 1,
 		.mode_info = {
 			[0] = {
@@ -404,7 +404,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 * @vendor_part_name: NXT Magnetic Sensor
 		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NMS1035
 		 */
-		.name = "ht-nxt-mag",
+		.name = HT_MAGNETIC_SENSOR_NAME,
 		.num_modes = 1,
 		.mode_info = {
 			[0] = {
@@ -428,7 +428,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 * @vendor_part_name: Touch Sensor Multiplexer for NXT & EV3
 		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=135
 		 */
-		.name = "ms-nxt-touch-mux",
+		.name = MS_TOUCH_SENSOR_MUX_NAME,
 		.num_modes = 1,
 		.mode_info = {
 			[0] = {

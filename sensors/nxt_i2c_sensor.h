@@ -166,7 +166,10 @@ enum nxt_i2c_sensor_type {
 #define MS_LINE_LEADER_NAME			"ms-line-leader"
 #define MI_CRUIZCORE_XG1300L_NAME		"mi-xg1300l"
 
-#define NXT_I2C_SENSOR_ID(type) { type##_NAME, type }
+#define NXT_I2C_SENSOR_ID(type) {	\
+	.name		= type##_NAME,	\
+	.driver_data	= type,		\
+}
 
 /*
  * This table is shared by the nxt-i2c-sensor and ht-nxt-smux-i2c-sensor modules.

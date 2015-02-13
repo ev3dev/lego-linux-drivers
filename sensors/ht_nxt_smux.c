@@ -21,6 +21,7 @@
 #include <lego_sensor_class.h>
 
 #include "ht_nxt_smux.h"
+#include "nxt_analog_sensor.h"
 
 enum ht_nxt_smux_port_mode {
 	HT_NXT_SMUX_PORT_MODE_ANALOG,
@@ -263,7 +264,7 @@ void ht_nxt_smux_port_detect_sensor(struct ht_nxt_smux_port_data *data)
 	ht_nxt_smux_unregister_sensor(data);
 
 	if (data->port.mode == HT_NXT_SMUX_PORT_MODE_ANALOG) {
-		ret = ht_nxt_smux_register_analog_sensor(data, "nxt-analog");
+		ret = ht_nxt_smux_register_analog_sensor(data, GENERIC_NXT_ANALOG_SENSOR_NAME);
 		if (ret < 0)
 			dev_err(&data->port.dev,
 				"Failed to register analog sensor (%d)\n", ret);
