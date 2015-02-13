@@ -118,7 +118,6 @@ enum nxt_i2c_sensor_type {
 	LEGO_POWER_STORAGE_SENSOR,
 	HT_NXT_PIR_SENSOR,
 	HT_NXT_BAROMETRIC_SENSOR,
-	HT_NXT_IR_SEEKER_SENSOR,
 	HT_NXT_IR_SEEKER_SENSOR_V2,
 	HT_NXT_COLOR_SENSOR,
 	HT_NXT_COLOR_SENSOR_V2,
@@ -147,6 +146,7 @@ enum nxt_i2c_sensor_type {
 #define LEGO_POWER_STORAGE_SENSOR_NAME		"lego-power-storage"
 #define HT_NXT_PIR_SENSOR_NAME			"ht-nxt-pir"
 #define HT_NXT_BAROMETRIC_SENSOR_NAME		"ht-nxt-barometric"
+/* TODO: need to find info on ht-nxt-ir-seek and add a sensor def */
 #define HT_NXT_IR_SEEKER_SENSOR_NAME		"ht-nxt-ir-seek"
 #define HT_NXT_IR_SEEKER_SENSOR_V2_NAME		"ht-nxt-ir-seek-v2"
 #define HT_NXT_COLOR_SENSOR_NAME		"ht-nxt-color"
@@ -179,7 +179,6 @@ enum nxt_i2c_sensor_type {
 	NXT_I2C_SENSOR_ID(LEGO_POWER_STORAGE_SENSOR),		\
 	NXT_I2C_SENSOR_ID(HT_NXT_PIR_SENSOR),			\
 	NXT_I2C_SENSOR_ID(HT_NXT_BAROMETRIC_SENSOR),		\
-/*	NXT_I2C_SENSOR_ID(HT_NXT_IR_SEEKER_SENSOR),*/		\
 	NXT_I2C_SENSOR_ID(HT_NXT_IR_SEEKER_SENSOR_V2),		\
 	NXT_I2C_SENSOR_ID(HT_NXT_COLOR_SENSOR),			\
 	NXT_I2C_SENSOR_ID(HT_NXT_COLOR_SENSOR_V2),		\
