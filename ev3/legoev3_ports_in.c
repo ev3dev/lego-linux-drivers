@@ -256,7 +256,7 @@ enum sensor_type {
 
 static const char* ev3_input_port_state_names[] = {
 	[SENSOR_NONE]		= "no-sensor",
-	[SENSOR_NXT_ANALOG]	= GENERIC_NXT_ANALOG_SENSOR_NAME,
+	[SENSOR_NXT_ANALOG]	= "nxt-analog",
 	[SENSOR_NXT_COLOR]	= "nxt-color",
 	[SENSOR_NXT_I2C]	= "nxt-i2c",
 	[SENSOR_EV3_ANALOG]	= "ev3-analog",
@@ -321,7 +321,7 @@ static const struct lego_port_mode_info legoev3_input_port_mode_info[] = {
 		 * @description: Load the [nxt-analog] device.
 		 * @name_footnote: [^nxt-analog-mode]
 		 */
-		.name	= GENERIC_NXT_ANALOG_SENSOR_NAME,
+		.name	= "ev3-analog",
 	},
 	[EV3_INPUT_PORT_MODE_NXT_COLOR] = {
 		/**
