@@ -1,7 +1,7 @@
 /*
  * LEGO MINDSTORMS EV3 UART Sensor driver
  *
- * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -61,15 +61,16 @@ static int ev3_uart_sensor_set_mode(void *context, u8 mode)
 {
 	struct ev3_uart_sensor_data *data = context;
 	struct lego_sensor_mode_info *mode_info = &data->info.mode_info[mode];
-	int ret;
-
+#if defined(CONFIG_LEGOEV3_I2C_SENSORS) || defined(CONFIG_LEGOEV3_I2C_SENSORS_MODULE)
 	if (data->ldev->port->dev.type == &ms_ev3_smux_port_type) {
+		int ret;
+
 		ret = ms_ev3_smux_set_uart_sensor_mode(data->ldev->port, mode);
 		if (ret < 0)
 			return ret;
-	} else {
+	} else
+#endif
 		return -EINVAL;
-	}
 
 	lego_port_set_raw_data_ptr_and_func(data->ldev->port, mode_info->raw_data,
 		lego_sensor_get_raw_data_size(mode_info), NULL, NULL);
@@ -95,10 +96,12 @@ static int ev3_uart_sensor_probe(struct lego_device *ldev)
 	       sizeof(struct ev3_uart_sensor_info));
 	data->sensor.name = ldev->entry_id->name;
 	data->sensor.port_name = ldev->port->port_name;
+#if defined(CONFIG_LEGOEV3_I2C_SENSORS) || defined(CONFIG_LEGOEV3_I2C_SENSORS_MODULE)
 	/* mindsensors EV3 sensor mux only supports modes that return one value */
 	if (ldev->port->dev.type == &ms_ev3_smux_port_type)
 		data->sensor.num_modes = data->info.num_view_modes;
 	else
+#endif
 		data->sensor.num_modes = data->info.num_modes;
 	data->sensor.mode_info	= data->info.mode_info;
 	data->sensor.set_mode	= ev3_uart_sensor_set_mode;
