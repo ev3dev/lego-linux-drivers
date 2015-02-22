@@ -321,7 +321,7 @@ static const struct lego_port_mode_info legoev3_input_port_mode_info[] = {
 		 * @description: Load the [nxt-analog] device.
 		 * @name_footnote: [^nxt-analog-mode]
 		 */
-		.name	= "ev3-analog",
+		.name	= "nxt-analog",
 	},
 	[EV3_INPUT_PORT_MODE_NXT_COLOR] = {
 		/**
