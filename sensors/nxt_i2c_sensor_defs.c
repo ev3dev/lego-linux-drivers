@@ -2297,6 +2297,146 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
+	[MS_PPS58_NX] = {
+		/**
+		 * @vendor_name: mindsensors.com
+		 * @vendor_part_number: PPS58-Nx
+		 * @vendor_part_name: Digital Pneumatic Pressure Sensor
+		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=150
+		 * @default_address: 0x0C
+		 */
+		.name			= MS_PPS58_NX_NAME,
+		.vendor_id		= "mndsnsrs",
+		.product_id		= "???",
+		.num_modes		= 7,
+		.num_read_only_modes	= 2,
+		.mode_info	= {
+			[0] = {
+				/**
+				 * @description: Raw sensor value
+				 * @value0: Pressure
+				 * @unit_description: Pascals
+				 */
+				.name = "RAW",
+				.data_type = LEGO_SENSOR_DATA_S32,
+				.units = "Pa",
+			},
+			[1] = {
+				/**
+				 * @description: Absolute pressure (PSI)
+				 * @value0: Pressure
+				 * @units_description: Pounds per square inch
+				 */
+				.name = "ABS-PSI",
+				.data_type = LEGO_SENSOR_DATA_S16,
+				.units	= "PSI",
+			},
+			[2] = {
+				/**
+				 * @description: Absolute pressure (millibar)
+				 * @value0: Pressure
+				 * @units_description: millibar
+				 */
+				.name = "ABS-MBAR",
+				.data_type = LEGO_SENSOR_DATA_S16,
+				.units	= "mbar",
+			},
+			[3] = {
+				/**
+				 * @description: Absolute pressure (kPa)
+				 * @value0: Pressure
+				 * @units_description: kilopascals
+				 */
+				.name = "ABS-KPA",
+				.data_type = LEGO_SENSOR_DATA_S16,
+				.units	= "kPa",
+			},
+			[4] = {
+				/**
+				 * @description: Gauge pressure (PSI)
+				 * @value0: Pressure
+				 * @units_description: Pounds per square inch
+				 */
+				.name = "REL-PSI",
+				.data_type = LEGO_SENSOR_DATA_S16,
+				.units	= "PSI",
+			},
+			[5] = {
+				/**
+				 * @description: Gauge pressure (millibar)
+				 * @value0: Pressure
+				 * @units_description: millibar
+				 */
+				.name = "REL-MBAR",
+				.data_type = LEGO_SENSOR_DATA_S16,
+				.units	= "mbar",
+			},
+			[6] = {
+				/**
+				 * @description: Gauge pressure (kPa)
+				 * @value0: Pressure
+				 * @units_description: kilopascals
+				 */
+				.name = "REL-KPA",
+				.data_type = LEGO_SENSOR_DATA_S16,
+				.units	= "kPa",
+			},
+		},
+		.i2c_mode_info	= {
+			[0] = {
+				.read_data_reg	= 0x53,
+			},
+			[1] = {
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= 'p',
+				.read_data_reg	= 0x43,
+			},
+			[2] = {
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= 'b',
+				.read_data_reg	= 0x43,
+			},
+			[3] = {
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= 'k',
+				.read_data_reg	= 0x43,
+			},
+			[4] = {
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= 'p',
+				.read_data_reg	= 0x45,
+			},
+			[5] = {
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= 'b',
+				.read_data_reg	= 0x45,
+			},
+			[6] = {
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= 'k',
+				.read_data_reg	= 0x45,
+			},
+		},
+		.num_commands	= 1,
+		.cmd_info	= {
+			[0] = {
+				/**
+				 * [^zero]: The reference pressure is used to calculate the gauge pressure.
+				 * Therefore, this command only affects the `REL-*` modes.
+				 *
+				 * @description: Change Reference pressure to current absolute pressure.
+				 * @name_footnote: [^zero]
+				 */
+				.name = "ZERO",
+			},
+		},
+		.i2c_cmd_info	= {
+			[0] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'd',
+			},
+		},
+	},
 	[MI_CRUIZCORE_XG1300L] = {
 		/**
 		 * [^ids]: CruizCore XG1300L doesn't follow LEGO guidelines by

@@ -134,6 +134,7 @@ enum nxt_i2c_sensor_type {
 	MS_EV3_SENSOR_MUX,
 	MS_LIGHT_SENSOR_ARRAY,
 	MS_LINE_LEADER,
+	MS_PPS58_NX,
 	MI_CRUIZCORE_XG1300L,
 	NUM_NXT_I2C_SENSORS
 };
@@ -164,6 +165,7 @@ enum nxt_i2c_sensor_type {
 #define MS_EV3_SENSOR_MUX_NAME			"ms-ev3-smux"
 #define MS_LIGHT_SENSOR_ARRAY_NAME		"ms-light-array"
 #define MS_LINE_LEADER_NAME			"ms-line-leader"
+#define MS_PPS58_NX_NAME			"ms-pps58-nx"
 #define MI_CRUIZCORE_XG1300L_NAME		"mi-xg1300l"
 
 #define NXT_I2C_SENSOR_ID(type) {	\
@@ -195,6 +197,7 @@ enum nxt_i2c_sensor_type {
 	NXT_I2C_SENSOR_ID(MS_EV3_SENSOR_MUX),			\
 	NXT_I2C_SENSOR_ID(MS_LIGHT_SENSOR_ARRAY),		\
 	NXT_I2C_SENSOR_ID(MS_LINE_LEADER),			\
+	NXT_I2C_SENSOR_ID(MS_PPS58_NX),				\
 	NXT_I2C_SENSOR_ID(MI_CRUIZCORE_XG1300L),		\
 	{ }
 
