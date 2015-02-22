@@ -262,6 +262,34 @@ static int ht_angle_scale(void *context,
 	return 0;
 }
 
+/*
+ * mindsensors.com PPS5b-Nx pressure sensor related function
+ *
+ * When the pressure units are changed, the reference pressure value is reset
+ * to zero so to ensure we are returning a meaningful relative value, set the
+ * reference to standard atmospheric pressure in the appropriate units.
+ */
+static void ms_pps58_nx_set_mode_post_cb(struct nxt_i2c_sensor_data *sensor, u8 mode)
+{
+	struct i2c_client *client = sensor->client;
+	int value;
+
+	switch (mode) {
+	case 4:
+		value = 15; /* PSI */
+		break;
+	case 5:
+		value = 1013; /* mbar */
+		break;
+	case 6:
+		value = 101; /* kPa */
+		break;
+	default:
+		return;
+	}
+
+	i2c_smbus_write_word_data(client, 0x47, value);
+}
 
 /**
  * nxt_i2c_sensor_defs - Sensor definitions
@@ -2579,6 +2607,149 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[1] = {
 				.cmd_reg	= 0x41,
 				.cmd_data	= 'U',
+			},
+		},
+	},
+	[MS_PPS58_NX] = {
+		/**
+		 * @vendor_name: mindsensors.com
+		 * @vendor_part_number: PPS58-Nx
+		 * @vendor_part_name: Digital Pneumatic Pressure Sensor
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/127-digital-pneumatic-pressure-sensor-for-nxt-or-ev3
+		 * @default_address: 0x0C
+		 */
+		.name			= MS_PPS58_NX_NAME,
+		.vendor_id		= "mndsnsrs",
+		.product_id		= "PPS58",
+		.num_modes		= 7,
+		.num_read_only_modes	= 2,
+		.ops		= &(const struct nxt_i2c_sensor_ops) {
+			.set_mode_post_cb	= ms_pps58_nx_set_mode_post_cb,
+		},
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
+			[0] = {
+				/**
+				 * @description: Raw sensor value
+				 * @value0: Pressure
+				 * @unit_description: Pascals
+				 */
+				.name = "RAW",
+				.data_type = LEGO_SENSOR_DATA_S32,
+				.units = "Pa",
+			},
+			[1] = {
+				/**
+				 * @description: Absolute pressure (PSI)
+				 * @value0: Pressure
+				 * @units_description: Pounds per square inch
+				 */
+				.name = "ABS-PSI",
+				.data_type = LEGO_SENSOR_DATA_S16,
+				.units	= "PSI",
+			},
+			[2] = {
+				/**
+				 * @description: Absolute pressure (millibar)
+				 * @value0: Pressure
+				 * @units_description: millibar
+				 */
+				.name = "ABS-MBAR",
+				.data_type = LEGO_SENSOR_DATA_S16,
+				.units	= "mbar",
+			},
+			[3] = {
+				/**
+				 * @description: Absolute pressure (kPa)
+				 * @value0: Pressure
+				 * @units_description: kilopascals
+				 */
+				.name = "ABS-KPA",
+				.data_type = LEGO_SENSOR_DATA_S16,
+				.units	= "kPa",
+			},
+			[4] = {
+				/**
+				 * @description: Gauge pressure (PSI)
+				 * @value0: Pressure
+				 * @units_description: Pounds per square inch
+				 */
+				.name = "REL-PSI",
+				.data_type = LEGO_SENSOR_DATA_S16,
+				.units	= "PSI",
+			},
+			[5] = {
+				/**
+				 * @description: Gauge pressure (millibar)
+				 * @value0: Pressure
+				 * @units_description: millibar
+				 */
+				.name = "REL-MBAR",
+				.data_type = LEGO_SENSOR_DATA_S16,
+				.units	= "mbar",
+			},
+			[6] = {
+				/**
+				 * @description: Gauge pressure (kPa)
+				 * @value0: Pressure
+				 * @units_description: kilopascals
+				 */
+				.name = "REL-KPA",
+				.data_type = LEGO_SENSOR_DATA_S16,
+				.units	= "kPa",
+			},
+		},
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
+			[0] = {
+				.read_data_reg	= 0x53,
+			},
+			[1] = {
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= 'p',
+				.read_data_reg	= 0x43,
+			},
+			[2] = {
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= 'b',
+				.read_data_reg	= 0x43,
+			},
+			[3] = {
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= 'k',
+				.read_data_reg	= 0x43,
+			},
+			[4] = {
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= 'p',
+				.read_data_reg	= 0x45,
+			},
+			[5] = {
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= 'b',
+				.read_data_reg	= 0x45,
+			},
+			[6] = {
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= 'k',
+				.read_data_reg	= 0x45,
+			},
+		},
+		.num_commands	= 1,
+		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
+			[0] = {
+				/**
+				 * [^zero]: The reference pressure is used to calculate the gauge pressure.
+				 * Therefore, this command only affects the `REL-*` modes.
+				 *
+				 * @description: Change Reference pressure to current absolute pressure.
+				 * @name_footnote: [^zero]
+				 */
+				.name = "ZERO",
+			},
+		},
+		.i2c_cmd_info	= (const struct nxt_i2c_sensor_cmd_info[]) {
+			[0] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'd',
 			},
 		},
 	},
