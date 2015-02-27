@@ -118,7 +118,6 @@ static int ht_nxt_smux_i2c_sensor_probe(struct lego_device *ldev)
 	data->sensor.mode_info = data->info.mode_info;
 	data->sensor.set_mode = ht_nxt_smux_i2c_sensor_set_mode;
 	data->sensor.context = data;
-	data->sensor.address = pdata->address;
 
 	for (i = 0; i < data->sensor.num_modes; i++) {
 		struct lego_sensor_mode_info *minfo = &data->info.mode_info[i];

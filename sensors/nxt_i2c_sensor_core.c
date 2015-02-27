@@ -232,7 +232,9 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 	memcpy(&data->info, sensor_info, sizeof(struct nxt_i2c_sensor_info));
 
 	data->sensor.name = i2c_dev_id->name;
-	data->sensor.port_name = data->in_port->port_name;
+	snprintf(data->port_name, LEGO_PORT_NAME_SIZE, "%s:i2c%d",
+		 data->in_port->port_name, client->addr);
+	data->sensor.port_name = data->port_name;
 	data->sensor.num_modes = data->info.num_modes;
 	data->sensor.num_view_modes = 1;
 	data->sensor.mode_info = data->info.mode_info;
@@ -253,7 +255,6 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 	 */
 	strncpy(data->sensor.fw_version, strim(version[0] == 0xfd ?
 		(version + 1) : version), NXT_I2C_ID_STR_LEN + 1);
-	data->sensor.address = client->addr;
 
 	for (i = 0; i < data->sensor.num_modes; i++) {
 		struct lego_sensor_mode_info *minfo = &data->info.mode_info[i];

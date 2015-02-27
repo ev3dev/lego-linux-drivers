@@ -106,7 +106,6 @@ struct lego_sensor_cmd_info {
  * @set_poll_ms: Set the polling period in milliseconds (optional).
  * @context: Pointer to data structure used by callbacks.
  * @fw_version: Firmware version of sensor (optional).
- * @address: I2C or other address (optional).
  * @dev: The device data structure.
  */
 struct lego_sensor_device {
@@ -125,7 +124,6 @@ struct lego_sensor_device {
 	int (* set_poll_ms)(void *context, unsigned value);
 	void *context;
 	char fw_version[LEGO_SENSOR_FW_VERSION_SIZE + 1];
-	unsigned address;
 	/* private */
 	struct device dev;
 };

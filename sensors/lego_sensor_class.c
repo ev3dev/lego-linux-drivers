@@ -39,18 +39,13 @@
  * you need to know which port a sensor is plugged in to. However, if you don't
  * have more than one sensor of each type, you can just look for a matching
  * `name`. Then it will not matter which port a sensor is plugged in to - your
- * program will still work. In the case of I2C sensors, you may also want to
- * check the `address` since it is possible to have more than one I2C sensor
- * connected to a single input port at a time.
+ * program will still work.
  * .
  * ### sysfs Attributes
  * .
  * Sensors can be found at `/sys/class/lego-sensor/sensor<N>`, where `<N>` is
  * incremented each time a sensor is loaded (it is not related to which port
  * the sensor is plugged in to).
- * .
- * `address` (read-only)
- * : Present only for I2C devices. Returns the address of the sensor.
  * .
  * `bin_data` (read/write)
  * : Reading the file will give the same values in the `value<N>` attributes.
@@ -107,7 +102,8 @@
  *   Currently only I2C/NXT sensors support changing the polling period.
  * .
  * `port_name` (read-only)
- * : Returns the name of the port that the sensor is connected to.
+ * : Returns the name of the port that the sensor is connected to, e.g. `in1`.
+ *   I2C sensors also include the I2C address (decimal), e.g. `in1:i2c8`.
  * .
  * `units` (read-only)
  * : Returns the units of the measured value for the current mode. May return
@@ -492,14 +488,6 @@ static ssize_t fw_version_show(struct device *dev, struct device_attribute *attr
 	return snprintf(buf, LEGO_SENSOR_FW_VERSION_SIZE + 2, "%s\n", sensor->fw_version);
 }
 
-static ssize_t address_show(struct device *dev, struct device_attribute *attr,
-			    char *buf)
-{
-	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
-
-	return sprintf(buf, "0x%02x\n", sensor->address);
-}
-
 static ssize_t bin_data_read(struct file *file, struct kobject *kobj,
 			     struct bin_attribute *attr,
 			     char *buf, loff_t off, size_t count)
@@ -533,7 +521,6 @@ static ssize_t bin_data_write(struct file *file, struct kobject *kobj,
 
 static DEVICE_ATTR_RO(driver_name);
 static DEVICE_ATTR_RO(port_name);
-static DEVICE_ATTR_RO(address);
 static DEVICE_ATTR_RW(poll_ms);
 static DEVICE_ATTR_RO(fw_version);
 static DEVICE_ATTR_RO(modes);
@@ -563,7 +550,6 @@ static DEVICE_ATTR(value7, S_IRUGO, value_show, NULL);
 static struct attribute *lego_sensor_class_attrs[] = {
 	&dev_attr_driver_name.attr,
 	&dev_attr_port_name.attr,
-	&dev_attr_address.attr,
 	&dev_attr_poll_ms.attr,
 	&dev_attr_fw_version.attr,
 	&dev_attr_modes.attr,
@@ -653,12 +639,6 @@ static int lego_sensor_dev_uevent(struct device *dev,
 	add_uevent_var(env, "LEGO_PORT_NAME=%s", sensor->port_name);
 	if (ret) {
 		dev_err(dev, "failed to add uevent LEGO_PORT_NAME\n");
-		return ret;
-	}
-
-	add_uevent_var(env, "LEGO_DEVICE_ADDRESS=0x%02x", sensor->address);
-	if (ret) {
-		dev_err(dev, "failed to add uevent LEGO_DEVICE_ADDRESS\n");
 		return ret;
 	}
 
