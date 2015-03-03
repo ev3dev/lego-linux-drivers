@@ -163,4 +163,9 @@ extern void unregister_tacho_motor(struct tacho_motor_device *);
 
 extern struct class tacho_motor_class;
 
+inline struct tacho_motor_device *to_tacho_motor(struct device *dev)
+{
+	return container_of(dev, struct tacho_motor_device, dev);
+}
+
 #endif /* __LINUX_LEGOEV3_TACHO_MOTOR_CLASS_H */
