@@ -210,11 +210,11 @@ static struct tacho_motor_mode_item tacho_motor_states[TM_NUM_STATES] = {
 	[TM_STATE_IDLE]				= { "idle"			},
 };
 
-static ssize_t tacho_motor_show_port_name(struct device *dev,
-				      struct device_attribute *attr,
-				      char *buf)
+static ssize_t port_name_show(struct device *dev, struct device_attribute *attr,
+			      char *buf)
 {
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+	struct tacho_motor_device *tm =
+			container_of(dev, struct tacho_motor_device, dev);
 
 	return snprintf(buf, LEGO_PORT_NAME_SIZE, "%s\n", tm->port_name);
 }
@@ -847,7 +847,7 @@ static ssize_t tacho_motor_store_log(struct device *dev, struct device_attribute
         return size;
 }
 
-DEVICE_ATTR(port_name, S_IRUGO, tacho_motor_show_port_name, NULL);
+DEVICE_ATTR_RO(port_name);
 DEVICE_ATTR(type, S_IRUGO | S_IWUSR, tacho_motor_show_type, tacho_motor_store_type);
 DEVICE_ATTR(position, S_IRUGO | S_IWUSR, tacho_motor_show_position, tacho_motor_store_position);
 
