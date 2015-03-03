@@ -152,9 +152,6 @@ struct function_pointers {
 	int  (*get_run)(struct tacho_motor_device *tm);
 	void (*set_run)(struct tacho_motor_device *tm, long run);
 
-	int  (*get_estop)(struct tacho_motor_device *tm);
-	void (*set_estop)(struct tacho_motor_device *tm, long estop);
-
 	void (*set_reset)(struct tacho_motor_device *tm, long reset);
 };
 

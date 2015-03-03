@@ -159,7 +159,6 @@ struct legoev3_motor_data {
 	int run_direction;
 
 	int run;
-	int estop;
 
 	int motor_type;
 
@@ -556,7 +555,6 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 	ev3_tm->speed_reg_sp		= 0;
 	ev3_tm->run_direction		= UNKNOWN;
 	ev3_tm->run			= 0;
-	ev3_tm->estop			= 0;
 
 	ev3_tm->tacho			= 0;
 	ev3_tm->irq_tacho		= 0;
@@ -1830,19 +1828,13 @@ static void legoev3_motor_set_run(struct tacho_motor_device *tm, long run)
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	/* Safety First! If the estop is set, then unconditionally STOP */
-
-	if (0 != ev3_tm->estop) {
-		ev3_tm->state = TM_STATE_STOP;
-	}
-
 	/*
 	 * If the motor is currently running and we're asked to stop
 	 * it, then figure out how we're going to stop it - maybe we
 	 * need to ramp it down first!
 	 */
 
-	else if ((0 == run) && (ev3_tm->state != TM_STATE_IDLE)) {
+	if ((0 == run) && (ev3_tm->state != TM_STATE_IDLE)) {
 		ev3_tm->ramp.down.start = ev3_tm->ramp.count;
 		ev3_tm->ramp.down.end   = ev3_tm->ramp_down_sp;
 
@@ -1891,56 +1883,6 @@ static void legoev3_motor_set_run(struct tacho_motor_device *tm, long run)
 	 */
 
 	ev3_tm->run = 1;
-}
-
-static int legoev3_motor_get_estop(struct tacho_motor_device *tm)
-{
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
-
-	return ev3_tm->estop;
-}
-
-static void legoev3_motor_set_estop(struct tacho_motor_device *tm, long estop)
-{
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
-
-	/*
-	 * If the estop is unarmed, then writing ANY value will arm it!
-	 *
-	 * Note that stop_command gets set to TM_STOP_COMMAND_COAST to make it
-	 * easier to move the motor by hand if needed...
-	 */
-
-	if (0 == ev3_tm->estop) {
-		ev3_tm->stop_command = TM_STOP_COMMAND_COAST;
-		ev3_tm->state     = TM_STATE_STOP;
-
-		/*
-		 * This handles the obscure case of accidentally getting
-		 * a random value of 0 for the estop key.
-		 */
-
-		while(0 == ev3_tm->estop)
-			get_random_bytes(&ev3_tm->estop, sizeof(ev3_tm->estop));
-
-	/*
-	 * If the estop is armed and we're writing the exact value back
-	 * disarm the estop
-	 */
-
-	} else if (estop == ev3_tm->estop) {
-		ev3_tm->estop = 0;
-
-	/*
-	 * Otherwise the estop is armed and we wrote the wrong value back
-	 * so do nothing
-	 */
-
-	} else {
-		/* This space intentionally left blank */
-	}
 }
 
 static void legoev3_motor_set_reset(struct tacho_motor_device *tm, long reset)
@@ -2013,9 +1955,6 @@ static const struct function_pointers fp = {
 
 	.get_run		  = legoev3_motor_get_run,
 	.set_run		  = legoev3_motor_set_run,
-
-	.get_estop		  = legoev3_motor_get_estop,
-	.set_estop		  = legoev3_motor_set_estop,
 
 	.set_reset		  = legoev3_motor_set_reset,
 };

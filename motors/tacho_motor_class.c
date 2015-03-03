@@ -50,12 +50,6 @@
 * `encoder_modes` (read-only)
 * : Returns a space-separated list of valid encoder modes (`normal inverted`).
 * .
-* `estop`: (read/write)
-* : Used to immediately remove power from the motor (emergency stop). Reading
-*   returns `0` if the estop has not been set or a random 32-bit integer if the
-*   estop has been set. Writing anything will stop the motor. After the estop
-*   has been set, writing the random number that was read will reset the estop.
-* .
 * `log` (read-only)
 * : Used for debugging.
 * .
@@ -811,28 +805,6 @@ static ssize_t tacho_motor_store_run(struct device *dev, struct device_attribute
         return size;
 }
 
-static ssize_t tacho_motor_show_estop(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
-
-	return sprintf(buf, "%d\n", tm->fp->get_estop(tm));
-}
-
-static ssize_t tacho_motor_store_estop(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
-
-        char *end;
-        long estop = simple_strtol(buf, &end, 0);
-
-        if (end == buf)
-                return -EINVAL;
-
-        tm->fp->set_estop(tm, estop);
-
-        return size;
-}
-
 static ssize_t tacho_motor_store_reset(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
@@ -910,7 +882,6 @@ DEVICE_ATTR(speed_regulation_D, S_IRUGO | S_IWUSR, tacho_motor_show_speed_regula
 DEVICE_ATTR(speed_regulation_K, S_IRUGO | S_IWUSR, tacho_motor_show_speed_regulation_K, tacho_motor_store_speed_regulation_K);
 
 DEVICE_ATTR(run, S_IRUGO | S_IWUSR, tacho_motor_show_run, tacho_motor_store_run);
-DEVICE_ATTR(estop, S_IRUGO | S_IWUSR, tacho_motor_show_estop, tacho_motor_store_estop);
 
 DEVICE_ATTR(reset, S_IWUSR, NULL, tacho_motor_store_reset);
 
@@ -946,7 +917,6 @@ static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_speed_regulation_D.attr,
 	&dev_attr_speed_regulation_K.attr,
 	&dev_attr_run.attr,
-	&dev_attr_estop.attr,
 	&dev_attr_reset.attr,
 	&dev_attr_log.attr,
 	NULL
