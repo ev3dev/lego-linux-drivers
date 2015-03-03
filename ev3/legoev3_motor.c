@@ -177,7 +177,7 @@ struct legoev3_motor_data {
 	long ramp_down_sp;
 
 	long run_mode;
-	long regulation_mode;
+	enum tacho_motor_speed_regulation regulation_mode;
 	enum tacho_motor_stop_command stop_command;
 	long position_mode;
 	enum dc_motor_polarity polarity_mode;
@@ -1897,7 +1897,7 @@ static void legoev3_motor_set_reset(struct tacho_motor_device *tm, long reset)
 	legoev3_motor_reset(ev3_tm);
 }
 
-static const struct function_pointers fp = {
+static const struct tacho_motor_ops fp = {
 	.get_type		  = legoev3_motor_get_type,
 	.set_type		  = legoev3_motor_set_type,
 
@@ -1983,7 +1983,7 @@ static int legoev3_motor_probe(struct lego_device *motor)
 	ev3_tm->motor = motor;
 
 	ev3_tm->tm.port_name = motor->port->port_name;
-	ev3_tm->tm.fp = &fp;
+	ev3_tm->tm.ops = &fp;
 
 	err = register_tacho_motor(&ev3_tm->tm, &motor->dev);
 	if (err)

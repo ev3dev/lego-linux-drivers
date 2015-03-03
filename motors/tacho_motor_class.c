@@ -221,7 +221,7 @@ static ssize_t tacho_motor_show_type(struct device *dev, struct device_attribute
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%s\n", tacho_motor_types[tm->fp->get_type(tm)].name);
+	return sprintf(buf, "%s\n", tacho_motor_types[tm->ops->get_type(tm)].name);
 }
 
 static ssize_t tacho_motor_store_type(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -236,7 +236,7 @@ static ssize_t tacho_motor_store_type(struct device *dev, struct device_attribut
 	if (i >= TM_NUM_TYPES)
                 return -EINVAL;
 
-        tm->fp->set_type(tm, i);
+        tm->ops->set_type(tm, i);
 
         return size;
 }
@@ -246,7 +246,7 @@ static ssize_t position_show(struct device *dev, struct device_attribute *attr,
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%ld\n", tm->fp->get_position(tm));
+	return sprintf(buf, "%ld\n", tm->ops->get_position(tm));
 }
 
 ssize_t position_store(struct device *dev, struct device_attribute *attr,
@@ -260,7 +260,7 @@ ssize_t position_store(struct device *dev, struct device_attribute *attr,
 	if (end == buf)
 		return -EINVAL;
 
-	err = tm->fp->set_position(tm, position);
+	err = tm->ops->set_position(tm, position);
 	if (err < 0)
 		return err;
 
@@ -285,21 +285,21 @@ static ssize_t tacho_motor_show_state(struct device *dev, struct device_attribut
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%s\n", tacho_motor_states[tm->fp->get_state(tm)].name);
+	return sprintf(buf, "%s\n", tacho_motor_states[tm->ops->get_state(tm)].name);
 }
 
 static ssize_t tacho_motor_show_duty_cycle(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%d\n", tm->fp->get_duty_cycle(tm));
+	return sprintf(buf, "%d\n", tm->ops->get_duty_cycle(tm));
 }
 
 static ssize_t tacho_motor_show_pulses_per_second(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%d\n", tm->fp->get_pulses_per_second(tm));
+	return sprintf(buf, "%d\n", tm->ops->get_pulses_per_second(tm));
 }
 
 static ssize_t tacho_motor_show_run_modes(struct device *dev, struct device_attribute *attr, char *buf)
@@ -320,7 +320,7 @@ static ssize_t tacho_motor_show_run_mode(struct device *dev, struct device_attri
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%s\n", tacho_motor_run_modes[tm->fp->get_run_mode(tm)].name);
+	return sprintf(buf, "%s\n", tacho_motor_run_modes[tm->ops->get_run_mode(tm)].name);
 }
 
 static ssize_t tacho_motor_store_run_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -335,7 +335,7 @@ static ssize_t tacho_motor_store_run_mode(struct device *dev, struct device_attr
 	if (i >= TM_NUM_RUN_MODES)
                 return -EINVAL;
 
-        tm->fp->set_run_mode(tm, i);
+        tm->ops->set_run_mode(tm, i);
 
         return size;
 }
@@ -346,7 +346,7 @@ static ssize_t speed_regulation_show(struct device *dev,
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int ret;
 
-	ret = tm->fp->get_speed_regulation(tm);
+	ret = tm->ops->get_speed_regulation(tm);
 	if (ret < 0)
 		return ret;
 
@@ -369,7 +369,7 @@ static ssize_t speed_regulation_store(struct device *dev,
 	if (i >= TM_NUM_SPEED_REGULATION_MODES)
 		return -EINVAL;
 
-	err = tm->fp->set_regulation_mode(tm, i);
+	err = tm->ops->set_regulation_mode(tm, i);
 	if (err < 0)
 		return err;
 
@@ -384,7 +384,7 @@ static ssize_t stop_commands_show(struct device *dev,
 	int i;
 	int size = 0;
 
-	commands = tm->fp->get_stop_commands(tm);
+	commands = tm->ops->get_stop_commands(tm);
 
 	for (i = 0; i < TM_NUM_STOP_COMMANDS; i++) {
 		if (commands & BIT(i)) {
@@ -404,7 +404,7 @@ static ssize_t stop_command_show(struct device *dev,
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int ret;
 
-	ret = tm->fp->get_stop_command(tm);
+	ret = tm->ops->get_stop_command(tm);
 	if (ret < 0)
 		return ret;
 
@@ -426,7 +426,7 @@ static ssize_t stop_command_store(struct device *dev,
 	if (i >= TM_NUM_STOP_COMMANDS)
 		return -EINVAL;
 
-	err = tm->fp->set_stop_command(tm, i);
+	err = tm->ops->set_stop_command(tm, i);
 	if (err < 0)
 		return err;
 
@@ -451,7 +451,7 @@ static ssize_t tacho_motor_show_position_mode(struct device *dev, struct device_
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%s\n", tacho_motor_position_modes[tm->fp->get_position_mode(tm)].name);
+	return sprintf(buf, "%s\n", tacho_motor_position_modes[tm->ops->get_position_mode(tm)].name);
 }
 
 static ssize_t tacho_motor_store_position_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -466,7 +466,7 @@ static ssize_t tacho_motor_store_position_mode(struct device *dev, struct device
 	if (i >= TM_NUM_POSITION_MODES)
                 return -EINVAL;
 
-        tm->fp->set_position_mode(tm, i);
+        tm->ops->set_position_mode(tm, i);
 
         return size;
 }
@@ -493,7 +493,7 @@ static ssize_t tacho_motor_show_polarity_mode(struct device *dev,
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
 	return sprintf(buf, "%s\n",
-		       dc_motor_polarity_values[tm->fp->get_polarity_mode(tm)]);
+		       dc_motor_polarity_values[tm->ops->get_polarity_mode(tm)]);
 }
 
 static ssize_t tacho_motor_store_polarity_mode(struct device *dev,
@@ -506,7 +506,7 @@ static ssize_t tacho_motor_store_polarity_mode(struct device *dev,
 
 	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++) {
 		if (sysfs_streq(buf, dc_motor_polarity_values[i])) {
-			tm->fp->set_polarity_mode(tm, i);
+			tm->ops->set_polarity_mode(tm, i);
 			return size;
 		}
 	}
@@ -536,7 +536,7 @@ static ssize_t tacho_motor_show_encoder_mode(struct device *dev,
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
 	return sprintf(buf, "%s\n",
-		       dc_motor_polarity_values[tm->fp->get_encoder_mode(tm)]);
+		       dc_motor_polarity_values[tm->ops->get_encoder_mode(tm)]);
 }
 
 static ssize_t tacho_motor_store_encoder_mode(struct device *dev,
@@ -549,7 +549,7 @@ static ssize_t tacho_motor_store_encoder_mode(struct device *dev,
 
 	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++) {
 		if (sysfs_streq(buf, dc_motor_polarity_values[i])) {
-			tm->fp->set_encoder_mode(tm, i);
+			tm->ops->set_encoder_mode(tm, i);
 			return size;
 		}
 	}
@@ -561,7 +561,7 @@ static ssize_t tacho_motor_show_ramp_up_sp(struct device *dev, struct device_att
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%d\n", tm->fp->get_ramp_up_sp(tm));
+	return sprintf(buf, "%d\n", tm->ops->get_ramp_up_sp(tm));
 }
 
 static ssize_t tacho_motor_store_ramp_up_sp(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -574,7 +574,7 @@ static ssize_t tacho_motor_store_ramp_up_sp(struct device *dev, struct device_at
         if ((end == buf) || (ramp_up_sp < 0) || (ramp_up_sp > 10000))
                 return -EINVAL;
 
-        tm->fp->set_ramp_up_sp(tm, ramp_up_sp);
+        tm->ops->set_ramp_up_sp(tm, ramp_up_sp);
 
         return size;
 }
@@ -583,7 +583,7 @@ static ssize_t tacho_motor_show_ramp_down_sp(struct device *dev, struct device_a
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%d\n", tm->fp->get_ramp_down_sp(tm));
+	return sprintf(buf, "%d\n", tm->ops->get_ramp_down_sp(tm));
 }
 
 static ssize_t tacho_motor_store_ramp_down_sp(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -596,7 +596,7 @@ static ssize_t tacho_motor_store_ramp_down_sp(struct device *dev, struct device_
         if ((end == buf) || (ramp_down_sp < 0) || (ramp_down_sp > 10000))
                 return -EINVAL;
 
-        tm->fp->set_ramp_down_sp(tm, ramp_down_sp);
+        tm->ops->set_ramp_down_sp(tm, ramp_down_sp);
 
         return size;
 }
@@ -605,7 +605,7 @@ static ssize_t tacho_motor_show_speed_regulation_P(struct device *dev, struct de
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%d\n", tm->fp->get_speed_regulation_P(tm));
+	return sprintf(buf, "%d\n", tm->ops->get_speed_regulation_P(tm));
 }
 
 static ssize_t tacho_motor_store_speed_regulation_P(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -618,7 +618,7 @@ static ssize_t tacho_motor_store_speed_regulation_P(struct device *dev, struct d
         if ((end == buf) || (speed_regulation_P < 0))
                 return -EINVAL;
 
-        tm->fp->set_speed_regulation_P(tm, speed_regulation_P);
+        tm->ops->set_speed_regulation_P(tm, speed_regulation_P);
 
         return size;
 }
@@ -627,7 +627,7 @@ static ssize_t tacho_motor_show_speed_regulation_I(struct device *dev, struct de
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%d\n", tm->fp->get_speed_regulation_I(tm));
+	return sprintf(buf, "%d\n", tm->ops->get_speed_regulation_I(tm));
 }
 
 static ssize_t tacho_motor_store_speed_regulation_I(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -640,7 +640,7 @@ static ssize_t tacho_motor_store_speed_regulation_I(struct device *dev, struct d
         if ((end == buf) || (speed_regulation_I < 0))
                 return -EINVAL;
 
-        tm->fp->set_speed_regulation_I(tm, speed_regulation_I);
+        tm->ops->set_speed_regulation_I(tm, speed_regulation_I);
 
         return size;
 }
@@ -648,7 +648,7 @@ static ssize_t tacho_motor_show_speed_regulation_D(struct device *dev, struct de
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%d\n", tm->fp->get_speed_regulation_D(tm));
+	return sprintf(buf, "%d\n", tm->ops->get_speed_regulation_D(tm));
 }
 
 static ssize_t tacho_motor_store_speed_regulation_D(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -661,7 +661,7 @@ static ssize_t tacho_motor_store_speed_regulation_D(struct device *dev, struct d
         if ((end == buf) || (speed_regulation_D < 0))
                 return -EINVAL;
 
-        tm->fp->set_speed_regulation_D(tm, speed_regulation_D);
+        tm->ops->set_speed_regulation_D(tm, speed_regulation_D);
 
         return size;
 }
@@ -670,7 +670,7 @@ static ssize_t tacho_motor_show_speed_regulation_K(struct device *dev, struct de
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%d\n", tm->fp->get_speed_regulation_K(tm));
+	return sprintf(buf, "%d\n", tm->ops->get_speed_regulation_K(tm));
 }
 
 static ssize_t tacho_motor_store_speed_regulation_K(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -683,7 +683,7 @@ static ssize_t tacho_motor_store_speed_regulation_K(struct device *dev, struct d
         if ((end == buf) || (speed_regulation_K < 0))
                 return -EINVAL;
 
-        tm->fp->set_speed_regulation_K(tm, speed_regulation_K);
+        tm->ops->set_speed_regulation_K(tm, speed_regulation_K);
 
         return size;
 }
@@ -692,7 +692,7 @@ static ssize_t tacho_motor_show_duty_cycle_sp(struct device *dev, struct device_
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%d\n", tm->fp->get_duty_cycle_sp(tm));
+	return sprintf(buf, "%d\n", tm->ops->get_duty_cycle_sp(tm));
 }
 
 static ssize_t tacho_motor_store_duty_cycle_sp(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -705,7 +705,7 @@ static ssize_t tacho_motor_store_duty_cycle_sp(struct device *dev, struct device
         if ((end == buf) || (duty_cycle_sp > 100) || (duty_cycle_sp < -100))
                 return -EINVAL;
 
-        tm->fp->set_duty_cycle_sp(tm, duty_cycle_sp);
+        tm->ops->set_duty_cycle_sp(tm, duty_cycle_sp);
 
         return size;
 }
@@ -714,7 +714,7 @@ static ssize_t tacho_motor_show_pulses_per_second_sp(struct device *dev, struct 
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%d\n", tm->fp->get_pulses_per_second_sp(tm));
+	return sprintf(buf, "%d\n", tm->ops->get_pulses_per_second_sp(tm));
 }
 
 static ssize_t tacho_motor_store_pulses_per_second_sp(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -727,7 +727,7 @@ static ssize_t tacho_motor_store_pulses_per_second_sp(struct device *dev, struct
         if ((end == buf) || (pulses_per_second_sp > 2000) || (pulses_per_second_sp < -2000))
                 return -EINVAL;
 
-        tm->fp->set_pulses_per_second_sp(tm, pulses_per_second_sp);
+        tm->ops->set_pulses_per_second_sp(tm, pulses_per_second_sp);
 
         return size;
 }
@@ -736,7 +736,7 @@ static ssize_t tacho_motor_show_time_sp(struct device *dev, struct device_attrib
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%d\n", tm->fp->get_time_sp(tm));
+	return sprintf(buf, "%d\n", tm->ops->get_time_sp(tm));
 }
 
 static ssize_t tacho_motor_store_time_sp(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -749,7 +749,7 @@ static ssize_t tacho_motor_store_time_sp(struct device *dev, struct device_attri
         if ((end == buf) || (time_sp < 0))
                 return -EINVAL;
 
-        tm->fp->set_time_sp(tm, time_sp);
+        tm->ops->set_time_sp(tm, time_sp);
 
         return size;
 }
@@ -758,7 +758,7 @@ static ssize_t tacho_motor_show_position_sp(struct device *dev, struct device_at
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%d\n", tm->fp->get_position_sp(tm));
+	return sprintf(buf, "%d\n", tm->ops->get_position_sp(tm));
 }
 
 static ssize_t tacho_motor_store_position_sp(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -771,7 +771,7 @@ static ssize_t tacho_motor_store_position_sp(struct device *dev, struct device_a
         if (end == buf)
                 return -EINVAL;
 
-        tm->fp->set_position_sp(tm, position_sp);
+        tm->ops->set_position_sp(tm, position_sp);
 
         return size;
 }
@@ -780,7 +780,7 @@ static ssize_t tacho_motor_show_run(struct device *dev, struct device_attribute 
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%d\n", tm->fp->get_run(tm));
+	return sprintf(buf, "%d\n", tm->ops->get_run(tm));
 }
 
 static ssize_t tacho_motor_store_run(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -793,7 +793,7 @@ static ssize_t tacho_motor_store_run(struct device *dev, struct device_attribute
         if ((end == buf) || (run > 1) || (run < 0))
                 return -EINVAL;
 
-        tm->fp->set_run(tm, run);
+        tm->ops->set_run(tm, run);
 
         return size;
 }
@@ -808,7 +808,7 @@ static ssize_t tacho_motor_store_reset(struct device *dev, struct device_attribu
         if ((end == buf) || (reset != 1))
                 return -EINVAL;
 
-        tm->fp->set_reset(tm, reset);
+        tm->ops->set_reset(tm, reset);
 
         return size;
 }

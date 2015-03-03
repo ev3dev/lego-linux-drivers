@@ -69,16 +69,16 @@ enum tacho_motor_state
 };
 
 
-struct function_pointers;
+struct tacho_motor_ops;
 
 struct tacho_motor_device {
 	const char *port_name;
-	const struct function_pointers const *fp;
+	const struct tacho_motor_ops const *ops;
 	/* private */
 	struct device dev;
 };
 
-struct function_pointers {
+struct tacho_motor_ops {
 	int  (*get_type)(struct tacho_motor_device *tm);
 	void (*set_type)(struct tacho_motor_device *tm, long type);
 
