@@ -87,12 +87,6 @@
 * `ramp_down_sp` (read/write)
 * : TODO
 * .
-* `regulation_mode` (read/write)
-* : TODO
-* .
-* `regulation_modes` (read-only)
-* : Returns a space-separated list of valid regulation modes.
-* .
 * `reset` (write-only)
 * : Writing `1` will reset all attributes to the default values.
 * .
@@ -105,6 +99,13 @@
 * .
 * `run_modes` (read-only)
 * : Returns a space-separated list of valid run modes.
+* .
+* `speed_regulation` (read/write)
+* : Turns speed regulation on or off. If speed regulation is on, the motor
+*   controller will vary the power supplied to the motor to try to maintain the
+*   speed specified in `speed_sp`. If speed regulation is off, the controller
+*   will use the power specified in `duty_cycle_sp`. Valid values are `on` and
+*   `off`.
 * .
 * `speed_regulation_D`: (read/write)
 * : TODO
@@ -154,28 +155,29 @@
 #include <dc_motor_class.h>
 #include <tacho_motor_class.h>
 
-struct tacho_motor_mode_item {
+struct tacho_motor_value_names {
 	const char *name;
 };
 
-static struct tacho_motor_mode_item tacho_motor_regulation_modes[TM_NUM_REGULATION_MODES] = {
-	[TM_REGULATION_OFF] =  { "off" },
-	[TM_REGULATION_ON]  =  { "on"  },
+static struct tacho_motor_value_names
+tacho_motor_speed_regulation_names[TM_NUM_SPEED_REGULATION_MODES] = {
+	[TM_SPEED_REGULATION_OFF] =  { "off" },
+	[TM_SPEED_REGULATION_ON]  =  { "on"  },
 };
 
-static struct tacho_motor_mode_item
+static struct tacho_motor_value_names
 tacho_motor_stop_command_names[TM_NUM_STOP_COMMANDS] = {
 	[TM_STOP_COMMAND_COAST]     =  { "coast" },
 	[TM_STOP_COMMAND_BRAKE]     =  { "brake" },
 	[TM_STOP_COMMAND_HOLD]      =  { "hold" },
 };
 
-static struct tacho_motor_mode_item tacho_motor_position_modes[TM_NUM_POSITION_MODES] = {
+static struct tacho_motor_value_names tacho_motor_position_modes[TM_NUM_POSITION_MODES] = {
 	[TM_POSITION_ABSOLUTE] =  { "absolute" },
 	[TM_POSITION_RELATIVE] =  { "relative" },
 };
 
-static struct tacho_motor_mode_item tacho_motor_run_modes[TM_NUM_RUN_MODES] = {
+static struct tacho_motor_value_names tacho_motor_run_modes[TM_NUM_RUN_MODES] = {
 	[TM_RUN_FOREVER]   =  { "forever"  },
 	[TM_RUN_TIME]      =  { "time"     },
 	[TM_RUN_POSITION]  =  { "position" },
@@ -194,7 +196,7 @@ struct tacho_motor_state_item {
 	const char *name;
 };
 
-static struct tacho_motor_mode_item tacho_motor_states[TM_NUM_STATES] = {
+static struct tacho_motor_value_names tacho_motor_states[TM_NUM_STATES] = {
 	[TM_STATE_RUN_FOREVER]			= { "run_forever"		},
 	[TM_STATE_SETUP_RAMP_TIME]		= { "setup_ramp_time"		},
 	[TM_STATE_SETUP_RAMP_POSITION]		= { "setup_ramp_position"	},
@@ -338,42 +340,40 @@ static ssize_t tacho_motor_store_run_mode(struct device *dev, struct device_attr
         return size;
 }
 
-static ssize_t tacho_motor_show_regulation_modes(struct device *dev, struct device_attribute *attr, char *buf)
-{
-        unsigned int i;
-
-	int size = 0;
-
-	for (i=0; i<TM_NUM_REGULATION_MODES; ++i)
-		size += sprintf(buf+size, "%s ", tacho_motor_regulation_modes[i].name);
-
-	size += sprintf(buf+size, "\n");
-
-        return size;
-}
-
-static ssize_t tacho_motor_show_regulation_mode(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t speed_regulation_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int ret;
 
-	return sprintf(buf, "%s\n", tacho_motor_regulation_modes[tm->fp->get_regulation_mode(tm)].name);
+	ret = tm->fp->get_speed_regulation(tm);
+	if (ret < 0)
+		return ret;
+
+	return sprintf(buf, "%s\n", tacho_motor_speed_regulation_names[ret].name);
 }
 
-static ssize_t tacho_motor_store_regulation_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+static ssize_t speed_regulation_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	unsigned int i;
+	int err;
 
-        unsigned int i;
+	for (i=0; i<TM_NUM_SPEED_REGULATION_MODES; ++i) {
+		if (sysfs_streq(buf, tacho_motor_speed_regulation_names[i].name))
+			break;
+	}
 
-	for (i=0; i<TM_NUM_REGULATION_MODES; ++i)
-		if (sysfs_streq( buf, tacho_motor_regulation_modes[i].name)) break;
+	if (i >= TM_NUM_SPEED_REGULATION_MODES)
+		return -EINVAL;
 
-	if (i >= TM_NUM_REGULATION_MODES)
-                return -EINVAL;
+	err = tm->fp->set_regulation_mode(tm, i);
+	if (err < 0)
+		return err;
 
-        tm->fp->set_regulation_mode(tm, i);
-
-        return size;
+	return size;
 }
 
 static ssize_t stop_commands_show(struct device *dev,
@@ -828,8 +828,7 @@ DEVICE_ATTR(position_sp, S_IRUGO | S_IWUSR, tacho_motor_show_position_sp, tacho_
 
 DEVICE_ATTR(run_modes, S_IRUGO, tacho_motor_show_run_modes, NULL);
 DEVICE_ATTR(run_mode, S_IRUGO | S_IWUSR, tacho_motor_show_run_mode, tacho_motor_store_run_mode);
-DEVICE_ATTR(regulation_modes, S_IRUGO, tacho_motor_show_regulation_modes, NULL);
-DEVICE_ATTR(regulation_mode, S_IRUGO | S_IWUSR, tacho_motor_show_regulation_mode, tacho_motor_store_regulation_mode);
+DEVICE_ATTR_RW(speed_regulation);
 DEVICE_ATTR_RO(stop_commands);
 DEVICE_ATTR_RW(stop_command);
 DEVICE_ATTR(position_modes, S_IRUGO, tacho_motor_show_position_modes, NULL);
@@ -864,8 +863,7 @@ static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_position_sp.attr,
 	&dev_attr_run_modes.attr,
 	&dev_attr_run_mode.attr,
-	&dev_attr_regulation_modes.attr,
-	&dev_attr_regulation_mode.attr,
+	&dev_attr_speed_regulation.attr,
 	&dev_attr_stop_commands.attr,
 	&dev_attr_stop_command.attr,
 	&dev_attr_position_modes.attr,

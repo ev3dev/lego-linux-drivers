@@ -21,10 +21,10 @@
 
 #include <lego_port_class.h>
 
-enum tacho_motor_regulation_mode {
-	TM_REGULATION_OFF,
-	TM_REGULATION_ON,
-	TM_NUM_REGULATION_MODES,
+enum tacho_motor_speed_regulation {
+	TM_SPEED_REGULATION_OFF,
+	TM_SPEED_REGULATION_ON,
+	TM_NUM_SPEED_REGULATION_MODES,
 };
 
 enum tacho_motor_stop_command {
@@ -106,8 +106,8 @@ struct function_pointers {
 	int  (*get_run_mode)(struct tacho_motor_device *tm);
 	void (*set_run_mode)(struct tacho_motor_device *tm, long run_mode);
 
- 	int  (*get_regulation_mode)(struct tacho_motor_device *tm);
- 	void (*set_regulation_mode)(struct tacho_motor_device *tm, long regulation_mode);
+	int (*get_speed_regulation)(struct tacho_motor_device *tm);
+	int (*set_regulation_mode)(struct tacho_motor_device *tm, enum tacho_motor_speed_regulation speed_regulation);
 
 	unsigned (*get_stop_commands)(struct tacho_motor_device *tm);
 	int (*get_stop_command)(struct tacho_motor_device *tm);
