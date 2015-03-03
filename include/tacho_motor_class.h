@@ -71,20 +71,11 @@ enum tacho_motor_state
 
 struct function_pointers;
 
-struct tm_log {
-		unsigned int index;
-		unsigned long timestamp[128];
-		unsigned int  event[128];
-		unsigned int  data[128];
-	};
-
 struct tacho_motor_device {
 	const char *port_name;
 	const struct function_pointers const *fp;
 	/* private */
 	struct device dev;
-
-	struct tm_log log;
 };
 
 struct function_pointers {

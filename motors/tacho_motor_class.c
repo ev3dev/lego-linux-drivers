@@ -50,9 +50,6 @@
 * `encoder_modes` (read-only)
 * : Returns a space-separated list of valid encoder modes (`normal inverted`).
 * .
-* `log` (read-only)
-* : Used for debugging.
-* .
 * `polarity_mode` (read/write)
 * : Sets the polarity of the motor. With `normal` polarity, a positive duty
 *   cycle will cause the motor to rotate clockwise. With `inverted` polarity,
@@ -816,32 +813,6 @@ static ssize_t tacho_motor_store_reset(struct device *dev, struct device_attribu
         return size;
 }
 
-static ssize_t tacho_motor_show_log(struct device *dev,
-				    struct device_attribute *attr, char *buf)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-	size_t size = 0;
-	int i;
-
-	for (i=0; i<tm->log.index; ++i ) {
-		size += scnprintf( &(buf[size]), PAGE_SIZE-size,
-			"%08lX %04X %04X\n", tm->log.timestamp[i],
-			tm->log.event[i], tm->log.data[i] );
-	}
-
-	return size;
-}
-
-static ssize_t tacho_motor_store_log(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-        tm->log.index = 0;
-
-        return size;
-}
-
 DEVICE_ATTR_RO(port_name);
 DEVICE_ATTR(type, S_IRUGO | S_IWUSR, tacho_motor_show_type, tacho_motor_store_type);
 DEVICE_ATTR_RW(position);
@@ -880,8 +851,6 @@ DEVICE_ATTR(run, S_IRUGO | S_IWUSR, tacho_motor_show_run, tacho_motor_store_run)
 
 DEVICE_ATTR(reset, S_IWUSR, NULL, tacho_motor_store_reset);
 
-DEVICE_ATTR(log, S_IRUGO | S_IWUSR, tacho_motor_show_log, tacho_motor_store_log);
-
 static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_port_name.attr,
 	&dev_attr_type.attr,
@@ -913,7 +882,6 @@ static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_speed_regulation_K.attr,
 	&dev_attr_run.attr,
 	&dev_attr_reset.attr,
-	&dev_attr_log.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(tacho_motor_class);
