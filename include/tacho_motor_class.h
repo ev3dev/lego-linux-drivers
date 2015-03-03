@@ -1,7 +1,8 @@
 /*
- * Tacho motor device class for LEGO Mindstorms EV3
+ * Tacho motor device class
  *
- * Copyright (C) 2013-2014 Ralph Hempel ,rhempel@hempeldesigngroup.com>
+ * Copyright (C) 2013-2014 Ralph Hempel <rhempel@hempeldesigngroup.com>
+ * Copyright (C) 2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -26,11 +27,11 @@ enum tacho_motor_regulation_mode {
 	TM_NUM_REGULATION_MODES,
 };
 
-enum tacho_motor_stop_mode {
-	TM_STOP_COAST,
-	TM_STOP_BRAKE,
-	TM_STOP_HOLD,
-	TM_NUM_STOP_MODES,
+enum tacho_motor_stop_command {
+	TM_STOP_COMMAND_COAST,
+	TM_STOP_COMMAND_BRAKE,
+	TM_STOP_COMMAND_HOLD,
+	TM_NUM_STOP_COMMANDS,
 };
 
 enum tacho_motor_position_mode {
@@ -117,8 +118,9 @@ struct function_pointers {
  	int  (*get_regulation_mode)(struct tacho_motor_device *tm);
  	void (*set_regulation_mode)(struct tacho_motor_device *tm, long regulation_mode);
 
- 	int  (*get_stop_mode)(struct tacho_motor_device *tm);
- 	void (*set_stop_mode)(struct tacho_motor_device *tm, long stop_mode);
+	unsigned (*get_stop_commands)(struct tacho_motor_device *tm);
+	int (*get_stop_command)(struct tacho_motor_device *tm);
+	int (*set_stop_command)(struct tacho_motor_device *tm, enum tacho_motor_stop_command stop_command);
 
  	int  (*get_position_mode)(struct tacho_motor_device *tm);
  	void (*set_position_mode)(struct tacho_motor_device *tm, long position_mode);

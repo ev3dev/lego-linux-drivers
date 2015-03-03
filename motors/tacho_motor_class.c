@@ -1,10 +1,11 @@
 /*
- * LEGO Tacho motor device class
+ * Tacho motor device class
  *
  * Copyright (C) 2013-2014 Ralph Hempel <rhempel@hempeldesigngroup.com>
+ * Copyright (C) 2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public Liversion 2 as
+ * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
 
  * This program is distributed "as is" WITHOUT ANY WARRANTY of any
@@ -15,7 +16,7 @@
 
 /*
  * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
+ * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
  * or leading whitespace is important for the markdown syntax.
  */
 
@@ -129,11 +130,23 @@
 * `state` (read-only)
 * : TODO
 * .
-* `stop_mode` (read/write)
-* : TODO
+* `stop_command` (read/write)
+* : Reading returns the current stop command. Writing sets the stop command.
+*   The value determines the motors behavior when `command` is set to `stop`.
+*   Also, it determines the motors behavior when a run command completes. See
+*   `stop_commands` for a list of possible values.
 * .
-* `stop_modes` (read-only)
-* : Returns a space-separated list of valid stop modes.
+* `stop_commands` (read-only)
+* : Returns a space-separated list of stop modes supported by the motor controller.
+*   Possible values are `coast`, `brake` and `hold`. `coast` means that power will
+*   be removed from the motor and it will freely coast to a stop. `brake` means
+*   that power will be removed from the motor and a passive electrical load will
+*   be placed on the motor. This is usually done by shorting the motor terminals
+*   together. This load will absorb the energy from the rotation of the motors and
+*   cause the motor to stop more quickly than coasting. `hold` does not remove
+*   power from the motor. Instead it actively try to hold the motor at the current
+*   position. If an external force tries to turn the motor, the motor will "push
+*   back" to maintain its position.
 * .
 * `time_sp` (read/write)
 * : TODO
@@ -159,10 +172,11 @@ static struct tacho_motor_mode_item tacho_motor_regulation_modes[TM_NUM_REGULATI
 	[TM_REGULATION_ON]  =  { "on"  },
 };
 
-static struct tacho_motor_mode_item tacho_motor_stop_modes[TM_NUM_STOP_MODES] = {
-	[TM_STOP_COAST]     =  { "coast" },
-	[TM_STOP_BRAKE]     =  { "brake" },
-	[TM_STOP_HOLD]      =  { "hold" },
+static struct tacho_motor_mode_item
+tacho_motor_stop_command_names[TM_NUM_STOP_COMMANDS] = {
+	[TM_STOP_COMMAND_COAST]     =  { "coast" },
+	[TM_STOP_COMMAND_BRAKE]     =  { "brake" },
+	[TM_STOP_COMMAND_HOLD]      =  { "hold" },
 };
 
 static struct tacho_motor_mode_item tacho_motor_position_modes[TM_NUM_POSITION_MODES] = {
@@ -368,42 +382,64 @@ static ssize_t tacho_motor_store_regulation_mode(struct device *dev, struct devi
         return size;
 }
 
-static ssize_t tacho_motor_show_stop_modes(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t stop_commands_show(struct device *dev,
+				  struct device_attribute *attr, char *buf)
 {
-        unsigned int i;
-
+	struct tacho_motor_device *tm =
+			container_of(dev, struct tacho_motor_device, dev);
+	unsigned commands;
+	int i;
 	int size = 0;
 
-	for (i=0; i<TM_NUM_STOP_MODES; ++i)
-		size += sprintf(buf+size, "%s ", tacho_motor_stop_modes[i].name);
+	commands = tm->fp->get_stop_commands(tm);
 
-	size += sprintf(buf+size, "\n");
+	for (i = 0; i < TM_NUM_STOP_COMMANDS; i++) {
+		if (commands & BIT(i)) {
+			size += sprintf(buf + size, "%s ",
+				tacho_motor_stop_command_names[i].name);
+		}
+	}
 
-        return size;
+	buf[size - 1] = '\n';
+
+	return size;
 }
 
-static ssize_t tacho_motor_show_stop_mode(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t stop_command_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
 {
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+	struct tacho_motor_device *tm =
+			container_of(dev, struct tacho_motor_device, dev);
+	int ret;
 
-	return sprintf(buf, "%s\n", tacho_motor_stop_modes[tm->fp->get_stop_mode(tm)].name);
+	ret = tm->fp->get_stop_command(tm);
+	if (ret < 0)
+		return ret;
+
+	return sprintf(buf, "%s\n", tacho_motor_stop_command_names[ret].name);
 }
 
-static ssize_t tacho_motor_store_stop_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+static ssize_t stop_command_store(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t size)
 {
-	struct tacho_motor_device *tm = container_of(dev, struct tacho_motor_device, dev);
+	struct tacho_motor_device *tm =
+			container_of(dev, struct tacho_motor_device, dev);
+	int i, err;
 
-        unsigned int i;
+	for (i = 0; i < TM_NUM_STOP_COMMANDS; i++) {
+		if (sysfs_streq(buf, tacho_motor_stop_command_names[i].name))
+			break;
+	}
 
-	for (i=0; i<TM_NUM_STOP_MODES; ++i)
-		if (sysfs_streq( buf, tacho_motor_stop_modes[i].name)) break;
+	if (i >= TM_NUM_STOP_COMMANDS)
+		return -EINVAL;
 
-	if (i >= TM_NUM_STOP_MODES)
-                return -EINVAL;
+	err = tm->fp->set_stop_command(tm, i);
+	if (err < 0)
+		return err;
 
-        tm->fp->set_stop_mode(tm, i);
-
-        return size;
+	return size;
 }
 
 static ssize_t tacho_motor_show_position_modes(struct device *dev, struct device_attribute *attr, char *buf)
@@ -856,8 +892,8 @@ DEVICE_ATTR(run_modes, S_IRUGO, tacho_motor_show_run_modes, NULL);
 DEVICE_ATTR(run_mode, S_IRUGO | S_IWUSR, tacho_motor_show_run_mode, tacho_motor_store_run_mode);
 DEVICE_ATTR(regulation_modes, S_IRUGO, tacho_motor_show_regulation_modes, NULL);
 DEVICE_ATTR(regulation_mode, S_IRUGO | S_IWUSR, tacho_motor_show_regulation_mode, tacho_motor_store_regulation_mode);
-DEVICE_ATTR(stop_modes, S_IRUGO, tacho_motor_show_stop_modes, NULL);
-DEVICE_ATTR(stop_mode, S_IRUGO | S_IWUSR, tacho_motor_show_stop_mode, tacho_motor_store_stop_mode);
+DEVICE_ATTR_RO(stop_commands);
+DEVICE_ATTR_RW(stop_command);
 DEVICE_ATTR(position_modes, S_IRUGO, tacho_motor_show_position_modes, NULL);
 DEVICE_ATTR(position_mode, S_IRUGO | S_IWUSR, tacho_motor_show_position_mode, tacho_motor_store_position_mode);
 DEVICE_ATTR(polarity_modes, S_IRUGO, tacho_motor_show_polarity_modes, NULL);
@@ -895,8 +931,8 @@ static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_run_mode.attr,
 	&dev_attr_regulation_modes.attr,
 	&dev_attr_regulation_mode.attr,
-	&dev_attr_stop_modes.attr,
-	&dev_attr_stop_mode.attr,
+	&dev_attr_stop_commands.attr,
+	&dev_attr_stop_command.attr,
 	&dev_attr_position_modes.attr,
 	&dev_attr_position_mode.attr,
 	&dev_attr_polarity_modes.attr,
@@ -1007,6 +1043,6 @@ static void tacho_motor_class_exit(void)
 }
 module_exit(tacho_motor_class_exit);
 
-MODULE_DESCRIPTION("LEGO Tacho Motor device class");
+MODULE_DESCRIPTION("Tacho Motor device class");
 MODULE_AUTHOR("Ralph Hempel <rhempel@hempeldesigngroup.com>");
 MODULE_LICENSE("GPL");

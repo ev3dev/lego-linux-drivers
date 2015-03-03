@@ -179,7 +179,7 @@ struct legoev3_motor_data {
 
 	long run_mode;
 	long regulation_mode;
-	long stop_mode;
+	enum tacho_motor_stop_command stop_command;
 	long position_mode;
 	enum dc_motor_polarity polarity_mode;
 	enum dc_motor_polarity encoder_mode;
@@ -467,11 +467,11 @@ void legoev3_motor_update_output(struct legoev3_motor_data *ev3_tm)
 		if (ev3_tm->regulation_mode == TM_REGULATION_OFF && ev3_tm->power > -10)
 			ev3_tm->power = -10;
 	} else {
-		if (ev3_tm->stop_mode == TM_STOP_COAST)
+		if (ev3_tm->stop_command == TM_STOP_COMMAND_COAST)
 			motor_ops->set_command(context, DC_MOTOR_COMMAND_COAST);
-		else if (TM_STOP_BRAKE == ev3_tm->stop_mode)
+		else if (TM_STOP_COMMAND_BRAKE == ev3_tm->stop_command)
 			motor_ops->set_command(context, DC_MOTOR_COMMAND_BRAKE);
-		else if (TM_STOP_HOLD == ev3_tm->stop_mode)
+		else if (TM_STOP_COMMAND_HOLD == ev3_tm->stop_command)
 			motor_ops->set_command(context, DC_MOTOR_COMMAND_BRAKE);
 	}
 
@@ -573,7 +573,7 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 
 	ev3_tm->run_mode	= TM_RUN_FOREVER;
 	ev3_tm->regulation_mode	= TM_REGULATION_OFF;
-	ev3_tm->stop_mode	= TM_STOP_COAST;
+	ev3_tm->stop_command	= TM_STOP_COMMAND_COAST;
 	ev3_tm->position_mode	= TM_POSITION_ABSOLUTE;
 	ev3_tm->polarity_mode	= DC_MOTOR_POLARITY_NORMAL;
 	ev3_tm->encoder_mode	= DC_MOTOR_POLARITY_NORMAL;
@@ -1451,13 +1451,11 @@ no_run:
 	 */
 
 	if (!ev3_tm->run) {
-		if (TM_STOP_COAST == ev3_tm->stop_mode)
+		if (TM_STOP_COMMAND_COAST == ev3_tm->stop_command)
 			motor_ops->set_command(context, DC_MOTOR_COMMAND_COAST);
-
-		else if (TM_STOP_BRAKE == ev3_tm->stop_mode)
+		else if (TM_STOP_COMMAND_BRAKE == ev3_tm->stop_command)
 			motor_ops->set_command(context, DC_MOTOR_COMMAND_BRAKE);
-
-		else if (TM_STOP_HOLD == ev3_tm->stop_mode)
+		else if (TM_STOP_COMMAND_HOLD == ev3_tm->stop_command)
 			regulate_position(ev3_tm);
 	}
 
@@ -1641,21 +1639,29 @@ static void legoev3_motor_set_position_mode(struct tacho_motor_device *tm,
 	ev3_tm->position_mode = position_mode;
 }
 
-static int legoev3_motor_get_stop_mode(struct tacho_motor_device *tm)
+static unsigned legoev3_motor_get_stop_commands(struct tacho_motor_device *tm)
 {
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
-
-	return ev3_tm->stop_mode;
+	return BIT(TM_STOP_COMMAND_COAST) | BIT(TM_STOP_COMMAND_BRAKE) |
+		BIT(TM_STOP_COMMAND_HOLD);
 }
 
-static void legoev3_motor_set_stop_mode(struct tacho_motor_device *tm,
-					long stop_mode)
+static int legoev3_motor_get_stop_command(struct tacho_motor_device *tm)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	ev3_tm->stop_mode = stop_mode;
+	return ev3_tm->stop_command;
+}
+
+static int legoev3_motor_set_stop_command(struct tacho_motor_device *tm,
+					   enum tacho_motor_stop_command command)
+{
+	struct legoev3_motor_data *ev3_tm =
+			container_of(tm, struct legoev3_motor_data, tm);
+
+	ev3_tm->stop_command = command;
+
+	return 0;
 }
 
 static int legoev3_motor_get_polarity_mode(struct tacho_motor_device *tm)
@@ -1903,12 +1909,12 @@ static void legoev3_motor_set_estop(struct tacho_motor_device *tm, long estop)
 	/*
 	 * If the estop is unarmed, then writing ANY value will arm it!
 	 *
-	 * Note that stop_mode gets set to TM_STOP_COAST to make it easier to
-	 * move the motor by hand if needed...
+	 * Note that stop_command gets set to TM_STOP_COMMAND_COAST to make it
+	 * easier to move the motor by hand if needed...
 	 */
 
 	if (0 == ev3_tm->estop) {
-		ev3_tm->stop_mode = TM_STOP_COAST;
+		ev3_tm->stop_command = TM_STOP_COMMAND_COAST;
 		ev3_tm->state     = TM_STATE_STOP;
 
 		/*
@@ -1974,8 +1980,9 @@ static const struct function_pointers fp = {
 	.get_regulation_mode	  = legoev3_motor_get_regulation_mode,
 	.set_regulation_mode	  = legoev3_motor_set_regulation_mode,
 
-	.get_stop_mode		  = legoev3_motor_get_stop_mode,
-	.set_stop_mode		  = legoev3_motor_set_stop_mode,
+	.get_stop_commands	= legoev3_motor_get_stop_commands,
+	.get_stop_command	= legoev3_motor_get_stop_command,
+	.set_stop_command	= legoev3_motor_set_stop_command,
 
 	.get_position_mode	  = legoev3_motor_get_position_mode,
 	.set_position_mode	  = legoev3_motor_set_position_mode,
