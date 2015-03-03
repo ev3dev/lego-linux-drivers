@@ -147,16 +147,16 @@ static const struct lego_port_mode_info legoev3_output_port_mode_info[] = {
 	},
 	[EV3_OUTPUT_PORT_MODE_TACHO_MOTOR] = {
 		/**
-		 * [^ev3-tacho-motor-mode]: Currently only supports loading the
+		 * [^legoev3-motor-mode]: Currently only supports loading the
 		 * driver with EV3/NXT Large Motor settings. In the future, you
 		 * will be able to change the driver using `set_device`.
 		 * ^
-		 * [ev3-tacho-motor]: /docs/drivers/ev3-tacho-motor
+		 * [legoev3-motor]: /docs/drivers/legoev3-motor
 		 *
-		 * @description: Load the [ev3-tacho-motor] device.
-		 * @name_footnote: [^ev3-tacho-motor-mode]
+		 * @description: Load the [legoev3-motor] device.
+		 * @name_footnote: [^legoev3-motor-mode]
 		 */
-		.name	= "ev3-tacho-motor",
+		.name	= "legoev3-motor",
 	},
 	[EV3_OUTPUT_PORT_MODE_DC_MOTOR] = {
 		/**
