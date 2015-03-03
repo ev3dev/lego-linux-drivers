@@ -1494,7 +1494,7 @@ static void legoev3_motor_set_type(struct tacho_motor_device *tm, long type)
 		ev3_tm->motor_type = MOTOR_TYPE_TACHO;
 }
 
-static int legoev3_motor_get_position(struct tacho_motor_device *tm)
+static long legoev3_motor_get_position(struct tacho_motor_device *tm)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
@@ -1502,7 +1502,7 @@ static int legoev3_motor_get_position(struct tacho_motor_device *tm)
 	return ev3_tm->tacho + ev3_tm->irq_tacho;
 }
 
-static void legoev3_motor_set_position(struct tacho_motor_device *tm, long position)
+static int legoev3_motor_set_position(struct tacho_motor_device *tm, long position)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
@@ -1510,6 +1510,8 @@ static void legoev3_motor_set_position(struct tacho_motor_device *tm, long posit
 	ev3_tm->irq_tacho	 = 0;
 	ev3_tm->tacho		 = position;
 	ev3_tm->ramp.position_sp = position;
+
+	return 0;
 }
 
 static int legoev3_motor_get_duty_cycle(struct tacho_motor_device *tm)
@@ -1897,8 +1899,8 @@ static const struct function_pointers fp = {
 	.get_type		  = legoev3_motor_get_type,
 	.set_type		  = legoev3_motor_set_type,
 
-	.get_position		  = legoev3_motor_get_position,
-	.set_position		  = legoev3_motor_set_position,
+	.get_position		= legoev3_motor_get_position,
+	.set_position		= legoev3_motor_set_position,
 
 	.get_state		  = legoev3_motor_get_state,
 	.get_duty_cycle		  = legoev3_motor_get_duty_cycle,

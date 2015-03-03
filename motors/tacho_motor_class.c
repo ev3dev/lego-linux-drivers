@@ -242,26 +242,30 @@ static ssize_t tacho_motor_store_type(struct device *dev, struct device_attribut
         return size;
 }
 
-static ssize_t tacho_motor_show_position(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t position_show(struct device *dev, struct device_attribute *attr,
+			     char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%d\n", tm->fp->get_position(tm));
+	return sprintf(buf, "%ld\n", tm->fp->get_position(tm));
 }
 
-ssize_t tacho_motor_store_position(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+ssize_t position_store(struct device *dev, struct device_attribute *attr,
+		       const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	char *end;
+	long position = simple_strtol(buf, &end, 0);
+	int err;
 
-        char *end;
-        long position = simple_strtol(buf, &end, 0);
+	if (end == buf)
+		return -EINVAL;
 
-        if (end == buf)
-                return -EINVAL;
+	err = tm->fp->set_position(tm, position);
+	if (err < 0)
+		return err;
 
-        tm->fp->set_position(tm, position);
-
-        return size;
+	return size;
 }
 #if 0
 static ssize_t tacho_motor_show_states(struct device *dev, struct device_attribute *attr, char *buf)
@@ -840,7 +844,7 @@ static ssize_t tacho_motor_store_log(struct device *dev, struct device_attribute
 
 DEVICE_ATTR_RO(port_name);
 DEVICE_ATTR(type, S_IRUGO | S_IWUSR, tacho_motor_show_type, tacho_motor_store_type);
-DEVICE_ATTR(position, S_IRUGO | S_IWUSR, tacho_motor_show_position, tacho_motor_store_position);
+DEVICE_ATTR_RW(position);
 
 DEVICE_ATTR(state, S_IRUGO, tacho_motor_show_state, NULL);
 DEVICE_ATTR(duty_cycle, S_IRUGO, tacho_motor_show_duty_cycle, NULL);
