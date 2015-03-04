@@ -97,11 +97,15 @@
 *   encoder. When the motor rotates clockwise, the position will increase.
 *   Likewise, rotating counter-clockwise causes the position to decrease.
 *   Writing will set the position to that value.
-* `position_mode` (read/write)
-* : TODO
 * .
-* `position_modes` (read-only)
-* : Returns a space-separated list of valid position modes.
+* `position_pid/Kd`: (read/write)
+* : The derivative constant for the position PID.
+* .
+* `position_pid/Ki`: (read/write)
+* : The integral constant for the position PID.
+* .
+* `position_pid/Kp`: (read/write)
+* : The proportional constant for the position PID.
 * .
 * `position_sp` (read/write)
 * : Writing specifies the target position for the `run-to-abs-pos` and `run-to-rel-pos`
@@ -132,17 +136,14 @@
 *   will use the power specified in `duty_cycle_sp`. Valid values are `on` and
 *   `off`.
 * .
-* `speed_regulation_D`: (read/write)
-* : TODO
+* `speed_pid/Kd`: (read/write)
+* : The derivative constant for the speed regulation PID.
 * .
-* `speed_regulation_I`: (read/write)
-* : TODO
+* `speed_pid/Ki`: (read/write)
+* : The integral constant for the speed regulation PID.
 * .
-* `speed_regulation_K`: (read/write)
-* : TODO
-* .
-* `speed_regulation_P`: (read/write)
-* : TODO
+* `speed_pid/Kp`: (read/write)
+* : The proportional constant for the speed regulation PID.
 * .
 * `state` (read-only)
 * : TODO
@@ -581,71 +582,6 @@ static ssize_t tacho_motor_store_ramp_down_sp(struct device *dev, struct device_
         return size;
 }
 
-static ssize_t tacho_motor_show_speed_regulation_P(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-	return sprintf(buf, "%d\n", tm->ops->get_speed_regulation_P(tm));
-}
-
-static ssize_t tacho_motor_store_speed_regulation_P(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-        char *end;
-        long speed_regulation_P = simple_strtol(buf, &end, 0);
-
-        if ((end == buf) || (speed_regulation_P < 0))
-                return -EINVAL;
-
-        tm->ops->set_speed_regulation_P(tm, speed_regulation_P);
-
-        return size;
-}
-
-static ssize_t tacho_motor_show_speed_regulation_I(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-	return sprintf(buf, "%d\n", tm->ops->get_speed_regulation_I(tm));
-}
-
-static ssize_t tacho_motor_store_speed_regulation_I(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-        char *end;
-        long speed_regulation_I = simple_strtol(buf, &end, 0);
-
-        if ((end == buf) || (speed_regulation_I < 0))
-                return -EINVAL;
-
-        tm->ops->set_speed_regulation_I(tm, speed_regulation_I);
-
-        return size;
-}
-static ssize_t tacho_motor_show_speed_regulation_D(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-	return sprintf(buf, "%d\n", tm->ops->get_speed_regulation_D(tm));
-}
-
-static ssize_t tacho_motor_store_speed_regulation_D(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-        char *end;
-        long speed_regulation_D = simple_strtol(buf, &end, 0);
-
-        if ((end == buf) || (speed_regulation_D < 0))
-                return -EINVAL;
-
-        tm->ops->set_speed_regulation_D(tm, speed_regulation_D);
-
-        return size;
-}
-
 static ssize_t duty_cycle_sp_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
@@ -802,10 +738,6 @@ DEVICE_ATTR_RW(encoder_polarity);
 DEVICE_ATTR(ramp_up_sp, S_IRUGO | S_IWUSR, tacho_motor_show_ramp_up_sp, tacho_motor_store_ramp_up_sp);
 DEVICE_ATTR(ramp_down_sp, S_IRUGO | S_IWUSR, tacho_motor_show_ramp_down_sp, tacho_motor_store_ramp_down_sp);
 
-DEVICE_ATTR(speed_regulation_P, S_IRUGO | S_IWUSR, tacho_motor_show_speed_regulation_P, tacho_motor_store_speed_regulation_P);
-DEVICE_ATTR(speed_regulation_I, S_IRUGO | S_IWUSR, tacho_motor_show_speed_regulation_I, tacho_motor_store_speed_regulation_I);
-DEVICE_ATTR(speed_regulation_D, S_IRUGO | S_IWUSR, tacho_motor_show_speed_regulation_D, tacho_motor_store_speed_regulation_D);
-
 static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_driver_name.attr,
 	&dev_attr_port_name.attr,
@@ -827,12 +759,86 @@ static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_encoder_polarity.attr,
 	&dev_attr_ramp_up_sp.attr,
 	&dev_attr_ramp_down_sp.attr,
-	&dev_attr_speed_regulation_P.attr,
-	&dev_attr_speed_regulation_I.attr,
-	&dev_attr_speed_regulation_D.attr,
 	NULL
 };
-ATTRIBUTE_GROUPS(tacho_motor_class);
+
+static const struct attribute_group tacho_motor_class_group = {
+	.attrs = tacho_motor_class_attrs,
+};
+
+#define PID_ATTR_FUNCS(name)							\
+static ssize_t name##_show(struct device *dev, struct device_attribute *attr,	\
+			   char *buf)						\
+{										\
+	struct tacho_motor_device *tm = to_tacho_motor(dev);			\
+	int ret;								\
+										\
+	if (!tm->ops->get_##name)						\
+		return -EOPNOTSUPP;						\
+										\
+	ret = tm->ops->get_##name(tm);						\
+	if (ret < 0)								\
+		return ret;							\
+										\
+	return sprintf(buf, "%d\n", ret);					\
+}										\
+										\
+static ssize_t name##_store(struct device *dev, struct device_attribute *attr,	\
+			    const char *buf, size_t size)			\
+{										\
+	struct tacho_motor_device *tm = to_tacho_motor(dev);			\
+	int err, k;								\
+										\
+	if (!tm->ops->set_##name)						\
+		return -EOPNOTSUPP;						\
+										\
+	err = kstrtoint(buf, 10, &k);						\
+	if (err < 0)								\
+		return err;							\
+										\
+	if (k < 0)								\
+		return -EINVAL;							\
+										\
+	err = tm->ops->set_##name(tm, k);					\
+	if (err < 0)								\
+		return err;							\
+										\
+	return size;								\
+}
+
+#define PID_ATTR(pid, k) struct device_attribute dev_attr_##pid##_##k = \
+	__ATTR(k, S_IWUSR | S_IRUGO, pid##_##k##_show, pid##_##k##_store)
+
+#define PID_ATTR_GROUP(pid)							\
+PID_ATTR_FUNCS(pid##_Kp)							\
+PID_ATTR_FUNCS(pid##_Ki)							\
+PID_ATTR_FUNCS(pid##_Kd)							\
+										\
+PID_ATTR(pid, Kp);								\
+PID_ATTR(pid, Ki);								\
+PID_ATTR(pid, Kd);								\
+										\
+static struct attribute *tacho_motor_##pid##_pid_attrs[] = {			\
+	&dev_attr_##pid##_Kp.attr,						\
+	&dev_attr_##pid##_Ki.attr,						\
+	&dev_attr_##pid##_Kd.attr,						\
+	NULL									\
+};										\
+										\
+static const struct attribute_group tacho_motor_##pid##_pid_group = {		\
+	.name = __stringify(pid) "_pid",					\
+	.attrs = tacho_motor_##pid##_pid_attrs,					\
+}
+
+PID_ATTR_GROUP(speed);
+PID_ATTR_GROUP(position);
+
+static const struct attribute_group *tacho_motor_class_groups[] = {
+	&tacho_motor_class_group,
+	&tacho_motor_speed_pid_group,
+	&tacho_motor_position_pid_group,
+	NULL
+};
 
 static void tacho_motor_release(struct device *dev)
 {

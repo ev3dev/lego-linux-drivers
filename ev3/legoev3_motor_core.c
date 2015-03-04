@@ -130,9 +130,9 @@ struct legoev3_motor_data {
 		int P;
 		int I;
 		int D;
-		int speed_regulation_P;
-		int speed_regulation_I;
-		int speed_regulation_D;
+		int speed_Kp;
+		int speed_Ki;
+		int speed_Kd;
 		int prev_speed;
 		int prev_position_error;
 	} pid;
@@ -452,9 +452,9 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 	 * constants when it is reset. Otherwise, we need to move this to the
 	 * legoev3_motor_probe function.
 	 */
-	ev3_tm->pid.speed_regulation_P  = ev3_tm->info->speed_pid_k.p;
-	ev3_tm->pid.speed_regulation_I  = ev3_tm->info->speed_pid_k.i;
-	ev3_tm->pid.speed_regulation_D  = ev3_tm->info->speed_pid_k.d;
+	ev3_tm->pid.speed_Kp  = ev3_tm->info->speed_pid_k.p;
+	ev3_tm->pid.speed_Ki  = ev3_tm->info->speed_pid_k.i;
+	ev3_tm->pid.speed_Kd  = ev3_tm->info->speed_pid_k.d;
 
 	ev3_tm->pid.prev_position_error	= 0;
 	ev3_tm->speed_reg_sp		= 0;
@@ -1634,55 +1634,58 @@ static void legoev3_motor_set_ramp_down_sp(struct tacho_motor_device *tm,
 	ev3_tm->ramp_down_sp = ramp_down_sp;
 }
 
-static int legoev3_motor_get_speed_regulation_P(struct tacho_motor_device *tm)
+static int legoev3_motor_get_speed_Kp(struct tacho_motor_device *tm)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	return ev3_tm->pid.speed_regulation_P;
+	return ev3_tm->pid.speed_Kp;
 }
 
-static void legoev3_motor_set_speed_regulation_P(struct tacho_motor_device *tm,
-						 long speed_regulation_P)
+static int legoev3_motor_set_speed_Kp(struct tacho_motor_device *tm, int k)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	ev3_tm->pid.speed_regulation_P = speed_regulation_P;
+	ev3_tm->pid.speed_Kp = k;
+
+	return 0;
 }
 
-static int legoev3_motor_get_speed_regulation_I(struct tacho_motor_device *tm)
+static int legoev3_motor_get_speed_Ki(struct tacho_motor_device *tm)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	return ev3_tm->pid.speed_regulation_I;
+	return ev3_tm->pid.speed_Ki;
 }
 
-static void legoev3_motor_set_speed_regulation_I(struct tacho_motor_device *tm,
-						 long speed_regulation_I)
+static int legoev3_motor_set_speed_Ki(struct tacho_motor_device *tm, int k)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	ev3_tm->pid.speed_regulation_I = speed_regulation_I;
+	ev3_tm->pid.speed_Ki = k;
+
+	return 0;
 }
 
-static int legoev3_motor_get_speed_regulation_D(struct tacho_motor_device *tm)
+static int legoev3_motor_get_speed_Kd(struct tacho_motor_device *tm)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	return ev3_tm->pid.speed_regulation_D;
+	return ev3_tm->pid.speed_Kd;
 }
 
-static void legoev3_motor_set_speed_regulation_D(struct tacho_motor_device *tm,
-						 long speed_regulation_D)
+static int legoev3_motor_set_speed_Kd(struct tacho_motor_device *tm, int k)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	ev3_tm->pid.speed_regulation_D = speed_regulation_D;
+	ev3_tm->pid.speed_Kd = k;
+
+	return 0;
 }
 
 static unsigned legoev3_motor_get_commands (struct tacho_motor_device *tm)
@@ -1812,14 +1815,12 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 	.get_ramp_down_sp	  = legoev3_motor_get_ramp_down_sp,
 	.set_ramp_down_sp	  = legoev3_motor_set_ramp_down_sp,
 
-	.get_speed_regulation_P	  = legoev3_motor_get_speed_regulation_P,
-	.set_speed_regulation_P	  = legoev3_motor_set_speed_regulation_P,
-
-	.get_speed_regulation_I	  = legoev3_motor_get_speed_regulation_I,
-	.set_speed_regulation_I	  = legoev3_motor_set_speed_regulation_I,
-
-	.get_speed_regulation_D	  = legoev3_motor_get_speed_regulation_D,
-	.set_speed_regulation_D	  = legoev3_motor_set_speed_regulation_D,
+	.get_speed_Kp		= legoev3_motor_get_speed_Kp,
+	.set_speed_Kp		= legoev3_motor_set_speed_Kp,
+	.get_speed_Ki		= legoev3_motor_get_speed_Ki,
+	.set_speed_Ki		= legoev3_motor_set_speed_Ki,
+	.get_speed_Kd		= legoev3_motor_get_speed_Kd,
+	.set_speed_Kd		= legoev3_motor_set_speed_Kd,
 };
 
 

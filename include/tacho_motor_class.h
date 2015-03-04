@@ -118,14 +118,19 @@ struct tacho_motor_ops {
 	int (*get_encoder_polarity)(struct tacho_motor_device *tm);
 	int (*set_encoder_polarity)(struct tacho_motor_device *tm, enum dc_motor_polarity polarity);
 
- 	int  (*get_speed_regulation_P)(struct tacho_motor_device *tm);
- 	void (*set_speed_regulation_P)(struct tacho_motor_device *tm, long speed_regulation_P);
+	int (*get_speed_Kp)(struct tacho_motor_device *tm);
+	int (*set_speed_Kp)(struct tacho_motor_device *tm, int Kp);
+	int (*get_speed_Ki)(struct tacho_motor_device *tm);
+	int (*set_speed_Ki)(struct tacho_motor_device *tm, int Kp);
+	int (*get_speed_Kd)(struct tacho_motor_device *tm);
+	int (*set_speed_Kd)(struct tacho_motor_device *tm, int Kp);
 
- 	int  (*get_speed_regulation_I)(struct tacho_motor_device *tm);
- 	void (*set_speed_regulation_I)(struct tacho_motor_device *tm, long speed_regulation_I);
-
- 	int  (*get_speed_regulation_D)(struct tacho_motor_device *tm);
- 	void (*set_speed_regulation_D)(struct tacho_motor_device *tm, long speed_regulation_D);
+	int (*get_position_Kp)(struct tacho_motor_device *tm);
+	int (*set_position_Kp)(struct tacho_motor_device *tm, int Kp);
+	int (*get_position_Ki)(struct tacho_motor_device *tm);
+	int (*set_position_Ki)(struct tacho_motor_device *tm, int Kp);
+	int (*get_position_Kd)(struct tacho_motor_device *tm);
+	int (*set_position_Kd)(struct tacho_motor_device *tm, int Kp);
 
  	int  (*get_ramp_up_sp)(struct tacho_motor_device *tm);
  	void (*set_ramp_up_sp)(struct tacho_motor_device *tm, long ramp_up_sp);
