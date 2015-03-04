@@ -86,15 +86,15 @@ struct tacho_motor_ops {
 
 	int  (*get_state)(struct tacho_motor_device *tm);
 
-	int  (*get_duty_cycle)(struct tacho_motor_device *tm);
+	int (*get_duty_cycle)(struct tacho_motor_device *tm, int *duty_cycle);
 
-	int  (*get_pulses_per_second)(struct tacho_motor_device *tm);
+	int (*get_speed)(struct tacho_motor_device *tm, int *speed);
 
-	int  (*get_duty_cycle_sp)(struct tacho_motor_device *tm);
-	void (*set_duty_cycle_sp)(struct tacho_motor_device *tm, long duty_cycle_sp);
+	int (*get_duty_cycle_sp)(struct tacho_motor_device *tm, int *duty_cycle);
+	int (*set_duty_cycle_sp)(struct tacho_motor_device *tm, int duty_cycle);
 
-	int  (*get_pulses_per_second_sp)(struct tacho_motor_device *tm);
-	void (*set_pulses_per_second_sp)(struct tacho_motor_device *tm, long pulses_per_second_sp);
+	int (*get_speed_sp)(struct tacho_motor_device *tm, int *speed);
+	int (*set_speed_sp)(struct tacho_motor_device *tm, int speed);
 
 	int  (*get_time_sp)(struct tacho_motor_device *tm);
 	void (*set_time_sp)(struct tacho_motor_device *tm, long time_sp);

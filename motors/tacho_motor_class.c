@@ -44,7 +44,10 @@
 *   are -100 to 100.
 * .
 * `duty_cycle_sp` (read/write)
-* : TODO
+* : Writing sets the duty cycle setpoint. Reading returns the current value.
+*   Units are in percent. Valid values are -100 to 100. A negative value causes
+*   the motor to rotate in reverse. This value is only used when `speed_regulation`
+*   is off.
 * .
 * `encoder_polarity` (read/write)
 * : Sets the polarity of the rotary encoder. This is an advanced feature to all
@@ -76,11 +79,15 @@
 * `position_sp` (read/write)
 * : TODO
 * .
-* `pulses_per_second` (read-only)
-* : TODO
+* `speed` (read-only)
+* : Returns the current motor speed in tacho counts per second. Not, this is
+*   not necessarily degrees (although it is for LEGO motors). Use the `count_per_rot`
+*   attribute to convert this value to RPM or deg/sec.
 * .
-* `pulses_per_second_sp` (read/write)
-* : TODO
+* `speed_sp` (read/write)
+* : Writing sets the target speed in tacho counts per second used when `speed_regulation`
+*   is on. Reading returns the current value.  Use the `count_per_rot` attribute
+*   to convert RPM or deg/sec to tacho counts per second.
 * .
 * `ramp_up_sp` (read/write)
 * : TODO
@@ -271,18 +278,30 @@ static ssize_t tacho_motor_show_state(struct device *dev, struct device_attribut
 	return sprintf(buf, "%s\n", tacho_motor_states[tm->ops->get_state(tm)].name);
 }
 
-static ssize_t tacho_motor_show_duty_cycle(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t duty_cycle_show(struct device *dev, struct device_attribute *attr,
+			       char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int err, duty_cycle;
 
-	return sprintf(buf, "%d\n", tm->ops->get_duty_cycle(tm));
+	err = tm->ops->get_duty_cycle(tm, &duty_cycle);
+	if (err < 0)
+		return err;
+
+	return sprintf(buf, "%d\n", duty_cycle);
 }
 
-static ssize_t tacho_motor_show_pulses_per_second(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t speed_show(struct device *dev, struct device_attribute *attr,
+			  char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int err, speed;
 
-	return sprintf(buf, "%d\n", tm->ops->get_pulses_per_second(tm));
+	err = tm->ops->get_speed(tm, &speed);
+	if (err < 0)
+		return err;
+
+	return sprintf(buf, "%d\n", speed);
 }
 
 static ssize_t tacho_motor_show_run_modes(struct device *dev, struct device_attribute *attr, char *buf)
@@ -626,48 +645,71 @@ static ssize_t tacho_motor_store_speed_regulation_D(struct device *dev, struct d
         return size;
 }
 
-static ssize_t tacho_motor_show_duty_cycle_sp(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t duty_cycle_sp_show(struct device *dev,
+				  struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int err, duty_cycle;
 
-	return sprintf(buf, "%d\n", tm->ops->get_duty_cycle_sp(tm));
+	err = tm->ops->get_duty_cycle_sp(tm, &duty_cycle);
+	if (err < 0)
+		return err;
+
+	return sprintf(buf, "%d\n", duty_cycle);
 }
 
-static ssize_t tacho_motor_store_duty_cycle_sp(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+static ssize_t duty_cycle_sp_store(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int duty_cycle_sp, err;
 
-        char *end;
-        long duty_cycle_sp = simple_strtol(buf, &end, 0);
+	err = kstrtoint(buf, 10, &duty_cycle_sp);
+	if (err < 0)
+		return err;
 
-        if ((end == buf) || (duty_cycle_sp > 100) || (duty_cycle_sp < -100))
-                return -EINVAL;
+	if (duty_cycle_sp > 100 || duty_cycle_sp < -100)
+		return -EINVAL;
 
-        tm->ops->set_duty_cycle_sp(tm, duty_cycle_sp);
+	err = tm->ops->set_duty_cycle_sp(tm, duty_cycle_sp);
+	if (err < 0)
+		return err;
 
-        return size;
+	return size;
 }
 
-static ssize_t tacho_motor_show_pulses_per_second_sp(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t speed_sp_show(struct device *dev, struct device_attribute *attr,
+			     char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int err, speed;
 
-	return sprintf(buf, "%d\n", tm->ops->get_pulses_per_second_sp(tm));
+	err = tm->ops->get_speed_sp(tm, &speed);
+	if (err < 0)
+		return err;
+
+	return sprintf(buf, "%d\n", speed);
 }
 
-static ssize_t tacho_motor_store_pulses_per_second_sp(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+static ssize_t speed_sp_store(struct device *dev, struct device_attribute *attr,
+			      const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int err, speed;
 
-        char *end;
-        long pulses_per_second_sp = simple_strtol(buf, &end, 0);
+	err = kstrtoint(buf, 10, &speed);
+	if (err < 0)
+		return err;
 
-        if ((end == buf) || (pulses_per_second_sp > 2000) || (pulses_per_second_sp < -2000))
-                return -EINVAL;
+	if (speed > 2000 || speed < -2000)
+		return -EINVAL;
 
-        tm->ops->set_pulses_per_second_sp(tm, pulses_per_second_sp);
+	err = tm->ops->set_speed_sp(tm, speed);
+	if (err < 0)
+		return err;
 
-        return size;
+	return size;
 }
 
 static ssize_t tacho_motor_show_time_sp(struct device *dev, struct device_attribute *attr, char *buf)
@@ -754,13 +796,11 @@ static ssize_t tacho_motor_store_reset(struct device *dev, struct device_attribu
 DEVICE_ATTR_RO(driver_name);
 DEVICE_ATTR_RO(port_name);
 DEVICE_ATTR_RW(position);
-
 DEVICE_ATTR(state, S_IRUGO, tacho_motor_show_state, NULL);
-DEVICE_ATTR(duty_cycle, S_IRUGO, tacho_motor_show_duty_cycle, NULL);
-DEVICE_ATTR(pulses_per_second, S_IRUGO, tacho_motor_show_pulses_per_second, NULL);
-
-DEVICE_ATTR(duty_cycle_sp, S_IRUGO | S_IWUSR, tacho_motor_show_duty_cycle_sp, tacho_motor_store_duty_cycle_sp);
-DEVICE_ATTR(pulses_per_second_sp, S_IRUGO | S_IWUSR, tacho_motor_show_pulses_per_second_sp, tacho_motor_store_pulses_per_second_sp);
+DEVICE_ATTR_RO(duty_cycle);
+DEVICE_ATTR_RO(speed);
+DEVICE_ATTR_RW(duty_cycle_sp);
+DEVICE_ATTR_RW(speed_sp);
 DEVICE_ATTR(time_sp, S_IRUGO | S_IWUSR, tacho_motor_show_time_sp, tacho_motor_store_time_sp);
 DEVICE_ATTR(position_sp, S_IRUGO | S_IWUSR, tacho_motor_show_position_sp, tacho_motor_store_position_sp);
 
@@ -791,9 +831,9 @@ static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_position.attr,
 	&dev_attr_state.attr,
 	&dev_attr_duty_cycle.attr,
-	&dev_attr_pulses_per_second.attr,
+	&dev_attr_speed.attr,
 	&dev_attr_duty_cycle_sp.attr,
-	&dev_attr_pulses_per_second_sp.attr,
+	&dev_attr_speed_sp.attr,
 	&dev_attr_time_sp.attr,
 	&dev_attr_position_sp.attr,
 	&dev_attr_run_modes.attr,

@@ -91,7 +91,6 @@ struct legoev3_motor_data {
 	int dir_chg_samples;
 
 	int clock_ticks_per_sample;
-	int pulses_per_second;
 
 	/*
 	 * TODO - The class mutex interlock is not implemented - should be up
@@ -127,7 +126,7 @@ struct legoev3_motor_data {
 		int speed_regulation_P;
 		int speed_regulation_I;
 		int speed_regulation_D;
-		int prev_pulses_per_second;
+		int prev_speed;
 		int prev_position_error;
 	} pid;
 
@@ -140,11 +139,11 @@ struct legoev3_motor_data {
 	int irq_tacho;	/* tacho and irq_tacho combine to make position - change name to pulse? */
 
 	int speed;
-	int power;
+	int duty_cycle;
 	int state;
 
 	long duty_cycle_sp;
-	long pulses_per_second_sp;
+	long speed_sp;
 	long time_sp;
 	long position_sp;
 	long ramp_up_sp;
@@ -373,16 +372,16 @@ void legoev3_motor_update_output(struct legoev3_motor_data *ev3_tm)
 	void *context = ev3_tm->ldev->port->context;
 	int err;
 
-	if (ev3_tm->power > 0) {
+	if (ev3_tm->duty_cycle > 0) {
 		motor_ops->set_direction(context, ev3_tm->motor_polarity);
 		motor_ops->set_command(context, DC_MOTOR_COMMAND_RUN);
-		if (ev3_tm->regulation_mode == TM_SPEED_REGULATION_OFF && ev3_tm->power < 10)
-			ev3_tm->power = 10;
-	} else if (ev3_tm->power < 0) {
+		if (ev3_tm->regulation_mode == TM_SPEED_REGULATION_OFF && ev3_tm->duty_cycle < 10)
+			ev3_tm->duty_cycle = 10;
+	} else if (ev3_tm->duty_cycle < 0) {
 		motor_ops->set_direction(context, !ev3_tm->motor_polarity);
 		motor_ops->set_command(context, DC_MOTOR_COMMAND_RUN);
-		if (ev3_tm->regulation_mode == TM_SPEED_REGULATION_OFF && ev3_tm->power > -10)
-			ev3_tm->power = -10;
+		if (ev3_tm->regulation_mode == TM_SPEED_REGULATION_OFF && ev3_tm->duty_cycle > -10)
+			ev3_tm->duty_cycle = -10;
 	} else {
 		if (ev3_tm->stop_command == TM_STOP_COMMAND_COAST)
 			motor_ops->set_command(context, DC_MOTOR_COMMAND_COAST);
@@ -393,13 +392,13 @@ void legoev3_motor_update_output(struct legoev3_motor_data *ev3_tm)
 	}
 
 	/* The power sets the duty cycle - 100% power == 100% duty cycle */
-	err = motor_ops->set_duty_cycle(context, abs(ev3_tm->power));
+	err = motor_ops->set_duty_cycle(context, abs(ev3_tm->duty_cycle));
 	WARN_ONCE(err, "Failed to set pwm duty cycle! (%d)\n", err);
 }
 
 static void legoev3_motor_set_power(struct legoev3_motor_data *ev3_tm, int power)
 {
-	if (ev3_tm->power == power)
+	if (ev3_tm->duty_cycle == power)
 		return;
 
 	if (power > MAX_POWER)
@@ -407,7 +406,7 @@ static void legoev3_motor_set_power(struct legoev3_motor_data *ev3_tm, int power
 	else if (power < -MAX_POWER)
 		power = -MAX_POWER;
 
-	ev3_tm->power = power;
+	ev3_tm->duty_cycle = power;
 	legoev3_motor_update_output(ev3_tm);
 }
 
@@ -426,7 +425,7 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 	ev3_tm->num_samples		= ev3_tm->info->samples_for_speed[SPEED_BELOW_40];
 	ev3_tm->dir_chg_samples		= 0;
 	ev3_tm->clock_ticks_per_sample	= ev3_tm->info->clock_ticks_per_sample;
-	ev3_tm->pulses_per_second	= 0;
+	ev3_tm->speed	= 0;
 	ev3_tm->class_mutex		= false;
 	ev3_tm->irq_mutex		= false;
 	ev3_tm->ramp.up.start		= 0;
@@ -450,8 +449,6 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 	ev3_tm->pid.speed_regulation_I  = ev3_tm->info->speed_pid_k.i;
 	ev3_tm->pid.speed_regulation_D  = ev3_tm->info->speed_pid_k.d;
 
-	ev3_tm->pid.prev_pulses_per_second = 0;
-
 	ev3_tm->pid.prev_position_error	= 0;
 	ev3_tm->speed_reg_sp		= 0;
 	ev3_tm->run_direction		= UNKNOWN;
@@ -460,11 +457,11 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 	ev3_tm->tacho			= 0;
 	ev3_tm->irq_tacho		= 0;
 	ev3_tm->speed			= 0;
-	ev3_tm->power			= 0;
+	ev3_tm->duty_cycle			= 0;
 	ev3_tm->state			= TM_STATE_IDLE;
 
 	ev3_tm->duty_cycle_sp		= 0;
-	ev3_tm->pulses_per_second_sp	= 0;
+	ev3_tm->speed_sp		= 0;
 	ev3_tm->time_sp			= 0;
 	ev3_tm->position_sp		= 0;
 	ev3_tm->ramp_up_sp		= 0;
@@ -709,10 +706,10 @@ static bool calculate_speed(struct legoev3_motor_data *ev3_tm)
 
 		/* TODO - This should be based on the low level clock rate */
 
-		ev3_tm->pulses_per_second = (33000000 * ev3_tm->num_samples) / diff;
+		ev3_tm->speed = (33000000 * ev3_tm->num_samples) / diff;
 
 		if (ev3_tm->run_direction == REVERSE)
-			ev3_tm->pulses_per_second  = -ev3_tm->pulses_per_second ;
+			ev3_tm->speed  = -ev3_tm->speed ;
 
 		speed_updated = true;
 
@@ -722,7 +719,7 @@ static bool calculate_speed(struct legoev3_motor_data *ev3_tm)
 
 		ev3_tm->dir_chg_samples = 0;
 
-		ev3_tm->pulses_per_second = 0;
+		ev3_tm->speed = 0;
 
 		/* TODO - This is where we can put in a calculation for a stalled motor! */
 
@@ -746,7 +743,7 @@ static void regulate_speed(struct legoev3_motor_data *ev3_tm)
 		ev3_tm->speed_reg_sp = -max_speed;
 	}
 
-	speed_error = ev3_tm->speed_reg_sp - ev3_tm->pulses_per_second;
+	speed_error = ev3_tm->speed_reg_sp - ev3_tm->speed;
 
 	/* TODO - Implement an attribute set for PID constants that adjusts based on speed */
 
@@ -769,9 +766,9 @@ static void regulate_speed(struct legoev3_motor_data *ev3_tm)
 
 	ev3_tm->pid.I = ev3_tm->pid.I + speed_error;
 
-	ev3_tm->pid.D = ev3_tm->pulses_per_second - ev3_tm->pid.prev_pulses_per_second;
+	ev3_tm->pid.D = ev3_tm->speed - ev3_tm->pid.prev_speed;
 
-	ev3_tm->pid.prev_pulses_per_second = ev3_tm->pulses_per_second;
+	ev3_tm->pid.prev_speed = ev3_tm->speed;
 
 	power =  ((ev3_tm->pid.P * ev3_tm->info->speed_pid_k.p)
 		+ (ev3_tm->pid.I * ev3_tm->info->speed_pid_k.i)
@@ -786,11 +783,11 @@ static void regulate_speed(struct legoev3_motor_data *ev3_tm)
 		ev3_tm->pid.I = ev3_tm->pid.I - speed_error;
 
 	/*
-	 * When regulation_mode is on, and the user sets the pulses_per_second_sp
-	 * to 0, the motor may have been running at a non-zero speed - which will
-	 * make the motor oscillate to achieve the 0 speed. A check for the special
-	 * condition of pulses_per_second_sp equal to 0 will turn off the motor
-	 * to prevent the oscillation.
+	 * When regulation_mode is on, and the user sets the speed_sp to 0, the
+	 * motor may have been running at a non-zero speed - which will make
+	 * the motor oscillate to achieve the 0 speed. A check for the special
+	 * condition of speed_sp equal to 0 will turn off the motor to prevent
+	 * the oscillation.
 	 */
 
 	if (0 == ev3_tm->speed_reg_sp) {
@@ -827,9 +824,9 @@ static void update_motor_speed_or_power(struct legoev3_motor_data *ev3_tm, int p
 	} else if (TM_SPEED_REGULATION_ON == ev3_tm->regulation_mode) {
 
 		if ((TM_RUN_POSITION == ev3_tm->run_mode))
-			ev3_tm->speed_reg_sp = ev3_tm->ramp.direction * abs((ev3_tm->pulses_per_second_sp * percent)/100);
+			ev3_tm->speed_reg_sp = ev3_tm->ramp.direction * abs((ev3_tm->speed_sp * percent)/100);
 		else
-			ev3_tm->speed_reg_sp =                             ((ev3_tm->pulses_per_second_sp * percent)/100);
+			ev3_tm->speed_reg_sp =                             ((ev3_tm->speed_sp * percent)/100);
 	}
 }
 
@@ -872,9 +869,9 @@ static void adjust_ramp_for_position(struct legoev3_motor_data *ev3_tm)
 	 */
 
 	if (TM_SPEED_REGULATION_OFF == ev3_tm->regulation_mode) {
-		ramp_down_time  = abs((ev3_tm->ramp_down_sp * ev3_tm->power) / 100);
+		ramp_down_time  = abs((ev3_tm->ramp_down_sp * ev3_tm->duty_cycle) / 100);
 	} else if (TM_SPEED_REGULATION_ON == ev3_tm->regulation_mode) {
-		ramp_down_time  = abs((ev3_tm->ramp_down_sp * ev3_tm->pulses_per_second)
+		ramp_down_time  = abs((ev3_tm->ramp_down_sp * ev3_tm->speed)
 			/ ev3_tm->info->max_tacho_count_per_sec);
 	}
 
@@ -883,7 +880,7 @@ static void adjust_ramp_for_position(struct legoev3_motor_data *ev3_tm)
 	 * the position setpoint at low speeds...shorten the distance!
 	 */
 
-	ramp_down_distance = abs((ev3_tm->pulses_per_second * ramp_down_time * 7) / (2000 * 10));
+	ramp_down_distance = abs((ev3_tm->speed * ramp_down_time * 7) / (2000 * 10));
 
 	/*
 	 * Depending on the direction we are turning, figure out if we're going to overshoot
@@ -1024,11 +1021,11 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 				ev3_tm->ramp.direction  = (ev3_tm->duty_cycle_sp >= 0 ? 1 : -1);
 
 			} else if (TM_SPEED_REGULATION_ON == ev3_tm->regulation_mode) {
-				ev3_tm->ramp.up.full    = ((abs(ev3_tm->pulses_per_second_sp) * ev3_tm->ramp_up_sp  )
+				ev3_tm->ramp.up.full    = ((abs(ev3_tm->speed_sp) * ev3_tm->ramp_up_sp  )
 					/ ev3_tm->info->max_tacho_count_per_sec);
-				ev3_tm->ramp.down.full  = ((abs(ev3_tm->pulses_per_second_sp) * ev3_tm->ramp_down_sp)
+				ev3_tm->ramp.down.full  = ((abs(ev3_tm->speed_sp) * ev3_tm->ramp_down_sp)
 					/ ev3_tm->info->max_tacho_count_per_sec);
-				ev3_tm->ramp.direction  = (ev3_tm->pulses_per_second_sp >= 0 ? 1 : -1);
+				ev3_tm->ramp.direction  = (ev3_tm->speed_sp >= 0 ? 1 : -1);
 			}
 
 			/*
@@ -1077,7 +1074,7 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 			 * normally up to the speed setpoint and continuously
 			 * estimate the ramp down start and end points based on
 			 * the current speed. We have a nice attribute called
-			 * pulses_per_second and that value is calculated every time
+			 * spped and that value is calculated every time
 			 * the speed is actually updated, about 500 times a
 			 * second.
 			 *
@@ -1085,13 +1082,13 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 			 * assuming a linear ramp down from the current speed, we
 			 * can estimate the time it will take to ramp down as:
 			 *
-			 * ramp_time = ((pulses_per_sec * ramp_down) / MaxPulsesPerSec[ev3_tm->motor_type] ) msec
+			 * ramp_time = ((speed * ramp_down) / MaxPulsesPerSec[ev3_tm->motor_type] ) msec
 			 *
-			 * The actual speed in pulses_per_sec can then be used
+			 * The actual speed in speed can then be used
 			 * to estimate how far the motor will travel in that
 			 * time as:
 			 *
-			 * ramp_distance = (( pulses_per_sec * ramp_time ) / (1000)) pulses
+			 * ramp_distance = (( speed * ramp_time ) / (1000)) pulses
 			 *
 			 * Now it's a simple matter to figure out if we're within
 			 * distance pulses of the desired endpoint, and then
@@ -1120,9 +1117,9 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 				ev3_tm->ramp.up.full    = ((abs(ev3_tm->duty_cycle_sp) * ev3_tm->ramp_up_sp  ) / 100);
 				ev3_tm->ramp.down.full  = ((abs(ev3_tm->duty_cycle_sp) * ev3_tm->ramp_down_sp) / 100);
 			} else if (TM_SPEED_REGULATION_ON == ev3_tm->regulation_mode) {
-				ev3_tm->ramp.up.full    = ((abs(ev3_tm->pulses_per_second_sp) * ev3_tm->ramp_up_sp  )
+				ev3_tm->ramp.up.full    = ((abs(ev3_tm->speed_sp) * ev3_tm->ramp_up_sp  )
 					/ ev3_tm->info->max_tacho_count_per_sec);
-				ev3_tm->ramp.down.full  = ((abs(ev3_tm->pulses_per_second_sp) * ev3_tm->ramp_down_sp)
+				ev3_tm->ramp.down.full  = ((abs(ev3_tm->speed_sp) * ev3_tm->ramp_down_sp)
 					/ ev3_tm->info->max_tacho_count_per_sec);
 			}
 
@@ -1136,7 +1133,7 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 //			if (TM_REGULATION_OFF == ev3_tm->regulation_mode) {
 //				ev3_tm->ramp.up.end = ev3_tm->ramp.up.start + ((abs(ev3_tm->duty_cycle_sp) * ev3_tm->ramp_up_sp) / 100);
 //			} else if (TM_REGULATION_ON == ev3_tm->regulation_mode) {
-//				ev3_tm->ramp.up.end = ev3_tm->ramp.up.start + ((abs(ev3_tm->pulses_per_second_sp) * ev3_tm->ramp_up_sp)
+//				ev3_tm->ramp.up.end = ev3_tm->ramp.up.start + ((abs(ev3_tm->speed_sp) * ev3_tm->ramp_up_sp)
 //					/ ev3_tm->info->max_tacho_count_per_sec);
 //			}
 
@@ -1237,7 +1234,7 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 			}
 
 			/*
-			 * This has to be here or else changing the pulses_per_second_sp
+			 * This has to be here or else changing the speed_sp
 			 * or the duty_cycle_sp when the motor is running won't work...
 			 */
 
@@ -1391,12 +1388,15 @@ static int legoev3_motor_set_position(struct tacho_motor_device *tm, long positi
 	return 0;
 }
 
-static int legoev3_motor_get_duty_cycle(struct tacho_motor_device *tm)
+static int legoev3_motor_get_duty_cycle(struct tacho_motor_device *tm,
+					int *duty_cycle)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	return ev3_tm->power;
+	*duty_cycle = ev3_tm->duty_cycle;
+
+	return 0;
 }
 
 static int legoev3_motor_get_state(struct tacho_motor_device *tm)
@@ -1407,46 +1407,56 @@ static int legoev3_motor_get_state(struct tacho_motor_device *tm)
 	return ev3_tm->state;
 }
 
-static int legoev3_motor_get_pulses_per_second(struct tacho_motor_device *tm)
+static int legoev3_motor_get_speed(struct tacho_motor_device *tm, int *speed)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	return ev3_tm->pulses_per_second;
+	*speed = ev3_tm->speed;
+
+	return 0;
 }
 
-static int legoev3_motor_get_duty_cycle_sp(struct tacho_motor_device *tm)
+static int legoev3_motor_get_duty_cycle_sp(struct tacho_motor_device *tm,
+					   int *duty_cycle)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	return ev3_tm->duty_cycle_sp;
+	*duty_cycle = ev3_tm->duty_cycle_sp;
+
+	return 0;
 }
 
-static void legoev3_motor_set_duty_cycle_sp(struct tacho_motor_device *tm,
-					    long duty_cycle_sp)
+static int legoev3_motor_set_duty_cycle_sp(struct tacho_motor_device *tm,
+					    int duty_cycle_sp)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
 	ev3_tm->duty_cycle_sp = duty_cycle_sp;
+
+	return 0;
 }
 
-static int legoev3_motor_get_pulses_per_second_sp(struct tacho_motor_device *tm)
+static int legoev3_motor_get_speed_sp(struct tacho_motor_device *tm, int *speed)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	return ev3_tm->pulses_per_second_sp;
+	*speed = ev3_tm->speed_sp;
+
+	return 0;
 }
 
-static void legoev3_motor_set_pulses_per_second_sp(struct tacho_motor_device *tm,
-						   long pulses_per_second_sp)
+static int legoev3_motor_set_speed_sp(struct tacho_motor_device *tm, int speed)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	ev3_tm->pulses_per_second_sp = pulses_per_second_sp;
+	ev3_tm->speed_sp = speed;
+
+	return 0;
 }
 
 static int legoev3_motor_get_time_sp(struct tacho_motor_device *tm)
@@ -1765,15 +1775,15 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 	.get_position		= legoev3_motor_get_position,
 	.set_position		= legoev3_motor_set_position,
 
-	.get_state		  = legoev3_motor_get_state,
-	.get_duty_cycle		  = legoev3_motor_get_duty_cycle,
-	.get_pulses_per_second	  = legoev3_motor_get_pulses_per_second,
+	.get_state		= legoev3_motor_get_state,
+	.get_duty_cycle		= legoev3_motor_get_duty_cycle,
+	.get_speed		= legoev3_motor_get_speed,
 
-	.get_duty_cycle_sp	  = legoev3_motor_get_duty_cycle_sp,
-	.set_duty_cycle_sp	  = legoev3_motor_set_duty_cycle_sp,
+	.get_duty_cycle_sp	= legoev3_motor_get_duty_cycle_sp,
+	.set_duty_cycle_sp	= legoev3_motor_set_duty_cycle_sp,
 
-	.get_pulses_per_second_sp = legoev3_motor_get_pulses_per_second_sp,
-	.set_pulses_per_second_sp = legoev3_motor_set_pulses_per_second_sp,
+	.get_speed_sp		= legoev3_motor_get_speed_sp,
+	.set_speed_sp		= legoev3_motor_set_speed_sp,
 
 	.get_time_sp		  = legoev3_motor_get_time_sp,
 	.set_time_sp		  = legoev3_motor_set_time_sp,
