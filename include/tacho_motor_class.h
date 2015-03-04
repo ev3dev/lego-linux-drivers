@@ -132,11 +132,10 @@ struct tacho_motor_ops {
 	int (*get_position_Kd)(struct tacho_motor_device *tm);
 	int (*set_position_Kd)(struct tacho_motor_device *tm, int Kp);
 
- 	int  (*get_ramp_up_sp)(struct tacho_motor_device *tm);
- 	void (*set_ramp_up_sp)(struct tacho_motor_device *tm, long ramp_up_sp);
-
- 	int  (*get_ramp_down_sp)(struct tacho_motor_device *tm);
- 	void (*set_ramp_down_sp)(struct tacho_motor_device *tm, long ramp_down_sp);
+	int (*get_ramp_up_sp)(struct tacho_motor_device *tm);
+	int (*set_ramp_up_sp)(struct tacho_motor_device *tm, int ms);
+	int (*get_ramp_down_sp)(struct tacho_motor_device *tm);
+	int (*set_ramp_down_sp)(struct tacho_motor_device *tm, int ms);
 };
 
 extern void tacho_motor_notify_state_change(struct tacho_motor_device *);

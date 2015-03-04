@@ -1608,13 +1608,14 @@ static int legoev3_motor_get_ramp_up_sp(struct tacho_motor_device *tm)
 	return ev3_tm->ramp_up_sp;
 }
 
-static void legoev3_motor_set_ramp_up_sp(struct tacho_motor_device *tm,
-					 long ramp_up_sp)
+static int legoev3_motor_set_ramp_up_sp(struct tacho_motor_device *tm, int ms)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	ev3_tm->ramp_up_sp = ramp_up_sp;
+	ev3_tm->ramp_up_sp = ms;
+
+	return 0;
 }
 
 static int legoev3_motor_get_ramp_down_sp(struct tacho_motor_device *tm)
@@ -1625,13 +1626,14 @@ static int legoev3_motor_get_ramp_down_sp(struct tacho_motor_device *tm)
 	return ev3_tm->ramp_down_sp;
 }
 
-static void legoev3_motor_set_ramp_down_sp(struct tacho_motor_device *tm,
-					   long ramp_down_sp)
+static int legoev3_motor_set_ramp_down_sp(struct tacho_motor_device *tm, int ms)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	ev3_tm->ramp_down_sp = ramp_down_sp;
+	ev3_tm->ramp_down_sp = ms;
+
+	return 0;
 }
 
 static int legoev3_motor_get_speed_Kp(struct tacho_motor_device *tm)
@@ -1809,11 +1811,10 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 	.get_encoder_polarity	= legoev3_motor_get_encoder_polarity,
 	.set_encoder_polarity	= legoev3_motor_set_encoder_polarity,
 
-	.get_ramp_up_sp		  = legoev3_motor_get_ramp_up_sp,
-	.set_ramp_up_sp		  = legoev3_motor_set_ramp_up_sp,
-
-	.get_ramp_down_sp	  = legoev3_motor_get_ramp_down_sp,
-	.set_ramp_down_sp	  = legoev3_motor_set_ramp_down_sp,
+	.get_ramp_up_sp		= legoev3_motor_get_ramp_up_sp,
+	.set_ramp_up_sp		= legoev3_motor_set_ramp_up_sp,
+	.get_ramp_down_sp	= legoev3_motor_get_ramp_down_sp,
+	.set_ramp_down_sp	= legoev3_motor_set_ramp_down_sp,
 
 	.get_speed_Kp		= legoev3_motor_get_speed_Kp,
 	.set_speed_Kp		= legoev3_motor_set_speed_Kp,

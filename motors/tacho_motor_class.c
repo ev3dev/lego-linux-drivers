@@ -124,10 +124,18 @@
 *   to convert RPM or deg/sec to tacho counts per second.
 * .
 * `ramp_up_sp` (read/write)
-* : TODO
+* : Writing sets the ramp up setpoint. Reading returns the current value. Units
+*   are in milliseconds. When set to a value > 0, the motor will ramp the power
+*   sent to the motor from 0 to 100% duty cycle over the span of this setpoint
+*   when starting the motor. If the maximum duty cycle is limited by `duty_cycle_sp`
+*   or speed regulation, the actual ramp time duration will be less than the setpoint.
 * .
 * `ramp_down_sp` (read/write)
-* : TODO
+* : Writing sets the ramp down setpoint. Reading returns the current value. Units
+*   are in milliseconds. When set to a value > 0, the motor will ramp the power
+*   sent to the motor from 100% duty cycle down to 0 over the span of this setpoint
+*   when stopping the motor. If the starting duty cycle is less than 100%, the
+*   ramp time duration will be less than the full span of the setpoint.
 * .
 * `speed_regulation` (read/write)
 * : Turns speed regulation on or off. If speed regulation is on, the motor
@@ -538,48 +546,83 @@ static ssize_t encoder_polarity_store(struct device *dev,
 	return -EINVAL;
 }
 
-static ssize_t tacho_motor_show_ramp_up_sp(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t ramp_up_sp_show(struct device *dev, struct device_attribute *attr,
+			       char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int ret;
 
-	return sprintf(buf, "%d\n", tm->ops->get_ramp_up_sp(tm));
+	if (!tm->ops->get_ramp_up_sp)
+		return -EOPNOTSUPP;
+
+	ret = tm->ops->get_ramp_up_sp(tm);
+	if (ret < 0)
+		return ret;
+
+	return sprintf(buf, "%d\n", ret);
 }
 
-static ssize_t tacho_motor_store_ramp_up_sp(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+static ssize_t ramp_up_sp_store(struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int err, ms;
 
-        char *end;
-        long ramp_up_sp = simple_strtol(buf, &end, 0);
+	if (!tm->ops->set_ramp_up_sp)
+		return -EOPNOTSUPP;
 
-        if ((end == buf) || (ramp_up_sp < 0) || (ramp_up_sp > 10000))
-                return -EINVAL;
+	err = kstrtoint(buf, 10, &ms);
+	if (err < 0)
+		return err;
 
-        tm->ops->set_ramp_up_sp(tm, ramp_up_sp);
+	if (ms < 0 || ms > 10000)
+		return -EINVAL;
 
-        return size;
+	err = tm->ops->set_ramp_up_sp(tm, ms);
+	if (err < 0)
+		return err;
+
+	return size;
 }
 
-static ssize_t tacho_motor_show_ramp_down_sp(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t ramp_down_sp_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int ret;
 
-	return sprintf(buf, "%d\n", tm->ops->get_ramp_down_sp(tm));
+	if (!tm->ops->get_ramp_down_sp)
+		return -EOPNOTSUPP;
+
+	ret = tm->ops->get_ramp_down_sp(tm);
+	if (ret < 0)
+		return ret;
+
+	return sprintf(buf, "%d\n", ret);
 }
 
-static ssize_t tacho_motor_store_ramp_down_sp(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+static ssize_t ramp_down_sp_store(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int err, ms;
 
-        char *end;
-        long ramp_down_sp = simple_strtol(buf, &end, 0);
+	if (!tm->ops->set_ramp_down_sp)
+		return -EOPNOTSUPP;
 
-        if ((end == buf) || (ramp_down_sp < 0) || (ramp_down_sp > 10000))
-                return -EINVAL;
+	err = kstrtoint(buf, 10, &ms);
+	if (err < 0)
+		return err;
 
-        tm->ops->set_ramp_down_sp(tm, ramp_down_sp);
+	if (ms < 0 || ms > 10000)
+		return -EINVAL;
 
-        return size;
+	err = tm->ops->set_ramp_down_sp(tm, ms);
+	if (err < 0)
+		return err;
+
+	return size;
 }
 
 static ssize_t duty_cycle_sp_show(struct device *dev,
@@ -726,7 +769,6 @@ DEVICE_ATTR_RW(duty_cycle_sp);
 DEVICE_ATTR_RW(speed_sp);
 DEVICE_ATTR_RW(time_sp);
 DEVICE_ATTR_RW(position_sp);
-
 DEVICE_ATTR_RO(commands);
 DEVICE_ATTR_WO(command);
 DEVICE_ATTR_RW(speed_regulation);
@@ -734,9 +776,8 @@ DEVICE_ATTR_RO(stop_commands);
 DEVICE_ATTR_RW(stop_command);
 DEVICE_ATTR_RW(polarity);
 DEVICE_ATTR_RW(encoder_polarity);
-
-DEVICE_ATTR(ramp_up_sp, S_IRUGO | S_IWUSR, tacho_motor_show_ramp_up_sp, tacho_motor_store_ramp_up_sp);
-DEVICE_ATTR(ramp_down_sp, S_IRUGO | S_IWUSR, tacho_motor_show_ramp_down_sp, tacho_motor_store_ramp_down_sp);
+DEVICE_ATTR_RW(ramp_up_sp);
+DEVICE_ATTR_RW(ramp_down_sp);
 
 static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_driver_name.attr,
