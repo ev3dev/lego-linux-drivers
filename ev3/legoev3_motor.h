@@ -51,6 +51,7 @@ struct legoev3_motor_pid_k {
  * @clock_ticks_per_sample: Number of clock ticks to use in sample calculations.
  * @max_tacho_count_per_sec: Maximum number of tacho counts possible in one
  * 	second (at max speed).
+ * @count_per_rot: The number of tacho counts in one rotation of the motor.
  * @encoder_polarity: Set to DC_MOTOR_POLARITY_INVERTED for motors with inverted
  * 	tacho outputs.
  */
@@ -61,6 +62,7 @@ struct legoev3_motor_info {
 	/* TODO: clock_ticks_per_sample needs to be converted to usec */
 	int clock_ticks_per_sample;
 	int max_tacho_count_per_sec;
+	int count_per_rot;
 	enum dc_motor_polarity encoder_polarity;
 };
 

@@ -36,6 +36,12 @@
 * is incremented each time a motor is loaded (it is not related to which port
 * the motor is plugged in to).
 * .
+* `count_per_rot` (read-only)
+* : Returns the number of tacho counts in one rotation of the motor. Tacho counts
+*   are used by the position and speed attributes, so you can use this value
+*   to convert rotations or degrees to tacho counts. In the case of linear
+*   actuators, the units here will be counts per centimeter.
+* .
 * `driver_name` (read-only)
 * : Returns the name of the driver that provides this tacho motor device.
 * .
@@ -276,6 +282,19 @@ static ssize_t tacho_motor_show_state(struct device *dev, struct device_attribut
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
 	return sprintf(buf, "%s\n", tacho_motor_states[tm->ops->get_state(tm)].name);
+}
+
+static ssize_t count_per_rot_show(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int err, count_per_rot;
+
+	err = tm->ops->get_count_per_rot(tm, &count_per_rot);
+	if (err < 0)
+		return err;
+
+	return sprintf(buf, "%d\n", count_per_rot);
 }
 
 static ssize_t duty_cycle_show(struct device *dev, struct device_attribute *attr,
@@ -797,6 +816,7 @@ DEVICE_ATTR_RO(driver_name);
 DEVICE_ATTR_RO(port_name);
 DEVICE_ATTR_RW(position);
 DEVICE_ATTR(state, S_IRUGO, tacho_motor_show_state, NULL);
+DEVICE_ATTR_RO(count_per_rot);
 DEVICE_ATTR_RO(duty_cycle);
 DEVICE_ATTR_RO(speed);
 DEVICE_ATTR_RW(duty_cycle_sp);
@@ -830,6 +850,7 @@ static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_port_name.attr,
 	&dev_attr_position.attr,
 	&dev_attr_state.attr,
+	&dev_attr_count_per_rot.attr,
 	&dev_attr_duty_cycle.attr,
 	&dev_attr_speed.attr,
 	&dev_attr_duty_cycle_sp.attr,

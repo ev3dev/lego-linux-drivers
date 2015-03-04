@@ -24,6 +24,7 @@ const struct legoev3_motor_info legoev3_motor_defs[] = {
 		.speed_pid_k		= { .p = 1000, .i = 60, .d = 0 },
 		.clock_ticks_per_sample	= 3300000,
 		.max_tacho_count_per_sec = 1200,
+		.count_per_rot		= 360,
 	},
 	[LEGO_EV3_MEDIUM_MOTOR] = {
 		.name			= LEGO_EV3_MEDIUM_MOTOR_NAME,
@@ -31,6 +32,7 @@ const struct legoev3_motor_info legoev3_motor_defs[] = {
 		.speed_pid_k		= { .p = 1000, .i = 60, .d = 0 },
 		.clock_ticks_per_sample	= 2062500,
 		.max_tacho_count_per_sec = 900,
+		.count_per_rot		= 360,
 	},
 	[FIRGELLI_L12_EV3] = {
 		.name			= FIRGELLI_L12_EV3_NAME,
@@ -38,6 +40,7 @@ const struct legoev3_motor_info legoev3_motor_defs[] = {
 		.speed_pid_k		= { .p = 1000, .i = 60, .d = 0 },
 		.clock_ticks_per_sample	= 3300000,
 		.max_tacho_count_per_sec = 1200,
+		.count_per_rot		= 360, /* TODO: need to get value in count per cm */
 		.encoder_polarity	= DC_MOTOR_POLARITY_INVERTED,
 	},
 };

@@ -86,8 +86,8 @@ struct tacho_motor_ops {
 
 	int  (*get_state)(struct tacho_motor_device *tm);
 
+	int (*get_count_per_rot)(struct tacho_motor_device *tm, int *count_per_rot);
 	int (*get_duty_cycle)(struct tacho_motor_device *tm, int *duty_cycle);
-
 	int (*get_speed)(struct tacho_motor_device *tm, int *speed);
 
 	int (*get_duty_cycle_sp)(struct tacho_motor_device *tm, int *duty_cycle);

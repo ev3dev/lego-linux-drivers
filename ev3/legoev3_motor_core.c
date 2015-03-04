@@ -1388,6 +1388,17 @@ static int legoev3_motor_set_position(struct tacho_motor_device *tm, long positi
 	return 0;
 }
 
+static int legoev3_motor_get_count_per_rot(struct tacho_motor_device *tm,
+					   int *count_per_rot)
+{
+	struct legoev3_motor_data *ev3_tm =
+			container_of(tm, struct legoev3_motor_data, tm);
+
+	*count_per_rot = ev3_tm->info->count_per_rot;
+
+	return 0;
+}
+
 static int legoev3_motor_get_duty_cycle(struct tacho_motor_device *tm,
 					int *duty_cycle)
 {
@@ -1776,6 +1787,7 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 	.set_position		= legoev3_motor_set_position,
 
 	.get_state		= legoev3_motor_get_state,
+	.get_count_per_rot	= legoev3_motor_get_count_per_rot,
 	.get_duty_cycle		= legoev3_motor_get_duty_cycle,
 	.get_speed		= legoev3_motor_get_speed,
 
