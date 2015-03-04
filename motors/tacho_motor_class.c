@@ -104,7 +104,10 @@
 * : Returns a space-separated list of valid position modes.
 * .
 * `position_sp` (read/write)
-* : TODO
+* : Writing specifies the target position for the `run-to-abs-pos` and `run-to-rel-pos`
+*   commands. Reading returns the current value. Units are in tacho counts. You
+*   can use the value returned by `counts_per_rot` to convert tacho counts to/from
+*   rotations or degrees.
 * .
 * `speed` (read-only)
 * : Returns the current motor speed in tacho counts per second. Not, this is
@@ -163,7 +166,9 @@
 *   back" to maintain its position.
 * .
 * `time_sp` (read/write)
-* : TODO
+* : Writing specifies the amount of time the motor will run when using the
+*   `run-timed` command. Reading returns the current value. Units are in
+*   milliseconds.
 * .
 * [old wiki]: https://github.com/ev3dev/ev3dev/wiki/Using-Motors
 */
@@ -255,12 +260,11 @@ ssize_t position_store(struct device *dev, struct device_attribute *attr,
 		       const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	char *end;
-	long position = simple_strtol(buf, &end, 0);
-	int err;
+	int err, position;
 
-	if (end == buf)
-		return -EINVAL;
+	err = kstrtoint(buf, 10, &position);
+	if (err < 0)
+		return err;
 
 	err = tm->ops->set_position(tm, position);
 	if (err < 0)
@@ -709,48 +713,70 @@ static ssize_t speed_sp_store(struct device *dev, struct device_attribute *attr,
 	return size;
 }
 
-static ssize_t tacho_motor_show_time_sp(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t time_sp_show(struct device *dev, struct device_attribute *attr,
+			    char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int ret;
 
-	return sprintf(buf, "%d\n", tm->ops->get_time_sp(tm));
+	ret = tm->ops->get_time_sp(tm);
+	if (ret < 0)
+		return ret;
+
+	return sprintf(buf, "%d\n", ret);
 }
 
-static ssize_t tacho_motor_store_time_sp(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+static ssize_t time_sp_store(struct device *dev, struct device_attribute *attr,
+			     const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int err, time;
 
-        char *end;
-        long time_sp = simple_strtol(buf, &end, 0);
+	err = kstrtoint(buf, 10, &time);
+	if (err < 0)
+		return err;
 
-        if ((end == buf) || (time_sp < 0))
-                return -EINVAL;
+	if (time < 0)
+		return -EINVAL;
 
-        tm->ops->set_time_sp(tm, time_sp);
+	err = tm->ops->set_time_sp(tm, time);
+	if (err < 0)
+		return err;
 
-        return size;
+	return size;
 }
 
-static ssize_t tacho_motor_show_position_sp(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t position_sp_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int err;
+	long position;
 
-	return sprintf(buf, "%d\n", tm->ops->get_position_sp(tm));
+	err = tm->ops->get_position_sp(tm, &position);
+	if (err < 0)
+		return err;
+
+	return sprintf(buf, "%ld\n", position);
 }
 
-static ssize_t tacho_motor_store_position_sp(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+static ssize_t position_sp_store(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int err;
+	long position;
 
-        char *end;
-        long position_sp = simple_strtol(buf, &end, 0);
+	err = kstrtol(buf, 10, &position);
+	if (err < 0)
+		return err;
 
-        if (end == buf)
-                return -EINVAL;
+	err = tm->ops->set_position_sp(tm, position);
+	if (err < 0)
+		return err;
 
-        tm->ops->set_position_sp(tm, position_sp);
-
-        return size;
+	return size;
 }
 
 DEVICE_ATTR_RO(driver_name);
@@ -762,8 +788,8 @@ DEVICE_ATTR_RO(duty_cycle);
 DEVICE_ATTR_RO(speed);
 DEVICE_ATTR_RW(duty_cycle_sp);
 DEVICE_ATTR_RW(speed_sp);
-DEVICE_ATTR(time_sp, S_IRUGO | S_IWUSR, tacho_motor_show_time_sp, tacho_motor_store_time_sp);
-DEVICE_ATTR(position_sp, S_IRUGO | S_IWUSR, tacho_motor_show_position_sp, tacho_motor_store_position_sp);
+DEVICE_ATTR_RW(time_sp);
+DEVICE_ATTR_RW(position_sp);
 
 DEVICE_ATTR_RO(commands);
 DEVICE_ATTR_WO(command);

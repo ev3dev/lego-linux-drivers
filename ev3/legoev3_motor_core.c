@@ -1485,29 +1485,36 @@ static int legoev3_motor_get_time_sp(struct tacho_motor_device *tm)
 	return ev3_tm->time_sp;
 }
 
-static void legoev3_motor_set_time_sp(struct tacho_motor_device *tm, long time_sp)
+static int legoev3_motor_set_time_sp(struct tacho_motor_device *tm, int time)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	ev3_tm->time_sp = time_sp;
+	ev3_tm->time_sp = time;
+
+	return 0;
 }
 
-static int legoev3_motor_get_position_sp(struct tacho_motor_device *tm)
+static int legoev3_motor_get_position_sp(struct tacho_motor_device *tm,
+					 long *position)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	return ev3_tm->position_sp;
+	*position = ev3_tm->position_sp;
+
+	return 0;
 }
 
-static void legoev3_motor_set_position_sp(struct tacho_motor_device *tm,
-					  long position_sp)
+static int legoev3_motor_set_position_sp(struct tacho_motor_device *tm,
+					 long position)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	ev3_tm->position_sp = position_sp;
+	ev3_tm->position_sp = position;
+
+	return 0;
 }
 
 static int legoev3_motor_get_regulation_mode(struct tacho_motor_device *tm)
@@ -1777,11 +1784,11 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 	.get_speed_sp		= legoev3_motor_get_speed_sp,
 	.set_speed_sp		= legoev3_motor_set_speed_sp,
 
-	.get_time_sp		  = legoev3_motor_get_time_sp,
-	.set_time_sp		  = legoev3_motor_set_time_sp,
+	.get_time_sp		= legoev3_motor_get_time_sp,
+	.set_time_sp		= legoev3_motor_set_time_sp,
 
-	.get_position_sp	  = legoev3_motor_get_position_sp,
-	.set_position_sp	  = legoev3_motor_set_position_sp,
+	.get_position_sp	= legoev3_motor_get_position_sp,
+	.set_position_sp	= legoev3_motor_set_position_sp,
 
 	.get_commands		= legoev3_motor_get_commands,
 	.send_command		= legoev3_motor_send_command,

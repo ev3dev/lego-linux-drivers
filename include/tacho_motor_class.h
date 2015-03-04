@@ -96,11 +96,11 @@ struct tacho_motor_ops {
 	int (*get_speed_sp)(struct tacho_motor_device *tm, int *speed);
 	int (*set_speed_sp)(struct tacho_motor_device *tm, int speed);
 
-	int  (*get_time_sp)(struct tacho_motor_device *tm);
-	void (*set_time_sp)(struct tacho_motor_device *tm, long time_sp);
+	int (*get_time_sp)(struct tacho_motor_device *tm);
+	int (*set_time_sp)(struct tacho_motor_device *tm, int time);
 
-	int  (*get_position_sp)(struct tacho_motor_device *tm);
-	void (*set_position_sp)(struct tacho_motor_device *tm, long position_sp);
+	int (*get_position_sp)(struct tacho_motor_device *tm, long *position);
+	int (*set_position_sp)(struct tacho_motor_device *tm, long position);
 
 	unsigned (*get_commands)(struct tacho_motor_device *tm);
 	int (*send_command)(struct tacho_motor_device *tm, enum tacho_motor_command command);
