@@ -19,6 +19,7 @@
 
 #include <linux/device.h>
 
+#include <dc_motor_class.h>
 #include <lego_port_class.h>
 
 enum tacho_motor_speed_regulation {
@@ -114,11 +115,11 @@ struct tacho_motor_ops {
  	int  (*get_position_mode)(struct tacho_motor_device *tm);
  	void (*set_position_mode)(struct tacho_motor_device *tm, long position_mode);
 
- 	int  (*get_polarity_mode)(struct tacho_motor_device *tm);
- 	void (*set_polarity_mode)(struct tacho_motor_device *tm, long polarity_mode);
+	int (*get_polarity)(struct tacho_motor_device *tm);
+	int (*set_polarity)(struct tacho_motor_device *tm, enum dc_motor_polarity polarity);
 
- 	int  (*get_encoder_mode)(struct tacho_motor_device *tm);
- 	void (*set_encoder_mode)(struct tacho_motor_device *tm, long encoder_mode);
+	int (*get_encoder_polarity)(struct tacho_motor_device *tm);
+	int (*set_encoder_polarity)(struct tacho_motor_device *tm, enum dc_motor_polarity polarity);
 
  	int  (*get_speed_regulation_P)(struct tacho_motor_device *tm);
  	void (*set_speed_regulation_P)(struct tacho_motor_device *tm, long speed_regulation_P);

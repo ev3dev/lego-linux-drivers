@@ -154,7 +154,7 @@ struct legoev3_motor_data {
 	enum tacho_motor_speed_regulation regulation_mode;
 	enum tacho_motor_stop_command stop_command;
 	long position_mode;
-	enum dc_motor_polarity polarity_mode;
+	enum dc_motor_polarity motor_polarity;
 	enum dc_motor_polarity encoder_polarity;
 };
 
@@ -294,7 +294,7 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 		 * like the truth table
 		 */
 
-		if (ev3_tm->polarity_mode == DC_MOTOR_POLARITY_NORMAL) {
+		if (ev3_tm->motor_polarity == DC_MOTOR_POLARITY_NORMAL) {
 			if (ev3_tm->encoder_polarity == DC_MOTOR_POLARITY_NORMAL) {
 				next_direction = (int_state == dir_state) ? FORWARD : REVERSE;
 			} else {
@@ -374,12 +374,12 @@ void legoev3_motor_update_output(struct legoev3_motor_data *ev3_tm)
 	int err;
 
 	if (ev3_tm->power > 0) {
-		motor_ops->set_direction(context, ev3_tm->polarity_mode);
+		motor_ops->set_direction(context, ev3_tm->motor_polarity);
 		motor_ops->set_command(context, DC_MOTOR_COMMAND_RUN);
 		if (ev3_tm->regulation_mode == TM_SPEED_REGULATION_OFF && ev3_tm->power < 10)
 			ev3_tm->power = 10;
 	} else if (ev3_tm->power < 0) {
-		motor_ops->set_direction(context, !ev3_tm->polarity_mode);
+		motor_ops->set_direction(context, !ev3_tm->motor_polarity);
 		motor_ops->set_command(context, DC_MOTOR_COMMAND_RUN);
 		if (ev3_tm->regulation_mode == TM_SPEED_REGULATION_OFF && ev3_tm->power > -10)
 			ev3_tm->power = -10;
@@ -474,7 +474,7 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 	ev3_tm->regulation_mode		= TM_SPEED_REGULATION_OFF;
 	ev3_tm->stop_command		= TM_STOP_COMMAND_COAST;
 	ev3_tm->position_mode		= TM_POSITION_ABSOLUTE;
-	ev3_tm->polarity_mode		= DC_MOTOR_POLARITY_NORMAL;
+	ev3_tm->motor_polarity		= DC_MOTOR_POLARITY_NORMAL;
 	ev3_tm->encoder_polarity	= ev3_tm->info->encoder_polarity;
 };
 
@@ -1543,25 +1543,27 @@ static int legoev3_motor_set_stop_command(struct tacho_motor_device *tm,
 	return 0;
 }
 
-static int legoev3_motor_get_polarity_mode(struct tacho_motor_device *tm)
+static int legoev3_motor_get_polarity(struct tacho_motor_device *tm)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	return ev3_tm->polarity_mode;
+	return ev3_tm->motor_polarity;
 }
 
-static void legoev3_motor_set_polarity_mode(struct tacho_motor_device *tm,
-					    long polarity_mode)
+static int legoev3_motor_set_polarity(struct tacho_motor_device *tm,
+				      enum dc_motor_polarity polarity)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	ev3_tm->polarity_mode = polarity_mode;
+	ev3_tm->motor_polarity = polarity;
 	legoev3_motor_update_output(ev3_tm);
+
+	return 0;
 }
 
-static int legoev3_motor_get_encoder_mode(struct tacho_motor_device *tm)
+static int legoev3_motor_get_encoder_polarity(struct tacho_motor_device *tm)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
@@ -1569,13 +1571,15 @@ static int legoev3_motor_get_encoder_mode(struct tacho_motor_device *tm)
 	return ev3_tm->encoder_polarity;
 }
 
-static void legoev3_motor_set_encoder_mode(struct tacho_motor_device *tm,
-					   long encoder_mode)
+static int legoev3_motor_set_encoder_polarity(struct tacho_motor_device *tm,
+					      enum dc_motor_polarity polarity)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	ev3_tm->encoder_polarity = encoder_mode;
+	ev3_tm->encoder_polarity = polarity;
+
+	return 0;
 }
 
 static int legoev3_motor_get_ramp_up_sp(struct tacho_motor_device *tm)
@@ -1790,11 +1794,11 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 	.get_position_mode	  = legoev3_motor_get_position_mode,
 	.set_position_mode	  = legoev3_motor_set_position_mode,
 
-	.get_polarity_mode	  = legoev3_motor_get_polarity_mode,
-	.set_polarity_mode	  = legoev3_motor_set_polarity_mode,
+	.get_polarity		= legoev3_motor_get_polarity,
+	.set_polarity		= legoev3_motor_set_polarity,
 
-	.get_encoder_mode	  = legoev3_motor_get_encoder_mode,
-	.set_encoder_mode	  = legoev3_motor_set_encoder_mode,
+	.get_encoder_polarity	= legoev3_motor_get_encoder_polarity,
+	.set_encoder_polarity	= legoev3_motor_set_encoder_polarity,
 
 	.get_ramp_up_sp		  = legoev3_motor_get_ramp_up_sp,
 	.set_ramp_up_sp		  = legoev3_motor_set_ramp_up_sp,

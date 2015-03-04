@@ -46,20 +46,18 @@
 * `duty_cycle_sp` (read/write)
 * : TODO
 * .
-* `encoder_mode` (read/write)
-* : Sets the polarity of the rotary encoder. This should only be changed for
-*   motors that are "wired backwards", like the Firgelli Linear Actuators.
+* `encoder_polarity` (read/write)
+* : Sets the polarity of the rotary encoder. This is an advanced feature to all
+*   use of motors that send inverted encoder signals to the EV3. This should
+*   be set correctly by the driver of a device. It You only need to change this
+*   value if you are using a unsupported device. Valid values are `normal` and
+*   `inverted`.
 * .
-* `encoder_modes` (read-only)
-* : Returns a space-separated list of valid encoder modes (`normal inverted`).
-* .
-* `polarity_mode` (read/write)
+* `polarity` (read/write)
 * : Sets the polarity of the motor. With `normal` polarity, a positive duty
 *   cycle will cause the motor to rotate clockwise. With `inverted` polarity,
 *   a positive duty cycle will cause the motor to rotate counter-clockwise.
-* .
-* `polarity_modes` (read-only)
-* : Returns a space-separated list of valid polarity modes (`normal inverted`).
+*   Valid values are `normal` and `inverted`.
 * .
 * `port_name` (read-only)
 * : Returns the name of the port that the motor is connected to.
@@ -456,42 +454,30 @@ static ssize_t tacho_motor_store_position_mode(struct device *dev, struct device
         return size;
 }
 
-static ssize_t tacho_motor_show_polarity_modes(struct device *dev,
-					       struct device_attribute *attr,
-					       char *buf)
-{
-	int i;
-	int size = 0;
-
-	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++)
-		size += sprintf(buf+size, "%s ", dc_motor_polarity_values[i]);
-
-	buf[size - 1]= '\n';
-
-	return size;
-}
-
-static ssize_t tacho_motor_show_polarity_mode(struct device *dev,
-					      struct device_attribute *attr,
-					      char *buf)
+static ssize_t polarity_show(struct device *dev, struct device_attribute *attr,
+			     char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int ret;
 
-	return sprintf(buf, "%s\n",
-		       dc_motor_polarity_values[tm->ops->get_polarity_mode(tm)]);
+	ret = tm->ops->get_polarity(tm);
+	if (ret < 0)
+		return ret;
+
+	return sprintf(buf, "%s\n", dc_motor_polarity_values[ret]);
 }
 
-static ssize_t tacho_motor_store_polarity_mode(struct device *dev,
-					       struct device_attribute *attr,
-					       const char *buf, size_t size)
+static ssize_t polarity_store(struct device *dev, struct device_attribute *attr,
+			      const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-	int i;
+	int i, err;
 
 	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++) {
 		if (sysfs_streq(buf, dc_motor_polarity_values[i])) {
-			tm->ops->set_polarity_mode(tm, i);
+			err = tm->ops->set_polarity(tm, i);
+			if (err < 0)
+				return err;
 			return size;
 		}
 	}
@@ -499,42 +485,31 @@ static ssize_t tacho_motor_store_polarity_mode(struct device *dev,
 	return -EINVAL;
 }
 
-static ssize_t tacho_motor_show_encoder_modes(struct device *dev,
-					      struct device_attribute *attr,
-					      char *buf)
-{
-	int i;
-	int size = 0;
-
-	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++)
-		size += sprintf(buf+size, "%s ", dc_motor_polarity_values[i]);
-
-	buf[size - 1]= '\n';
-
-	return size;
-}
-
-static ssize_t tacho_motor_show_encoder_mode(struct device *dev,
-					     struct device_attribute *attr,
-					     char *buf)
+static ssize_t encoder_polarity_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int ret;
 
-	return sprintf(buf, "%s\n",
-		       dc_motor_polarity_values[tm->ops->get_encoder_mode(tm)]);
+	ret = tm->ops->get_encoder_polarity(tm);
+	if (ret < 0)
+		return ret;
+
+	return sprintf(buf, "%s\n", dc_motor_polarity_values[ret]);
 }
 
-static ssize_t tacho_motor_store_encoder_mode(struct device *dev,
-					      struct device_attribute *attr,
-					      const char *buf, size_t size)
+static ssize_t encoder_polarity_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-	int i;
+	int i, err;
 
 	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++) {
 		if (sysfs_streq(buf, dc_motor_polarity_values[i])) {
-			tm->ops->set_encoder_mode(tm, i);
+			err = tm->ops->set_encoder_polarity(tm, i);
+			if (err < 0)
+				return err;
 			return size;
 		}
 	}
@@ -796,10 +771,8 @@ DEVICE_ATTR_RO(stop_commands);
 DEVICE_ATTR_RW(stop_command);
 DEVICE_ATTR(position_modes, S_IRUGO, tacho_motor_show_position_modes, NULL);
 DEVICE_ATTR(position_mode, S_IRUGO | S_IWUSR, tacho_motor_show_position_mode, tacho_motor_store_position_mode);
-DEVICE_ATTR(polarity_modes, S_IRUGO, tacho_motor_show_polarity_modes, NULL);
-DEVICE_ATTR(polarity_mode, S_IRUGO | S_IWUSR, tacho_motor_show_polarity_mode, tacho_motor_store_polarity_mode);
-DEVICE_ATTR(encoder_modes, S_IRUGO, tacho_motor_show_encoder_modes, NULL);
-DEVICE_ATTR(encoder_mode, S_IRUGO | S_IWUSR, tacho_motor_show_encoder_mode, tacho_motor_store_encoder_mode);
+DEVICE_ATTR_RW(polarity);
+DEVICE_ATTR_RW(encoder_polarity);
 
 DEVICE_ATTR(ramp_up_sp, S_IRUGO | S_IWUSR, tacho_motor_show_ramp_up_sp, tacho_motor_store_ramp_up_sp);
 DEVICE_ATTR(ramp_down_sp, S_IRUGO | S_IWUSR, tacho_motor_show_ramp_down_sp, tacho_motor_store_ramp_down_sp);
@@ -830,10 +803,8 @@ static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_stop_command.attr,
 	&dev_attr_position_modes.attr,
 	&dev_attr_position_mode.attr,
-	&dev_attr_polarity_modes.attr,
-	&dev_attr_polarity_mode.attr,
-	&dev_attr_encoder_modes.attr,
-	&dev_attr_encoder_mode.attr,
+	&dev_attr_polarity.attr,
+	&dev_attr_encoder_polarity.attr,
 	&dev_attr_ramp_up_sp.attr,
 	&dev_attr_ramp_down_sp.attr,
 	&dev_attr_speed_regulation_P.attr,
