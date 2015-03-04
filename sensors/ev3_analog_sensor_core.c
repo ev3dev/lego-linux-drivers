@@ -107,11 +107,6 @@ static int ev3_analog_sensor_remove(struct lego_device *ldev)
 	return 0;
 }
 
-#define EV3_ANALOG_SENSOR_ID(type) {	\
-	.name		= type##_NAME,	\
-	.driver_data	= type,		\
-}
-
 #define EV3_ANALOG_SENSOR_GENERIC(type) {		\
 	.name		= type##_NAME,			\
 	.driver_data	= GENERIC_EV3_ANALOG_SENSOR,	\
@@ -119,7 +114,7 @@ static int ev3_analog_sensor_remove(struct lego_device *ldev)
 
 static struct lego_device_id ev3_analog_sensor_device_ids [] = {
 	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_01),
-	EV3_ANALOG_SENSOR_ID(LEGO_EV3_TOUCH_SENSOR),
+	LEGO_DEVICE_ID(LEGO_EV3_TOUCH_SENSOR),
 	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_03),
 	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_04),
 	EV3_ANALOG_SENSOR_GENERIC(EV3_ANALOG_SENSOR_ID_05),

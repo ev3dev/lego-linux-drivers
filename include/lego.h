@@ -27,6 +27,12 @@ struct lego_device_id {
 	kernel_ulong_t driver_data;
 };
 
+#define LEGO_DEVICE_ID(_id)		\
+	{				\
+		.name = _id##_NAME,	\
+		.driver_data = _id,	\
+	}
+
 struct lego_device {
 	struct device dev;
 	char name[LEGO_NAME_SIZE + 1];
@@ -45,12 +51,6 @@ extern struct lego_device *lego_device_register(const char *name,
 						void *platform_data,
 						size_t platform_data_size);
 extern void lego_device_unregister(struct lego_device *ldev);
-
-#define LEGO_DEVICE_ID(_name, _driver_data)	\
-	{					\
-		.name = _name,			\
-		.type_id = _driver_data,	\
-	}
 
 struct lego_device_driver {
 	int (*probe)(struct lego_device *ldev);
