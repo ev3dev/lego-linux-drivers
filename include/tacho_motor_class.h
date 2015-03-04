@@ -28,24 +28,24 @@ enum tacho_motor_speed_regulation {
 	TM_NUM_SPEED_REGULATION_MODES,
 };
 
+enum tacho_motor_command {
+	TM_COMMAND_RUN_FOREVER,
+	TM_COMMAND_RUN_TO_ABS_POS,
+	TM_COMMAND_RUN_TO_REL_POS,
+	TM_COMMAND_RUN_TIMED,
+	TM_COMMAND_STOP,
+	TM_COMMAND_RESET,
+	NUM_TM_COMMANDS
+};
+
+#define IS_POS_CMD(command) ((command == TM_COMMAND_RUN_TO_ABS_POS) || (command == TM_COMMAND_RUN_TO_ABS_POS))
+#define IS_RUN_CMD(command) ((command != TM_COMMAND_STOP) && (command != TM_COMMAND_RESET))
+
 enum tacho_motor_stop_command {
 	TM_STOP_COMMAND_COAST,
 	TM_STOP_COMMAND_BRAKE,
 	TM_STOP_COMMAND_HOLD,
 	TM_NUM_STOP_COMMANDS,
-};
-
-enum tacho_motor_position_mode {
-	TM_POSITION_ABSOLUTE,
-	TM_POSITION_RELATIVE,
-	TM_NUM_POSITION_MODES,
-};
-
-enum tacho_motor_run_mode {
-	TM_RUN_FOREVER,
-	TM_RUN_TIME,
-	TM_RUN_POSITION,
-	TM_NUM_RUN_MODES,
 };
 
 enum tacho_motor_type {
@@ -102,8 +102,8 @@ struct tacho_motor_ops {
 	int  (*get_position_sp)(struct tacho_motor_device *tm);
 	void (*set_position_sp)(struct tacho_motor_device *tm, long position_sp);
 
-	int  (*get_run_mode)(struct tacho_motor_device *tm);
-	void (*set_run_mode)(struct tacho_motor_device *tm, long run_mode);
+	unsigned (*get_commands)(struct tacho_motor_device *tm);
+	int (*send_command)(struct tacho_motor_device *tm, enum tacho_motor_command command);
 
 	int (*get_speed_regulation)(struct tacho_motor_device *tm);
 	int (*set_regulation_mode)(struct tacho_motor_device *tm, enum tacho_motor_speed_regulation speed_regulation);
@@ -111,9 +111,6 @@ struct tacho_motor_ops {
 	unsigned (*get_stop_commands)(struct tacho_motor_device *tm);
 	int (*get_stop_command)(struct tacho_motor_device *tm);
 	int (*set_stop_command)(struct tacho_motor_device *tm, enum tacho_motor_stop_command stop_command);
-
- 	int  (*get_position_mode)(struct tacho_motor_device *tm);
- 	void (*set_position_mode)(struct tacho_motor_device *tm, long position_mode);
 
 	int (*get_polarity)(struct tacho_motor_device *tm);
 	int (*set_polarity)(struct tacho_motor_device *tm, enum dc_motor_polarity polarity);
@@ -135,11 +132,6 @@ struct tacho_motor_ops {
 
  	int  (*get_ramp_down_sp)(struct tacho_motor_device *tm);
  	void (*set_ramp_down_sp)(struct tacho_motor_device *tm, long ramp_down_sp);
- 
-	int  (*get_run)(struct tacho_motor_device *tm);
-	void (*set_run)(struct tacho_motor_device *tm, long run);
-
-	void (*set_reset)(struct tacho_motor_device *tm, long reset);
 };
 
 extern void tacho_motor_notify_state_change(struct tacho_motor_device *);

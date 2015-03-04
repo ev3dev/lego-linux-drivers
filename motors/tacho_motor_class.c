@@ -36,6 +36,27 @@
 * is incremented each time a motor is loaded (it is not related to which port
 * the motor is plugged in to).
 * .
+* `command` (write-only)
+* : Sends a command to the motor controller. See `commands` for a list of
+*   possible values.
+* .
+* `commands` (read-only)
+* : Returns a space separated list of commands that are supported by the motor
+*   controller. Possible values are `run-forever`, `run-to-abs-pos`, `run-to-rel-pos`,
+*   `run-timed`, `stop` and `reset`. Not all commands may be supported.
+*   `run-forever` will cause the motor to run until another command is sent.
+*   `run-to-abs-pos` will run to an absolute position specified by `position_sp`
+*   and then stop using the command specified in `stop_command`.
+*   `run-to-rel-pos` will run to a position relative to the current `position` value.
+*   The new position will be current `position` + `position_sp`. When the new
+*   position is reached, the motor will stop using the command specified by `stop_command`.
+*   `run-timed` will run the motor for the amount of time specified in `time_sp`
+*   and then stop the motor using the command specified by `stop_command`.
+*   `stop` will stop any of the run commands before they are complete using the
+*   command specified by `stop_command`.
+*   `reset` will reset all of the motor parameter attributes to their default value.
+*   This will also have the effect of stopping the motor.
+* .
 * `count_per_rot` (read-only)
 * : Returns the number of tacho counts in one rotation of the motor. Tacho counts
 *   are used by the position and speed attributes, so you can use this value
@@ -100,19 +121,6 @@
 * .
 * `ramp_down_sp` (read/write)
 * : TODO
-* .
-* `reset` (write-only)
-* : Writing `1` will reset all attributes to the default values.
-* .
-* `run` (read/write)
-* : Commands the motor to run or stop. Writing a `1` will cause the motor to
-*   run. Writing `0` will cause the motor to stop.
-* .
-* `run_mode` (read/write)
-* : TODO
-* .
-* `run_modes` (read-only)
-* : Returns a space-separated list of valid run modes.
 * .
 * `speed_regulation` (read/write)
 * : Turns speed regulation on or off. If speed regulation is on, the motor
@@ -183,15 +191,13 @@ tacho_motor_stop_command_names[TM_NUM_STOP_COMMANDS] = {
 	[TM_STOP_COMMAND_HOLD]      =  { "hold" },
 };
 
-static struct tacho_motor_value_names tacho_motor_position_modes[TM_NUM_POSITION_MODES] = {
-	[TM_POSITION_ABSOLUTE] =  { "absolute" },
-	[TM_POSITION_RELATIVE] =  { "relative" },
-};
-
-static struct tacho_motor_value_names tacho_motor_run_modes[TM_NUM_RUN_MODES] = {
-	[TM_RUN_FOREVER]   =  { "forever"  },
-	[TM_RUN_TIME]      =  { "time"     },
-	[TM_RUN_POSITION]  =  { "position" },
+static struct tacho_motor_value_names tacho_motor_command_names[] = {
+	[TM_COMMAND_RUN_FOREVER]	= { "run-forever" },
+	[TM_COMMAND_RUN_TO_ABS_POS]	= { "run-to-abs-pos" },
+	[TM_COMMAND_RUN_TO_REL_POS]	= { "run-to-rel-pos" },
+	[TM_COMMAND_RUN_TIMED]		= { "run-timed" },
+	[TM_COMMAND_STOP] 		= { "stop" },
+	[TM_COMMAND_RESET]		= { "reset" },
 };
 
 struct tacho_motor_type_item {
@@ -323,42 +329,49 @@ static ssize_t speed_show(struct device *dev, struct device_attribute *attr,
 	return sprintf(buf, "%d\n", speed);
 }
 
-static ssize_t tacho_motor_show_run_modes(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t commands_show(struct device *dev, struct device_attribute *attr,
+			     char *buf)
 {
-        unsigned int i;
-
+	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	unsigned command_flags;
+	int i;
 	int size = 0;
 
-	for (i=0; i<TM_NUM_RUN_MODES; ++i)
-		size += sprintf(buf+size, "%s ", tacho_motor_run_modes[i].name);
+	command_flags = tm->ops->get_commands(tm);
 
-	size += sprintf(buf+size, "\n");
+	for (i = 0; i < NUM_TM_COMMANDS; i++) {
+		if (command_flags & BIT(i))
+			size += sprintf(buf+size, "%s ",
+				tacho_motor_command_names[i].name);
+	}
 
-        return size;
+	buf[size - 1] = '\n';
+
+	return size;
 }
 
-static ssize_t tacho_motor_show_run_mode(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t command_store(struct device *dev, struct device_attribute *attr,
+			     const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int i, err;
 
-	return sprintf(buf, "%s\n", tacho_motor_run_modes[tm->ops->get_run_mode(tm)].name);
-}
+	for (i = 0; i < NUM_TM_COMMANDS; i++) {
+		if (sysfs_streq(buf, tacho_motor_command_names[i].name))
+			break;
+	}
 
-static ssize_t tacho_motor_store_run_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	if (i >= NUM_TM_COMMANDS)
+		return -EINVAL;
 
-        unsigned int i;
+	if (!(BIT(i) & tm->ops->get_commands(tm)))
+		return -EOPNOTSUPP;
 
-	for (i=0; i<TM_NUM_RUN_MODES; ++i)
-		if (sysfs_streq(buf, tacho_motor_run_modes[i].name)) break;
+	err = tm->ops->send_command(tm, i);
+	if (err < 0)
+		return err;
 
-	if (i >= TM_NUM_RUN_MODES)
-                return -EINVAL;
-
-        tm->ops->set_run_mode(tm, i);
-
-        return size;
+	return size;
 }
 
 static ssize_t speed_regulation_show(struct device *dev,
@@ -447,49 +460,14 @@ static ssize_t stop_command_store(struct device *dev,
 	if (i >= TM_NUM_STOP_COMMANDS)
 		return -EINVAL;
 
+	if (!(BIT(i) & tm->ops->get_stop_commands(tm)))
+		return -EOPNOTSUPP;
+
 	err = tm->ops->set_stop_command(tm, i);
 	if (err < 0)
 		return err;
 
 	return size;
-}
-
-static ssize_t tacho_motor_show_position_modes(struct device *dev, struct device_attribute *attr, char *buf)
-{
-        unsigned int i;
-
-	int size = 0;
-
-	for (i=0; i<TM_NUM_POSITION_MODES; ++i)
-		size += sprintf(buf+size, "%s ", tacho_motor_position_modes[i].name);
-
-	size += sprintf(buf+size, "\n");
-
-        return size;
-}
-
-static ssize_t tacho_motor_show_position_mode(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-	return sprintf(buf, "%s\n", tacho_motor_position_modes[tm->ops->get_position_mode(tm)].name);
-}
-
-static ssize_t tacho_motor_store_position_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-        unsigned int i;
-
-	for (i=0; i<TM_NUM_POSITION_MODES; ++i)
-		if (sysfs_streq( buf, tacho_motor_position_modes[i].name)) break;
-
-	if (i >= TM_NUM_POSITION_MODES)
-                return -EINVAL;
-
-        tm->ops->set_position_mode(tm, i);
-
-        return size;
 }
 
 static ssize_t polarity_show(struct device *dev, struct device_attribute *attr,
@@ -775,43 +753,6 @@ static ssize_t tacho_motor_store_position_sp(struct device *dev, struct device_a
         return size;
 }
 
-static ssize_t tacho_motor_show_run(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-	return sprintf(buf, "%d\n", tm->ops->get_run(tm));
-}
-
-static ssize_t tacho_motor_store_run(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-        char *end;
-        long run = simple_strtol(buf, &end, 0);
-
-        if ((end == buf) || (run > 1) || (run < 0))
-                return -EINVAL;
-
-        tm->ops->set_run(tm, run);
-
-        return size;
-}
-
-static ssize_t tacho_motor_store_reset(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-        char *end;
-        long reset = simple_strtol(buf, &end, 0);
-
-        if ((end == buf) || (reset != 1))
-                return -EINVAL;
-
-        tm->ops->set_reset(tm, reset);
-
-        return size;
-}
-
 DEVICE_ATTR_RO(driver_name);
 DEVICE_ATTR_RO(port_name);
 DEVICE_ATTR_RW(position);
@@ -824,13 +765,11 @@ DEVICE_ATTR_RW(speed_sp);
 DEVICE_ATTR(time_sp, S_IRUGO | S_IWUSR, tacho_motor_show_time_sp, tacho_motor_store_time_sp);
 DEVICE_ATTR(position_sp, S_IRUGO | S_IWUSR, tacho_motor_show_position_sp, tacho_motor_store_position_sp);
 
-DEVICE_ATTR(run_modes, S_IRUGO, tacho_motor_show_run_modes, NULL);
-DEVICE_ATTR(run_mode, S_IRUGO | S_IWUSR, tacho_motor_show_run_mode, tacho_motor_store_run_mode);
+DEVICE_ATTR_RO(commands);
+DEVICE_ATTR_WO(command);
 DEVICE_ATTR_RW(speed_regulation);
 DEVICE_ATTR_RO(stop_commands);
 DEVICE_ATTR_RW(stop_command);
-DEVICE_ATTR(position_modes, S_IRUGO, tacho_motor_show_position_modes, NULL);
-DEVICE_ATTR(position_mode, S_IRUGO | S_IWUSR, tacho_motor_show_position_mode, tacho_motor_store_position_mode);
 DEVICE_ATTR_RW(polarity);
 DEVICE_ATTR_RW(encoder_polarity);
 
@@ -840,10 +779,6 @@ DEVICE_ATTR(ramp_down_sp, S_IRUGO | S_IWUSR, tacho_motor_show_ramp_down_sp, tach
 DEVICE_ATTR(speed_regulation_P, S_IRUGO | S_IWUSR, tacho_motor_show_speed_regulation_P, tacho_motor_store_speed_regulation_P);
 DEVICE_ATTR(speed_regulation_I, S_IRUGO | S_IWUSR, tacho_motor_show_speed_regulation_I, tacho_motor_store_speed_regulation_I);
 DEVICE_ATTR(speed_regulation_D, S_IRUGO | S_IWUSR, tacho_motor_show_speed_regulation_D, tacho_motor_store_speed_regulation_D);
-
-DEVICE_ATTR(run, S_IRUGO | S_IWUSR, tacho_motor_show_run, tacho_motor_store_run);
-
-DEVICE_ATTR(reset, S_IWUSR, NULL, tacho_motor_store_reset);
 
 static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_driver_name.attr,
@@ -857,13 +792,11 @@ static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_speed_sp.attr,
 	&dev_attr_time_sp.attr,
 	&dev_attr_position_sp.attr,
-	&dev_attr_run_modes.attr,
-	&dev_attr_run_mode.attr,
+	&dev_attr_commands.attr,
+	&dev_attr_command.attr,
 	&dev_attr_speed_regulation.attr,
 	&dev_attr_stop_commands.attr,
 	&dev_attr_stop_command.attr,
-	&dev_attr_position_modes.attr,
-	&dev_attr_position_mode.attr,
 	&dev_attr_polarity.attr,
 	&dev_attr_encoder_polarity.attr,
 	&dev_attr_ramp_up_sp.attr,
@@ -871,8 +804,6 @@ static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_speed_regulation_P.attr,
 	&dev_attr_speed_regulation_I.attr,
 	&dev_attr_speed_regulation_D.attr,
-	&dev_attr_run.attr,
-	&dev_attr_reset.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(tacho_motor_class);
