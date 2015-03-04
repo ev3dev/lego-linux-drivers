@@ -72,6 +72,7 @@ enum tacho_motor_state
 struct tacho_motor_ops;
 
 struct tacho_motor_device {
+	const char *driver_name;
 	const char *port_name;
 	const struct tacho_motor_ops const *ops;
 	/* private */
@@ -79,10 +80,7 @@ struct tacho_motor_device {
 };
 
 struct tacho_motor_ops {
-	int  (*get_type)(struct tacho_motor_device *tm);
-	void (*set_type)(struct tacho_motor_device *tm, long type);
-
-	long (*get_position)(struct tacho_motor_device *tm);
+	int (*get_position)(struct tacho_motor_device *tm, long *position);
 	int (*set_position)(struct tacho_motor_device *tm, long position);
 
 	int  (*get_state)(struct tacho_motor_device *tm);
@@ -130,9 +128,6 @@ struct tacho_motor_ops {
 
  	int  (*get_speed_regulation_D)(struct tacho_motor_device *tm);
  	void (*set_speed_regulation_D)(struct tacho_motor_device *tm, long speed_regulation_D);
-
- 	int  (*get_speed_regulation_K)(struct tacho_motor_device *tm);
- 	void (*set_speed_regulation_K)(struct tacho_motor_device *tm, long speed_regulation_K);
 
  	int  (*get_ramp_up_sp)(struct tacho_motor_device *tm);
  	void (*set_ramp_up_sp)(struct tacho_motor_device *tm, long ramp_up_sp);

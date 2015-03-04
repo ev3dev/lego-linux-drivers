@@ -36,6 +36,9 @@
 * is incremented each time a motor is loaded (it is not related to which port
 * the motor is plugged in to).
 * .
+* `driver_name` (read-only)
+* : Returns the name of the driver that provides this tacho motor device.
+* .
 * `duty_cycle` (read-only)
 * : Returns the current duty cycle of the motor. Units are percent. Values
 *   are -100 to 100.
@@ -143,9 +146,6 @@
 * `time_sp` (read/write)
 * : TODO
 * .
-* `type` (read-only)
-* : TODO
-* .
 * [old wiki]: https://github.com/ev3dev/ev3dev/wiki/Using-Motors
 */
 
@@ -187,11 +187,6 @@ struct tacho_motor_type_item {
 	const char *name;
 };
 
-static struct tacho_motor_type_item tacho_motor_types[TM_NUM_TYPES] = {
-	[TM_TYPE_TACHO]     =  { "tacho"     },
-	[TM_TYPE_MINITACHO] =  { "minitacho" },
-};
-
 struct tacho_motor_state_item {
 	const char *name;
 };
@@ -217,36 +212,26 @@ static ssize_t port_name_show(struct device *dev, struct device_attribute *attr,
 	return snprintf(buf, LEGO_PORT_NAME_SIZE, "%s\n", tm->port_name);
 }
 
-static ssize_t tacho_motor_show_type(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t driver_name_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%s\n", tacho_motor_types[tm->ops->get_type(tm)].name);
-}
-
-static ssize_t tacho_motor_store_type(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-        unsigned int i;
-
-	for (i=0; i<TM_NUM_TYPES; ++i)
-		if (sysfs_streq(buf, tacho_motor_types[i].name)) break;
-
-	if (i >= TM_NUM_TYPES)
-                return -EINVAL;
-
-        tm->ops->set_type(tm, i);
-
-        return size;
+	return sprintf(buf, "%s\n", tm->driver_name);
 }
 
 static ssize_t position_show(struct device *dev, struct device_attribute *attr,
 			     char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	long position;
+	int err;
 
-	return sprintf(buf, "%ld\n", tm->ops->get_position(tm));
+	err = tm->ops->get_position(tm, &position);
+	if (err < 0)
+		return err;
+
+	return sprintf(buf, "%ld\n", position);
 }
 
 ssize_t position_store(struct device *dev, struct device_attribute *attr,
@@ -666,28 +651,6 @@ static ssize_t tacho_motor_store_speed_regulation_D(struct device *dev, struct d
         return size;
 }
 
-static ssize_t tacho_motor_show_speed_regulation_K(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-	return sprintf(buf, "%d\n", tm->ops->get_speed_regulation_K(tm));
-}
-
-static ssize_t tacho_motor_store_speed_regulation_K(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-        char *end;
-        long speed_regulation_K = simple_strtol(buf, &end, 0);
-
-        if ((end == buf) || (speed_regulation_K < 0))
-                return -EINVAL;
-
-        tm->ops->set_speed_regulation_K(tm, speed_regulation_K);
-
-        return size;
-}
-
 static ssize_t tacho_motor_show_duty_cycle_sp(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
@@ -813,8 +776,8 @@ static ssize_t tacho_motor_store_reset(struct device *dev, struct device_attribu
         return size;
 }
 
+DEVICE_ATTR_RO(driver_name);
 DEVICE_ATTR_RO(port_name);
-DEVICE_ATTR(type, S_IRUGO | S_IWUSR, tacho_motor_show_type, tacho_motor_store_type);
 DEVICE_ATTR_RW(position);
 
 DEVICE_ATTR(state, S_IRUGO, tacho_motor_show_state, NULL);
@@ -844,15 +807,14 @@ DEVICE_ATTR(ramp_down_sp, S_IRUGO | S_IWUSR, tacho_motor_show_ramp_down_sp, tach
 DEVICE_ATTR(speed_regulation_P, S_IRUGO | S_IWUSR, tacho_motor_show_speed_regulation_P, tacho_motor_store_speed_regulation_P);
 DEVICE_ATTR(speed_regulation_I, S_IRUGO | S_IWUSR, tacho_motor_show_speed_regulation_I, tacho_motor_store_speed_regulation_I);
 DEVICE_ATTR(speed_regulation_D, S_IRUGO | S_IWUSR, tacho_motor_show_speed_regulation_D, tacho_motor_store_speed_regulation_D);
-DEVICE_ATTR(speed_regulation_K, S_IRUGO | S_IWUSR, tacho_motor_show_speed_regulation_K, tacho_motor_store_speed_regulation_K);
 
 DEVICE_ATTR(run, S_IRUGO | S_IWUSR, tacho_motor_show_run, tacho_motor_store_run);
 
 DEVICE_ATTR(reset, S_IWUSR, NULL, tacho_motor_store_reset);
 
 static struct attribute *tacho_motor_class_attrs[] = {
+	&dev_attr_driver_name.attr,
 	&dev_attr_port_name.attr,
-	&dev_attr_type.attr,
 	&dev_attr_position.attr,
 	&dev_attr_state.attr,
 	&dev_attr_duty_cycle.attr,
@@ -877,7 +839,6 @@ static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_speed_regulation_P.attr,
 	&dev_attr_speed_regulation_I.attr,
 	&dev_attr_speed_regulation_D.attr,
-	&dev_attr_speed_regulation_K.attr,
 	&dev_attr_run.attr,
 	&dev_attr_reset.attr,
 	NULL
@@ -930,7 +891,11 @@ static int tacho_motor_dev_uevent(struct device *dev, struct kobj_uevent_env *en
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int ret;
 
-	/* TODO: Add LEGO_DRIVER_NAME property */
+	ret = add_uevent_var(env, "LEGO_DRIVER_NAME=%s", tm->driver_name);
+		if (ret) {
+			dev_err(dev, "failed to add uevent LEGO_DRIVER_NAME\n");
+			return ret;
+		}
 
 	ret = add_uevent_var(env, "LEGO_PORT_NAME=%s", tm->port_name);
 	if (ret) {

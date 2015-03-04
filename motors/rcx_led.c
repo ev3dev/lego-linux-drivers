@@ -79,11 +79,8 @@ enum led_brightness rcx_led_brightness_get(struct led_classdev *led_cdev)
 static int rcx_led_probe(struct lego_device *motor)
 {
 	struct rcx_led_data *data;
-	struct ev3_motor_platform_data *pdata = motor->dev.platform_data;
 	int err;
 
-	if (WARN_ON(!pdata))
-		return -EINVAL;
 	if (WARN_ON(!motor->port->motor_ops))
 		return -EINVAL;
 

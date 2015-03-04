@@ -31,6 +31,7 @@
 #include <dc_motor_class.h>
 
 #include "legoev3_analog.h"
+#include "legoev3_motor.h"
 #include "legoev3_ports.h"
  
 #define OUTPUT_PORT_POLL_NS	10000000			/* 10 msec */
@@ -56,27 +57,6 @@
 #define PIN5_MINITACHO_LOW2   250 /* [mV] a mini tacho motor is pulling low when pin5 floats */
 
 #define PIN5_NEAR_GND         100 /* [mV] lower  values mean that connection 5 is shorted to ground */
-
-/* resistor ids for EV3 output devices */
-enum ev3_out_dev_id {
-	EV3_OUT_DEV_ID_01,
-	EV3_OUT_DEV_ID_02,
-	EV3_OUT_DEV_ID_03,
-	EV3_OUT_DEV_ID_04,
-	EV3_OUT_DEV_ID_05,
-	EV3_OUT_DEV_ID_06,
-	EV3_OUT_DEV_ID_07,
-	EV3_OUT_DEV_ID_08,
-	EV3_OUT_DEV_ID_09,
-	EV3_OUT_DEV_ID_10,
-	EV3_OUT_DEV_ID_11,
-	EV3_OUT_DEV_ID_12,
-	EV3_OUT_DEV_ID_13,
-	EV3_OUT_DEV_ID_14,
-	NUM_EV3_OUT_DEV_ID,
-	EV3_OUT_DEV_ID_ERR = -1
-};
-
 
 enum gpio_index {
 	GPIO_PIN1,
@@ -264,7 +244,7 @@ struct ev3_output_port_data {
 	unsigned pin5_float_mv;
 	unsigned pin5_low_mv;
 	enum motor_type motor_type;
-	enum tacho_motor_type_id tacho_motor_type;
+	enum legoev3_motor_id motor_id;
 	struct lego_device *motor;
 	enum dc_motor_command command;
 	enum dc_motor_direction direction;
@@ -394,6 +374,7 @@ void ev3_output_port_register_motor(struct work_struct *work)
 			container_of(work, struct ev3_output_port_data, work);
 	struct lego_device *motor;
 	struct ev3_motor_platform_data pdata;
+	const char *driver_name;
 
 	if (data->motor_type == MOTOR_NONE
 		|| data->motor_type == MOTOR_ERR
@@ -407,10 +388,12 @@ void ev3_output_port_register_motor(struct work_struct *work)
 
 	pdata.tacho_int_gpio = data->gpio[GPIO_PIN5_INT].gpio;
 	pdata.tacho_dir_gpio = data->gpio[GPIO_PIN6_DIR].gpio;
-	pdata.motor_type_id = data->tacho_motor_type;
+	if (data->motor_type == MOTOR_TACHO)
+		driver_name = legoev3_motor_defs[data->motor_id].name;
+	else
+		driver_name = ev3_motor_device_types[data->motor_type].name;
 
-	motor = lego_device_register(
-		ev3_motor_device_types[data->motor_type].name,
+	motor = lego_device_register(driver_name,
 		&ev3_motor_device_types[data->motor_type],
 		&data->out_port, &pdata, sizeof(struct ev3_motor_platform_data));
 	if (IS_ERR(motor)) {
@@ -533,11 +516,11 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 			} else if (data->pin5_float_mv < PIN5_BALANCE_LOW) {
 				data->motor_type = MOTOR_TACHO;
 				if (data->pin5_float_mv > PIN5_MINITACHO_HIGH2) {
-					data->tacho_motor_type = TACHO_MOTOR_EV3_NEW;
+					data->motor_id = LEGO_EV3_LARGE_MOTOR;
 				} else if (data->pin5_float_mv > PIN5_MINITACHO_LOW2) {
-					data->tacho_motor_type = TACHO_MOTOR_EV3_MEDIUM;
+					data->motor_id = LEGO_EV3_MEDIUM_MOTOR;
 				} else {
-					data->tacho_motor_type = TACHO_MOTOR_EV3_LARGE;
+					data->motor_id = LEGO_EV3_LARGE_MOTOR;
 				}
 				data->con_state = CON_STATE_DEVICE_CONNECTED;
 
@@ -572,9 +555,9 @@ static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer
 			} else {
 				data->motor_type = MOTOR_TACHO;
 				if (data->pin5_low_mv < PIN5_MINITACHO_HIGH1)
-					data->tacho_motor_type = TACHO_MOTOR_EV3_MEDIUM;
+					data->motor_id = LEGO_EV3_MEDIUM_MOTOR;
 				else
-					data->tacho_motor_type = TACHO_MOTOR_EV3_LARGE;
+					data->motor_id = LEGO_EV3_LARGE_MOTOR;
 			}
 
 			data->con_state = CON_STATE_DEVICE_CONNECTED;
@@ -678,7 +661,7 @@ static int ev3_output_port_set_mode(void *context, u8 mode)
 		break;
 	case EV3_OUTPUT_PORT_MODE_TACHO_MOTOR:
 		data->motor_type = MOTOR_TACHO;
-		data->tacho_motor_type = TACHO_MOTOR_EV3_LARGE;
+		data->motor_id = LEGO_EV3_LARGE_MOTOR;
 		ev3_output_port_register_motor(&data->work);
 		break;
 	case EV3_OUTPUT_PORT_MODE_DC_MOTOR:
