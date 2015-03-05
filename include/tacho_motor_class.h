@@ -38,7 +38,7 @@ enum tacho_motor_command {
 	NUM_TM_COMMANDS
 };
 
-#define IS_POS_CMD(command) ((command == TM_COMMAND_RUN_TO_ABS_POS) || (command == TM_COMMAND_RUN_TO_ABS_POS))
+#define IS_POS_CMD(command) ((command == TM_COMMAND_RUN_TO_ABS_POS) || (command == TM_COMMAND_RUN_TO_REL_POS))
 #define IS_RUN_CMD(command) ((command != TM_COMMAND_STOP) && (command != TM_COMMAND_RESET))
 
 enum tacho_motor_stop_command {
@@ -86,7 +86,7 @@ struct tacho_motor_ops {
 
 	int  (*get_state)(struct tacho_motor_device *tm);
 
-	int (*get_count_per_rot)(struct tacho_motor_device *tm, int *count_per_rot);
+	int (*get_count_per_rot)(struct tacho_motor_device *tm);
 	int (*get_duty_cycle)(struct tacho_motor_device *tm, int *duty_cycle);
 	int (*get_speed)(struct tacho_motor_device *tm, int *speed);
 
@@ -99,14 +99,14 @@ struct tacho_motor_ops {
 	int (*get_time_sp)(struct tacho_motor_device *tm);
 	int (*set_time_sp)(struct tacho_motor_device *tm, int time);
 
-	int (*get_position_sp)(struct tacho_motor_device *tm, long *position);
-	int (*set_position_sp)(struct tacho_motor_device *tm, long position);
+	int (*get_position_sp)(struct tacho_motor_device *tm, int *position);
+	int (*set_position_sp)(struct tacho_motor_device *tm, int position);
 
 	unsigned (*get_commands)(struct tacho_motor_device *tm);
 	int (*send_command)(struct tacho_motor_device *tm, enum tacho_motor_command command);
 
 	int (*get_speed_regulation)(struct tacho_motor_device *tm);
-	int (*set_regulation_mode)(struct tacho_motor_device *tm, enum tacho_motor_speed_regulation speed_regulation);
+	int (*set_speed_regulation)(struct tacho_motor_device *tm, enum tacho_motor_speed_regulation speed_regulation);
 
 	unsigned (*get_stop_commands)(struct tacho_motor_device *tm);
 	int (*get_stop_command)(struct tacho_motor_device *tm);

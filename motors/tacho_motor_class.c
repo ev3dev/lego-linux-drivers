@@ -307,13 +307,13 @@ static ssize_t count_per_rot_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int err, count_per_rot;
+	int ret;
 
-	err = tm->ops->get_count_per_rot(tm, &count_per_rot);
-	if (err < 0)
-		return err;
+	ret = tm->ops->get_count_per_rot(tm);
+	if (ret < 0)
+		return ret;
 
-	return sprintf(buf, "%d\n", count_per_rot);
+	return sprintf(buf, "%d\n", ret);
 }
 
 static ssize_t duty_cycle_show(struct device *dev, struct device_attribute *attr,
@@ -321,6 +321,9 @@ static ssize_t duty_cycle_show(struct device *dev, struct device_attribute *attr
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int err, duty_cycle;
+
+	if (!tm->ops->get_duty_cycle)
+		return -EOPNOTSUPP;
 
 	err = tm->ops->get_duty_cycle(tm, &duty_cycle);
 	if (err < 0)
@@ -334,6 +337,9 @@ static ssize_t speed_show(struct device *dev, struct device_attribute *attr,
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int err, speed;
+
+	if (!tm->ops->get_speed)
+		return -EOPNOTSUPP;
 
 	err = tm->ops->get_speed(tm, &speed);
 	if (err < 0)
@@ -416,7 +422,7 @@ static ssize_t speed_regulation_store(struct device *dev,
 	if (i >= TM_NUM_SPEED_REGULATION_MODES)
 		return -EINVAL;
 
-	err = tm->ops->set_regulation_mode(tm, i);
+	err = tm->ops->set_speed_regulation(tm, i);
 	if (err < 0)
 		return err;
 
@@ -520,6 +526,9 @@ static ssize_t encoder_polarity_show(struct device *dev,
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int ret;
 
+	if (!tm->ops->get_encoder_polarity)
+		return -EOPNOTSUPP;
+
 	ret = tm->ops->get_encoder_polarity(tm);
 	if (ret < 0)
 		return ret;
@@ -533,6 +542,9 @@ static ssize_t encoder_polarity_store(struct device *dev,
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int i, err;
+
+	if (!tm->ops->set_encoder_polarity)
+		return -EOPNOTSUPP;
 
 	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++) {
 		if (sysfs_streq(buf, dc_motor_polarity_values[i])) {
@@ -729,14 +741,13 @@ static ssize_t position_sp_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int err;
-	long position;
+	int err, position;
 
 	err = tm->ops->get_position_sp(tm, &position);
 	if (err < 0)
 		return err;
 
-	return sprintf(buf, "%ld\n", position);
+	return sprintf(buf, "%d\n", position);
 }
 
 static ssize_t position_sp_store(struct device *dev,

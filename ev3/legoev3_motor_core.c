@@ -1395,15 +1395,12 @@ static int legoev3_motor_set_position(struct tacho_motor_device *tm, long positi
 	return 0;
 }
 
-static int legoev3_motor_get_count_per_rot(struct tacho_motor_device *tm,
-					   int *count_per_rot)
+static int legoev3_motor_get_count_per_rot(struct tacho_motor_device *tm)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
 
-	*count_per_rot = ev3_tm->info->count_per_rot;
-
-	return 0;
+	return ev3_tm->info->count_per_rot;
 }
 
 static int legoev3_motor_get_duty_cycle(struct tacho_motor_device *tm,
@@ -1496,7 +1493,7 @@ static int legoev3_motor_set_time_sp(struct tacho_motor_device *tm, int time)
 }
 
 static int legoev3_motor_get_position_sp(struct tacho_motor_device *tm,
-					 long *position)
+					 int *position)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
@@ -1507,7 +1504,7 @@ static int legoev3_motor_get_position_sp(struct tacho_motor_device *tm,
 }
 
 static int legoev3_motor_set_position_sp(struct tacho_motor_device *tm,
-					 long position)
+					 int position)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(tm, struct legoev3_motor_data, tm);
@@ -1799,7 +1796,7 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 	.send_command		= legoev3_motor_send_command,
 
 	.get_speed_regulation	= legoev3_motor_get_regulation_mode,
-	.set_regulation_mode	= legoev3_motor_set_regulation_mode,
+	.set_speed_regulation	= legoev3_motor_set_regulation_mode,
 
 	.get_stop_commands	= legoev3_motor_get_stop_commands,
 	.get_stop_command	= legoev3_motor_get_stop_command,
