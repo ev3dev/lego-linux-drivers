@@ -23,6 +23,7 @@
 #include "nxt_i2c_sensor.h"
 #include "ht_nxt_smux.h"
 #include "ms_ev3_smux.h"
+#include "ms_nxtmmx.h"
 
 #include "../ev3/legoev3_ports.h"
 
@@ -2294,6 +2295,45 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[9] = {
 				.cmd_reg	= 0x41,
 				.cmd_data	= 'U',
+			},
+		},
+	},
+	[MS_NXTMMX] = {
+		/**
+		 * [^address]: The address is programmable. See manufacturer
+		 * documentation for more information.
+		 *
+		 * @vendor_name: mindsensors.com
+		 * @vendor_part_number: NXTMMX-v2
+		 * @vendor_part_name: Multiplexer for NXT/EV3 Motors
+		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=134
+		 * @default_address: 0x03
+		 * @default_address_footnote: [^address]
+		 */
+		.name			= MS_NXTMMX_NAME,
+		.vendor_id		= "mndsnsrs",
+		.product_id		= "NxTMMX",
+		.num_modes		= 1,
+		.ops.probe_cb		= ms_nxtmmx_probe_cb,
+		.ops.remove_cb		= ms_nxtmmx_remove_cb,
+		.mode_info	= {
+			[0] = {
+				/**
+				 * @description: Status
+				 * @value0: Battery voltage
+				 * @units_description: volts
+				 */
+				.name		= "STATUS",
+				.data_sets	= 1,
+				.units		= "V",
+				.decimals	= 3,
+				.raw_max	= 255,
+				.si_max		= 255 * 37,
+			},
+		},
+		.i2c_mode_info	= {
+			[0] = {
+				.read_data_reg	= 0x41, /* TODO: this is supposedly 0x90 for EV3 compatible firmware */
 			},
 		},
 	},

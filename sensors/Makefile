@@ -8,7 +8,7 @@ ev3_analog_sensor-objs := ev3_analog_sensor_core.o ev3_analog_sensor_defs.o
 obj-$(CONFIG_EV3_ANALOG_SENSORS)	+= ev3_analog_sensor.o
 
 # I2C Sensors
-nxt_i2c_sensor-objs := nxt_i2c_sensor_core.o nxt_i2c_sensor_defs.o ht_nxt_smux.o ms_ev3_smux.o
+nxt_i2c_sensor-objs := nxt_i2c_sensor_core.o nxt_i2c_sensor_defs.o ht_nxt_smux.o ms_ev3_smux.o ms_nxtmmx.o
 obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= nxt_i2c_sensor.o
 obj-$(CONFIG_LEGOEV3_I2C_SENSORS)	+= ht_nxt_smux_i2c_sensor.o
 
