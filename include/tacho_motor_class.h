@@ -28,6 +28,10 @@ enum tacho_motor_speed_regulation {
 	TM_NUM_SPEED_REGULATION_MODES,
 };
 
+/*
+ * Note: run-timed is handled completely in the tacho-motor class, so
+ * TM_COMMAND_RUN_TIMED is never passed to implementing drivers.
+ */
 enum tacho_motor_command {
 	TM_COMMAND_RUN_FOREVER,
 	TM_COMMAND_RUN_TO_ABS_POS,
@@ -57,7 +61,6 @@ enum tacho_motor_type {
 enum tacho_motor_state
 {
   TM_STATE_RUN_FOREVER,
-  TM_STATE_SETUP_RAMP_TIME,
   TM_STATE_SETUP_RAMP_POSITION,
   TM_STATE_SETUP_RAMP_REGULATION,
   TM_STATE_RAMP_UP,
@@ -78,6 +81,8 @@ struct tacho_motor_device {
 	const struct tacho_motor_ops const *ops;
 	/* private */
 	struct device dev;
+	struct delayed_work run_timed_work;
+	int time_sp;
 };
 
 struct tacho_motor_ops {
@@ -95,9 +100,6 @@ struct tacho_motor_ops {
 
 	int (*get_speed_sp)(struct tacho_motor_device *tm, int *speed);
 	int (*set_speed_sp)(struct tacho_motor_device *tm, int speed);
-
-	int (*get_time_sp)(struct tacho_motor_device *tm);
-	int (*set_time_sp)(struct tacho_motor_device *tm, int time);
 
 	int (*get_position_sp)(struct tacho_motor_device *tm, int *position);
 	int (*set_position_sp)(struct tacho_motor_device *tm, int position);

@@ -151,7 +151,6 @@ struct legoev3_motor_data {
 
 	long duty_cycle_sp;
 	long speed_sp;
-	long time_sp;
 	long position_sp;
 	long ramp_up_sp;
 	long ramp_down_sp;
@@ -469,7 +468,6 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 
 	ev3_tm->duty_cycle_sp		= 0;
 	ev3_tm->speed_sp		= 0;
-	ev3_tm->time_sp			= 0;
 	ev3_tm->position_sp		= 0;
 	ev3_tm->ramp_up_sp		= 0;
 	ev3_tm->ramp_down_sp		= 0;
@@ -995,21 +993,11 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 		switch (ev3_tm->state) {
 
 		case TM_STATE_RUN_FOREVER:
-
-			/*
-			 * Just fall through to set the ramp time. If ramp times are zero
-			 * then start/stop is immediate!
-			 */
-
-		case TM_STATE_SETUP_RAMP_TIME:
-
 			ev3_tm->ramp.up.start = 0;
-			ev3_tm->ramp.down.end = ev3_tm->time_sp;
+			ev3_tm->ramp.down.end = ev3_tm->tm.time_sp;
 
-			/* In RUN_FOREVER mode, set the endpoint a long way out - an hour of milliseconds! */
-
-			if ((TM_COMMAND_RUN_FOREVER == ev3_tm->run_command))
-				ev3_tm->ramp.down.end = 60*60*1000;
+			/* Set the endpoint a long way out - an hour of milliseconds! */
+			ev3_tm->ramp.down.end = 60*60*1000;
 
 			/*
 			 * First, we calculate ramp.up.full and ramp.down.full which are the point at which
@@ -1055,7 +1043,7 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 			 */
 
 			if (ev3_tm->ramp.up.end > ev3_tm->ramp.down.start) {
-				ev3_tm->ramp.up.end = ((ev3_tm->time_sp * ev3_tm->ramp_up_sp)
+				ev3_tm->ramp.up.end = ((ev3_tm->tm.time_sp * ev3_tm->ramp_up_sp)
 					/ (ev3_tm->ramp_up_sp + ev3_tm->ramp_down_sp));
 				ev3_tm->ramp.down.start = ev3_tm->ramp.up.end;
 			}
@@ -1212,18 +1200,6 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 			if (ev3_tm->run_command == TM_COMMAND_RUN_FOREVER) {
 				ev3_tm->ramp.down.start = ev3_tm->ramp.count;
 				ev3_tm->ramp.down.end   = ev3_tm->ramp.count + ((abs(ev3_tm->duty_cycle_sp) * ev3_tm->ramp_down_sp) / 100);
-			}
-
-			/*
-			 * Just push out the end point if we're in TM_RUN_TIME mode, and
-			 * then check to see if we should start ramping down
-			 */
-
-			else if (ev3_tm->run_command == TM_COMMAND_RUN_TIMED) {
-				if (ev3_tm->ramp.count >= ev3_tm->ramp.down.start) {
-					ev3_tm->state = TM_STATE_RAMP_DOWN;
-					reprocess = true;
-				}
 			}
 
 			/*
@@ -1474,24 +1450,6 @@ static int legoev3_motor_set_speed_sp(struct tacho_motor_device *tm, int speed)
 	return 0;
 }
 
-static int legoev3_motor_get_time_sp(struct tacho_motor_device *tm)
-{
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
-
-	return ev3_tm->time_sp;
-}
-
-static int legoev3_motor_set_time_sp(struct tacho_motor_device *tm, int time)
-{
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
-
-	ev3_tm->time_sp = time;
-
-	return 0;
-}
-
 static int legoev3_motor_get_position_sp(struct tacho_motor_device *tm,
 					 int *position)
 {
@@ -1690,7 +1648,7 @@ static int legoev3_motor_set_speed_Kd(struct tacho_motor_device *tm, int k)
 static unsigned legoev3_motor_get_commands (struct tacho_motor_device *tm)
 {
 	return BIT(TM_COMMAND_RUN_FOREVER) | BIT (TM_COMMAND_RUN_TO_ABS_POS)
-		| BIT(TM_COMMAND_RUN_TO_REL_POS) | BIT(TM_COMMAND_RUN_TIMED)
+		| BIT(TM_COMMAND_RUN_TO_REL_POS)
 		| BIT(TM_COMMAND_STOP) | BIT(TM_COMMAND_RESET);
 }
 
@@ -1719,10 +1677,6 @@ static int legoev3_motor_send_command(struct tacho_motor_device *tm,
 
 		if (TM_COMMAND_RUN_FOREVER == command)
 			ev3_tm->state = TM_STATE_RAMP_DOWN;
-
-		else if (TM_COMMAND_RUN_TIMED == command)
-			ev3_tm->state = TM_STATE_RAMP_DOWN;
-
 		else if (IS_POS_CMD(command))
 			ev3_tm->state = TM_STATE_STOP;
 	}
@@ -1735,10 +1689,6 @@ static int legoev3_motor_send_command(struct tacho_motor_device *tm,
 	else if (IS_RUN_CMD(command) && ev3_tm->state == TM_STATE_IDLE) {
 		if (TM_COMMAND_RUN_FOREVER == command)
 			ev3_tm->state = TM_STATE_RUN_FOREVER;
-
-		else if (TM_COMMAND_RUN_TIMED == command)
-			ev3_tm->state = TM_STATE_SETUP_RAMP_TIME;
-
 		else if (IS_POS_CMD(command))
 			ev3_tm->state = TM_STATE_SETUP_RAMP_POSITION;
 	}
@@ -1785,9 +1735,6 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 
 	.get_speed_sp		= legoev3_motor_get_speed_sp,
 	.set_speed_sp		= legoev3_motor_set_speed_sp,
-
-	.get_time_sp		= legoev3_motor_get_time_sp,
-	.set_time_sp		= legoev3_motor_set_time_sp,
 
 	.get_position_sp	= legoev3_motor_get_position_sp,
 	.set_position_sp	= legoev3_motor_set_position_sp,

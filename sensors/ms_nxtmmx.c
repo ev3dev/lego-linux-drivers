@@ -26,16 +26,16 @@
 #define WRITE_SIZE		8
 #define ENCODER_SIZE		4
 
-#define WRITE_REG		0x42
+#define WRITE_REG(idx)		(0x42 + WRITE_SIZE * idx)
 #define WRITE_ENCODER_TARGET	0
 #define WRITE_SPEED		4
 #define WRITE_TIME		5
 #define WRITE_COMMAND_B		6
 #define WRITE_COMMAND_A		7
 
-#define READ_ENCODER_POS	0x62
-#define READ_STATUS		0x72
-#define READ_TASKS		0x74
+#define READ_ENCODER_POS_REG(idx)	(0x62 + ENCODER_SIZE * idx)
+#define READ_STATUS_REG(idx)		(0x72 + idx)
+#define READ_TASKS_REG(idx)		(0x74 + idx)
 
 #define PID_K_SIZE		2
 
@@ -47,13 +47,13 @@
 #define SPEED_PID_KI		0x7C
 #define SPEED_PID_KD		0x7E
 
-#define COMMAND_RESET_ALL	'R'
-#define COMMAND_SYNC_START	'S'
-#define COMMAND_FLOAT_STOP	'a'
-#define COMMAND_SYNC_FLOAT_STOP	'c'
-#define COMMAND_BRAKE_STOP	'A'
-#define COMMAND_SYNC_BRAKE_STOP	'C'
-#define COMMAND_RESET_ENCODER	'r'
+#define COMMAND_RESET_ALL		'R'
+#define COMMAND_SYNC_START		'S'
+#define COMMAND_FLOAT_STOP(idx)		('a' + idx)
+#define COMMAND_SYNC_FLOAT_STOP		'c'
+#define COMMAND_BRAKE_STOP(idx)		('A' + idx)
+#define COMMAND_SYNC_BRAKE_STOP		'C'
+#define COMMAND_RESET_ENCODER(idx)	('r' + idx)
 
 #define CMD_FLAG_SPEED_CTRL	BIT(0)
 #define CMD_FLAG_RAMP		BIT(1)
@@ -64,15 +64,27 @@
 #define CMD_FLAG_TIMED		BIT(6)
 #define CMD_FLAG_GO		BIT(7)
 
+/* default value for mmx->command_flags */
+#define CMD_FLAGS_DEFAULT_VALUE (CMD_FLAG_SPEED_CTRL | CMD_FLAG_BRAKE)
+/* special value used when stop command is "hold" */
+#define CMD_FLAGS_STOP_HOLD (CMD_FLAG_SPEED_CTRL | CMD_FLAG_ENCODER_CTRL | CMD_FLAG_HOLD | CMD_FLAG_GO)
+
+#define STATUS_FLAG_SPEED_CTRL	BIT(0)
+#define STATUS_FLAG_RAMPING	BIT(1)
+#define STATUS_FLAG_POWERED	BIT(2)
+#define STATUS_FLAG_POSITION	BIT(3)
+#define STATUS_FLAG_BRAKE	BIT(4)
+#define STATUS_FLAG_OVERLOAD	BIT(5)
+#define STATUS_FLAG_TIMED	BIT(6)
+#define STATUS_FLAG_STALL	BIT(7)
+
 struct ms_nxtmmx_data {
 	struct tacho_motor_device tm;
 	struct nxt_i2c_sensor_data *i2c;
 	char port_name[LEGO_PORT_NAME_SIZE];
 	int index;
-	int duty_cycle_sp;
 	int speed_sp;
 	int position_sp;
-	int time_sp;
 	enum dc_motor_polarity polarity;
 	unsigned command_flags;
 };
@@ -82,15 +94,31 @@ static inline struct ms_nxtmmx_data *to_mx_nxtmmx(struct tacho_motor_device *tm)
 	return container_of(tm, struct ms_nxtmmx_data, tm);
 }
 
+/*
+ * Converts speed in deg/sec to value that will be sent to the NxtMMX.
+ * Scaling was determined by interpolation.
+ */
+static inline int ms_nxtmmx_scale_speed(int speed)
+{
+	int scaled = abs(speed);
+	if (scaled <= 50)
+		scaled = 0;
+	else
+		scaled -= 50;
+	scaled /= 8;
+	if (speed < 0)
+		scaled *= -1;
+	return scaled;
+}
+
 static int ms_nxtmmx_get_position(struct tacho_motor_device *tm, long *position)
 {
 	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-	int offset, err;
+	int err;
 	u8 bytes[ENCODER_SIZE];
 
-	offset = ENCODER_SIZE * mmx->index;
 	err = i2c_smbus_read_i2c_block_data(mmx->i2c->client,
-		READ_ENCODER_POS + offset, ENCODER_SIZE, bytes);
+		READ_ENCODER_POS_REG(mmx->index), ENCODER_SIZE, bytes);
 	if (err < 0)
 		return err;
 
@@ -102,16 +130,26 @@ static int ms_nxtmmx_get_position(struct tacho_motor_device *tm, long *position)
 static int ms_nxtmmx_set_position(struct tacho_motor_device *tm, long position)
 {
 	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-	int command, err;
+	int ret;
 
 	/* we can only reset the encoder reading to 0. */
 	if (position != 0)
 		return -EINVAL;
 
-	command = COMMAND_RESET_ENCODER + mmx->index;
-	err = i2c_smbus_write_byte_data(mmx->i2c->client, COMMAND_REG, command);
-	if (err < 0)
-		return err;
+	/*
+	 * Can't change the position while the motor is running or it will make
+	 * the controller confused.
+	 */
+	ret = i2c_smbus_read_byte_data(mmx->i2c->client, READ_STATUS_REG(mmx->index));
+	if (ret < 0)
+		return ret;
+	if (ret & STATUS_FLAG_POWERED)
+		return -EBUSY;
+
+	ret = i2c_smbus_write_byte_data(mmx->i2c->client, COMMAND_REG,
+		COMMAND_RESET_ENCODER(mmx->index));
+	if (ret < 0)
+		return ret;
 
 	return 0;
 }
@@ -128,29 +166,10 @@ static int ms_nxtmmx_get_count_per_rot(struct tacho_motor_device *tm)
 	return 360;
 }
 
-static int ms_nxtmmx_get_duty_cycle_sp(struct tacho_motor_device *tm, int *sp)
-{
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-
-	*sp = mmx->duty_cycle_sp;
-
-	return 0;
-}
-
-static int ms_nxtmmx_set_duty_cycle_sp(struct tacho_motor_device *tm, int sp)
-{
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-
-	mmx->duty_cycle_sp = sp;
-
-	return 0;
-}
-
 /*
  * Docs don't say, so assuming max speed is 1000 counts per second. Same register
  * is used for regulated and unregulated speed.
  */
-
 static int ms_nxtmmx_get_speed_sp(struct tacho_motor_device *tm, int *sp)
 {
 	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
@@ -165,27 +184,6 @@ static int ms_nxtmmx_set_speed_sp(struct tacho_motor_device *tm, int sp)
 	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
 
 	mmx->speed_sp = sp;
-
-	return 0;
-}
-
-/*
- * TODO: NxtMMX only supports whole numbers of seconds. Would be better to
- * implement our own timed run.
- */
-
-static int ms_nxtmmx_get_time_sp(struct tacho_motor_device *tm)
-{
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-
-	return mmx->time_sp;
-}
-
-static int ms_nxtmmx_set_time_sp(struct tacho_motor_device *tm, int sp)
-{
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-
-	return mmx->time_sp = sp;
 
 	return 0;
 }
@@ -211,7 +209,7 @@ static int ms_nxtmmx_set_position_sp(struct tacho_motor_device *tm, int position
 static unsigned ms_nxtmmx_get_commands(struct tacho_motor_device *tm)
 {
 	return BIT(TM_COMMAND_RUN_FOREVER) | BIT (TM_COMMAND_RUN_TO_ABS_POS)
-		| BIT(TM_COMMAND_RUN_TO_REL_POS) | BIT(TM_COMMAND_RUN_TIMED)
+		| BIT(TM_COMMAND_RUN_TO_REL_POS)
 		| BIT(TM_COMMAND_STOP) | BIT(TM_COMMAND_RESET);
 }
 
@@ -219,34 +217,19 @@ static int ms_nxtmmx_send_command(struct tacho_motor_device *tm,
 				  enum tacho_motor_command command)
 {
 	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-	int offset, err;
+	int err;
 	u8 command_bytes[WRITE_SIZE];
 
 	if (IS_RUN_CMD(command)) {
 		/* fill in the setpoints with the correct polarity */
-
-		if (mmx->polarity == DC_MOTOR_POLARITY_NORMAL) {
-			*(int *)command_bytes = cpu_to_le32(mmx->position_sp);
-			if (mmx->command_flags & CMD_FLAG_SPEED_CTRL)
-				command_bytes[WRITE_SPEED] = mmx->speed_sp / 10;
-			else
-				command_bytes[WRITE_SPEED] = mmx->duty_cycle_sp;
-		} else {
-			*(int *)command_bytes = -cpu_to_le32(mmx->position_sp);
-			if (mmx->command_flags & CMD_FLAG_SPEED_CTRL)
-				command_bytes[WRITE_SPEED] = -mmx->speed_sp / 10;
-			else
-				command_bytes[WRITE_SPEED] = -mmx->duty_cycle_sp;
+		*(int *)command_bytes = cpu_to_le32(mmx->position_sp);
+		command_bytes[WRITE_SPEED] = ms_nxtmmx_scale_speed(mmx->speed_sp);
+		if (mmx->polarity == DC_MOTOR_POLARITY_INVERTED) {
+			*(int *)command_bytes *= -1;
+			command_bytes[WRITE_SPEED] *= -1;
 		}
 
-		/* TODO: need to check the sign on speed setpoint when running to absolute position */
-
 		/* set the appropriate command flags based on the run command */
-
-		if (command == TM_COMMAND_RUN_TIMED)
-			mmx->command_flags |= CMD_FLAG_TIMED;
-		else
-			mmx->command_flags &= ~CMD_FLAG_TIMED;
 
 		if (IS_POS_CMD(command))
 			mmx->command_flags |= CMD_FLAG_ENCODER_CTRL;
@@ -260,38 +243,57 @@ static int ms_nxtmmx_send_command(struct tacho_motor_device *tm,
 
 		mmx->command_flags |= CMD_FLAG_GO;
 
-		command_bytes[WRITE_TIME] = mmx->time_sp / 1000;
+		command_bytes[WRITE_TIME] = 0; /* we don't used the controller's timed mode */
 		command_bytes[WRITE_COMMAND_B] = 0;
 		command_bytes[WRITE_COMMAND_A] = mmx->command_flags;
 
 		/* then write to the individual motor register to GO! */
 
-		offset = WRITE_SIZE * mmx->index;
 		err = i2c_smbus_write_i2c_block_data(mmx->i2c->client,
-			WRITE_REG + offset, WRITE_SIZE, command_bytes);
+			WRITE_REG(mmx->index), WRITE_SIZE, command_bytes);
 		if (err < 0)
 			return err;
 	} else if (command == TM_COMMAND_STOP) {
-		/* TODO: handle case for stop_command == hold */
 		command_bytes[0] = (mmx->command_flags & CMD_FLAG_BRAKE)
-			? COMMAND_BRAKE_STOP : COMMAND_FLOAT_STOP;
-		command_bytes[0] += mmx->index;
+			? COMMAND_BRAKE_STOP(mmx->index) : COMMAND_FLOAT_STOP(mmx->index);
 		err = i2c_smbus_write_byte_data(mmx->i2c->client,
 			COMMAND_REG, command_bytes[0]);
 		if (err < 0)
 			return err;
+		if (mmx->command_flags & CMD_FLAG_HOLD) {
+			/*
+			 * Hold only happens when encoder mode is enabled, so
+			 * we have to issue a run command to tell it to run to
+			 * the current position so that it will hold that position.
+			 */
+			err = i2c_smbus_read_i2c_block_data(mmx->i2c->client,
+				READ_ENCODER_POS_REG(mmx->index), ENCODER_SIZE, command_bytes);
+			if (err < 0)
+				return err;
+			command_bytes[WRITE_SPEED] = ms_nxtmmx_scale_speed(mmx->speed_sp);
+			command_bytes[WRITE_TIME] = 0;
+			command_bytes[WRITE_COMMAND_B] = 0;
+			command_bytes[WRITE_COMMAND_A] = CMD_FLAGS_STOP_HOLD;
+			err = i2c_smbus_write_i2c_block_data(mmx->i2c->client,
+				WRITE_REG(mmx->index), WRITE_SIZE, command_bytes);
+			if (err < 0)
+				return err;
+		}
 	} else if (command == TM_COMMAND_RESET) {
-		command_bytes[0] = COMMAND_RESET_ALL + mmx->index;
+		command_bytes[0] = COMMAND_BRAKE_STOP(mmx->index);
 		err = i2c_smbus_write_byte_data(mmx->i2c->client,
 			COMMAND_REG, command_bytes[0]);
 		if (err < 0)
 			return err;
-		mmx->duty_cycle_sp = 0;
+		command_bytes[0] = COMMAND_RESET_ENCODER(mmx->index);
+		err = i2c_smbus_write_byte_data(mmx->i2c->client,
+			COMMAND_REG, command_bytes[0]);
+		if (err < 0)
+			return err;
 		mmx->speed_sp = 0;
 		mmx->position_sp = 0;
-		mmx->time_sp = 0;
 		mmx->polarity = DC_MOTOR_POLARITY_NORMAL;
-		mmx->command_flags = 0;
+		mmx->command_flags = CMD_FLAGS_DEFAULT_VALUE;
 	}
 
 	return 0;
@@ -308,14 +310,13 @@ static int ms_nxtmmx_get_speed_regulation(struct tacho_motor_device *tm)
 static int ms_nxtmmx_set_speed_regulation(struct tacho_motor_device *tm,
 					  enum tacho_motor_speed_regulation reg)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-
-	if (reg == TM_SPEED_REGULATION_ON)
-		mmx->command_flags |= CMD_FLAG_SPEED_CTRL;
-	else
-		mmx->command_flags &= ~CMD_FLAG_SPEED_CTRL;
-
-	return 0;
+	/*
+	 * This controller only works with speed control enabled - except when
+	 * the Encoder bit is set, in which case it runs at 100% duty cycle.
+	 * So, we don't allow changing speed_regulation and it will return "on"
+	 * when read.
+	 */
+	return -EOPNOTSUPP;
 }
 
 static unsigned ms_nxtmmx_get_stop_commands(struct tacho_motor_device *tm)
@@ -375,12 +376,8 @@ struct tacho_motor_ops ms_nxtmmx_tacho_motor_ops = {
 	.set_position		= ms_nxtmmx_set_position,
 	.get_state		= ms_nxtmmx_get_state,
 	.get_count_per_rot	= ms_nxtmmx_get_count_per_rot,
-	.get_duty_cycle_sp	= ms_nxtmmx_get_duty_cycle_sp,
-	.set_duty_cycle_sp	= ms_nxtmmx_set_duty_cycle_sp,
 	.get_speed_sp		= ms_nxtmmx_get_speed_sp,
 	.set_speed_sp		= ms_nxtmmx_set_speed_sp,
-	.get_time_sp		= ms_nxtmmx_get_time_sp,
-	.set_time_sp		= ms_nxtmmx_set_time_sp,
 	.get_position_sp	= ms_nxtmmx_get_position_sp,
 	.set_position_sp	= ms_nxtmmx_set_position_sp,
 	.get_commands		= ms_nxtmmx_get_commands,
@@ -413,6 +410,7 @@ int ms_nxtmmx_probe_cb(struct nxt_i2c_sensor_data *data)
 		mmx[i].tm.ops = &ms_nxtmmx_tacho_motor_ops;
 		mmx[i].i2c = data;
 		mmx[i].index = i;
+		mmx[i].command_flags = CMD_FLAGS_DEFAULT_VALUE;
 	}
 
 	err = register_tacho_motor(&mmx[0].tm, &data->client->dev);

@@ -224,7 +224,6 @@ struct tacho_motor_state_item {
 
 static struct tacho_motor_value_names tacho_motor_states[TM_NUM_STATES] = {
 	[TM_STATE_RUN_FOREVER]			= { "run_forever"		},
-	[TM_STATE_SETUP_RAMP_TIME]		= { "setup_ramp_time"		},
 	[TM_STATE_SETUP_RAMP_POSITION]		= { "setup_ramp_position"	},
 	[TM_STATE_SETUP_RAMP_REGULATION]	= { "setup_ramp_regulation"	},
 	[TM_STATE_RAMP_UP]			= { "ramp_up"			},
@@ -347,19 +346,34 @@ static ssize_t speed_show(struct device *dev, struct device_attribute *attr,
 
 	return sprintf(buf, "%d\n", speed);
 }
+/**
+ * Run timed command is implemented in the tacho motor class, so if an imlementing
+ * driver can run forever and stop, then it can run timed.
+ */
+static inline unsigned get_supported_commands(struct tacho_motor_device *tm)
+{
+	unsigned supported_commands = tm->ops->get_commands(tm);
+
+	if ((supported_commands & BIT(TM_COMMAND_RUN_FOREVER))
+				&& (supported_commands & BIT(TM_COMMAND_STOP)))
+	{
+		supported_commands |= BIT(TM_COMMAND_RUN_TIMED);
+	}
+
+	return supported_commands;
+}
 
 static ssize_t commands_show(struct device *dev, struct device_attribute *attr,
 			     char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	unsigned command_flags;
+	unsigned supported_commands;
 	int i;
 	int size = 0;
 
-	command_flags = tm->ops->get_commands(tm);
-
+	supported_commands = get_supported_commands(tm);
 	for (i = 0; i < NUM_TM_COMMANDS; i++) {
-		if (command_flags & BIT(i))
+		if (supported_commands & BIT(i))
 			size += sprintf(buf+size, "%s ",
 				tacho_motor_command_names[i].name);
 	}
@@ -374,6 +388,7 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int i, err;
+	bool start_timer = false;
 
 	for (i = 0; i < NUM_TM_COMMANDS; i++) {
 		if (sysfs_streq(buf, tacho_motor_command_names[i].name))
@@ -383,14 +398,30 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 	if (i >= NUM_TM_COMMANDS)
 		return -EINVAL;
 
-	if (!(BIT(i) & tm->ops->get_commands(tm)))
-		return -EOPNOTSUPP;
+	if (!(BIT(i) & get_supported_commands(tm)))
+		return -EINVAL;
 
+	cancel_delayed_work_sync(&tm->run_timed_work);
+	if (i == TM_COMMAND_RUN_TIMED) {
+		i = TM_COMMAND_RUN_FOREVER;
+		start_timer = true;
+	}
 	err = tm->ops->send_command(tm, i);
 	if (err < 0)
 		return err;
 
+	if (start_timer)
+		schedule_delayed_work(&tm->run_timed_work, msecs_to_jiffies(tm->time_sp));
+
 	return size;
+}
+
+static void tacho_motor_class_run_timed_work(struct work_struct *work)
+{
+	struct tacho_motor_device *tm = container_of(to_delayed_work(work),
+				struct tacho_motor_device, run_timed_work);
+
+	tm->ops->send_command(tm, TM_COMMAND_STOP);
 }
 
 static ssize_t speed_regulation_show(struct device *dev,
@@ -480,7 +511,7 @@ static ssize_t stop_command_store(struct device *dev,
 		return -EINVAL;
 
 	if (!(BIT(i) & tm->ops->get_stop_commands(tm)))
-		return -EOPNOTSUPP;
+		return -EINVAL;
 
 	err = tm->ops->set_stop_command(tm, i);
 	if (err < 0)
@@ -524,14 +555,13 @@ static ssize_t encoder_polarity_show(struct device *dev,
 				     struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int ret;
+	int ret = DC_MOTOR_POLARITY_NORMAL;
 
-	if (!tm->ops->get_encoder_polarity)
-		return -EOPNOTSUPP;
-
-	ret = tm->ops->get_encoder_polarity(tm);
-	if (ret < 0)
-		return ret;
+	if (!tm->ops->get_encoder_polarity) {
+		ret = tm->ops->get_encoder_polarity(tm);
+		if (ret < 0)
+			return ret;
+	}
 
 	return sprintf(buf, "%s\n", dc_motor_polarity_values[ret]);
 }
@@ -641,11 +671,14 @@ static ssize_t duty_cycle_sp_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int err, duty_cycle;
+	int duty_cycle = 0;
 
-	err = tm->ops->get_duty_cycle_sp(tm, &duty_cycle);
-	if (err < 0)
-		return err;
+
+	if (tm->ops->set_duty_cycle_sp) {
+		int err = tm->ops->get_duty_cycle_sp(tm, &duty_cycle);
+		if (err < 0)
+			return err;
+	}
 
 	return sprintf(buf, "%d\n", duty_cycle);
 }
@@ -656,6 +689,9 @@ static ssize_t duty_cycle_sp_store(struct device *dev,
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int duty_cycle_sp, err;
+
+	if (!tm->ops->set_duty_cycle_sp)
+		return -EOPNOTSUPP;
 
 	err = kstrtoint(buf, 10, &duty_cycle_sp);
 	if (err < 0)
@@ -675,11 +711,13 @@ static ssize_t speed_sp_show(struct device *dev, struct device_attribute *attr,
 			     char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int err, speed;
+	int speed = 0;
 
-	err = tm->ops->get_speed_sp(tm, &speed);
-	if (err < 0)
-		return err;
+	if (tm->ops->get_speed_sp) {
+		int err = tm->ops->get_speed_sp(tm, &speed);
+		if (err < 0)
+			return err;
+	}
 
 	return sprintf(buf, "%d\n", speed);
 }
@@ -689,6 +727,9 @@ static ssize_t speed_sp_store(struct device *dev, struct device_attribute *attr,
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int err, speed;
+
+	if (!tm->ops->set_speed_sp)
+		return -EOPNOTSUPP;
 
 	err = kstrtoint(buf, 10, &speed);
 	if (err < 0)
@@ -708,13 +749,8 @@ static ssize_t time_sp_show(struct device *dev, struct device_attribute *attr,
 			    char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int ret;
 
-	ret = tm->ops->get_time_sp(tm);
-	if (ret < 0)
-		return ret;
-
-	return sprintf(buf, "%d\n", ret);
+	return sprintf(buf, "%d\n", tm->time_sp);
 }
 
 static ssize_t time_sp_store(struct device *dev, struct device_attribute *attr,
@@ -723,6 +759,9 @@ static ssize_t time_sp_store(struct device *dev, struct device_attribute *attr,
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int err, time;
 
+	if (!(BIT(TM_COMMAND_RUN_TIMED) & get_supported_commands(tm)))
+		return -EOPNOTSUPP;
+
 	err = kstrtoint(buf, 10, &time);
 	if (err < 0)
 		return err;
@@ -730,9 +769,7 @@ static ssize_t time_sp_store(struct device *dev, struct device_attribute *attr,
 	if (time < 0)
 		return -EINVAL;
 
-	err = tm->ops->set_time_sp(tm, time);
-	if (err < 0)
-		return err;
+	tm->time_sp = time;
 
 	return size;
 }
@@ -915,6 +952,7 @@ int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
 	tm->dev.parent = parent;
 	tm->dev.class = &tacho_motor_class;
 	dev_set_name(&tm->dev, "motor%d", tacho_motor_class_id++);
+	INIT_DELAYED_WORK(&tm->run_timed_work, tacho_motor_class_run_timed_work);
 
 	err = device_register(&tm->dev);
 	if (err)
@@ -928,6 +966,7 @@ EXPORT_SYMBOL_GPL(register_tacho_motor);
 
 void unregister_tacho_motor(struct tacho_motor_device *tm)
 {
+	cancel_delayed_work_sync(&tm->run_timed_work);
 	dev_info(&tm->dev, "Unregistered.\n");
 	device_unregister(&tm->dev);
 }
