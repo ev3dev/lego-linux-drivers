@@ -39,13 +39,13 @@
 
 #define PID_K_SIZE		2
 
-#define ENCODER_PID_KP		0x7A
-#define ENCODER_PID_KI		0x7C
-#define ENCODER_PID_KD		0x7E
+#define ENCODER_PID_KP_REG	0x7A
+#define ENCODER_PID_KI_REG	0x7C
+#define ENCODER_PID_KD_REG	0x7E
 
-#define SPEED_PID_KP		0x7A
-#define SPEED_PID_KI		0x7C
-#define SPEED_PID_KD		0x7E
+#define SPEED_PID_KP_REG	0x80
+#define SPEED_PID_KI_REG	0x82
+#define SPEED_PID_KD_REG	0x84
 
 #define COMMAND_RESET_ALL		'R'
 #define COMMAND_SYNC_START		'S'
@@ -371,6 +371,150 @@ static int ms_nxtmmx_set_polarity(struct tacho_motor_device *tm,
 	return 0;
 }
 
+static int ms_nxtmmx_get_speed_Kp(struct tacho_motor_device *tm)
+{
+	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	int err;
+	u8 k[PID_K_SIZE];
+
+	err = i2c_smbus_read_i2c_block_data(mmx->i2c->client, SPEED_PID_KP_REG,
+								PID_K_SIZE, k);
+	if (err < 0)
+		return err;
+
+	return le16_to_cpu(*(s16*)k);
+}
+
+static int ms_nxtmmx_set_speed_Kp(struct tacho_motor_device *tm, int Kp)
+{
+	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	u8 k[PID_K_SIZE];
+
+	*(s16*)k = cpu_to_le16(Kp);
+	return i2c_smbus_write_i2c_block_data(mmx->i2c->client, SPEED_PID_KP_REG,
+								PID_K_SIZE, k);
+}
+
+static int ms_nxtmmx_get_speed_Ki(struct tacho_motor_device *tm)
+{
+	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	int err;
+	u8 k[PID_K_SIZE];
+
+	err = i2c_smbus_read_i2c_block_data(mmx->i2c->client, SPEED_PID_KI_REG,
+								PID_K_SIZE, k);
+	if (err < 0)
+		return err;
+
+	return le16_to_cpu(*(s16*)k);
+}
+
+static int ms_nxtmmx_set_speed_Ki(struct tacho_motor_device *tm, int Ki)
+{
+	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	u8 k[PID_K_SIZE];
+
+	*(s16*)k = cpu_to_le16(Ki);
+	return i2c_smbus_write_i2c_block_data(mmx->i2c->client, SPEED_PID_KI_REG,
+								PID_K_SIZE, k);
+}
+
+static int ms_nxtmmx_get_speed_Kd(struct tacho_motor_device *tm)
+{
+	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	int err;
+	u8 k[PID_K_SIZE];
+
+	err = i2c_smbus_read_i2c_block_data(mmx->i2c->client, SPEED_PID_KD_REG,
+								PID_K_SIZE, k);
+	if (err < 0)
+		return err;
+
+	return le16_to_cpu(*(s16*)k);
+}
+
+static int ms_nxtmmx_set_speed_Kd(struct tacho_motor_device *tm, int Kd)
+{
+	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	u8 k[PID_K_SIZE];
+
+	*(s16*)k = cpu_to_le16(Kd);
+	return i2c_smbus_write_i2c_block_data(mmx->i2c->client, SPEED_PID_KD_REG,
+								PID_K_SIZE, k);
+}
+
+static int ms_nxtmmx_get_position_Kp(struct tacho_motor_device *tm)
+{
+	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	int err;
+	u8 k[PID_K_SIZE];
+
+	err = i2c_smbus_read_i2c_block_data(mmx->i2c->client,
+					ENCODER_PID_KP_REG, PID_K_SIZE, k);
+	if (err < 0)
+		return err;
+
+	return le16_to_cpu(*(s16*)k);
+}
+
+static int ms_nxtmmx_set_position_Kp(struct tacho_motor_device *tm, int Kp)
+{
+	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	u8 k[PID_K_SIZE];
+
+	*(s16*)k = cpu_to_le16(Kp);
+	return i2c_smbus_write_i2c_block_data(mmx->i2c->client,
+					ENCODER_PID_KP_REG, PID_K_SIZE, k);
+}
+
+static int ms_nxtmmx_get_position_Ki(struct tacho_motor_device *tm)
+{
+	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	int err;
+	u8 k[PID_K_SIZE];
+
+	err = i2c_smbus_read_i2c_block_data(mmx->i2c->client,
+					ENCODER_PID_KI_REG, PID_K_SIZE, k);
+	if (err < 0)
+		return err;
+
+	return le16_to_cpu(*(s16*)k);
+}
+
+static int ms_nxtmmx_set_position_Ki(struct tacho_motor_device *tm, int Ki)
+{
+	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	u8 k[PID_K_SIZE];
+
+	*(s16*)k = cpu_to_le16(Ki);
+	return i2c_smbus_write_i2c_block_data(mmx->i2c->client,
+					ENCODER_PID_KI_REG, PID_K_SIZE, k);
+}
+
+static int ms_nxtmmx_get_position_Kd(struct tacho_motor_device *tm)
+{
+	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	int err;
+	u8 k[PID_K_SIZE];
+
+	err = i2c_smbus_read_i2c_block_data(mmx->i2c->client,
+					ENCODER_PID_KD_REG, PID_K_SIZE, k);
+	if (err < 0)
+		return err;
+
+	return le16_to_cpu(*(s16*)k);
+}
+
+static int ms_nxtmmx_set_position_Kd(struct tacho_motor_device *tm, int Kd)
+{
+	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	u8 k[PID_K_SIZE];
+
+	*(s16*)k = cpu_to_le16(Kd);
+	return i2c_smbus_write_i2c_block_data(mmx->i2c->client,
+					ENCODER_PID_KD_REG, PID_K_SIZE, k);
+}
+
 struct tacho_motor_ops ms_nxtmmx_tacho_motor_ops = {
 	.get_position		= ms_nxtmmx_get_position,
 	.set_position		= ms_nxtmmx_set_position,
@@ -389,6 +533,18 @@ struct tacho_motor_ops ms_nxtmmx_tacho_motor_ops = {
 	.set_stop_command	= ms_nxtmmx_set_stop_command,
 	.get_polarity		= ms_nxtmmx_get_polarity,
 	.set_polarity		= ms_nxtmmx_set_polarity,
+	.get_speed_Kp		= ms_nxtmmx_get_speed_Kp,
+	.set_speed_Kp		= ms_nxtmmx_set_speed_Kp,
+	.get_speed_Ki		= ms_nxtmmx_get_speed_Ki,
+	.set_speed_Ki		= ms_nxtmmx_set_speed_Ki,
+	.get_speed_Kd		= ms_nxtmmx_get_speed_Kd,
+	.set_speed_Kd		= ms_nxtmmx_set_speed_Kd,
+	.get_position_Kp	= ms_nxtmmx_get_position_Kp,
+	.set_position_Kp	= ms_nxtmmx_set_position_Kp,
+	.get_position_Ki	= ms_nxtmmx_get_position_Ki,
+	.set_position_Ki	= ms_nxtmmx_set_position_Ki,
+	.get_position_Kd	= ms_nxtmmx_get_position_Kd,
+	.set_position_Kd	= ms_nxtmmx_set_position_Kd,
 };
 
 int ms_nxtmmx_probe_cb(struct nxt_i2c_sensor_data *data)
