@@ -60,18 +60,11 @@ enum tacho_motor_type {
 
 enum tacho_motor_state
 {
-  TM_STATE_RUN_FOREVER,
-  TM_STATE_SETUP_RAMP_POSITION,
-  TM_STATE_SETUP_RAMP_REGULATION,
-  TM_STATE_RAMP_UP,
-  TM_STATE_RAMP_CONST,
-  TM_STATE_POSITION_RAMP_DOWN,
-  TM_STATE_RAMP_DOWN,
-  TM_STATE_STOP,
-  TM_STATE_IDLE,
-  TM_NUM_STATES,
+	TM_STATE_RUNNING,
+	TM_STATE_RAMPING,
+	TM_STATE_STALLED,
+	NUM_TM_STATES,
 };
-
 
 struct tacho_motor_ops;
 
@@ -134,7 +127,7 @@ struct tacho_motor_device {
  * @get_position: Returns the current encoder position in tacho counts.
  * @set_position: Sets the current encoder position to the specified value.
  * 	Returns an error instead of setting the value if the motor is running.
- * @get_state: TODO
+ * @get_state: Gets the state flags for the motor.
  * @get_count_per_rot: Gets the number of tacho counts in one full rotation of
  * 	the motor.
  * @get_duty_cycle: Gets the current PWM duty cycle being sent to the motor.
@@ -163,7 +156,7 @@ struct tacho_motor_ops {
 	int (*get_position)(struct tacho_motor_device *tm, long *position);
 	int (*set_position)(struct tacho_motor_device *tm, long position);
 
-	int  (*get_state)(struct tacho_motor_device *tm);
+	int (*get_state)(struct tacho_motor_device *tm);
 
 	int (*get_count_per_rot)(struct tacho_motor_device *tm);
 	int (*get_duty_cycle)(struct tacho_motor_device *tm, int *duty_cycle);

@@ -154,7 +154,8 @@
 * : The proportional constant for the speed regulation PID.
 * .
 * `state` (read-only)
-* : TODO
+* : Reading returns a space separated list of state flags. Possible flags are
+*   `running`, `ramping` and `stalled`.
 * .
 * `stop_command` (read/write)
 * : Reading returns the current stop command. Writing sets the stop command.
@@ -222,16 +223,10 @@ struct tacho_motor_state_item {
 	const char *name;
 };
 
-static struct tacho_motor_value_names tacho_motor_states[TM_NUM_STATES] = {
-	[TM_STATE_RUN_FOREVER]			= { "run_forever"		},
-	[TM_STATE_SETUP_RAMP_POSITION]		= { "setup_ramp_position"	},
-	[TM_STATE_SETUP_RAMP_REGULATION]	= { "setup_ramp_regulation"	},
-	[TM_STATE_RAMP_UP]			= { "ramp_up"			},
-	[TM_STATE_RAMP_CONST]			= { "ramp_const"		},
-	[TM_STATE_POSITION_RAMP_DOWN]		= { "position_ramp_down"	},
-	[TM_STATE_RAMP_DOWN]			= { "ramp_down"			},
-	[TM_STATE_STOP]				= { "stop"			},
-	[TM_STATE_IDLE]				= { "idle"			},
+static struct tacho_motor_value_names tacho_motor_states[NUM_TM_STATES] = {
+	[TM_STATE_RUNNING]	= { "running" },
+	[TM_STATE_RAMPING]	= { "ramping" },
+	[TM_STATE_STALLED]	= { "stalled" },
 };
 
 static ssize_t port_name_show(struct device *dev, struct device_attribute *attr,
@@ -280,26 +275,28 @@ ssize_t position_store(struct device *dev, struct device_attribute *attr,
 
 	return size;
 }
-#if 0
-static ssize_t tacho_motor_show_states(struct device *dev, struct device_attribute *attr, char *buf)
-{
-        unsigned int i;
 
-	int size = 0;
-
-	for (i=0; i<TM_NUM_STATES; ++i)
-		size += sprintf(buf+size, "%s ", tacho_motor_states[i].name);
-
-	size += sprintf(buf+size, "\n");
-
-        return size;
-}
-#endif
-static ssize_t tacho_motor_show_state(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t state_show(struct device *dev, struct device_attribute *attr,
+			  char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int ret, i;
+	size_t size = 0;
 
-	return sprintf(buf, "%s\n", tacho_motor_states[tm->ops->get_state(tm)].name);
+	ret = tm->ops->get_state(tm);
+	if (ret < 0)
+		return ret;
+
+	for (i = 0; i < NUM_TM_STATES; i++) {
+		if (ret & BIT(i))
+			size += sprintf(buf + size, "%s ", tacho_motor_states[i].name);
+	}
+	if (size == 0)
+		size = sprintf(buf, "\n");
+	else
+		buf[size - 1] = '\n';
+
+	return size;
 }
 
 static ssize_t count_per_rot_show(struct device *dev,
@@ -749,7 +746,7 @@ static ssize_t position_sp_store(struct device *dev,
 DEVICE_ATTR_RO(driver_name);
 DEVICE_ATTR_RO(port_name);
 DEVICE_ATTR_RW(position);
-DEVICE_ATTR(state, S_IRUGO, tacho_motor_show_state, NULL);
+DEVICE_ATTR_RO(state);
 DEVICE_ATTR_RO(count_per_rot);
 DEVICE_ATTR_RO(duty_cycle);
 DEVICE_ATTR_RO(speed);

@@ -153,8 +153,22 @@ static int ms_nxtmmx_set_position(struct tacho_motor_device *tm, long position)
 
 static int ms_nxtmmx_get_state(struct tacho_motor_device *tm)
 {
-	/* TODO: Need to finalize new tacho-motor class state implementation */
-	return 0;
+	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	int ret;
+	unsigned state = 0;
+
+	ret = i2c_smbus_read_byte_data(mmx->i2c->client, READ_STATUS_REG(mmx->index));
+	if (ret < 0)
+		return ret;
+
+	if (ret & STATUS_FLAG_POWERED)
+		state |= BIT(TM_STATE_RUNNING);
+	if (ret & STATUS_FLAG_RAMPING)
+		state |= BIT(TM_STATE_RAMPING);
+	if (ret & STATUS_FLAG_STALL)
+		state |= BIT(TM_STATE_STALLED);
+
+	return state;
 }
 
 static int ms_nxtmmx_get_count_per_rot(struct tacho_motor_device *tm)
