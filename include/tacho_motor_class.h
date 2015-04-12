@@ -75,16 +75,90 @@ enum tacho_motor_state
 
 struct tacho_motor_ops;
 
+/**
+ * struct tacho_motor_params - user specified parameters
+ *
+ * These parameters do not take effect until a command is issued, so they are
+ * maintained by the tacho-motor class so that each implementing driver does
+ * not have to keep track of them twice.
+ *
+ * @ polarity: Indicates the positive direction of the motor.
+ * @ encoder_polarity: Indicates the positive direction of the shaft encoder.
+ * @ duty_cycle_sp: Used when speed_regulation is off.
+ * @ speed_sp: Used when speed_regulation is on.
+ * @ position_sp: Used by run-to-*-pos commands.
+ * @ time_sp: Used by run-timed command.
+ * @ ramp_up_sp: In milliseconds.
+ * @ ramp_down_sp: In milliseconds.
+ * @ speed_regulation: Indicates whether to control duty_cycle directly (off)
+ * 	or use a PID to control the speed (on).
+ * @stop_command: What to do for stop command or when run command ends.
+ */
+struct tacho_motor_params {
+	enum dc_motor_polarity polarity;
+	enum dc_motor_polarity encoder_polarity;
+	int duty_cycle_sp;
+	int speed_sp;
+	int position_sp;
+	int time_sp;
+	int ramp_up_sp;
+	int ramp_down_sp;
+	enum tacho_motor_speed_regulation speed_regulation;
+	enum tacho_motor_stop_command stop_command;
+};
+
+/**
+ * struct tacho_motor_device
+ *
+ * Implementing drivers need to set driver_name, port_name, ops and supports_*.
+ * The tacho motor class will set the default values for params, so if a driver
+ * needs to change them, it should be done after the tacho_motor_device is
+ * registered.
+ */
 struct tacho_motor_device {
 	const char *driver_name;
 	const char *port_name;
 	const struct tacho_motor_ops const *ops;
+	bool supports_encoder_polarity;
+	bool supports_ramping;
+	struct tacho_motor_params params;
 	/* private */
 	struct device dev;
 	struct delayed_work run_timed_work;
-	int time_sp;
 };
 
+/**
+ * struct tacho_motor_ops - Operations that must be implemented by tacho-motor
+ * 	class drivers.
+ *
+ * @get_position: Returns the current encoder position in tacho counts.
+ * @set_position: Sets the current encoder position to the specified value.
+ * 	Returns an error instead of setting the value if the motor is running.
+ * @get_state: TODO
+ * @get_count_per_rot: Gets the number of tacho counts in one full rotation of
+ * 	the motor.
+ * @get_duty_cycle: Gets the current PWM duty cycle being sent to the motor.
+ * @get_speed: Gets the current speed of the motor in tacho counts per second.
+ * @get_commands: Gets flags representing the commands that the driver supports.
+ * @send_command: Sends an command to the motor controller (makes the motor do
+ * 	something).
+ * @get_speed_regulations: Gets flags representing the valid speed regulation
+ * 	values supported by the driver.
+ * @get_stop_commands: Gets flags representing the valid stop commands supported
+ * 	by the driver.
+ * @get_speed_Kp: Gets the current proportional PID constant for the speed PID.
+ * @set_speed_Kp: Sets the current proportional PID constant for the speed PID.
+ * @get_speed_Ki: Gets the current integral PID constant for the speed PID.
+ * @set_speed_Ki: Sets the current integral PID constant for the speed PID.
+ * @get_speed_Kd: Gets the current derivative PID constant for the speed PID.
+ * @set_speed_Kd: Sets the current derivative PID constant for the speed PID.
+ * @get_position_Kp: Gets the current proportional PID constant for the position PID.
+ * @set_position_Kp: Sets the current proportional PID constant for the position PID.
+ * @get_position_Ki: Gets the current integral PID constant for the position PID.
+ * @set_position_Ki: Sets the current integral PID constant for the position PID.
+ * @get_position_Kd: Gets the current derivative PID constant for the position PID.
+ * @set_position_Kd: Sets the current derivative PID constant for the position PID.
+ */
 struct tacho_motor_ops {
 	int (*get_position)(struct tacho_motor_device *tm, long *position);
 	int (*set_position)(struct tacho_motor_device *tm, long position);
@@ -95,30 +169,11 @@ struct tacho_motor_ops {
 	int (*get_duty_cycle)(struct tacho_motor_device *tm, int *duty_cycle);
 	int (*get_speed)(struct tacho_motor_device *tm, int *speed);
 
-	int (*get_duty_cycle_sp)(struct tacho_motor_device *tm, int *duty_cycle);
-	int (*set_duty_cycle_sp)(struct tacho_motor_device *tm, int duty_cycle);
-
-	int (*get_speed_sp)(struct tacho_motor_device *tm, int *speed);
-	int (*set_speed_sp)(struct tacho_motor_device *tm, int speed);
-
-	int (*get_position_sp)(struct tacho_motor_device *tm, int *position);
-	int (*set_position_sp)(struct tacho_motor_device *tm, int position);
-
 	unsigned (*get_commands)(struct tacho_motor_device *tm);
 	int (*send_command)(struct tacho_motor_device *tm, enum tacho_motor_command command);
 
-	int (*get_speed_regulation)(struct tacho_motor_device *tm);
-	int (*set_speed_regulation)(struct tacho_motor_device *tm, enum tacho_motor_speed_regulation speed_regulation);
-
+	unsigned (*get_speed_regulations)(struct tacho_motor_device *tm);
 	unsigned (*get_stop_commands)(struct tacho_motor_device *tm);
-	int (*get_stop_command)(struct tacho_motor_device *tm);
-	int (*set_stop_command)(struct tacho_motor_device *tm, enum tacho_motor_stop_command stop_command);
-
-	int (*get_polarity)(struct tacho_motor_device *tm);
-	int (*set_polarity)(struct tacho_motor_device *tm, enum dc_motor_polarity polarity);
-
-	int (*get_encoder_polarity)(struct tacho_motor_device *tm);
-	int (*set_encoder_polarity)(struct tacho_motor_device *tm, enum dc_motor_polarity polarity);
 
 	int (*get_speed_Kp)(struct tacho_motor_device *tm);
 	int (*set_speed_Kp)(struct tacho_motor_device *tm, int Kp);
@@ -133,11 +188,6 @@ struct tacho_motor_ops {
 	int (*set_position_Ki)(struct tacho_motor_device *tm, int Kp);
 	int (*get_position_Kd)(struct tacho_motor_device *tm);
 	int (*set_position_Kd)(struct tacho_motor_device *tm, int Kp);
-
-	int (*get_ramp_up_sp)(struct tacho_motor_device *tm);
-	int (*set_ramp_up_sp)(struct tacho_motor_device *tm, int ms);
-	int (*get_ramp_down_sp)(struct tacho_motor_device *tm);
-	int (*set_ramp_down_sp)(struct tacho_motor_device *tm, int ms);
 };
 
 extern void tacho_motor_notify_state_change(struct tacho_motor_device *);

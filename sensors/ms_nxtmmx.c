@@ -83,9 +83,6 @@ struct ms_nxtmmx_data {
 	struct nxt_i2c_sensor_data *i2c;
 	char port_name[LEGO_PORT_NAME_SIZE];
 	int index;
-	int speed_sp;
-	int position_sp;
-	enum dc_motor_polarity polarity;
 	unsigned command_flags;
 };
 
@@ -166,46 +163,6 @@ static int ms_nxtmmx_get_count_per_rot(struct tacho_motor_device *tm)
 	return 360;
 }
 
-/*
- * Docs don't say, so assuming max speed is 1000 counts per second. Same register
- * is used for regulated and unregulated speed.
- */
-static int ms_nxtmmx_get_speed_sp(struct tacho_motor_device *tm, int *sp)
-{
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-
-	*sp = mmx->speed_sp;
-
-	return 0;
-}
-
-static int ms_nxtmmx_set_speed_sp(struct tacho_motor_device *tm, int sp)
-{
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-
-	mmx->speed_sp = sp;
-
-	return 0;
-}
-
-static int ms_nxtmmx_get_position_sp(struct tacho_motor_device *tm, int *position)
-{
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-
-	*position = mmx->position_sp;
-
-	return 0;
-}
-
-static int ms_nxtmmx_set_position_sp(struct tacho_motor_device *tm, int position)
-{
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-
-	mmx->position_sp = position;
-
-	return 0;
-}
-
 static unsigned ms_nxtmmx_get_commands(struct tacho_motor_device *tm)
 {
 	return BIT(TM_COMMAND_RUN_FOREVER) | BIT (TM_COMMAND_RUN_TO_ABS_POS)
@@ -222,9 +179,9 @@ static int ms_nxtmmx_send_command(struct tacho_motor_device *tm,
 
 	if (IS_RUN_CMD(command)) {
 		/* fill in the setpoints with the correct polarity */
-		*(int *)command_bytes = cpu_to_le32(mmx->position_sp);
-		command_bytes[WRITE_SPEED] = ms_nxtmmx_scale_speed(mmx->speed_sp);
-		if (mmx->polarity == DC_MOTOR_POLARITY_INVERTED) {
+		*(int *)command_bytes = cpu_to_le32(mmx->tm.params.position_sp);
+		command_bytes[WRITE_SPEED] = ms_nxtmmx_scale_speed(mmx->tm.params.speed_sp);
+		if (mmx->tm.params.polarity == DC_MOTOR_POLARITY_INVERTED) {
 			*(int *)command_bytes *= -1;
 			command_bytes[WRITE_SPEED] *= -1;
 		}
@@ -246,6 +203,18 @@ static int ms_nxtmmx_send_command(struct tacho_motor_device *tm,
 		command_bytes[WRITE_TIME] = 0; /* we don't used the controller's timed mode */
 		command_bytes[WRITE_COMMAND_B] = 0;
 		command_bytes[WRITE_COMMAND_A] = mmx->command_flags;
+
+		/* set bits for stop command */
+
+		if (mmx->tm.params.stop_command == TM_STOP_COMMAND_HOLD)
+			mmx->command_flags |= CMD_FLAG_HOLD;
+		else
+			mmx->command_flags &= ~CMD_FLAG_HOLD;
+
+		if (mmx->tm.params.stop_command == TM_STOP_COMMAND_BRAKE)
+			mmx->command_flags |= CMD_FLAG_BRAKE;
+		else
+			mmx->command_flags &= ~CMD_FLAG_BRAKE;
 
 		/* then write to the individual motor register to GO! */
 
@@ -270,7 +239,7 @@ static int ms_nxtmmx_send_command(struct tacho_motor_device *tm,
 				READ_ENCODER_POS_REG(mmx->index), ENCODER_SIZE, command_bytes);
 			if (err < 0)
 				return err;
-			command_bytes[WRITE_SPEED] = ms_nxtmmx_scale_speed(mmx->speed_sp);
+			command_bytes[WRITE_SPEED] = ms_nxtmmx_scale_speed(mmx->tm.params.speed_sp);
 			command_bytes[WRITE_TIME] = 0;
 			command_bytes[WRITE_COMMAND_B] = 0;
 			command_bytes[WRITE_COMMAND_A] = CMD_FLAGS_STOP_HOLD;
@@ -290,25 +259,16 @@ static int ms_nxtmmx_send_command(struct tacho_motor_device *tm,
 			COMMAND_REG, command_bytes[0]);
 		if (err < 0)
 			return err;
-		mmx->speed_sp = 0;
-		mmx->position_sp = 0;
-		mmx->polarity = DC_MOTOR_POLARITY_NORMAL;
+		mmx->tm.params.speed_sp = 0;
+		mmx->tm.params.position_sp = 0;
+		mmx->tm.params.polarity = DC_MOTOR_POLARITY_NORMAL;
 		mmx->command_flags = CMD_FLAGS_DEFAULT_VALUE;
 	}
 
 	return 0;
 }
 
-static int ms_nxtmmx_get_speed_regulation(struct tacho_motor_device *tm)
-{
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-
-	return (mmx->command_flags & CMD_FLAG_SPEED_CTRL)
-		? TM_SPEED_REGULATION_ON : TM_SPEED_REGULATION_OFF;
-}
-
-static int ms_nxtmmx_set_speed_regulation(struct tacho_motor_device *tm,
-					  enum tacho_motor_speed_regulation reg)
+static unsigned ms_nxtmmx_get_speed_regulations(struct tacho_motor_device *tm)
 {
 	/*
 	 * This controller only works with speed control enabled - except when
@@ -316,59 +276,13 @@ static int ms_nxtmmx_set_speed_regulation(struct tacho_motor_device *tm,
 	 * So, we don't allow changing speed_regulation and it will return "on"
 	 * when read.
 	 */
-	return -EOPNOTSUPP;
+	return BIT(TM_SPEED_REGULATION_ON);
 }
 
 static unsigned ms_nxtmmx_get_stop_commands(struct tacho_motor_device *tm)
 {
 	return BIT(TM_STOP_COMMAND_COAST) | BIT(TM_STOP_COMMAND_BRAKE) |
 		BIT(TM_STOP_COMMAND_HOLD);
-}
-
-static int ms_nxtmmx_get_stop_command(struct tacho_motor_device *tm)
-{
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-
-	if (mmx->command_flags & CMD_FLAG_HOLD)
-		return TM_STOP_COMMAND_HOLD;
-
-	return (mmx->command_flags & CMD_FLAG_BRAKE)
-		? TM_STOP_COMMAND_BRAKE : TM_STOP_COMMAND_COAST;
-}
-
-static int ms_nxtmmx_set_stop_command(struct tacho_motor_device *tm,
-				      enum tacho_motor_stop_command command)
-{
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-
-	if (command == TM_STOP_COMMAND_HOLD)
-		mmx->command_flags |= CMD_FLAG_HOLD;
-	else
-		mmx->command_flags &= ~CMD_FLAG_HOLD;
-
-	if (command == TM_STOP_COMMAND_BRAKE)
-		mmx->command_flags |= CMD_FLAG_BRAKE;
-	else
-		mmx->command_flags &= ~CMD_FLAG_BRAKE;
-
-	return 0;
-}
-
-static int ms_nxtmmx_get_polarity(struct tacho_motor_device *tm)
-{
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-
-	return mmx->polarity;
-}
-
-static int ms_nxtmmx_set_polarity(struct tacho_motor_device *tm,
-				  enum dc_motor_polarity polarity)
-{
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
-
-	mmx->polarity = polarity;
-
-	return 0;
 }
 
 static int ms_nxtmmx_get_speed_Kp(struct tacho_motor_device *tm)
@@ -520,19 +434,10 @@ struct tacho_motor_ops ms_nxtmmx_tacho_motor_ops = {
 	.set_position		= ms_nxtmmx_set_position,
 	.get_state		= ms_nxtmmx_get_state,
 	.get_count_per_rot	= ms_nxtmmx_get_count_per_rot,
-	.get_speed_sp		= ms_nxtmmx_get_speed_sp,
-	.set_speed_sp		= ms_nxtmmx_set_speed_sp,
-	.get_position_sp	= ms_nxtmmx_get_position_sp,
-	.set_position_sp	= ms_nxtmmx_set_position_sp,
 	.get_commands		= ms_nxtmmx_get_commands,
 	.send_command		= ms_nxtmmx_send_command,
-	.get_speed_regulation	= ms_nxtmmx_get_speed_regulation,
-	.set_speed_regulation	= ms_nxtmmx_set_speed_regulation,
+	.get_speed_regulations	= ms_nxtmmx_get_speed_regulations,
 	.get_stop_commands	= ms_nxtmmx_get_stop_commands,
-	.get_stop_command	= ms_nxtmmx_get_stop_command,
-	.set_stop_command	= ms_nxtmmx_set_stop_command,
-	.get_polarity		= ms_nxtmmx_get_polarity,
-	.set_polarity		= ms_nxtmmx_set_polarity,
 	.get_speed_Kp		= ms_nxtmmx_get_speed_Kp,
 	.set_speed_Kp		= ms_nxtmmx_set_speed_Kp,
 	.get_speed_Ki		= ms_nxtmmx_get_speed_Ki,

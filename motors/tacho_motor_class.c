@@ -411,7 +411,7 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 		return err;
 
 	if (start_timer)
-		schedule_delayed_work(&tm->run_timed_work, msecs_to_jiffies(tm->time_sp));
+		schedule_delayed_work(&tm->run_timed_work, msecs_to_jiffies(tm->params.time_sp));
 
 	return size;
 }
@@ -428,13 +428,9 @@ static ssize_t speed_regulation_show(struct device *dev,
 				     struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int ret;
 
-	ret = tm->ops->get_speed_regulation(tm);
-	if (ret < 0)
-		return ret;
-
-	return sprintf(buf, "%s\n", tacho_motor_speed_regulation_names[ret].name);
+	return sprintf(buf, "%s\n",
+		tacho_motor_speed_regulation_names[tm->params.speed_regulation].name);
 }
 
 static ssize_t speed_regulation_store(struct device *dev,
@@ -442,10 +438,9 @@ static ssize_t speed_regulation_store(struct device *dev,
 				      const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	unsigned int i;
-	int err;
+	unsigned i;
 
-	for (i=0; i<TM_NUM_SPEED_REGULATION_MODES; ++i) {
+	for (i = 0; i < TM_NUM_SPEED_REGULATION_MODES; i++) {
 		if (sysfs_streq(buf, tacho_motor_speed_regulation_names[i].name))
 			break;
 	}
@@ -453,9 +448,10 @@ static ssize_t speed_regulation_store(struct device *dev,
 	if (i >= TM_NUM_SPEED_REGULATION_MODES)
 		return -EINVAL;
 
-	err = tm->ops->set_speed_regulation(tm, i);
-	if (err < 0)
-		return err;
+	if (!(BIT(i) & tm->ops->get_speed_regulations(tm)))
+		return -EINVAL;
+
+	tm->params.speed_regulation = i;
 
 	return size;
 }
@@ -486,13 +482,9 @@ static ssize_t stop_command_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int ret;
 
-	ret = tm->ops->get_stop_command(tm);
-	if (ret < 0)
-		return ret;
-
-	return sprintf(buf, "%s\n", tacho_motor_stop_command_names[ret].name);
+	return sprintf(buf, "%s\n",
+		tacho_motor_stop_command_names[tm->params.stop_command].name);
 }
 
 static ssize_t stop_command_store(struct device *dev,
@@ -500,7 +492,7 @@ static ssize_t stop_command_store(struct device *dev,
 				  const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int i, err;
+	unsigned i;
 
 	for (i = 0; i < TM_NUM_STOP_COMMANDS; i++) {
 		if (sysfs_streq(buf, tacho_motor_stop_command_names[i].name))
@@ -513,9 +505,7 @@ static ssize_t stop_command_store(struct device *dev,
 	if (!(BIT(i) & tm->ops->get_stop_commands(tm)))
 		return -EINVAL;
 
-	err = tm->ops->set_stop_command(tm, i);
-	if (err < 0)
-		return err;
+	tm->params.stop_command = i;
 
 	return size;
 }
@@ -524,26 +514,19 @@ static ssize_t polarity_show(struct device *dev, struct device_attribute *attr,
 			     char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int ret;
 
-	ret = tm->ops->get_polarity(tm);
-	if (ret < 0)
-		return ret;
-
-	return sprintf(buf, "%s\n", dc_motor_polarity_values[ret]);
+	return sprintf(buf, "%s\n", dc_motor_polarity_values[tm->params.polarity]);
 }
 
 static ssize_t polarity_store(struct device *dev, struct device_attribute *attr,
 			      const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int i, err;
+	unsigned i;
 
 	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++) {
 		if (sysfs_streq(buf, dc_motor_polarity_values[i])) {
-			err = tm->ops->set_polarity(tm, i);
-			if (err < 0)
-				return err;
+			tm->params.polarity = i;
 			return size;
 		}
 	}
@@ -555,15 +538,8 @@ static ssize_t encoder_polarity_show(struct device *dev,
 				     struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int ret = DC_MOTOR_POLARITY_NORMAL;
 
-	if (!tm->ops->get_encoder_polarity) {
-		ret = tm->ops->get_encoder_polarity(tm);
-		if (ret < 0)
-			return ret;
-	}
-
-	return sprintf(buf, "%s\n", dc_motor_polarity_values[ret]);
+	return sprintf(buf, "%s\n", dc_motor_polarity_values[tm->params.encoder_polarity]);
 }
 
 static ssize_t encoder_polarity_store(struct device *dev,
@@ -571,16 +547,14 @@ static ssize_t encoder_polarity_store(struct device *dev,
 				      const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int i, err;
+	unsigned i;
 
-	if (!tm->ops->set_encoder_polarity)
+	if (!tm->supports_encoder_polarity)
 		return -EOPNOTSUPP;
 
 	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++) {
 		if (sysfs_streq(buf, dc_motor_polarity_values[i])) {
-			err = tm->ops->set_encoder_polarity(tm, i);
-			if (err < 0)
-				return err;
+			tm->params.encoder_polarity = i;
 			return size;
 		}
 	}
@@ -592,16 +566,11 @@ static ssize_t ramp_up_sp_show(struct device *dev, struct device_attribute *attr
 			       char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int ret;
 
-	if (!tm->ops->get_ramp_up_sp)
+	if (!tm->supports_ramping)
 		return -EOPNOTSUPP;
 
-	ret = tm->ops->get_ramp_up_sp(tm);
-	if (ret < 0)
-		return ret;
-
-	return sprintf(buf, "%d\n", ret);
+	return sprintf(buf, "%d\n", tm->params.ramp_up_sp);
 }
 
 static ssize_t ramp_up_sp_store(struct device *dev, struct device_attribute *attr,
@@ -610,19 +579,17 @@ static ssize_t ramp_up_sp_store(struct device *dev, struct device_attribute *att
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int err, ms;
 
-	if (!tm->ops->set_ramp_up_sp)
+	if (!tm->supports_ramping)
 		return -EOPNOTSUPP;
 
 	err = kstrtoint(buf, 10, &ms);
 	if (err < 0)
 		return err;
 
-	if (ms < 0 || ms > 10000)
+	if (ms < 0 || ms > 60000)
 		return -EINVAL;
 
-	err = tm->ops->set_ramp_up_sp(tm, ms);
-	if (err < 0)
-		return err;
+	tm->params.ramp_up_sp = ms;
 
 	return size;
 }
@@ -631,16 +598,11 @@ static ssize_t ramp_down_sp_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int ret;
 
-	if (!tm->ops->get_ramp_down_sp)
+	if (!tm->supports_ramping)
 		return -EOPNOTSUPP;
 
-	ret = tm->ops->get_ramp_down_sp(tm);
-	if (ret < 0)
-		return ret;
-
-	return sprintf(buf, "%d\n", ret);
+	return sprintf(buf, "%d\n", tm->params.ramp_down_sp);
 }
 
 static ssize_t ramp_down_sp_store(struct device *dev,
@@ -650,19 +612,17 @@ static ssize_t ramp_down_sp_store(struct device *dev,
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int err, ms;
 
-	if (!tm->ops->set_ramp_down_sp)
+	if (!tm->supports_ramping)
 		return -EOPNOTSUPP;
 
 	err = kstrtoint(buf, 10, &ms);
 	if (err < 0)
 		return err;
 
-	if (ms < 0 || ms > 10000)
+	if (ms < 0 || ms > 60000)
 		return -EINVAL;
 
-	err = tm->ops->set_ramp_down_sp(tm, ms);
-	if (err < 0)
-		return err;
+	tm->params.ramp_down_sp = ms;
 
 	return size;
 }
@@ -671,16 +631,8 @@ static ssize_t duty_cycle_sp_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int duty_cycle = 0;
 
-
-	if (tm->ops->set_duty_cycle_sp) {
-		int err = tm->ops->get_duty_cycle_sp(tm, &duty_cycle);
-		if (err < 0)
-			return err;
-	}
-
-	return sprintf(buf, "%d\n", duty_cycle);
+	return sprintf(buf, "%d\n", tm->params.duty_cycle_sp);
 }
 
 static ssize_t duty_cycle_sp_store(struct device *dev,
@@ -690,7 +642,7 @@ static ssize_t duty_cycle_sp_store(struct device *dev,
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int duty_cycle_sp, err;
 
-	if (!tm->ops->set_duty_cycle_sp)
+	if (!(BIT(TM_SPEED_REGULATION_OFF) & tm->ops->get_speed_regulations(tm)))
 		return -EOPNOTSUPP;
 
 	err = kstrtoint(buf, 10, &duty_cycle_sp);
@@ -700,9 +652,7 @@ static ssize_t duty_cycle_sp_store(struct device *dev,
 	if (duty_cycle_sp > 100 || duty_cycle_sp < -100)
 		return -EINVAL;
 
-	err = tm->ops->set_duty_cycle_sp(tm, duty_cycle_sp);
-	if (err < 0)
-		return err;
+	tm->params.duty_cycle_sp = duty_cycle_sp;
 
 	return size;
 }
@@ -711,15 +661,8 @@ static ssize_t speed_sp_show(struct device *dev, struct device_attribute *attr,
 			     char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int speed = 0;
 
-	if (tm->ops->get_speed_sp) {
-		int err = tm->ops->get_speed_sp(tm, &speed);
-		if (err < 0)
-			return err;
-	}
-
-	return sprintf(buf, "%d\n", speed);
+	return sprintf(buf, "%d\n", tm->params.speed_sp);
 }
 
 static ssize_t speed_sp_store(struct device *dev, struct device_attribute *attr,
@@ -728,8 +671,8 @@ static ssize_t speed_sp_store(struct device *dev, struct device_attribute *attr,
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int err, speed;
 
-	if (!tm->ops->set_speed_sp)
-		return -EOPNOTSUPP;
+	if (!(BIT(TM_SPEED_REGULATION_ON) & tm->ops->get_speed_regulations(tm)))
+			return -EOPNOTSUPP;
 
 	err = kstrtoint(buf, 10, &speed);
 	if (err < 0)
@@ -738,9 +681,7 @@ static ssize_t speed_sp_store(struct device *dev, struct device_attribute *attr,
 	if (speed > 2000 || speed < -2000)
 		return -EINVAL;
 
-	err = tm->ops->set_speed_sp(tm, speed);
-	if (err < 0)
-		return err;
+	tm->params.speed_sp = speed;
 
 	return size;
 }
@@ -750,7 +691,7 @@ static ssize_t time_sp_show(struct device *dev, struct device_attribute *attr,
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%d\n", tm->time_sp);
+	return sprintf(buf, "%d\n", tm->params.time_sp);
 }
 
 static ssize_t time_sp_store(struct device *dev, struct device_attribute *attr,
@@ -769,7 +710,7 @@ static ssize_t time_sp_store(struct device *dev, struct device_attribute *attr,
 	if (time < 0)
 		return -EINVAL;
 
-	tm->time_sp = time;
+	tm->params.time_sp = time;
 
 	return size;
 }
@@ -778,13 +719,8 @@ static ssize_t position_sp_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int err, position;
 
-	err = tm->ops->get_position_sp(tm, &position);
-	if (err < 0)
-		return err;
-
-	return sprintf(buf, "%d\n", position);
+	return sprintf(buf, "%d\n", tm->params.position_sp);
 }
 
 static ssize_t position_sp_store(struct device *dev,
@@ -795,13 +731,17 @@ static ssize_t position_sp_store(struct device *dev,
 	int err;
 	long position;
 
+	if (!((BIT(TM_COMMAND_RUN_TO_ABS_POS) | BIT(TM_COMMAND_RUN_TO_REL_POS))
+						& get_supported_commands(tm)))
+	{
+		return -EOPNOTSUPP;
+	}
+
 	err = kstrtol(buf, 10, &position);
 	if (err < 0)
 		return err;
 
-	err = tm->ops->set_position_sp(tm, position);
-	if (err < 0)
-		return err;
+	tm->params.position_sp = position;
 
 	return size;
 }
