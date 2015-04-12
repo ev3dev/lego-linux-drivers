@@ -344,7 +344,7 @@ static ssize_t speed_show(struct device *dev, struct device_attribute *attr,
 	return sprintf(buf, "%d\n", speed);
 }
 /**
- * Run timed command is implemented in the tacho motor class, so if an imlementing
+ * Run timed command is implemented in the tacho motor class, so if an implementing
  * driver can run forever and stop, then it can run timed.
  */
 static inline unsigned get_supported_commands(struct tacho_motor_device *tm)
