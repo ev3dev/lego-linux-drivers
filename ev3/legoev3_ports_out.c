@@ -127,9 +127,10 @@ static const struct lego_port_mode_info legoev3_output_port_mode_info[] = {
 	},
 	[EV3_OUTPUT_PORT_MODE_TACHO_MOTOR] = {
 		/**
-		 * [^legoev3-motor-mode]: Currently only supports loading the
-		 * driver with EV3/NXT Large Motor settings. In the future, you
-		 * will be able to change the driver using `set_device`.
+		 * [^legoev3-motor-mode]: Configures the port to use the
+		 * [legoev3-motor] driver module. The default driver is the
+		 * EV3/NXT Large Motor (`lego-ev3-l-motor`). You can change
+		 * the driver using the `set_device` attribute.
 		 * ^
 		 * [legoev3-motor]: /docs/drivers/legoev3-motor
 		 *
@@ -682,6 +683,28 @@ static int ev3_output_port_set_mode(void *context, u8 mode)
 	return 0;
 }
 
+static int ev3_output_port_set_device(void *context, const char *device_name)
+{
+	struct ev3_output_port_data *data = context;
+	struct lego_device *new_motor;
+
+	if (data->motor_type != MOTOR_TACHO)
+		return -EOPNOTSUPP;
+
+	lego_device_unregister(data->motor);
+	data->motor = NULL;
+
+	new_motor = lego_device_register(device_name,
+		&ev3_motor_device_types[data->motor_type],
+		&data->out_port, NULL, 0);
+	if (IS_ERR(new_motor))
+		return PTR_ERR(new_motor);
+
+	data->motor = new_motor;
+
+	return 0;
+}
+
 static const char *ev3_output_port_get_status(void *context)
 {
 	struct ev3_output_port_data *data = context;
@@ -775,6 +798,7 @@ struct lego_port_device
 	data->out_port.num_modes = NUM_EV3_OUTPUT_PORT_MODE;
 	data->out_port.mode_info = legoev3_output_port_mode_info;
 	data->out_port.set_mode = ev3_output_port_set_mode;
+	data->out_port.set_device = ev3_output_port_set_device;
 	data->out_port.get_status = ev3_output_port_get_status;
 	data->out_port.motor_ops = &ev3_output_port_motor_ops;
 	data->out_port.context = data;
