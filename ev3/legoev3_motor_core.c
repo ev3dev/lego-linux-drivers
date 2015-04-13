@@ -722,7 +722,7 @@ static bool calculate_speed(struct legoev3_motor_data *ev3_tm)
 
 static void regulate_speed(struct legoev3_motor_data *ev3_tm)
 {
-	int max_speed = ev3_tm->info->max_tacho_count_per_sec;
+	int max_speed = ev3_tm->info->max_speed;
 	int power;
 	int speed_error;
 
@@ -863,7 +863,7 @@ static void adjust_ramp_for_position(struct legoev3_motor_data *ev3_tm)
 		ramp_down_time  = abs((ev3_tm->active_params.ramp_down_sp * ev3_tm->duty_cycle) / 100);
 	} else if (TM_SPEED_REGULATION_ON == ev3_tm->active_params.speed_regulation) {
 		ramp_down_time  = abs((ev3_tm->active_params.ramp_down_sp * ev3_tm->speed)
-			/ ev3_tm->info->max_tacho_count_per_sec);
+			/ ev3_tm->info->max_speed);
 	}
 
 	/*
@@ -1002,9 +1002,9 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 
 			} else if (TM_SPEED_REGULATION_ON == ev3_tm->active_params.speed_regulation) {
 				ev3_tm->ramp.up.full    = ((abs(ev3_tm->active_params.speed_sp) * ev3_tm->active_params.ramp_up_sp)
-					/ ev3_tm->info->max_tacho_count_per_sec);
+					/ ev3_tm->info->max_speed);
 				ev3_tm->ramp.down.full  = ((abs(ev3_tm->active_params.speed_sp) * ev3_tm->active_params.ramp_down_sp)
-					/ ev3_tm->info->max_tacho_count_per_sec);
+					/ ev3_tm->info->max_speed);
 				ev3_tm->ramp.direction  = (ev3_tm->active_params.speed_sp >= 0 ? 1 : -1);
 			}
 
@@ -1098,9 +1098,9 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 				ev3_tm->ramp.down.full  = ((abs(ev3_tm->active_params.duty_cycle_sp) * ev3_tm->active_params.ramp_down_sp) / 100);
 			} else if (TM_SPEED_REGULATION_ON == ev3_tm->active_params.speed_regulation) {
 				ev3_tm->ramp.up.full    = ((abs(ev3_tm->active_params.speed_sp) * ev3_tm->active_params.ramp_up_sp  )
-					/ ev3_tm->info->max_tacho_count_per_sec);
+					/ ev3_tm->info->max_speed);
 				ev3_tm->ramp.down.full  = ((abs(ev3_tm->active_params.speed_sp) * ev3_tm->active_params.ramp_down_sp)
-					/ ev3_tm->info->max_tacho_count_per_sec);
+					/ ev3_tm->info->max_speed);
 			}
 
 			/*
