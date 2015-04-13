@@ -80,7 +80,6 @@ struct tacho_motor_ops;
  * @ duty_cycle_sp: Used when speed_regulation is off.
  * @ speed_sp: Used when speed_regulation is on.
  * @ position_sp: Used by run-to-*-pos commands.
- * @ time_sp: Used by run-timed command.
  * @ ramp_up_sp: In milliseconds.
  * @ ramp_down_sp: In milliseconds.
  * @ speed_regulation: Indicates whether to control duty_cycle directly (off)
@@ -93,7 +92,6 @@ struct tacho_motor_params {
 	int duty_cycle_sp;
 	int speed_sp;
 	int position_sp;
-	int time_sp;
 	int ramp_up_sp;
 	int ramp_down_sp;
 	enum tacho_motor_speed_regulation speed_regulation;
@@ -118,6 +116,7 @@ struct tacho_motor_device {
 	/* private */
 	struct device dev;
 	struct delayed_work run_timed_work;
+	int time_sp;
 };
 
 /**

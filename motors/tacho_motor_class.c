@@ -408,7 +408,7 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 		return err;
 
 	if (start_timer)
-		schedule_delayed_work(&tm->run_timed_work, msecs_to_jiffies(tm->params.time_sp));
+		schedule_delayed_work(&tm->run_timed_work, msecs_to_jiffies(tm->time_sp));
 
 	return size;
 }
@@ -688,7 +688,7 @@ static ssize_t time_sp_show(struct device *dev, struct device_attribute *attr,
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%d\n", tm->params.time_sp);
+	return sprintf(buf, "%d\n", tm->time_sp);
 }
 
 static ssize_t time_sp_store(struct device *dev, struct device_attribute *attr,
@@ -707,7 +707,7 @@ static ssize_t time_sp_store(struct device *dev, struct device_attribute *attr,
 	if (time < 0)
 		return -EINVAL;
 
-	tm->params.time_sp = time;
+	tm->time_sp = time;
 
 	return size;
 }

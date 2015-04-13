@@ -980,7 +980,6 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 
 		case STATE_RUN_FOREVER:
 			ev3_tm->ramp.up.start = 0;
-			ev3_tm->ramp.down.end = ev3_tm->tm.params.time_sp;
 
 			/* Set the endpoint a long way out - an hour of milliseconds! */
 			ev3_tm->ramp.down.end = 60*60*1000;
@@ -1029,7 +1028,7 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 			 */
 
 			if (ev3_tm->ramp.up.end > ev3_tm->ramp.down.start) {
-				ev3_tm->ramp.up.end = ((ev3_tm->tm.params.time_sp * ev3_tm->active_params.ramp_up_sp)
+				ev3_tm->ramp.up.end = ((ev3_tm->ramp.down.end * ev3_tm->active_params.ramp_up_sp)
 					/ (ev3_tm->active_params.ramp_up_sp + ev3_tm->active_params.ramp_down_sp));
 				ev3_tm->ramp.down.start = ev3_tm->ramp.up.end;
 			}
