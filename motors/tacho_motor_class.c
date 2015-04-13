@@ -98,13 +98,13 @@
 *   Likewise, rotating counter-clockwise causes the position to decrease.
 *   Writing will set the position to that value.
 * .
-* `position_pid/Kd`: (read/write)
+* `hold_pid/Kd`: (read/write)
 * : The derivative constant for the position PID.
 * .
-* `position_pid/Ki`: (read/write)
+* `hold_pid/Ki`: (read/write)
 * : The integral constant for the position PID.
 * .
-* `position_pid/Kp`: (read/write)
+* `hold_pid/Kp`: (read/write)
 * : The proportional constant for the position PID.
 * .
 * `position_sp` (read/write)
@@ -857,12 +857,12 @@ static const struct attribute_group tacho_motor_##pid##_pid_group = {		\
 }
 
 PID_ATTR_GROUP(speed);
-PID_ATTR_GROUP(position);
+PID_ATTR_GROUP(hold);
 
 static const struct attribute_group *tacho_motor_class_groups[] = {
 	&tacho_motor_class_group,
 	&tacho_motor_speed_pid_group,
-	&tacho_motor_position_pid_group,
+	&tacho_motor_hold_pid_group,
 	NULL
 };
 

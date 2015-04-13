@@ -458,12 +458,12 @@ struct tacho_motor_ops ms_nxtmmx_tacho_motor_ops = {
 	.set_speed_Ki		= ms_nxtmmx_set_speed_Ki,
 	.get_speed_Kd		= ms_nxtmmx_get_speed_Kd,
 	.set_speed_Kd		= ms_nxtmmx_set_speed_Kd,
-	.get_position_Kp	= ms_nxtmmx_get_position_Kp,
-	.set_position_Kp	= ms_nxtmmx_set_position_Kp,
-	.get_position_Ki	= ms_nxtmmx_get_position_Ki,
-	.set_position_Ki	= ms_nxtmmx_set_position_Ki,
-	.get_position_Kd	= ms_nxtmmx_get_position_Kd,
-	.set_position_Kd	= ms_nxtmmx_set_position_Kd,
+	.get_hold_Kp		= ms_nxtmmx_get_position_Kp,
+	.set_hold_Kp		= ms_nxtmmx_set_position_Kp,
+	.get_hold_Ki		= ms_nxtmmx_get_position_Ki,
+	.set_hold_Ki		= ms_nxtmmx_set_position_Ki,
+	.get_hold_Kd		= ms_nxtmmx_get_position_Kd,
+	.set_hold_Kd		= ms_nxtmmx_set_position_Kd,
 };
 
 int ms_nxtmmx_probe_cb(struct nxt_i2c_sensor_data *data)
