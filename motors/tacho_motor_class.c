@@ -229,6 +229,22 @@ static struct tacho_motor_value_names tacho_motor_states[NUM_TM_STATES] = {
 	[TM_STATE_STALLED]	= { "stalled" },
 };
 
+/**
+ * Set all parameters to the default values.
+ */
+void tacho_motor_class_reset(struct tacho_motor_device *tm)
+{
+	tm->params.polarity		= DC_MOTOR_POLARITY_NORMAL;
+	tm->params.encoder_polarity	= DC_MOTOR_POLARITY_NORMAL;
+	tm->params.duty_cycle_sp	= 0;
+	tm->params.speed_sp		= 0;
+	tm->params.position_sp		= 0;
+	tm->params.ramp_up_sp		= 0;
+	tm->params.ramp_down_sp		= 0;
+	tm->params.speed_regulation	= TM_SPEED_REGULATION_OFF;
+	tm->params.stop_command		= TM_STOP_COMMAND_BRAKE;
+}
+
 static ssize_t port_name_show(struct device *dev, struct device_attribute *attr,
 			      char *buf)
 {
@@ -403,6 +419,9 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 		i = TM_COMMAND_RUN_FOREVER;
 		start_timer = true;
 	}
+	if (i == TM_COMMAND_RESET)
+		tacho_motor_class_reset(tm);
+
 	err = tm->ops->send_command(tm, i);
 	if (err < 0)
 		return err;
@@ -889,6 +908,7 @@ int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
 	tm->dev.parent = parent;
 	tm->dev.class = &tacho_motor_class;
 	dev_set_name(&tm->dev, "motor%d", tacho_motor_class_id++);
+	tacho_motor_class_reset(tm);
 	INIT_DELAYED_WORK(&tm->run_timed_work, tacho_motor_class_run_timed_work);
 
 	err = device_register(&tm->dev);

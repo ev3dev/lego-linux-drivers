@@ -452,18 +452,10 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 	ev3_tm->duty_cycle		= 0;
 	ev3_tm->state			= STATE_IDLE;
 
-	ev3_tm->tm.params.duty_cycle_sp		= 0;
-	ev3_tm->tm.params.speed_sp		= 0;
-	ev3_tm->tm.params.position_sp		= 0;
-	ev3_tm->tm.params.ramp_up_sp		= 0;
-	ev3_tm->tm.params.ramp_down_sp		= 0;
+	ev3_tm->run_command		= TM_COMMAND_STOP;
+	ev3_tm->position_mode		= POSITION_ABSOLUTE;
 
-	ev3_tm->run_command			= TM_COMMAND_STOP;
-	ev3_tm->tm.params.speed_regulation	= TM_SPEED_REGULATION_OFF;
-	ev3_tm->tm.params.stop_command		= TM_STOP_COMMAND_BRAKE;
-	ev3_tm->position_mode			= POSITION_ABSOLUTE;
-	ev3_tm->tm.params.polarity		= DC_MOTOR_POLARITY_NORMAL;
-	ev3_tm->tm.params.encoder_polarity	= ev3_tm->info->encoder_polarity;
+	ev3_tm->tm.params.encoder_polarity = ev3_tm->info->encoder_polarity;
 };
 
 /*

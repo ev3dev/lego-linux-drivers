@@ -273,9 +273,7 @@ static int ms_nxtmmx_send_command(struct tacho_motor_device *tm,
 			COMMAND_REG, command_bytes[0]);
 		if (err < 0)
 			return err;
-		mmx->tm.params.speed_sp = 0;
-		mmx->tm.params.position_sp = 0;
-		mmx->tm.params.polarity = DC_MOTOR_POLARITY_NORMAL;
+		mmx->tm.params.speed_regulation = TM_SPEED_REGULATION_ON;
 		mmx->command_flags = CMD_FLAGS_DEFAULT_VALUE;
 	}
 
