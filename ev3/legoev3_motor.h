@@ -48,7 +48,9 @@ struct legoev3_motor_pid_k {
  * @samples_for_speed: Array of how many samples to use in the speed calculation
  * 	for a given speed range. Must be a power of two???
  * @speed_pid_k: PID constants for speed regulation.
- * @clock_ticks_per_sample: Number of clock ticks to use in sample calculations.
+ * @max_us_per_sample: Maximum duration of a single sample in microseconds.
+ * 	This number should be 50 * the tacho period at full speed.
+ * 	Used for motor stall and direction calculations.
  * @max_speed: Maximum speed of the motor in tacho counts per second.
  * @count_per_rot: The number of tacho counts in one rotation of the motor.
  * @encoder_polarity: Set to DC_MOTOR_POLARITY_INVERTED for motors with inverted
@@ -59,7 +61,7 @@ struct legoev3_motor_info {
 	int samples_for_speed[NUM_LEGOEV3_MOTOR_SPEED_RANGE];
 	struct legoev3_motor_pid_k speed_pid_k;
 	/* TODO: clock_ticks_per_sample needs to be converted to usec */
-	int clock_ticks_per_sample;
+	int max_us_per_sample;
 	int max_speed;
 	int count_per_rot;
 	enum dc_motor_polarity encoder_polarity;

@@ -101,7 +101,7 @@ struct legoev3_motor_data {
 	struct hrtimer timer;
 	struct work_struct notify_state_change_work;
 
-	unsigned tacho_samples[TACHO_SAMPLES];
+	ktime_t tacho_samples[TACHO_SAMPLES];
 	unsigned tacho_samples_head;
 
 	bool got_new_sample;
@@ -109,7 +109,7 @@ struct legoev3_motor_data {
 	int num_samples;
 	int dir_chg_samples;
 
-	int clock_ticks_per_sample;
+	int max_us_per_sample;
 
 	bool irq_mutex;
 
@@ -257,8 +257,8 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 	bool int_state =  gpio_get_value(pdata->tacho_int_gpio);
 	bool dir_state = !gpio_get_value(pdata->tacho_dir_gpio);
 
-	unsigned long timer      = legoev3_hires_timer_read();
-	unsigned long prev_timer = ev3_tm->tacho_samples[ev3_tm->tacho_samples_head];
+	ktime_t timer      = ktime_get();
+	ktime_t prev_timer = ev3_tm->tacho_samples[ev3_tm->tacho_samples_head];
 
 	unsigned next_sample;
 
@@ -319,11 +319,9 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 		 * 1) UNDO the increment to the next timer sample update
 		 *    dir_chg_samples count!
 		 * 2) UNDO the previous run_direction count update
-		 *
-		 * TODO: Make this work out to 400 usec based on the clock rate!
 		 */
 
-		if ((400 * 33) > (timer - prev_timer)) {
+		if (ktime_to_us(ktime_sub(timer, prev_timer)) < 400) {
 			ev3_tm->tacho_samples[ev3_tm->tacho_samples_head] = timer;
 
 			if (FORWARD == ev3_tm->run_direction)
@@ -431,7 +429,7 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 	ev3_tm->got_new_sample		= false;
 	ev3_tm->num_samples		= ev3_tm->info->samples_for_speed[SPEED_BELOW_40];
 	ev3_tm->dir_chg_samples		= 0;
-	ev3_tm->clock_ticks_per_sample	= ev3_tm->info->clock_ticks_per_sample;
+	ev3_tm->max_us_per_sample	= ev3_tm->info->max_us_per_sample;
 	ev3_tm->speed			= 0;
 	ev3_tm->irq_mutex		= false;
 	ev3_tm->ramp.up.start		= 0;
@@ -483,8 +481,6 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
  *  - Returns true when a new speed has been calculated, false if otherwise
  *
  *  - Time is sampled every edge on the tacho
- *      - Timer used is 64bit timer plus (P3) module (dual 32bit un-chained mode)
- *      - 64bit timer is running 33Mhz (24Mhz (Osc) * 22 (Multiplier) / 2 (Post divider) / 2 (DIV2)) / 4 (T64 prescaler)
  *
  *  - Tacho counter is updated on every edge of the tacho INTx pin signal
  *  - Time capture is updated on every edge of the tacho INTx pin signal
@@ -512,34 +508,15 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
  *        it can change speed and direction very fast.
  *
  *      - Large Motor
- *        - Maximum speed of the Large motor is approximately 2mS per tacho pulse (low + high period)
- *          resulting in minimum timer value of: 2mS / (1/(33MHz)) = 66000 T64 timer ticks.
- *          Because 1 sample is based on only half a period minimum speed is 66000/2 = 33000
+ *        - Maximum speed of the Large motor is approximately 2ms per tacho pulse (low + high period)
  *        - Minimum speed of the large motor is a factor of 100 less than max. speed
- *          max. speed timer ticks * 100 => 66000 * 100 = 6,600,000 T64 timer ticks
- *          Because 1 sample is based on only half a period minimum speed is 6,600,000/2 = 3,300,000.
+ *          Because 1 sample is based on only half a period minimum speed is 2ms / 2 => 1000000us
  *
  *      - Medium Motor
- *        - Maximum speed of the medium motor is approximately 1,25mS per tacho pulse (low + high period)
- *          resulting in minimum timer value of: 1.25mS / (1/(33MHz)) = 41250 (approximately)
- *          Because 1 sample is based on only half a period minimum speed is 41250/2 = 20625.
+ *        - Maximum speed of the medium motor is approximately 1.25ms per tacho pulse (low + high period)
  *        - Minimum speed of the medium motor is a factor of 100 less than max. speed
- *          max. speed timer ticks * 100 => 41250 * 100 = 4,125,000 T64 timer ticks
- *          Because 1 sample is based on only half a period minimum speed is 4,125,000/2 = 2,062,500.
+ *          Because 1 sample is based on only half a period minimum speed is 1.25ms / 2 => 750000us
  *
- *      - Actual speed is then calculated as:
- *        - Large motor:
- *          3,300,000 * number of samples / actual time elapsed for number of samples
- *        - Medium motor:
- *          2,062,500 * number of samples / actual time elapsed for number of samples
- *
- *  - Parameters:
- *    - Input:
- *      - No        : Motor output number
- *      - *pSpeed   : Pointer to the speed value
- *
- *    - Output:
- *      - Status    : Indication of new speed available or not
  *  - Tacho pulse examples:
  *
  *
@@ -632,7 +609,7 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 static bool calculate_speed(struct legoev3_motor_data *ev3_tm)
 {
 	unsigned diff_idx;
-	unsigned diff;
+	ktime_t diff;
 
 	bool speed_updated = false;
 
@@ -664,12 +641,13 @@ static bool calculate_speed(struct legoev3_motor_data *ev3_tm)
 
 	if (ev3_tm->dir_chg_samples >= 1) {
 
-		diff = ev3_tm->tacho_samples[diff_idx]
-			- ev3_tm->tacho_samples[(diff_idx + TACHO_SAMPLES - 1) % TACHO_SAMPLES];
+		diff = ktime_sub(ev3_tm->tacho_samples[diff_idx],
+			ev3_tm->tacho_samples[(diff_idx + TACHO_SAMPLES - 1) % TACHO_SAMPLES]);
 
-		diff |= 1;
+		if (unlikely(ktime_equal(diff, ktime_set(0, 0))))
+			diff = ktime_set(0, 1);
 
-		set_num_samples_for_speed(ev3_tm, ev3_tm->clock_ticks_per_sample / diff);
+		set_num_samples_for_speed(ev3_tm, ev3_tm->max_us_per_sample / (int)ktime_to_us(diff));
 	}
 
 	/*
@@ -686,15 +664,17 @@ static bool calculate_speed(struct legoev3_motor_data *ev3_tm)
 	 */
 
 	if (ev3_tm->got_new_sample && (ev3_tm->dir_chg_samples >= ev3_tm->num_samples)) {
+		long new_speed;
 
-		diff = ev3_tm->tacho_samples[diff_idx]
-			- ev3_tm->tacho_samples[(diff_idx + TACHO_SAMPLES - ev3_tm->num_samples) % TACHO_SAMPLES];
+		diff = ktime_sub(ev3_tm->tacho_samples[diff_idx],
+			ev3_tm->tacho_samples[(diff_idx + TACHO_SAMPLES - ev3_tm->num_samples) % TACHO_SAMPLES]);
 
-		diff |= 1;
+		if (unlikely(ktime_equal(diff, ktime_set(0, 0))))
+			diff = ktime_set(0, 1);
 
-		/* TODO - This should be based on the low level clock rate */
-
-		ev3_tm->speed = (33000000 * ev3_tm->num_samples) / diff;
+		new_speed = USEC_PER_SEC * ev3_tm->num_samples;
+		do_div(new_speed, ktime_to_us(diff));
+		ev3_tm->speed = new_speed;
 
 		if (ev3_tm->run_direction == REVERSE)
 			ev3_tm->speed  = -ev3_tm->speed ;
@@ -703,7 +683,7 @@ static bool calculate_speed(struct legoev3_motor_data *ev3_tm)
 
 		ev3_tm->got_new_sample = false;
 
-	} else if (ev3_tm->clock_ticks_per_sample < (legoev3_hires_timer_read() - ev3_tm->tacho_samples[diff_idx])) {
+	} else if (ev3_tm->max_us_per_sample < ktime_to_us(ktime_sub(ktime_get(), ev3_tm->tacho_samples[diff_idx]))) {
 
 		ev3_tm->dir_chg_samples = 0;
 
