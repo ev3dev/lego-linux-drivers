@@ -111,12 +111,6 @@ struct legoev3_motor_data {
 
 	int clock_ticks_per_sample;
 
-	/*
-	 * TODO - The class mutex interlock is not implemented - should be up
-	 * at device level to allow busy indication
-	 */
-
-	bool class_mutex;
 	bool irq_mutex;
 
 	struct {
@@ -433,8 +427,7 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 	ev3_tm->num_samples		= ev3_tm->info->samples_for_speed[SPEED_BELOW_40];
 	ev3_tm->dir_chg_samples		= 0;
 	ev3_tm->clock_ticks_per_sample	= ev3_tm->info->clock_ticks_per_sample;
-	ev3_tm->speed	= 0;
-	ev3_tm->class_mutex		= false;
+	ev3_tm->speed			= 0;
 	ev3_tm->irq_mutex		= false;
 	ev3_tm->ramp.up.start		= 0;
 	ev3_tm->ramp.up.end		= 0;
