@@ -377,13 +377,21 @@ void legoev3_motor_update_output(struct legoev3_motor_data *ev3_tm)
 	if (ev3_tm->duty_cycle > 0) {
 		motor_ops->set_direction(context, ev3_tm->active_params.polarity);
 		motor_ops->set_command(context, DC_MOTOR_COMMAND_RUN);
-		if (ev3_tm->active_params.speed_regulation == TM_SPEED_REGULATION_OFF && ev3_tm->duty_cycle < 10)
+		if (ev3_tm->run_command != TM_COMMAND_RUN_DIRECT
+		    && ev3_tm->active_params.speed_regulation == TM_SPEED_REGULATION_OFF
+		    && ev3_tm->duty_cycle < 10)
+		{
 			ev3_tm->duty_cycle = 10;
+		}
 	} else if (ev3_tm->duty_cycle < 0) {
 		motor_ops->set_direction(context, !ev3_tm->active_params.polarity);
 		motor_ops->set_command(context, DC_MOTOR_COMMAND_RUN);
-		if (ev3_tm->active_params.speed_regulation == TM_SPEED_REGULATION_OFF && ev3_tm->duty_cycle > -10)
+		if (ev3_tm->run_command != TM_COMMAND_RUN_DIRECT
+		    && ev3_tm->active_params.speed_regulation == TM_SPEED_REGULATION_OFF
+		    && ev3_tm->duty_cycle > -10)
+		{
 			ev3_tm->duty_cycle = -10;
+		}
 	} else {
 		if (ev3_tm->active_params.stop_command == TM_STOP_COMMAND_COAST)
 			motor_ops->set_command(context, DC_MOTOR_COMMAND_COAST);
@@ -400,9 +408,6 @@ void legoev3_motor_update_output(struct legoev3_motor_data *ev3_tm)
 
 static void legoev3_motor_set_power(struct legoev3_motor_data *ev3_tm, int power)
 {
-	if (ev3_tm->duty_cycle == power)
-		return;
-
 	if (power > MAX_POWER)
 		power = MAX_POWER;
 	else if (power < -MAX_POWER)
@@ -797,7 +802,9 @@ static void regulate_speed(struct legoev3_motor_data *ev3_tm)
 
 static void update_motor_speed_or_power(struct legoev3_motor_data *ev3_tm, int percent)
 {
-	if (TM_SPEED_REGULATION_OFF == ev3_tm->active_params.speed_regulation) {
+	if (TM_COMMAND_RUN_DIRECT == ev3_tm->run_command) {
+		legoev3_motor_set_power(ev3_tm, ev3_tm->tm.params.duty_cycle_sp * percent / 100);
+	} else if (TM_SPEED_REGULATION_OFF == ev3_tm->active_params.speed_regulation) {
 
 		if (IS_POS_CMD(ev3_tm->run_command))
 			legoev3_motor_set_power(ev3_tm, ev3_tm->ramp.direction * abs((ev3_tm->active_params.duty_cycle_sp * percent)/100));
@@ -1461,7 +1468,7 @@ static int legoev3_motor_set_speed_Kd(struct tacho_motor_device *tm, int k)
 static unsigned legoev3_motor_get_commands (struct tacho_motor_device *tm)
 {
 	return BIT(TM_COMMAND_RUN_FOREVER) | BIT (TM_COMMAND_RUN_TO_ABS_POS)
-		| BIT(TM_COMMAND_RUN_TO_REL_POS)
+		| BIT(TM_COMMAND_RUN_TO_REL_POS) | BIT(TM_COMMAND_RUN_DIRECT)
 		| BIT(TM_COMMAND_STOP) | BIT(TM_COMMAND_RESET);
 }
 
@@ -1501,7 +1508,7 @@ static int legoev3_motor_send_command(struct tacho_motor_device *tm,
 	 */
 
 	else if (IS_RUN_CMD(command) && ev3_tm->state == STATE_IDLE) {
-		if (TM_COMMAND_RUN_FOREVER == command)
+		if (TM_COMMAND_RUN_FOREVER == command || TM_COMMAND_RUN_DIRECT == command)
 			ev3_tm->state = STATE_RUN_FOREVER;
 		else if (IS_POS_CMD(command))
 			ev3_tm->state = STATE_SETUP_RAMP_POSITION;
