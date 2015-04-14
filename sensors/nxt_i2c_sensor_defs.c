@@ -2302,6 +2302,14 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		/**
 		 * [^address]: The address is programmable. See manufacturer
 		 * documentation for more information.
+		 * [^tacho-motor-devices]: The NxtMMX driver also loads two
+		 * [tacho-motor] class devices. Use the tacho-motor class devices
+		 * to actually control the motors. You can identify the motors
+		 * by the `port_name` attribute. It will be `in<X>:i2c<Y>:mux<Z>`
+		 * where `<X>` is A-D, `<Y>` is 3 (unless you changed the address)
+		 * and `<Z>` is 1 or 2 (matches M1 or M2 printed on the NxtMMX).
+		 * ^
+		 * [tacho-motor]: /docs/drivers/tacho-motor-class
 		 *
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: NXTMMX-v2
@@ -2309,11 +2317,12 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=134
 		 * @default_address: 0x03
 		 * @default_address_footnote: [^address]
+		 * @device_class_footnote: [^tacho-motor-devices]
 		 */
 		.name			= MS_NXTMMX_NAME,
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "NxTMMX",
-		.num_modes		= 1,
+		.num_modes		= 2,
 		.ops.probe_cb		= ms_nxtmmx_probe_cb,
 		.ops.remove_cb		= ms_nxtmmx_remove_cb,
 		.mode_info	= {
@@ -2330,10 +2339,30 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max	= 255,
 				.si_max		= 255 * 37,
 			},
+			[1] = {
+				/**
+				 * [^status-old]: The I2C register for battery voltage
+				 * was changed for EV3 compatibility. If `STATUS` does
+				 * not seem to work, try this mode instead.
+				 * @description: Status (for older firmware versions)
+				 * @value0: Battery voltage
+				 * @units_description: volts
+				 * @name_footnote: [^status-old]
+				 */
+				.name		= "STATUS-OLD",
+				.data_sets	= 1,
+				.units		= "V",
+				.decimals	= 3,
+				.raw_max	= 255,
+				.si_max		= 255 * 37,
+			},
 		},
 		.i2c_mode_info	= {
 			[0] = {
-				.read_data_reg	= 0x41, /* TODO: this is supposedly 0x90 for EV3 compatible firmware */
+				.read_data_reg	= 0x90,
+			},
+			[1] = {
+				.read_data_reg	= 0x41,
 			},
 		},
 	},
