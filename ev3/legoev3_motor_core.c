@@ -111,8 +111,6 @@ struct legoev3_motor_data {
 
 	int max_us_per_sample;
 
-	bool irq_mutex;
-
 	struct {
 		struct {
 			int start;
@@ -351,16 +349,12 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 	ev3_tm->tacho_samples[next_sample] = timer;
 	ev3_tm->tacho_samples_head = next_sample;
 
-	ev3_tm->irq_mutex = true;
-
 	if (FORWARD == ev3_tm->run_direction)
 		ev3_tm->position++;
 	else
 		ev3_tm->position--;
 
 	ev3_tm->got_new_sample = true;
-
-	ev3_tm->irq_mutex = false;
 
 	return IRQ_HANDLED;
 }
@@ -430,7 +424,6 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 	ev3_tm->dir_chg_samples		= 0;
 	ev3_tm->max_us_per_sample	= ev3_tm->info->max_us_per_sample;
 	ev3_tm->speed			= 0;
-	ev3_tm->irq_mutex		= false;
 	ev3_tm->ramp.up.start		= 0;
 	ev3_tm->ramp.up.end		= 0;
 	ev3_tm->ramp.down.start		= 0;
