@@ -27,8 +27,7 @@
  *
 * The `tacho-motor` class provides a uniform interface for using motors with
 * positional and directional feedback such as the EV3 and NXT motors. This
-* feedback allows for precise control of the motors. This documentation is not
-* complete. For now, see the [old wiki] for more information.
+* feedback allows for precise control of the motors.
 * .
 * ### sysfs Attributes
 * .
@@ -182,8 +181,6 @@
 * : Writing specifies the amount of time the motor will run when using the
 *   `run-timed` command. Reading returns the current value. Units are in
 *   milliseconds.
-* .
-* [old wiki]: https://github.com/ev3dev/ev3dev/wiki/Using-Motors
 */
 
 #include <linux/device.h>
@@ -233,7 +230,7 @@ static struct tacho_motor_value_names tacho_motor_states[NUM_TM_STATES] = {
 	[TM_STATE_STALLED]	= { "stalled" },
 };
 
-/**
+/*
  * Set all parameters to the default values.
  */
 void tacho_motor_class_reset(struct tacho_motor_device *tm)
@@ -363,7 +360,7 @@ static ssize_t speed_show(struct device *dev, struct device_attribute *attr,
 
 	return sprintf(buf, "%d\n", speed);
 }
-/**
+/*
  * Run timed command is implemented in the tacho motor class, so if an implementing
  * driver can run forever and stop, then it can run timed.
  */

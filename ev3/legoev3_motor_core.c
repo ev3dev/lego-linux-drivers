@@ -230,8 +230,8 @@ static void set_num_samples_for_speed(struct legoev3_motor_data *ev3_tm, int spe
  * long as at least two of the interrupts are caught, we can "undo"
  * a reading quite easily.
  *
- * The mini-tacho motor turns at a maximum of 1200 pulses per second, the
- * standard tacho motor has a maximum speed of 900 pulses per second. Taking
+ * The medium motor turns at a maximum of 1200 pulses per second, the
+ * large tacho motor has a maximum speed of 900 pulses per second. Taking
  * the highest value, this means that about 800 usec is the fastest time
  * between interrupts. If we see two interrupts with a delta of much less
  * than, say 400 usec, then we're probably looking at a noisy transition.
@@ -683,9 +683,6 @@ static void regulate_speed(struct legoev3_motor_data *ev3_tm)
 	}
 
 	speed_error = ev3_tm->speed_reg_sp - ev3_tm->speed;
-
-	/* TODO - Implement an attribute set for PID constants that adjusts based on speed */
-
 	ev3_tm->pid.P = speed_error;
 
 	/*
