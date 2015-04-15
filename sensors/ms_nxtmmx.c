@@ -478,7 +478,7 @@ int ms_nxtmmx_probe_cb(struct nxt_i2c_sensor_data *data)
 	for (i = 0; i < 2; i++) {
 		mmx[i].tm.driver_name = data->info.name;
 		snprintf(mmx[i].port_name, LEGO_PORT_NAME_SIZE, "%s:i2c%d:mux%d",
-			 data->in_port->port_name, data->client->addr, i);
+			 data->in_port->port_name, data->client->addr, i + 1);
 		mmx[i].tm.port_name = mmx[i].port_name;
 		mmx[i].tm.ops = &ms_nxtmmx_tacho_motor_ops;
 		mmx[i].i2c = data;
