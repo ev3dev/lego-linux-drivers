@@ -157,7 +157,7 @@
 * .
 * `state` (read-only)
 * : Reading returns a space separated list of state flags. Possible flags are
-*   `running`, `ramping` and `stalled`.
+*   `running`, `ramping` `holding` and `stalled`.
 * .
 * `stop_command` (read/write)
 * : Reading returns the current stop command. Writing sets the stop command.
@@ -227,6 +227,7 @@ struct tacho_motor_state_item {
 static struct tacho_motor_value_names tacho_motor_states[NUM_TM_STATES] = {
 	[TM_STATE_RUNNING]	= { "running" },
 	[TM_STATE_RAMPING]	= { "ramping" },
+	[TM_STATE_HOLDING]	= { "holding" },
 	[TM_STATE_STALLED]	= { "stalled" },
 };
 

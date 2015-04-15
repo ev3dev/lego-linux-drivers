@@ -1324,10 +1324,13 @@ static int legoev3_motor_get_state(struct tacho_motor_device *tm)
 			container_of(tm, struct legoev3_motor_data, tm);
 
 	unsigned state = 0;
-	if (ev3_tm->state < STATE_STOP) {
+	if (ev3_tm->run && ev3_tm->state < STATE_STOP) {
 		state |= BIT(TM_STATE_RUNNING);
-		if (ev3_tm->state > STATE_RUN_FOREVER)
+		if (ev3_tm->state > STATE_RUN_FOREVER && ev3_tm->state != STATE_RAMP_CONST)
 			state |= BIT(TM_STATE_RAMPING);
+	} else if (!ev3_tm->run && ev3_tm->active_params.stop_command == TM_STOP_COMMAND_HOLD) {
+		state |= BIT(TM_STATE_RUNNING);
+		state |= BIT(TM_STATE_HOLDING);
 	}
 	/* TODO: implement stall detection */
 

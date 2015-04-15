@@ -35,7 +35,7 @@
 
 #define READ_ENCODER_POS_REG(idx)	(0x62 + ENCODER_SIZE * idx)
 #define READ_STATUS_REG(idx)		(0x72 + idx)
-#define READ_TASKS_REG(idx)		(0x74 + idx)
+#define READ_TASKS_REG(idx)		(0x76 + idx)
 
 #define PID_K_SIZE		2
 
@@ -168,6 +168,19 @@ static int ms_nxtmmx_get_state(struct tacho_motor_device *tm)
 	if (ret & STATUS_FLAG_STALL)
 		state |= BIT(TM_STATE_STALLED);
 
+	/*
+	 * If motor is powered and it might be holding position, then we have
+	 * to check the tasks register as well. If the tasks register is > 0,
+	 * then we are still running, otherwise we are holding.
+	 */
+	if ((ret & STATUS_FLAG_POWERED) && (mmx->command_flags & CMD_FLAG_HOLD)) {
+		ret = i2c_smbus_read_byte_data(mmx->i2c->client, READ_TASKS_REG(mmx->index));
+		if (ret < 0)
+			return ret;
+		if (!ret)
+			state |= BIT(TM_STATE_HOLDING);
+	}
+
 	return state;
 }
 
@@ -212,12 +225,6 @@ static int ms_nxtmmx_send_command(struct tacho_motor_device *tm,
 		else
 			mmx->command_flags &= ~CMD_FLAG_RELATIVE;
 
-		mmx->command_flags |= CMD_FLAG_GO;
-
-		command_bytes[WRITE_TIME] = 0; /* we don't used the controller's timed mode */
-		command_bytes[WRITE_COMMAND_B] = 0;
-		command_bytes[WRITE_COMMAND_A] = mmx->command_flags;
-
 		/* set bits for stop command */
 
 		if (mmx->tm.params.stop_command == TM_STOP_COMMAND_HOLD)
@@ -230,6 +237,12 @@ static int ms_nxtmmx_send_command(struct tacho_motor_device *tm,
 		else
 			mmx->command_flags &= ~CMD_FLAG_BRAKE;
 
+		mmx->command_flags |= CMD_FLAG_GO;
+
+		command_bytes[WRITE_TIME] = 0; /* never use timed mode */
+		command_bytes[WRITE_COMMAND_B] = 0;
+		command_bytes[WRITE_COMMAND_A] = mmx->command_flags;
+
 		/* then write to the individual motor register to GO! */
 
 		err = i2c_smbus_write_i2c_block_data(mmx->i2c->client,
@@ -237,13 +250,14 @@ static int ms_nxtmmx_send_command(struct tacho_motor_device *tm,
 		if (err < 0)
 			return err;
 	} else if (command == TM_COMMAND_STOP) {
-		command_bytes[0] = (mmx->command_flags & CMD_FLAG_BRAKE)
-			? COMMAND_BRAKE_STOP(mmx->index) : COMMAND_FLOAT_STOP(mmx->index);
+		mmx->command_flags = CMD_FLAGS_DEFAULT_VALUE;
+		command_bytes[0] = (mmx->tm.params.stop_command == TM_STOP_COMMAND_COAST)
+			? COMMAND_FLOAT_STOP(mmx->index) : COMMAND_BRAKE_STOP(mmx->index);
 		err = i2c_smbus_write_byte_data(mmx->i2c->client,
 			COMMAND_REG, command_bytes[0]);
 		if (err < 0)
 			return err;
-		if (mmx->command_flags & CMD_FLAG_HOLD) {
+		if (mmx->tm.params.stop_command == TM_STOP_COMMAND_HOLD) {
 			/*
 			 * Hold only happens when encoder mode is enabled, so
 			 * we have to issue a run command to tell it to run to
@@ -253,17 +267,20 @@ static int ms_nxtmmx_send_command(struct tacho_motor_device *tm,
 				READ_ENCODER_POS_REG(mmx->index), ENCODER_SIZE, command_bytes);
 			if (err < 0)
 				return err;
-			command_bytes[WRITE_SPEED] = ms_nxtmmx_scale_speed(mmx->tm.params.speed_sp);
+			mmx->command_flags = CMD_FLAGS_STOP_HOLD;
+			command_bytes[WRITE_SPEED] = 100;
 			command_bytes[WRITE_TIME] = 0;
 			command_bytes[WRITE_COMMAND_B] = 0;
-			command_bytes[WRITE_COMMAND_A] = CMD_FLAGS_STOP_HOLD;
+			command_bytes[WRITE_COMMAND_A] = mmx->command_flags;
 			err = i2c_smbus_write_i2c_block_data(mmx->i2c->client,
 				WRITE_REG(mmx->index), WRITE_SIZE, command_bytes);
 			if (err < 0)
 				return err;
 		}
 	} else if (command == TM_COMMAND_RESET) {
-		command_bytes[0] = COMMAND_BRAKE_STOP(mmx->index);
+		mmx->tm.params.speed_regulation = TM_SPEED_REGULATION_ON;
+		mmx->command_flags = CMD_FLAGS_DEFAULT_VALUE;
+		command_bytes[0] = COMMAND_FLOAT_STOP(mmx->index);
 		err = i2c_smbus_write_byte_data(mmx->i2c->client,
 			COMMAND_REG, command_bytes[0]);
 		if (err < 0)
@@ -273,8 +290,6 @@ static int ms_nxtmmx_send_command(struct tacho_motor_device *tm,
 			COMMAND_REG, command_bytes[0]);
 		if (err < 0)
 			return err;
-		mmx->tm.params.speed_regulation = TM_SPEED_REGULATION_ON;
-		mmx->command_flags = CMD_FLAGS_DEFAULT_VALUE;
 	}
 
 	return 0;
