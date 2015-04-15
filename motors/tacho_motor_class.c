@@ -246,7 +246,7 @@ void tacho_motor_class_reset(struct tacho_motor_device *tm)
 	tm->params.ramp_up_sp		= 0;
 	tm->params.ramp_down_sp		= 0;
 	tm->params.speed_regulation	= TM_SPEED_REGULATION_OFF;
-	tm->params.stop_command		= TM_STOP_COMMAND_BRAKE;
+	tm->params.stop_command		= TM_STOP_COMMAND_COAST;
 }
 
 static ssize_t port_name_show(struct device *dev, struct device_attribute *attr,
