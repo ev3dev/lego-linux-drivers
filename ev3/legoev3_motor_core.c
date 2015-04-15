@@ -143,9 +143,8 @@ struct legoev3_motor_data {
 
 	int speed_reg_sp;
 	int hold_sp;
-	int run_direction;
-
-	int run;
+	enum legoev3_motor_command run_direction;
+	bool run;
 
 	int position;
 	int speed;
@@ -250,28 +249,34 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 {
 	struct legoev3_motor_data *ev3_tm = id;
 	struct ev3_motor_platform_data *pdata = ev3_tm->ldev->dev.platform_data;
-
-	bool int_state =  gpio_get_value(pdata->tacho_int_gpio);
+	bool int_state = gpio_get_value(pdata->tacho_int_gpio);
 	bool dir_state = !gpio_get_value(pdata->tacho_dir_gpio);
-
-	ktime_t timer      = ktime_get();
+	ktime_t timer = ktime_get();
 	ktime_t prev_timer = ev3_tm->tacho_samples[ev3_tm->tacho_samples_head];
+	unsigned next_sample = (ev3_tm->tacho_samples_head + 1) % TACHO_SAMPLES;
+	enum legoev3_motor_command next_direction = ev3_tm->run_direction;
 
-	unsigned next_sample;
+	/*
+	 * If the difference in timestamps is too small, then undo the
+	 * previous increment - it's OK for a count to waver once in
+	 * a while - better than being wrong!
+	 *
+	 * Here's what we'll do when the transition is too small:
+	 *
+	 * 1) UNDO the increment to the next timer sample update
+	 *    dir_chg_samples count!
+	 * 2) UNDO the previous run_direction count update
+	 */
+	if (ktime_to_us(ktime_sub(timer, prev_timer)) < 400) {
+		ev3_tm->tacho_samples[ev3_tm->tacho_samples_head] = timer;
 
-	int  next_direction = ev3_tm->run_direction;
+		if (FORWARD == ev3_tm->run_direction)
+			ev3_tm->position--;
+		else
+			ev3_tm->position++;
 
-	next_sample = (ev3_tm->tacho_samples_head + 1) % TACHO_SAMPLES;
-
-	/* If the speed is high enough, just update the tacho counter based on direction */
-
-	if ((35 < ev3_tm->speed) || (-35 > ev3_tm->speed)) {
-
-		if (ev3_tm->dir_chg_samples < (TACHO_SAMPLES-1))
-			ev3_tm->dir_chg_samples++;
-
+		next_sample = ev3_tm->tacho_samples_head;
 	} else {
-
 		/*
 		 * Update the tacho count and motor direction for low speed, taking
 		 * advantage of the fact that if state and dir match, then the motor
@@ -291,7 +296,6 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 		 * to write nested if statements in this case - it looks a lot more
 		 * like the truth table
 		 */
-
 		if (ev3_tm->active_params.polarity == DC_MOTOR_POLARITY_NORMAL) {
 			if (ev3_tm->active_params.encoder_polarity == DC_MOTOR_POLARITY_NORMAL) {
 				next_direction = (int_state == dir_state) ? FORWARD : REVERSE;
@@ -307,38 +311,14 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 		}
 
 		/*
-		 * If the difference in timestamps is too small, then undo the
-		 * previous increment - it's OK for a count to waver once in
-		 * a while - better than being wrong!
-		 *
-		 * Here's what we'll do when the transition is too small:
-		 *
-		 * 1) UNDO the increment to the next timer sample update
-		 *    dir_chg_samples count!
-		 * 2) UNDO the previous run_direction count update
+		 * If the saved and next direction states
+		 * match, then update the dir_chg_sample count
 		 */
-
-		if (ktime_to_us(ktime_sub(timer, prev_timer)) < 400) {
-			ev3_tm->tacho_samples[ev3_tm->tacho_samples_head] = timer;
-
-			if (FORWARD == ev3_tm->run_direction)
-				ev3_tm->position--;
-			else
-				ev3_tm->position++;
-
-			next_sample = ev3_tm->tacho_samples_head;
+		if (ev3_tm->run_direction == next_direction) {
+			if (ev3_tm->dir_chg_samples < (TACHO_SAMPLES-1))
+				ev3_tm->dir_chg_samples++;
 		} else {
-			/*
-			 * If the saved and next direction states
-			 * match, then update the dir_chg_sample count
-			 */
-
-			if (ev3_tm->run_direction == next_direction) {
-				if (ev3_tm->dir_chg_samples < (TACHO_SAMPLES-1))
-					ev3_tm->dir_chg_samples++;
-			} else {
-				ev3_tm->dir_chg_samples = 0;
-			}
+			ev3_tm->dir_chg_samples = 0;
 		}
 	}
 
@@ -1235,9 +1215,9 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 			 */
 			if (ev3_tm->active_params.stop_command == TM_STOP_COMMAND_HOLD) {
 				if (IS_POS_CMD(ev3_tm->run_command))
-					ev3_tm->hold_sp  = ev3_tm->active_params.position_sp;
+					ev3_tm->hold_sp = ev3_tm->ramp.position_sp;
 				else
-					ev3_tm->hold_sp  = ev3_tm->position;
+					ev3_tm->hold_sp = ev3_tm->position;
 			}
 
 			ev3_tm->speed_reg_sp = 0;
@@ -1453,44 +1433,18 @@ static int legoev3_motor_send_command(struct tacho_motor_device *tm,
 		return 0;
 	}
 
-	/*
-	 * If the motor is currently running and we're asked to stop
-	 * it, then figure out how we're going to stop it - maybe we
-	 * need to ramp it down first!
-	 */
+	if (TM_COMMAND_RUN_FOREVER == command || TM_COMMAND_RUN_DIRECT == command)
+		ev3_tm->state = STATE_RUN_FOREVER;
+	else if (IS_POS_CMD(command))
+		ev3_tm->state = STATE_SETUP_RAMP_POSITION;
 
-	if (IS_RUN_CMD(command) && ev3_tm->state != STATE_IDLE) {
-		ev3_tm->ramp.down.start = ev3_tm->ramp.count;
-		ev3_tm->ramp.down.end   = ev3_tm->active_params.ramp_down_sp;
-
-		if (TM_COMMAND_RUN_FOREVER == command)
-			ev3_tm->state = STATE_RAMP_DOWN;
-		else if (IS_POS_CMD(command))
-			ev3_tm->state = STATE_STOP;
-	}
-
-	/*
-	 * If the motor is currently idle and we're asked to run
-	 * it, then figure out how we're going to get things started
-	 */
-
-	else if (IS_RUN_CMD(command) && ev3_tm->state == STATE_IDLE) {
-		if (TM_COMMAND_RUN_FOREVER == command || TM_COMMAND_RUN_DIRECT == command)
-			ev3_tm->state = STATE_RUN_FOREVER;
-		else if (IS_POS_CMD(command))
-			ev3_tm->state = STATE_SETUP_RAMP_POSITION;
-	}
-
-	/* Otherwise, put the motor in STOP state - it will eventually stop */
-
-	else if (TM_COMMAND_STOP == command) {
-		ev3_tm->state = STATE_STOP;
-	}
-
-	if (TM_COMMAND_RUN_TO_ABS_POS)
+	if (command == TM_COMMAND_RUN_TO_ABS_POS)
 		ev3_tm->position_mode = POSITION_ABSOLUTE;
-	if (TM_COMMAND_RUN_TO_REL_POS)
+	if (command == TM_COMMAND_RUN_TO_REL_POS)
 		ev3_tm->position_mode = POSITION_RELATIVE;
+
+	if (TM_COMMAND_STOP == command)
+		ev3_tm->state = STATE_STOP;
 
 	/*
 	 * what's going on here - why is run always set to 1?
@@ -1558,20 +1512,11 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 	ev3_tm->tm.ops = &legoev3_motor_ops;
 	ev3_tm->tm.supports_encoder_polarity = true;
 	ev3_tm->tm.supports_ramping = true;
-
-	err = register_tacho_motor(&ev3_tm->tm, &ldev->dev);
-	if (err)
-		goto err_register_tacho_motor;
+	ev3_tm->pid.speed_Kp = ev3_tm->info->speed_pid_k.p;
+	ev3_tm->pid.speed_Ki = ev3_tm->info->speed_pid_k.i;
+	ev3_tm->pid.speed_Kd = ev3_tm->info->speed_pid_k.d;
 
 	dev_set_drvdata(&ldev->dev, ev3_tm);
-
-	/* Here's where we set up the port pins on a per-port basis */
-	if (request_irq(gpio_to_irq(pdata->tacho_int_gpio), tacho_motor_isr, 0,
-				    dev_name(&ldev->port->dev), ev3_tm))
-		goto err_dev_request_irq;
-
-	irq_set_irq_type(gpio_to_irq(pdata->tacho_int_gpio),
-			 IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING);
 
 	hrtimer_init(&ev3_tm->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	ev3_tm->timer.function = legoev3_motor_timer_callback;
@@ -1579,21 +1524,24 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 	INIT_WORK(&ev3_tm->notify_state_change_work,
 		  legoev3_motor_notify_state_change_work);
 
-	hrtimer_start(&ev3_tm->timer, ktime_set(0, TACHO_MOTOR_POLL_NS),
-		      HRTIMER_MODE_REL);
+	err = register_tacho_motor(&ev3_tm->tm, &ldev->dev);
+	if (err)
+		goto err_register_tacho_motor;
 
 	legoev3_motor_reset(ev3_tm);
 
-	/*
-	 * PID values are not included in the reset.
-	 */
-	ev3_tm->pid.speed_Kp  = ev3_tm->info->speed_pid_k.p;
-	ev3_tm->pid.speed_Ki  = ev3_tm->info->speed_pid_k.i;
-	ev3_tm->pid.speed_Kd  = ev3_tm->info->speed_pid_k.d;
+	err = request_irq(gpio_to_irq(pdata->tacho_int_gpio), tacho_motor_isr,
+				      IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+				      dev_name(&ldev->dev), ev3_tm);
+	if (err)
+		goto err_request_irq;
+
+	hrtimer_start(&ev3_tm->timer, ktime_set(0, TACHO_MOTOR_POLL_NS),
+		      HRTIMER_MODE_REL);
 
 	return 0;
 
-err_dev_request_irq:
+err_request_irq:
 	dev_set_drvdata(&ldev->dev, NULL);
 	unregister_tacho_motor(&ev3_tm->tm);
 err_register_tacho_motor:
