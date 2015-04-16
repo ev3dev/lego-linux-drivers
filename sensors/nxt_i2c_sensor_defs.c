@@ -1001,7 +1001,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @units_description: degrees
 				 * @value0: Angle (-2147483648 to 2147483647)
 				 */
-				.name = "ACCEL",
+				.name = "ANGLE-ACC",
 				.raw_min = INT_MIN,
 				.raw_max = INT_MAX,
 				.si_min = INT_MIN,
