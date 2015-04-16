@@ -1036,20 +1036,36 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.read_data_reg	= 0x46,
 			},
 		},
-		.num_commands	= 1,
+		.num_commands	= 2,
 		.cmd_info	= {
 			[0] = {
 				/**
-				 * @description: Reset angle values
+				 * @description: Reset accumulated angle
 				 */
 				.name = "RESET",
+			},
+			[1] = {
+				/**
+				 * [^calibrate]: When Calibrating the sensor wait
+				 * least 25ms before further reads from the sensor.
+				 * That means disable polling by setting `poll_ms`
+				 * to 0 before sending this command.
+				 *
+				 * @description: Reset accumulated angle and save to EEPROM
+				 * @name_footnote: [^calibrate]
+				 */
+				.name = "CAL",
 			},
 		},
 		.i2c_cmd_info	= {
 			[0] = {
 				.cmd_reg	= 0x41,
 				.cmd_data	= 0x52,
-			}
+			},
+			[1] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 0x43,
+			},
 		},
 	},
 	[HT_NXT_COMPASS_SENSOR] = {
