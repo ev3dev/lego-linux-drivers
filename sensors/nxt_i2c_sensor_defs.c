@@ -2178,19 +2178,15 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.i2c_mode_info	= {
 			[0] = {
 				.read_data_reg	= 0x42,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[1] = {
 				.read_data_reg	= 0x42,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[2] = {
 				.read_data_reg	= 0x49,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[3] = {
 				.read_data_reg	= 0x74,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 		},
 		.num_commands	= 10,
