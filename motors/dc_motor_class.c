@@ -63,13 +63,13 @@
  * `port_name` (read-only)
  * : Returns the name of the port that the motor is connected to.
  * .
- * `ramp_down_ms` (read/write)
+ * `ramp_down_sp` (read/write)
  * : Sets the time in milliseconds that it take the motor to ramp down from 100%
  *   to 0%. Valid values are 0 to 10000 (10 seconds). Default is 0. If the
  *   controller does not support ramping, then reading and writing will fail
  *   with -EOPNOTSUPP.
  * .
- * `ramp_up_ms` (read/write)
+ * `ramp_up_sp` (read/write)
  * : Sets the time in milliseconds that it take the motor to up ramp from 0% to
  *   100%. Valid values are 0 to 10000 (10 seconds). Default is 0. If the
  *   controller does not support ramping, then reading and writing will fail
@@ -106,10 +106,10 @@ enum hrtimer_restart dc_motor_class_ramp_timer_handler(struct hrtimer *timer)
 		return HRTIMER_NORESTART;
 
 	if (motor->current_duty_cycle < motor->target_duty_cycle) {
-		ramp_ns = motor->ramp_up_ms * 10000;
+		ramp_ns = motor->ramp_up_sp * 10000;
 		motor->current_duty_cycle++;
 	} else {
-		ramp_ns = motor->ramp_down_ms * 10000;
+		ramp_ns = motor->ramp_down_sp * 10000;
 		motor->current_duty_cycle--;
 	}
 
@@ -153,15 +153,15 @@ static ssize_t port_name_show(struct device *dev, struct device_attribute *attr,
 	return snprintf(buf, DC_MOTOR_NAME_SIZE, "%s\n", motor->port_name);
 }
 
-static ssize_t ramp_up_ms_show(struct device *dev,
+static ssize_t ramp_up_sp_show(struct device *dev,
 			       struct device_attribute *attr, char *buf)
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
 
-	return sprintf(buf, "%u\n", motor->ramp_up_ms);
+	return sprintf(buf, "%u\n", motor->ramp_up_sp);
 }
 
-static ssize_t ramp_up_ms_store(struct device *dev,
+static ssize_t ramp_up_sp_store(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
 {
@@ -170,20 +170,20 @@ static ssize_t ramp_up_ms_store(struct device *dev,
 
 	if (sscanf(buf, "%ud", &value) != 1 || value > 10000)
 		return -EINVAL;
-	motor->ramp_up_ms = value;
+	motor->ramp_up_sp = value;
 
 	return count;
 }
 
-static ssize_t ramp_down_ms_show(struct device *dev,
+static ssize_t ramp_down_sp_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
 
-	return sprintf(buf, "%u\n", motor->ramp_down_ms);
+	return sprintf(buf, "%u\n", motor->ramp_down_sp);
 }
 
-static ssize_t ramp_down_ms_store(struct device *dev,
+static ssize_t ramp_down_sp_store(struct device *dev,
 				  struct device_attribute *attr,
 				  const char *buf, size_t count)
 {
@@ -192,7 +192,7 @@ static ssize_t ramp_down_ms_store(struct device *dev,
 
 	if (sscanf(buf, "%ud", &value) != 1 || value > 10000)
 		return -EINVAL;
-	motor->ramp_down_ms = value;
+	motor->ramp_down_sp = value;
 
 	return count;
 }
@@ -339,8 +339,8 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 
 static DEVICE_ATTR_RO(driver_name);
 static DEVICE_ATTR_RO(port_name);
-static DEVICE_ATTR_RW(ramp_up_ms);
-static DEVICE_ATTR_RW(ramp_down_ms);
+static DEVICE_ATTR_RW(ramp_up_sp);
+static DEVICE_ATTR_RW(ramp_down_sp);
 static DEVICE_ATTR_RW(polarity);
 static DEVICE_ATTR_RW(duty_cycle_sp);
 static DEVICE_ATTR_RO(duty_cycle);
@@ -350,8 +350,8 @@ static DEVICE_ATTR_RW(command);
 static struct attribute *dc_motor_class_attrs[] = {
 	&dev_attr_driver_name.attr,
 	&dev_attr_port_name.attr,
-	&dev_attr_ramp_up_ms.attr,
-	&dev_attr_ramp_down_ms.attr,
+	&dev_attr_ramp_up_sp.attr,
+	&dev_attr_ramp_down_sp.attr,
 	&dev_attr_polarity.attr,
 	&dev_attr_duty_cycle_sp.attr,
 	&dev_attr_duty_cycle.attr,

@@ -75,8 +75,8 @@ struct dc_motor_ops {
  * @ops: Function pointers to the controller that registered this dc.
  * @context: Pointer to data structure passed back to the ops functions.
  * @dev: The device struct used by the class.
- * @ramp_up_ms: The time to ramp up from 0 to 100% in milliseconds.
- * @ramp_up_ms: The time to ramp down from 100 to 0% in milliseconds.
+ * @ramp_up_sp: The time to ramp up from 0 to 100% in milliseconds.
+ * @ramp_up_sp: The time to ramp down from 100 to 0% in milliseconds.
  * @ramp_timer: Timer used for ramping.
  * @current_duty_cycle: The current duty cycle.
  * @target_duty_cycle: The requested duty cycle.
@@ -88,8 +88,8 @@ struct dc_motor_device {
 	void *context;
 	struct device dev;
 	enum dc_motor_polarity polarity;
-	unsigned ramp_up_ms;
-	unsigned ramp_down_ms;
+	unsigned ramp_up_sp;
+	unsigned ramp_down_sp;
 	struct hrtimer ramp_timer;
 	int current_duty_cycle;
 	int target_duty_cycle;
