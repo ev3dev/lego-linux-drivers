@@ -2,7 +2,7 @@
  * Output port driver for LEGO MINDSTORMS EV3
  *
  * Copyright (C) 2013-2014 Ralph Hempel <rhempel@hempeldesigngroup.com>
- * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -228,7 +228,6 @@ struct device_type ev3_motor_device_types[] = {
  * @tacho_motor_type: The type of tacho motor that was detected.
  * @motor: Pointer to the motor device that is connected to the output port.
  * @command: The current command for the motor driver of the output port.
- * @direction: The current direction for the motor driver of the output port.
  */
 struct ev3_output_port_data {
 	enum legoev3_output_port_id id;
@@ -247,27 +246,25 @@ struct ev3_output_port_data {
 	enum motor_type motor_type;
 	enum legoev3_motor_id motor_id;
 	struct lego_device *motor;
-	enum dc_motor_command command;
-	enum dc_motor_direction direction;
+	enum dc_motor_internal_command command;
 };
 
 int ev3_output_port_set_direction_gpios(struct ev3_output_port_data *data)
 {
 	switch(data->command) {
-	case DC_MOTOR_COMMAND_RUN:
-		if (data->direction == DC_MOTOR_DIRECTION_FORWARD) {
-			gpio_direction_output(data->gpio[GPIO_PIN1].gpio, 1);
-			gpio_direction_input(data->gpio[GPIO_PIN2].gpio);
-		} else {
-			gpio_direction_input(data->gpio[GPIO_PIN1].gpio);
-			gpio_direction_output(data->gpio[GPIO_PIN2].gpio, 1);
-		}
+	case DC_MOTOR_INTERNAL_COMMAND_RUN_FORWARD:
+		gpio_direction_output(data->gpio[GPIO_PIN1].gpio, 1);
+		gpio_direction_input(data->gpio[GPIO_PIN2].gpio);
 		break;
-	case DC_MOTOR_COMMAND_BRAKE:
+	case DC_MOTOR_INTERNAL_COMMAND_RUN_REVERSE:
+		gpio_direction_input(data->gpio[GPIO_PIN1].gpio);
+		gpio_direction_output(data->gpio[GPIO_PIN2].gpio, 1);
+		break;
+	case DC_MOTOR_INTERNAL_COMMAND_BRAKE:
 		gpio_direction_output(data->gpio[GPIO_PIN1].gpio, 1);
 		gpio_direction_output(data->gpio[GPIO_PIN2].gpio, 1);
 		break;
-	case DC_MOTOR_COMMAND_COAST:
+	case DC_MOTOR_INTERNAL_COMMAND_COAST:
 		gpio_direction_output(data->gpio[GPIO_PIN1].gpio, 0);
 		gpio_direction_output(data->gpio[GPIO_PIN2].gpio, 0);
 		break;
@@ -279,11 +276,15 @@ int ev3_output_port_set_direction_gpios(struct ev3_output_port_data *data)
 
 static unsigned ev3_ouput_port_get_supported_commands(void* context)
 {
-	return BIT(DC_MOTOR_COMMAND_RUN) | BIT(DC_MOTOR_COMMAND_COAST)
-		| BIT(DC_MOTOR_COMMAND_BRAKE);
+	return BIT(DC_MOTOR_COMMAND_RUN_FOREVER) | BIT(DC_MOTOR_COMMAND_STOP);
 }
 
-static enum dc_motor_command ev3_output_port_get_command(void *context)
+static unsigned ev3_ouput_port_get_supported_stop_commands(void* context)
+{
+	return BIT(DC_MOTOR_STOP_COMMAND_COAST) | BIT(DC_MOTOR_STOP_COMMAND_BRAKE);
+}
+
+static enum dc_motor_internal_command ev3_output_port_get_command(void *context)
 {
 	struct ev3_output_port_data *data = context;
 
@@ -291,32 +292,14 @@ static enum dc_motor_command ev3_output_port_get_command(void *context)
 }
 
 static int ev3_output_port_set_command(void *context,
-				       enum dc_motor_command command)
+				       enum dc_motor_internal_command command)
 {
 	struct ev3_output_port_data *data = context;
 
 	if (data->command == command)
 		return 0;
+
 	data->command = command;
-
-	return ev3_output_port_set_direction_gpios(data);
-}
-
-static enum dc_motor_direction ev3_output_port_get_direction(void *context)
-{
-	struct ev3_output_port_data *data = context;
-
-	return data->direction;
-}
-
-static int ev3_output_port_set_direction(void *context,
-					enum dc_motor_direction direction)
-{
-	struct ev3_output_port_data *data = context;
-
-	if (data->direction == direction)
-		return 0;
-	data->direction = direction;
 
 	return ev3_output_port_set_direction_gpios(data);
 }
@@ -343,10 +326,9 @@ static int ev3_output_port_set_duty_cycle(void *context, unsigned duty)
 
 static struct dc_motor_ops ev3_output_port_motor_ops = {
 	.get_supported_commands	= ev3_ouput_port_get_supported_commands,
+	.get_supported_stop_commands = ev3_ouput_port_get_supported_stop_commands,
 	.get_command		= ev3_output_port_get_command,
 	.set_command		= ev3_output_port_set_command,
-	.get_direction		= ev3_output_port_get_direction,
-	.set_direction		= ev3_output_port_set_direction,
 	.set_duty_cycle		= ev3_output_port_set_duty_cycle,
 	.get_duty_cycle		= ev3_output_port_get_duty_cycle,
 };
@@ -358,7 +340,7 @@ void ev3_output_port_float(struct ev3_output_port_data *data)
 	gpio_direction_input(data->gpio[GPIO_PIN5].gpio);
 	gpio_direction_input(data->gpio[GPIO_PIN5_INT].gpio);
 	gpio_direction_input(data->gpio[GPIO_PIN6_DIR].gpio);
-	data->command = DC_MOTOR_COMMAND_COAST;
+	data->command = DC_MOTOR_INTERNAL_COMMAND_COAST;
 }
 
 void ev3_output_port_change_uevent_work(struct work_struct *work)

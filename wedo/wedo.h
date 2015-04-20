@@ -2,7 +2,7 @@
  * LEGO WeDo driver
  *
  * Copyright (C) 2014 Ralph Hempel <rhemple@hempeldesigngroup.com>
- * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -50,8 +50,7 @@ struct wedo_motor_data {
 	struct wedo_port_data *wpd;
 	struct dc_motor_device md;
 
-	enum dc_motor_command command;
-	enum dc_motor_direction direction;
+	enum dc_motor_internal_command command;
 	int duty_cycle;
 };
 

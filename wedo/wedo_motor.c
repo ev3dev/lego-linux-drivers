@@ -2,7 +2,7 @@
  * Motor Definitions for LEGO WeDo
  *
  * Copyright (C) 2014 Ralph Hempel <rhemple@hempeldesigngroup.com>
- * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -46,12 +46,13 @@ static void wedo_motor_update_output(struct wedo_motor_data *wmd)
 	int output = 0;
 
 	switch (wmd->command) {
-	case DC_MOTOR_COMMAND_RUN:
+	case DC_MOTOR_INTERNAL_COMMAND_RUN_FORWARD:
 		output = wmd->duty_cycle * WEDO_OUTPUT_MAX_DUTY_CYCLE / 100;
-		if (wmd->direction == DC_MOTOR_DIRECTION_REVERSE)
-			output *= -1;
 		break;
-	case DC_MOTOR_COMMAND_BRAKE:
+	case DC_MOTOR_INTERNAL_COMMAND_RUN_REVERSE:
+		output = -wmd->duty_cycle * WEDO_OUTPUT_MAX_DUTY_CYCLE / 100;
+		break;
+	case DC_MOTOR_INTERNAL_COMMAND_BRAKE:
 		output = WEDO_OUTPUT_BRAKE;
 		break;
 	default:
@@ -63,18 +64,23 @@ static void wedo_motor_update_output(struct wedo_motor_data *wmd)
 
 static unsigned wedo_motor_get_supported_commands(void* context)
 {
-	return BIT(DC_MOTOR_COMMAND_RUN) | BIT(DC_MOTOR_COMMAND_COAST)
-		| BIT(DC_MOTOR_COMMAND_BRAKE);
+	return BIT(DC_MOTOR_COMMAND_RUN_FOREVER) | BIT(DC_MOTOR_COMMAND_STOP);
 }
 
-static unsigned wedo_motor_get_command(void* context)
+static unsigned wedo_motor_get_supported_stop_commands(void* context)
+{
+	return BIT(DC_MOTOR_STOP_COMMAND_COAST) | BIT(DC_MOTOR_STOP_COMMAND_BRAKE);
+}
+
+static enum dc_motor_internal_command wedo_motor_get_command(void* context)
 {
 	struct wedo_motor_data *wmd = context;
 
 	return wmd->command;
 }
 
-static int wedo_motor_set_command(void* context, unsigned command)
+static int wedo_motor_set_command(void* context,
+				  enum dc_motor_internal_command command)
 {
 	struct wedo_motor_data *wmd = context;
 
@@ -82,29 +88,6 @@ static int wedo_motor_set_command(void* context, unsigned command)
 		return 0;
 
 	wmd->command = command;
-
-	wedo_motor_update_output(wmd);
-
-	return 0;
-}
-
-static unsigned wedo_motor_get_direction(void *context)
-{
-	struct wedo_motor_data *wmd = context;
-
-	return wmd->direction;
-}
-
-static int wedo_motor_set_direction(void *context,
-				    enum dc_motor_direction direction)
-{
-	struct wedo_motor_data *wmd = context;
-
-	if (wmd->direction == direction)
-		return 0;
-
-	wmd->direction = direction;
-
 	wedo_motor_update_output(wmd);
 
 	return 0;
@@ -128,7 +111,6 @@ static int wedo_motor_set_duty_cycle(void *context, unsigned duty_cycle)
 		return 0;
 
 	wmd->duty_cycle = duty_cycle;
-
 	wedo_motor_update_output(wmd);
 
 	return 0;
@@ -136,10 +118,9 @@ static int wedo_motor_set_duty_cycle(void *context, unsigned duty_cycle)
 
 const struct dc_motor_ops wedo_motor_ops = {
 	.get_supported_commands	= wedo_motor_get_supported_commands,
+	.get_supported_stop_commands = wedo_motor_get_supported_stop_commands,
 	.get_command		= wedo_motor_get_command,
 	.set_command		= wedo_motor_set_command,
-	.get_direction		= wedo_motor_get_direction,
-	.set_direction		= wedo_motor_set_direction,
 	.get_duty_cycle		= wedo_motor_get_duty_cycle,
 	.set_duty_cycle		= wedo_motor_set_duty_cycle,
 };

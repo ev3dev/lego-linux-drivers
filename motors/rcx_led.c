@@ -1,7 +1,7 @@
 /*
  * RCX/Power Functions LED device driver for LEGO MINDSTORMS EV3
  *
- * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -104,7 +104,7 @@ static int rcx_led_probe(struct lego_device *motor)
 	dev_set_drvdata(&motor->dev, data);
 
 	motor->port->motor_ops->set_command(motor->port->context,
-					    DC_MOTOR_COMMAND_RUN);
+					    DC_MOTOR_INTERNAL_COMMAND_RUN_FORWARD);
 	dev_info(data->cdev.dev, "Bound to device '%s'\n",
 		 dev_name(&motor->dev));
 
@@ -123,7 +123,7 @@ static int rcx_led_remove(struct lego_device *motor)
 	dev_info(data->cdev.dev, "Unregistered.\n");
 	led_classdev_unregister(&data->cdev);
 	motor->port->motor_ops->set_command(motor->port->context,
-					    DC_MOTOR_COMMAND_COAST);
+					    DC_MOTOR_INTERNAL_COMMAND_COAST);
 	dev_set_drvdata(&motor->dev, NULL);
 	kfree(data);
 

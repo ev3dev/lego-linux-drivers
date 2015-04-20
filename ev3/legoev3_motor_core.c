@@ -346,8 +346,10 @@ void legoev3_motor_update_output(struct legoev3_motor_data *ev3_tm)
 	int err;
 
 	if (ev3_tm->duty_cycle > 0) {
-		motor_ops->set_direction(context, ev3_tm->active_params.polarity);
-		motor_ops->set_command(context, DC_MOTOR_COMMAND_RUN);
+		if (ev3_tm->active_params.polarity == DC_MOTOR_POLARITY_NORMAL)
+			motor_ops->set_command(context, DC_MOTOR_INTERNAL_COMMAND_RUN_FORWARD);
+		else
+			motor_ops->set_command(context, DC_MOTOR_INTERNAL_COMMAND_RUN_REVERSE);
 		if (ev3_tm->run_command != TM_COMMAND_RUN_DIRECT
 		    && ev3_tm->active_params.speed_regulation == TM_SPEED_REGULATION_OFF
 		    && ev3_tm->duty_cycle < 10)
@@ -355,8 +357,11 @@ void legoev3_motor_update_output(struct legoev3_motor_data *ev3_tm)
 			ev3_tm->duty_cycle = 10;
 		}
 	} else if (ev3_tm->duty_cycle < 0) {
-		motor_ops->set_direction(context, !ev3_tm->active_params.polarity);
-		motor_ops->set_command(context, DC_MOTOR_COMMAND_RUN);
+
+		if (ev3_tm->active_params.polarity == DC_MOTOR_POLARITY_NORMAL)
+			motor_ops->set_command(context, DC_MOTOR_INTERNAL_COMMAND_RUN_REVERSE);
+		else
+			motor_ops->set_command(context, DC_MOTOR_INTERNAL_COMMAND_RUN_FORWARD);
 		if (ev3_tm->run_command != TM_COMMAND_RUN_DIRECT
 		    && ev3_tm->active_params.speed_regulation == TM_SPEED_REGULATION_OFF
 		    && ev3_tm->duty_cycle > -10)
@@ -365,11 +370,9 @@ void legoev3_motor_update_output(struct legoev3_motor_data *ev3_tm)
 		}
 	} else {
 		if (ev3_tm->active_params.stop_command == TM_STOP_COMMAND_COAST)
-			motor_ops->set_command(context, DC_MOTOR_COMMAND_COAST);
-		else if (TM_STOP_COMMAND_BRAKE == ev3_tm->active_params.stop_command)
-			motor_ops->set_command(context, DC_MOTOR_COMMAND_BRAKE);
-		else if (TM_STOP_COMMAND_HOLD == ev3_tm->active_params.stop_command)
-			motor_ops->set_command(context, DC_MOTOR_COMMAND_BRAKE);
+			motor_ops->set_command(context, DC_MOTOR_INTERNAL_COMMAND_COAST);
+		else
+			motor_ops->set_command(context, DC_MOTOR_INTERNAL_COMMAND_BRAKE);
 	}
 
 	/* The power sets the duty cycle - 100% power == 100% duty cycle */
@@ -1258,9 +1261,9 @@ no_run:
 
 	if (!ev3_tm->run) {
 		if (TM_STOP_COMMAND_COAST == ev3_tm->active_params.stop_command)
-			motor_ops->set_command(context, DC_MOTOR_COMMAND_COAST);
+			motor_ops->set_command(context, DC_MOTOR_INTERNAL_COMMAND_COAST);
 		else if (TM_STOP_COMMAND_BRAKE == ev3_tm->active_params.stop_command)
-			motor_ops->set_command(context, DC_MOTOR_COMMAND_BRAKE);
+			motor_ops->set_command(context, DC_MOTOR_INTERNAL_COMMAND_BRAKE);
 		else if (TM_STOP_COMMAND_HOLD == ev3_tm->active_params.stop_command)
 			regulate_position(ev3_tm);
 	}
