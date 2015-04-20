@@ -101,7 +101,8 @@ struct lego_sensor_cmd_info {
  * @cmd_info: Array of command information for the sensor.
  * @set_mode: Callback to set the sensor mode.
  * @send_command: Callback to send a command to the sensor.
- * @write_data: Write data to sensor (optional).
+ * @direct_read: Write arbitrary data from sensor (optional).
+ * @direct_write: Write arbitrary data to sensor (optional).
  * @get_poll_ms: Get the polling period in milliseconds (optional).
  * @set_poll_ms: Set the polling period in milliseconds (optional).
  * @context: Pointer to data structure used by callbacks.
@@ -119,7 +120,8 @@ struct lego_sensor_device {
 	struct lego_sensor_cmd_info *cmd_info;
 	int (* set_mode)(void *context, u8 mode);
 	int (* send_command)(void *context, u8 command);
-	ssize_t (* write_data)(void *context, char *data, loff_t off, size_t count);
+	ssize_t (*direct_read)(void *context, char *data, loff_t off, size_t count);
+	ssize_t (*direct_write)(void *context, char *data, loff_t off, size_t count);
 	int (* get_poll_ms)(void *context);
 	int (* set_poll_ms)(void *context, unsigned value);
 	void *context;

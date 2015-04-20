@@ -47,11 +47,10 @@
  * incremented each time a sensor is loaded (it is not related to which port
  * the sensor is plugged in to).
  * .
- * `bin_data` (read/write)
- * : Reading the file will give the same values in the `value<N>` attributes.
- *   Use `bin_data_format` and `num_values` to determine how to interpret
- *   the data. Writing will write data to the sensor (I2C, UART and NXT
- *   Color sensors only).
+ * `bin_data` (read-only)
+ * : Reading the file will give the unscaled raw values in the `value<N>`
+ *   attributes. Use `bin_data_format`, `num_values` and the individual sensor
+ *   documentation to determine how to interpret the data.
  * .
  * `bin_data_format` (read-only)
  * : Returns the format of the values in `bin_data` for the current mode.
@@ -71,6 +70,13 @@
  * `commands` (read-only)
  * : Returns a space separated list of the valid commands for the sensor.
  *   Returns -EOPNOTSUPP if no commands are supported.
+ * .
+ * `direct` (read/write)
+ * : Allows direct communication with the sensor for using advanced features
+ *   that are not otherwise available through the lego-sensor class. Returns
+ *   `-EOPNOTSUPP` if the sensor does not support this. Currently this only
+ *   works with I2C sensors. For I2C sensors, use `seek()` to set the register
+ *   to read or write from, then read or write the number of bytes required.
  * .
  * `decimals` (read-only)
  * : Returns the number of decimal places for the values in the `value<N>`
@@ -506,17 +512,30 @@ static ssize_t bin_data_read(struct file *file, struct kobject *kobj,
 	return size;
 }
 
-static ssize_t bin_data_write(struct file *file, struct kobject *kobj,
-			      struct bin_attribute *attr,
-			      char *buf, loff_t off, size_t count)
+static ssize_t direct_read(struct file *file, struct kobject *kobj,
+			   struct bin_attribute *attr,
+			   char *buf, loff_t off, size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
-	if (!sensor->write_data)
+	if (!sensor->direct_read)
 		return -EOPNOTSUPP;
 
-	return sensor->write_data(sensor->context, buf, off, count);
+	return sensor->direct_read(sensor->context, buf, off, count);
+}
+
+static ssize_t direct_write(struct file *file, struct kobject *kobj,
+			    struct bin_attribute *attr,
+			    char *buf, loff_t off, size_t count)
+{
+	struct device *dev = container_of(kobj, struct device, kobj);
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
+
+	if (!sensor->direct_write)
+		return -EOPNOTSUPP;
+
+	return sensor->direct_write(sensor->context, buf, off, count);
 }
 
 static DEVICE_ATTR_RO(driver_name);
@@ -571,10 +590,12 @@ static struct attribute *lego_sensor_class_attrs[] = {
 	NULL
 };
 
-static BIN_ATTR_RW(bin_data, LEGO_SENSOR_RAW_DATA_SIZE);
+static BIN_ATTR_RO(bin_data, LEGO_SENSOR_RAW_DATA_SIZE);
+static BIN_ATTR_RW(direct, 255);
 
 static struct bin_attribute *lego_sensor_class_bin_attrs[] = {
 	&bin_attr_bin_data,
+	&bin_attr_direct,
 	NULL
 };
 

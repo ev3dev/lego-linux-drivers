@@ -336,8 +336,8 @@ int ev3_uart_set_mode(void *context, const u8 mode)
 	return 0;
 }
 
-static ssize_t ev3_uart_write_data(void *context, char *data, loff_t off,
-				   size_t count)
+static ssize_t ev3_uart_direct_write(void *context, char *data, loff_t off,
+				     size_t count)
 {
 	struct tty_struct *tty = context;
 	char uart_data[EV3_UART_MAX_MESSAGE_SIZE];
@@ -922,7 +922,7 @@ static int ev3_uart_open(struct tty_struct *tty)
 	}
 	port->sensor.mode_info = port->mode_info;
 	port->sensor.set_mode = ev3_uart_set_mode;
-	port->sensor.write_data = ev3_uart_write_data;
+	port->sensor.direct_write = ev3_uart_direct_write;
 	port->circ_buf.buf = port->buffer;
 	INIT_WORK(&port->rx_data_work, ev3_uart_handle_rx_data);
 	INIT_DELAYED_WORK(&port->send_ack_work, ev3_uart_send_ack);

@@ -131,22 +131,32 @@ static int nxt_i2c_sensor_send_command(void *context, u8 command)
 	return 0;
 }
 
-static ssize_t nxt_i2c_sensor_write_data(void *context, char *data, loff_t off,
-					 size_t count)
+static ssize_t nxt_i2c_sensor_direct_read(void *context, char *data, loff_t off,
+					  size_t count)
 {
 	struct nxt_i2c_sensor_data *sensor = context;
 	int err;
 
-	if (off)
+	if (off > 255)
 		return -EINVAL;
 
-	if (count == 0)
-		err = 0;
-	else if (count == 1)
-		err = i2c_smbus_write_byte(sensor->client, data[0]);
-	else
-		err = i2c_smbus_write_i2c_block_data(sensor->client, data[0],
-						     count - 1, &data[1]);
+	err = i2c_smbus_read_i2c_block_data(sensor->client, off, count, data);
+	if (err < 0)
+		return err;
+
+	return count;
+}
+
+static ssize_t nxt_i2c_sensor_direct_write(void *context, char *data, loff_t off,
+					   size_t count)
+{
+	struct nxt_i2c_sensor_data *sensor = context;
+	int err;
+
+	if (off > 255)
+		return -EINVAL;
+
+	err = i2c_smbus_write_i2c_block_data(sensor->client, off, count, data);
 	if (err < 0)
 		return err;
 
@@ -242,7 +252,8 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 	data->sensor.cmd_info = data->info.cmd_info;
 	data->sensor.set_mode = nxt_i2c_sensor_set_mode;
 	data->sensor.send_command = nxt_i2c_sensor_send_command;
-	data->sensor.write_data = nxt_i2c_sensor_write_data;
+	data->sensor.direct_read = nxt_i2c_sensor_direct_read;
+	data->sensor.direct_write = nxt_i2c_sensor_direct_write;
 	data->sensor.get_poll_ms = nxt_i2c_sensor_get_poll_ms;
 	data->sensor.set_poll_ms = nxt_i2c_sensor_set_poll_ms;
 	data->sensor.context = data;
