@@ -34,7 +34,7 @@
 * is incremented each time a servo is loaded (it is not related to which port
 * the motor is plugged in to).
 * .
-* `command` (read/write)
+* `command` (write-only)
 * : Sets the command for the servo. Valid values are `run` and `float`. Setting
 *   to `run` will cause the servo to be driven to the position_sp set in the
 *   `position_sp` attribute. Setting to `float` will remove power from the motor.
@@ -85,6 +85,11 @@
 *   to 180 degrees. Note: Some servo controllers may not support this in which
 *   case reading and writing will fail with `-EOPNOTSUPP`. In continuous rotation
 *   servos, this value will affect the rate_sp at which the speed ramps up or down.
+ * .
+ * `state` (read-only)
+ * : Returns a space separated list of flags indicating the state of the servo.
+ *   Possible values are:
+ *   * `running`: Indicates that the motor is powered.
  * .
  * [supported devices]: /docs/motors/#supported-devices
 */
@@ -249,14 +254,6 @@ static ssize_t max_pulse_sp_store(struct device *dev,
 	return count;
 }
 
-static ssize_t command_show(struct device *dev, struct device_attribute *attr,
-			    char *buf)
-{
-	struct servo_motor_device *motor = to_servo_motor_device(dev);
-
-	return sprintf(buf, "%s\n", servo_motor_command_values[motor->command]);
-}
-
 static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 			     const char *buf, size_t size)
 {
@@ -382,15 +379,25 @@ static ssize_t rate_sp_store(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
+static ssize_t state_show(struct device *dev, struct device_attribute *attr,
+			  char *buf)
+{
+	struct servo_motor_device *motor = to_servo_motor_device(dev);
+
+	return sprintf(buf, "%s\n",
+		motor->command == SERVO_MOTOR_COMMAND_RUN ? "running" : "");
+}
+
 static DEVICE_ATTR_RO(driver_name);
 static DEVICE_ATTR_RO(port_name);
 static DEVICE_ATTR_RW(min_pulse_sp);
 static DEVICE_ATTR_RW(mid_pulse_sp);
 static DEVICE_ATTR_RW(max_pulse_sp);
-static DEVICE_ATTR_RW(command);
+static DEVICE_ATTR_WO(command);
 static DEVICE_ATTR_RW(polarity);
 static DEVICE_ATTR_RW(position_sp);
 static DEVICE_ATTR_RW(rate_sp);
+static DEVICE_ATTR_RO(state);
 
 static struct attribute *servo_motor_class_attrs[] = {
 	&dev_attr_driver_name.attr,
@@ -402,6 +409,7 @@ static struct attribute *servo_motor_class_attrs[] = {
 	&dev_attr_polarity.attr,
 	&dev_attr_position_sp.attr,
 	&dev_attr_rate_sp.attr,
+	&dev_attr_state.attr,
 	NULL
 };
 
