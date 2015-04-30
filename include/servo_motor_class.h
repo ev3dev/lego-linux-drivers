@@ -34,9 +34,9 @@ enum servo_motor_polarity {
 };
 
 /**
- * @get_position: Return position in milliseconds or 0 to indicate the motor
+ * @get_position: Return position_sp in milliseconds or 0 to indicate the motor
  * 	is floating or negative error.
- * @set_position: Sets the motor to position. Values is the pulse width in
+ * @set_position: Sets the motor to position_sp. Values is the pulse width in
  * 	milliseconds or 0 to float the output. Returns 0 on success or
  * 	negative error.
  * @get_rate: Returns the rate in msec or negative error.
@@ -45,7 +45,7 @@ enum servo_motor_polarity {
  */
 struct servo_motor_ops {
 	int (*get_position)(void* context);
-	int (*set_position)(void* context, int position);
+	int (*set_position)(void* context, int position_sp);
 	int (*get_rate)(void* context);
 	int (*set_rate)(void* context, unsigned rate);
 };
@@ -55,39 +55,39 @@ struct servo_motor_ops {
  * @name: The name of the driver that loaded this device.
  * @port_name: The name of the port that this motor is connected to.
  * @ops: Function pointers to the controller that registered this servo.
- * @fixed_min_pulse_ms: Fixed value for min_pulse_ms if it cannot be changed,
- * 	otherwise 0. Setting this value will cause writing the min_pulse_ms
+ * @fixed_min_pulse_sp: Fixed value for min_pulse_sp if it cannot be changed,
+ * 	otherwise 0. Setting this value will cause writing the min_pulse_sp
  * 	attribute to return -EOPNOTSUPP.
- * @fixed_mid_pulse_ms: Fixed value for mid_pulse_ms if it cannot be changed,
- * 	otherwise 0. Setting this value will cause writing the min_pulse_ms
+ * @fixed_mid_pulse_sp: Fixed value for mid_pulse_sp if it cannot be changed,
+ * 	otherwise 0. Setting this value will cause writing the min_pulse_sp
  * 	attribute to return -EOPNOTSUPP.
- * @fixed_max_pulse_ms: Fixed value for max_pulse_ms if it cannot be changed,
- * 	otherwise 0. Setting this value will cause writing the min_pulse_ms
+ * @fixed_max_pulse_sp: Fixed value for max_pulse_sp if it cannot be changed,
+ * 	otherwise 0. Setting this value will cause writing the min_pulse_sp
  * 	attribute to return -EOPNOTSUPP.
  * @context: Data struct passed back to the ops.
- * @min_pulse_ms: The size of the pulse to drive the motor to 0 degrees.
- * @mid_pulse_ms: The size of the pulse to drive the motor to 90 degrees.
- * @max_pulse_ms: The size of the pulse to drive the motor to 180 degrees.
+ * @min_pulse_sp: The size of the pulse to drive the motor to 0 degrees.
+ * @mid_pulse_sp: The size of the pulse to drive the motor to 90 degrees.
+ * @max_pulse_sp: The size of the pulse to drive the motor to 180 degrees.
  * @command: The current command for the motor.
  * @polarity: The polarity of the motor.
- * @position: The current position of the motor.
+ * @position_sp: The current position_sp of the motor.
  */
 struct servo_motor_device {
 	const char *name;
 	const char *port_name;
 	const struct servo_motor_ops *ops;
-	int fixed_min_pulse_ms;
-	int fixed_mid_pulse_ms;
-	int fixed_max_pulse_ms;
+	int fixed_min_pulse_sp;
+	int fixed_mid_pulse_sp;
+	int fixed_max_pulse_sp;
 	void *context;
 	/* private */
 	struct device dev;
-	int min_pulse_ms;
-	int mid_pulse_ms;
-	int max_pulse_ms;
+	int min_pulse_sp;
+	int mid_pulse_sp;
+	int max_pulse_sp;
 	enum servo_motor_command command;
 	enum servo_motor_polarity polarity;
-	int position;
+	int position_sp;
 };
 
 #define to_servo_motor_device(_dev) container_of(_dev, struct servo_motor_device, dev)

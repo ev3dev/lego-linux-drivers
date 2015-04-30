@@ -291,13 +291,13 @@ static int register_wedo_servo(struct wedo_port_data *wpd)
 
 	/*
 	 * Initialize the servo_motor_device_struct - the non-zero
-	 * fixed_*_pulse_ms values tell the servo driver that this
+	 * fixed_*_pulse_sp values tell the servo driver that this
 	 * motor cannot be "calibrated".
 	 */
 
-	wsd->sd.fixed_min_pulse_ms = -127;
-	wsd->sd.fixed_mid_pulse_ms = 0;
-	wsd->sd.fixed_max_pulse_ms = 127;
+	wsd->sd.fixed_min_pulse_sp = -127;
+	wsd->sd.fixed_mid_pulse_sp = 0;
+	wsd->sd.fixed_max_pulse_sp = 127;
 
 	wsd->sd.ops = &wedo_servo_ops;
 
