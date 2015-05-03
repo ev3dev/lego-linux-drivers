@@ -230,7 +230,7 @@ static int register_wedo_led(struct wedo_port_data *wpd)
 
 	wld->wpd = wpd;
 
-	snprintf(wld->name, LEGO_NAME_SIZE, "wedo::%s", wpd->port.port_name);
+	snprintf(wld->name, LEGO_NAME_SIZE, "%s::ev3dev", wpd->port.port_name);
 	wld->cdev.name = wld->name;
 	wld->cdev.max_brightness = 127;
 	wld->cdev.brightness_set = wedo_port_led_brightness_set;

@@ -88,7 +88,7 @@ static int rcx_led_probe(struct lego_device *motor)
 	if (IS_ERR(data))
 		return -ENOMEM;
 
-	snprintf(data->name, LEGO_NAME_SIZE, "ev3::%s", motor->port->port_name);
+	snprintf(data->name, LEGO_NAME_SIZE, "%s::ev3dev", motor->port->port_name);
 	data->cdev.name = data->name;
 	data->cdev.default_trigger = "none";
 	data->cdev.brightness_set = rcx_led_brightness_set;
