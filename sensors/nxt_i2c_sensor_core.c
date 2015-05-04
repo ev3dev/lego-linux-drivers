@@ -58,14 +58,16 @@
 #include <linux/delay.h>
 #include <linux/bug.h>
 #include <linux/i2c.h>
-#include <linux/i2c-legoev3.h>
 #include <linux/workqueue.h>
 
 #include <lego_sensor_class.h>
 
 #include "nxt_i2c_sensor.h"
 
+#if defined(CONFIG_I2C_LEGOEV3) || defined(CONFIG_I2C_LEGOEV3_MODULE)
+#include <linux/i2c-legoev3.h>
 #include "../ev3/legoev3_ports.h"
+#endif
 
 #define NXT_I2C_MIN_POLL_MS 50
 
@@ -213,20 +215,20 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
 	struct nxt_i2c_sensor_data *data;
-	struct i2c_legoev3_platform_data *apdata =
-					client->adapter->dev.platform_data;
+	struct lego_port_device *in_port = NULL;
 	const struct nxt_i2c_sensor_info *sensor_info;
 	const struct i2c_device_id *i2c_dev_id = id;
 	char version[NXT_I2C_ID_STR_LEN + 1] = { 0 };
 	int err, i;
 
-	if (WARN(!apdata, "Adapter platform data is required."))
-		return -EINVAL;
-	if (WARN(!apdata->in_port, "Adapter platform data missing input port."))
-		return -EINVAL;
-	if (WARN(!apdata->in_port->nxt_i2c_ops,
-			"Input port does not support nxt-i2c ops."))
-		return -EINVAL;
+#if defined(CONFIG_I2C_LEGOEV3) || defined(CONFIG_I2C_LEGOEV3_MODULE)
+	if (client->adapter->algo == &i2c_legoev3_algo) {
+		struct i2c_legoev3_platform_data *apdata =
+					client->adapter->dev.platform_data;
+
+		in_port = apdata->in_port;
+	}
+#endif
 
 	sensor_info = &nxt_i2c_sensor_defs[i2c_dev_id->driver_data];
 
@@ -235,13 +237,15 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 		return -ENOMEM;
 
 	data->client = client;
-	data->in_port = apdata->in_port;
+	data->in_port = in_port;
 	data->type = i2c_dev_id->driver_data;
 	memcpy(&data->info, sensor_info, sizeof(struct nxt_i2c_sensor_info));
 
 	data->sensor.name = i2c_dev_id->name;
 	snprintf(data->port_name, LEGO_PORT_NAME_SIZE, "%s:i2c%d",
-		 data->in_port->port_name, client->addr);
+		 in_port ? in_port->port_name : client->adapter->name,
+		 client->addr);
+
 	data->sensor.port_name = data->port_name;
 	data->sensor.num_modes = data->info.num_modes;
 	data->sensor.num_view_modes = 1;
@@ -324,8 +328,9 @@ static int nxt_i2c_sensor_remove(struct i2c_client *client)
 	data->poll_ms = 0;
 	if (delayed_work_pending(&data->poll_work))
 		cancel_delayed_work_sync(&data->poll_work);
-	data->in_port->nxt_i2c_ops->set_pin1_gpio(data->in_port->context,
-		LEGO_PORT_GPIO_FLOAT);
+	if (data->in_port)
+		data->in_port->nxt_i2c_ops->set_pin1_gpio(data->in_port->context,
+							  LEGO_PORT_GPIO_FLOAT);
 	unregister_lego_sensor(&data->sensor);
 	kfree(data);
 
