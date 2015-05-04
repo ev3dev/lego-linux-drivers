@@ -24,7 +24,7 @@ static int lego_ev3_touch_sensor_scale(void *context,
 				       u8 index, long int *value)
 {
 	s32 raw_value = *(s32 *)mode_info->raw_data;
-#if defined(CONFIG_LEGOEV3_I2C_SENSORS) || defined(CONFIG_LEGOEV3_I2C_SENSORS_MODULE)
+#if defined(CONFIG_NXT_I2C_SENSORS) || defined(CONFIG_NXT_I2C_SENSORS_MODULE)
 	struct ev3_analog_sensor_data *data = context;
 
 	/* mindsensors.com EV3 Sensor Multiplexer returns scaled value */

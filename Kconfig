@@ -54,6 +54,14 @@ config LEGOEV3_SOUND
 	  To compile this driver as a module, choose M here: the module will be
 	  called snd-legoev3.
 
+config LEGOEV3_MOTORS
+	tristate "EV3 motor support"
+	default y
+	depends on LEGOEV3_DEV_PORTS
+	help
+	  Select Y to enable support for EV3 motors. Provides a common device
+	  class interface for LEGO EV3 and NXT compatible motors.
+
 endif #LEGOEV3_DRIVERS
 
 config LEGO_PORTS
@@ -64,7 +72,7 @@ config LEGO_PORTS
 	  output port functionality that is compatible with LEGO MINDSTORMS,
 	  LEGO WeDo and LEGO Power Functions sensors and motors.
 
-config LEGOEV3_MSENSORS
+config LEGO_SENSORS
 	tristate "Mindstorms sensors support"
 	default y
 	help
@@ -75,53 +83,44 @@ config LEGOEV3_MSENSORS
 config NXT_ANALOG_SENSORS
 	tristate "NXT analog sensor support"
 	default y
-	depends on LEGOEV3_DEV_PORTS && LEGOEV3_MSENSORS
+	depends on LEGO_SENSORS
 	help
 	  Select Y to enable support for NXT analog sensors.
 
 config EV3_ANALOG_SENSORS
 	tristate "EV3 analog sensor support"
 	default y
-	depends on LEGOEV3_DEV_PORTS && LEGOEV3_MSENSORS
+	depends on LEGO_SENSORS
 	help
 	  Select Y to enable support for EV3 analog sensors.
 
-config LEGOEV3_I2C_SENSORS
+config NXT_I2C_SENSORS
 	tristate "I2C sensor support"
 	default y
-	depends on LEGOEV3_DEV_PORTS && I2C_LEGOEV3 && LEGOEV3_MSENSORS
+	depends on LEGO_SENSORS
 	help
 	  Select Y to enable support for NXT I2C sensors.
 
 config EV3_UART_SENSORS
 	tristate "EV3 UART sensor support"
 	default y
-	depends on LEGOEV3_DEV_PORTS && SERIAL_SUART_OMAPL_PRU && LEGOEV3_MSENSORS
+	depends on LEGO_SENSORS
 	help
 	  Select Y to enable support for EV3 UART sensors.
 
-config LEGOEV3_MOTORS
-	tristate "EV3 motor support"
-	default y
-	depends on LEGOEV3_DEV_PORTS
-	help
-	  Select Y to enable support for EV3 motors. Provides a common device
-	  class interface for LEGO EV3 and NXT compatible motors.
-
-config LEGOEV3_TACHO_MOTORS
+config LEGO_TACHO_MOTORS
 	tristate "tacho motor support"
 	default y
-	depends on LEGOEV3_MOTORS
 	help
 	  Select Y to enable support for tacho motors.
 
-config LEGOEV3_SERVO_MOTORS
+config LEGO_SERVO_MOTORS
 	tristate "Servo motor support"
 	default y
 	help
 	  Select Y to enable support for servo motors.
 
-config LEGOEV3_DC_MOTORS
+config LEGO_DC_MOTORS
 	tristate "DC motor support"
 	default y
 	help

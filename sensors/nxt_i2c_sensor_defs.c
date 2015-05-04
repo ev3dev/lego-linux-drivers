@@ -25,8 +25,6 @@
 #include "ms_ev3_smux.h"
 #include "ms_nxtmmx.h"
 
-#include "../ev3/legoev3_ports.h"
-
 /* mindsensors.com 8-channel servo motor controller implementation */
 
 struct ms_8ch_servo_data {
