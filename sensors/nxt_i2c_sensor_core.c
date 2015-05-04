@@ -1,7 +1,7 @@
 /*
  * LEGO MINDSTORMS NXT I2C sensor device driver
  *
- * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -98,8 +98,6 @@ static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
 			return err;
 	}
 
-	sensor->in_port->nxt_i2c_ops->set_pin1_gpio(sensor->in_port->context,
-				sensor->info.i2c_mode_info[mode].pin1_state);
 	nxt_i2c_sensor_poll_work(&sensor->poll_work.work);
 
 	if (sensor->info.ops.set_mode_post_cb)
@@ -300,6 +298,9 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 		goto err_register_lego_sensor;
 	}
 
+	if (data->in_port)
+		data->in_port->nxt_i2c_ops->set_pin1_gpio(data->in_port->context,
+							  data->info.pin1_state);
 	if (data->type == LEGO_NXT_ULTRASONIC_SENSOR)
 		msleep (1);
 	nxt_i2c_sensor_set_mode(data, data->sensor.mode);

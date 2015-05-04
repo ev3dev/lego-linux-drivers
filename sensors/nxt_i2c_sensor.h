@@ -58,13 +58,11 @@ struct nxt_i2c_sensor_ops {
  * @set_mode_reg: The register address used to set the mode.
  * @set_mode_data: The data to write to the command register.
  * @read_data_reg: The starting register address of the data to be read.
- * @pin1_state: Sets input port pin 1 high (battery voltage) when 1.
  */
 struct nxt_i2c_sensor_mode_info {
 	u8 set_mode_reg;
 	u8 set_mode_data;
 	u8 read_data_reg;
-	enum lego_port_gpio_state pin1_state;
 };
 
 /**
@@ -96,6 +94,7 @@ struct nxt_i2c_sensor_cmd_info {
  * @num_read_only_modes: Number of modes that are usable without having to
  * 	write data to the sensor.
  * @num_commands: The number of commands supported by the sensor.
+ * @pin1_state: Sets input port pin 1 high (battery voltage) when 1.
  * @slow: The sensor cannot operate at 100kHz.
  */
 struct nxt_i2c_sensor_info {
@@ -111,6 +110,7 @@ struct nxt_i2c_sensor_info {
 	int num_modes;
 	int num_read_only_modes;
 	int num_commands;
+	enum lego_port_gpio_state pin1_state;
 	unsigned slow:1;
 };
 

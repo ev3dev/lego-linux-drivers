@@ -262,6 +262,8 @@ static void mi_xg1300l_remove_cb(struct nxt_i2c_sensor_data *data)
  * - i2c_mode_info.read_data_reg
  *
  * Optional values:
+ * - pin1_state
+ * - slow
  * - num_read_only_modes (default num_modes)
  * - ops.set_mode_pre_cb
  * - ops.set_mode_post_cb
@@ -282,7 +284,6 @@ static void mi_xg1300l_remove_cb(struct nxt_i2c_sensor_data *data)
  * - ms_mode_info.figures (default 5)
  * - ms_mode_info.decimals
  * - i2c_mode_info.set_mode_reg and mode_info.set_mode_data
- * - i2c_mode_info.pin1_state
  *
  * All other values will be overwritten during device initialization.
  *
@@ -311,6 +312,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.product_id	= "Sonar",
 		.num_modes	= 5,
 		.num_read_only_modes = 2,
+		.pin1_state	= LEGO_PORT_GPIO_HIGH,
 		.slow		= true,
 		.mode_info	= {
 			[0] = {
@@ -379,31 +381,26 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x02,
 				.read_data_reg	= 0x42,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[1] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x02,
 				.read_data_reg	= 0x42,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[2] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x01,
 				.read_data_reg	= 0x42,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[3] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x01,
 				.read_data_reg	= 0x42,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[4] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x03,
 				.read_data_reg	= 0x42,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 		},
 	},
@@ -1258,6 +1255,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.name		= HT_NXT_SUPER_PRO_SENSOR_NAME,
 		.vendor_id	= "HiTechnc",
 		.product_id	= "SuperPro",
+		.pin1_state	= LEGO_PORT_GPIO_HIGH,
 		.num_modes	= 5,
 		.mode_info	= {
 			[0] = {
@@ -1345,35 +1343,27 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.i2c_mode_info	= {
 			[0] = {
 				.read_data_reg = 0x42,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[1] = {
 				.read_data_reg	= 0x4C,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[2] = {
 				.read_data_reg	= 0x4D,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[3] = {
 				.read_data_reg	= 0x4E,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[4] = {
 				.read_data_reg	= 0x50,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[5] = {
 				.read_data_reg	= 0x51,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[6] = {
 				.read_data_reg	= 0x52,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 			[7] = {
 				.read_data_reg	= 0x57,
-				.pin1_state	= LEGO_PORT_GPIO_HIGH,
 			},
 		},
 	},
