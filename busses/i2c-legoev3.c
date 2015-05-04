@@ -66,10 +66,11 @@ static u32 i2c_legoev3_func(struct i2c_adapter *adap)
 	       I2C_FUNC_SMBUS_BLOCK_PROC_CALL;
 }
 
-static const struct i2c_algorithm i2c_legoev3_algo = {
+const struct i2c_algorithm i2c_legoev3_algo = {
 	.master_xfer	= i2c_legoev3_xfer,
 	.functionality	= i2c_legoev3_func,
 };
+EXPORT_SYMBOL_GPL(i2c_legoev3_algo);
 
 static int __devinit i2c_legoev3_probe(struct platform_device *pdev)
 {
