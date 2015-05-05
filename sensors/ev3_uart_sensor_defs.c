@@ -46,7 +46,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 * @description: Ambient light<br />Blue LEDs on
+				 * @description: Ambient light<br />LED color: blue
 				 * @value0: Ambient light intensity (0 to 100)
 				 * @units_description: percent
 				 */
@@ -70,7 +70,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				 * | 6     | white  |
 				 * | 7     | brown  |
 				 *
-				 * @description: Color<br />All LEDs rapidly cycling, appears white
+				 * @description: Color<br />LED color: white (all LEDs rapidly cycling)
 				 * @value0: Detected color (0 to 7)
 				 * @value0_footnote: [^color-values]
 				 * @units_description: color
@@ -82,7 +82,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 			},
 			[3] = {
 				/**
-				 * @description: Raw Reflected<br />Red LED on
+				 * @description: Raw Reflected<br />LED color: red
 				 * @value0: ??? (0 to 1020???)
 				 * @value1: ??? (0 to 1020???)
 				 */
@@ -92,7 +92,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 			},
 			[4] = {
 				/**
-				 * @description: Raw Color Components<br />All LEDs rapidly cycling, appears white
+				 * @description: Raw Color Components<br />LED color: white (all LEDs rapidly cycling)
 				 * @value0: Red??? (0 to 1020???)
 				 * @value1: Green??? (0 to 1020???)
 				 * @value2: Blue??? (0 to 1020???)
@@ -109,7 +109,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				 * the EV3 brick. As a result, the sensor will time out and reset.
 				 *
 				 * @name_footnote: [^cal-mode]
-				 * @description: Calibration ???<br />Red LED flashing every 4 seconds, then goes continous
+				 * @description: Calibration ???<br />LED color: red, flashing every 4 seconds, then goes continous
 				 * @value0: ???
 				 * @value1: ???
 				 * @value2: ???
