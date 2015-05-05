@@ -46,7 +46,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 * @description: Ambient light<br />LED color: blue
+				 * @description: Ambient light<br />LED color: blue (dimly lit)
 				 * @value0: Ambient light intensity (0 to 100)
 				 * @units_description: percent
 				 */
