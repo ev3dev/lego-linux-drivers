@@ -575,7 +575,7 @@ int register_dc_motor(struct dc_motor_device *dc, struct device *parent)
 	if (err)
 		return err;
 
-	dev_info(&dc->dev, "Bound to device '%s'\n", dev_name(parent));
+	dev_info(&dc->dev, "Registered '%s' on '%s'.\n", dc->name, dc->port_name);
 
 	return 0;
 }
@@ -583,7 +583,7 @@ EXPORT_SYMBOL_GPL(register_dc_motor);
 
 void unregister_dc_motor(struct dc_motor_device *dc)
 {
-	dev_info(&dc->dev, "Unregistered.\n");
+	dev_info(&dc->dev, "Unregistered '%s' on '%s'.\n", dc->name, dc->port_name);
 	cancel_delayed_work_sync(&dc->run_timed_work);
 	cancel_delayed_work_sync(&dc->ramp_work);
 	device_unregister(&dc->dev);

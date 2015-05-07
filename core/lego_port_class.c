@@ -234,7 +234,8 @@ int lego_port_register(struct lego_port_device *port,
 	if (err)
 		return err;
 
-	dev_info(&port->dev, "Bound to device '%s'\n", dev_name(parent));
+	dev_info(&port->dev, "Registered '%s' on '%s'.\n", port->port_name,
+		 dev_name(parent));
 
 	return 0;
 }
@@ -242,7 +243,7 @@ EXPORT_SYMBOL_GPL(lego_port_register);
 
 void lego_port_unregister(struct lego_port_device *port)
 {
-	dev_info(&port->dev, "Unregistered\n");
+	dev_info(&port->dev, "Unregistered '%s'.\n", port->port_name);
 	device_unregister(&port->dev);
 }
 EXPORT_SYMBOL_GPL(lego_port_unregister);

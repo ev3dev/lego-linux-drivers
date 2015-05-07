@@ -917,7 +917,8 @@ int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
 	if (err)
 		return err;
 
-	dev_info(&tm->dev, "Bound to '%s'.\n", dev_name(parent));
+	dev_info(&tm->dev, "Registered '%s' on '%s'.\n", tm->driver_name,
+		 tm->port_name);
 
 	return 0;
 }
@@ -926,7 +927,8 @@ EXPORT_SYMBOL_GPL(register_tacho_motor);
 void unregister_tacho_motor(struct tacho_motor_device *tm)
 {
 	cancel_delayed_work_sync(&tm->run_timed_work);
-	dev_info(&tm->dev, "Unregistered.\n");
+	dev_info(&tm->dev, "Unregistered '%s' on '%s'.\n", tm->driver_name,
+		 tm->port_name);
 	device_unregister(&tm->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_tacho_motor);

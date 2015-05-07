@@ -460,7 +460,8 @@ int register_servo_motor(struct servo_motor_device *servo, struct device *parent
 	if (ret)
 		return ret;
 
-	dev_info(&servo->dev, "Bound to device '%s'\n", dev_name(parent));
+	dev_info(&servo->dev, "Registered '%s' on '%s'.\n", servo->name,
+		 servo->port_name);
 
 	return 0;
 }
@@ -468,7 +469,8 @@ EXPORT_SYMBOL_GPL(register_servo_motor);
 
 void unregister_servo_motor(struct servo_motor_device *servo)
 {
-	dev_info(&servo->dev, "Unregistered\n");
+	dev_info(&servo->dev, "Unregistered '%s' on '%s'.\n", servo->name,
+		 servo->port_name);
 	device_unregister(&servo->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_servo_motor);

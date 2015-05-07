@@ -632,7 +632,8 @@ int register_lego_sensor(struct lego_sensor_device *sensor,
 	if (err)
 		return err;
 
-	dev_info(&sensor->dev, "Bound to device '%s'\n", dev_name(parent));
+	dev_info(&sensor->dev, "Registered '%s' on '%s'.\n", sensor->name,
+		 sensor->port_name);
 
 	return 0;
 }
@@ -640,7 +641,8 @@ EXPORT_SYMBOL_GPL(register_lego_sensor);
 
 void unregister_lego_sensor(struct lego_sensor_device *sensor)
 {
-	dev_info(&sensor->dev, "Unregistered\n");
+	dev_info(&sensor->dev, "Unregistered '%s' on '%s'.\n", sensor->name,
+		 sensor->port_name);
 	device_unregister(&sensor->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_lego_sensor);
