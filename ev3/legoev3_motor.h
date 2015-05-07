@@ -13,6 +13,9 @@
  * GNU General Public License for more details.
  */
 
+#ifndef __LEGOEV3_MOTOR_H
+#define __LEGOEV3_MOTOR_H
+
 #include <dc_motor_class.h>
 
 enum legoev3_motor_id {
@@ -68,3 +71,5 @@ struct legoev3_motor_info {
 };
 
 extern const struct legoev3_motor_info legoev3_motor_defs[];
+
+#endif /* __LEGOEV3_MOTOR_H */
