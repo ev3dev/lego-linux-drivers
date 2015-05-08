@@ -108,8 +108,8 @@
  *   Currently only I2C/NXT sensors support changing the polling period.
  * .
  * `port_name` (read-only)
- * : Returns the name of the port that the sensor is connected to, e.g. `in1`.
- *   I2C sensors also include the I2C address (decimal), e.g. `in1:i2c8`.
+ * : Returns the name of the port that the sensor is connected to, e.g. `ev3:in1`.
+ *   I2C sensors also include the I2C address (decimal), e.g. `ev3:in1:i2c8`.
  * .
  * `units` (read-only)
  * : Returns the units of the measured value for the current mode. May return

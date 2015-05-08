@@ -1061,7 +1061,7 @@ struct lego_port_device
 	data->i2c_pdev_info.size_data	= sizeof(data->i2c_data);
 
 	data->port.name = ev3_input_port_type.name;
-	snprintf(data->port.port_name, LEGO_PORT_NAME_SIZE, "in%d",
+	snprintf(data->port.port_name, LEGO_PORT_NAME_SIZE, "ev3:in%d",
 		 pdata->id + 1);
 	data->port.port_alias = pdata->uart_tty;
 	data->port.num_modes = NUM_EV3_INPUT_PORT_MODE;
