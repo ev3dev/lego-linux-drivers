@@ -35,9 +35,9 @@
  * is incremented each time a motor is loaded (it is not related to which port
  * the motor is plugged in to).
  * .
- * `command` (read/write)
- * : Sets the command for the motor. Possible values are `run`, `brake` and
- *  `coast`. Not all commands may be supported, so be sure to check the contents
+ * `command` (write-only)
+ * : Sets the command for the motor. Possible values are `run-forever`, `run-timed` and
+ *  `stop`. Not all commands may be supported, so be sure to check the contents
  *   of the `commands` attribute.
  * .
  * `commands` (read-only)
@@ -73,7 +73,7 @@
  * : Sets the stop command that will be used when the motor stops. Read
  *   `stop_commands` to get the list of valid values.
  * .
- * `stop_commands (read-only)
+ * `stop_commands` (read-only)
  * : Gets a space separated list of stop commands. Valid values are `coast`
  *   and `brake`.
  * .
