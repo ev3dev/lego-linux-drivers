@@ -33,7 +33,7 @@
  * You can find this device at `/sys/bus/lego/devices/port<N>:<device-name>`
  * where `<N>` is the number of the lego-port class device the sensor is
  * connected to and `<device-name>` is the name of one of the drivers in the
- * `ev3-uart-sensor` module (e.g. `lego-ev3-uart-29`).
+ * `ev3-uart-sensor` module (e.g. `lego-ev3-color`).
  * .
  * [lego-sensor class]: ../lego-sensor-class
  * [supported sensors]: ../#supported-sensors
@@ -134,10 +134,10 @@ static int ev3_uart_sensor_remove(struct lego_device *ldev)
 }
 
 static const struct lego_device_id ev3_uart_sensor_device_ids[] = {
-	{ EV3_UART_SENSOR_NAME("29"),	LEGO_EV3_COLOR		},
-	{ EV3_UART_SENSOR_NAME("30"),	LEGO_EV3_ULTRASONIC	},
-	{ EV3_UART_SENSOR_NAME("32"),	LEGO_EV3_GYRO		},
-	{ EV3_UART_SENSOR_NAME("33"),	LEGO_EV3_INFRARED	},
+	{ LEGO_EV3_COLOR_NAME	,	LEGO_EV3_COLOR		},
+	{ LEGO_EV3_ULTRASONIC_NAME,	LEGO_EV3_ULTRASONIC	},
+	{ LEGO_EV3_GYRO_NAME,		LEGO_EV3_GYRO		},
+	{ LEGO_EV3_INFRARED_NAME,	LEGO_EV3_INFRARED	},
 };
 
 struct lego_device_driver ev3_uart_sensor_driver = {

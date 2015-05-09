@@ -48,18 +48,18 @@ static const struct lego_port_mode_info ms_ev3_smux_port_mode_info[] = {
 	[MS_EV3_SMUX_MODE_UART] = {
 		/**
 		 * [^uart-mode]: UART sensor types are not automatically
-		 * detected. By default, the `lego-ev3-uart-29` driver (LEGO
-		 * EV3 Color Sensor) will be loaded when this mode is set.
+		 * detected. By default, the `lego-ev3-color` driver
+		 * will be loaded when this mode is set.
 		 * Use `set_device` to load other sensor devices/drivers.
 		 *
 		 * Supported sensors are:
 		 *
 		 * | Sensor Name         | Device/Driver Name |
 		 * |---------------------|--------------------|
-		 * | LEGO EV3 Color      | `lego-ev3-uart-29` |
-		 * | LEGO EV3 Ultrasonic | `lego-ev3-uart-30` |
-		 * | LEGO EV3 GYRO       | `lego-ev3-uart-32` |
-		 * | LEGO EV3 Infrared   | `lego-ev3-uart-33` |
+		 * | LEGO EV3 Color      | `lego-ev3-color`   |
+		 * | LEGO EV3 Ultrasonic | `lego-ev3-us`      |
+		 * | LEGO EV3 GYRO       | `lego-ev3-gyro`    |
+		 * | LEGO EV3 Infrared   | `lego-ev3-ir`      |
 		 *
 		 * @description: UART/EV3 sensor
 		 * @name_footnote: [^uart-mode]
@@ -80,10 +80,10 @@ static const struct lego_port_mode_info ms_ev3_smux_port_mode_info[] = {
 };
 
 static const char *ms_ev3_smux_uart_sensor_names[] = {
-	EV3_UART_SENSOR_NAME("29"), /* Color      */
-	EV3_UART_SENSOR_NAME("30"), /* Ultrasonic */
-	EV3_UART_SENSOR_NAME("32"), /* Gyro       */
-	EV3_UART_SENSOR_NAME("33"), /* Infrared   */
+	LEGO_EV3_COLOR_NAME,
+	LEGO_EV3_ULTRASONIC_NAME,
+	LEGO_EV3_GYRO_NAME,
+	LEGO_EV3_INFRARED_NAME,
 	NULL
 };
 

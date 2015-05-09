@@ -39,8 +39,10 @@
  * UART/EV3 sensors do not require individual drivers like other types of
  * sensors. Instead, all of the needed info to sent from the sensor in a common
  * format.  As a result, the name returned by the [lego-sensor][lego-sensor
- * class] `device_name` attribute is not a real driver name. Instead it returns
- * `lego-ev3-uart-<N>`, where `<N>` is the type id of the sensor.
+ * class] `driver_name` attribute may not be a real driver name. For well-known
+ * sensors (the LEGO EV3 sensors) it will return a name like `lego-ev3-color`.
+ * For unknown sensors it returns `ev3-uart-<N>`, where `<N>` is the type id
+ * of the sensor.
  * .
  * [line discipline]: https://en.wikipedia.org/wiki/Line_discipline
  * [lego-sensor class]: ../lego-sensor-class
@@ -518,7 +520,19 @@ static void ev3_uart_handle_rx_data(struct work_struct *work)
 		for (i = 0; i <= EV3_UART_MODE_MAX; i++)
 			port->mode_info[i] = ev3_uart_default_mode_info;
 		port->type_id = type;
-		snprintf(port->device_name, LEGO_SENSOR_NAME_SIZE, EV3_UART_SENSOR_NAME("%u"), type);
+		/* look up well-known driver names */
+		port->device_name[0] = 0;
+		for (i = 0; i < NUM_LEGO_EV3_SENSOR_TYPES; i++) {
+			if (type == ev3_uart_sensor_defs[i].type_id) {
+				snprintf(port->device_name, LEGO_SENSOR_NAME_SIZE,
+					 "%s", ev3_uart_sensor_defs[i].name);
+				break;
+			}
+		}
+		/* or use generic name if well-known name is not found */
+		if (!port->device_name[0])
+			snprintf(port->device_name, LEGO_SENSOR_NAME_SIZE,
+				 EV3_UART_SENSOR_NAME("%u"), type);
 		port->info_flags = EV3_UART_INFO_FLAG_CMD_TYPE;
 		port->synced = 1;
 		port->info_done = 0;
