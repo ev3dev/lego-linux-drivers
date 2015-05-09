@@ -13,14 +13,9 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Documentation is automatically generated from this struct, so formatting is
- * very important. Make sure any new modes have the same layout. The comments
- * are also parsed to provide more information for the documentation. The
- * parser can be found in the ev3dev-kpkg repository.
- */
-
 #include "brickpi_internal.h"
+#include "../sensors/ev3_analog_sensor.h"
+#include "../sensors/ev3_uart_sensor.h"
 #include "../sensors/nxt_analog_sensor.h"
 
 const struct device_type brickpi_in_port_type = {
@@ -28,11 +23,36 @@ const struct device_type brickpi_in_port_type = {
 };
 EXPORT_SYMBOL_GPL(brickpi_in_port_type);
 
-static const struct device_type brickpi_nxt_analog_sensor_device_type = {
-	.name	= "nxt-analog-sensor",
+
+static const struct device_type brickpi_device_type[NUM_BRICKPI_IN_PORT_MODES] = {
+	[BRICKPI_IN_PORT_MODE_NONE] = {
+		.name = NULL,
+	},
+	[BRICKPI_IN_PORT_MODE_NXT_ANALOG] = {
+		.name = "nxt-analog-sensor",
+	},
+	[BRICKPI_IN_PORT_MODE_NXT_COLOR] = {
+		.name = "nxt-color-sensor",
+	},
+	[BRICKPI_IN_PORT_MODE_NXT_I2C] = {
+		.name = "nxt-i2c-sensor",
+	},
+	[BRICKPI_IN_PORT_MODE_EV3_ANALOG] = {
+		.name = "ev3-analog-sensor",
+	},
+	[BRICKPI_IN_PORT_MODE_EV3_UART] = {
+		.name = "ev3-uart-sensor",
+	},
 };
 
-static const struct lego_port_mode_info brickpi_in_port_mode_info[] = {
+/*
+ * Documentation is automatically generated from this struct, so formatting is
+ * very important. Make sure any new modes have the same layout. The comments
+ * are also parsed to provide more information for the documentation. The
+ * parser can be found in the ev3dev-kpkg repository.
+ */
+
+static const struct lego_port_mode_info brickpi_in_port_mode_info[NUM_BRICKPI_IN_PORT_MODES] = {
 	/**
 	 * @description: HiTechnic NXT Sensor Multiplexer Input Port
 	 * @connection_types: I2C/NXT, Analog/NXT
@@ -100,13 +120,14 @@ static const struct lego_port_mode_info brickpi_in_port_mode_info[] = {
 	},
 };
 
-int brickpi_register_nxt_analog_sensor(struct brickpi_in_port_data *in_port,
-				       const char *name)
+int brickpi_in_port_register_sensor(struct brickpi_in_port_data *in_port,
+				    const struct device_type *device_type,
+				    const char *name)
 {
 	struct lego_device *new_sensor;
 
-	new_sensor = lego_device_register(name,
-		&brickpi_nxt_analog_sensor_device_type, &in_port->port, NULL, 0);
+	new_sensor = lego_device_register(name, device_type, &in_port->port,
+					  NULL, 0);
 	if (IS_ERR(new_sensor))
 		return PTR_ERR(new_sensor);
 
@@ -115,7 +136,7 @@ int brickpi_register_nxt_analog_sensor(struct brickpi_in_port_data *in_port,
 	return 0;
 }
 
-void brickpi_unregister_sensor(struct brickpi_in_port_data *in_port)
+void brickpi_in_port_unregister_sensor(struct brickpi_in_port_data *in_port)
 {
 	if (in_port->sensor) {
 		lego_device_unregister(in_port->sensor);
@@ -126,14 +147,15 @@ void brickpi_unregister_sensor(struct brickpi_in_port_data *in_port)
 static int brickpi_in_port_set_device(void *context, const char *name)
 {
 	struct brickpi_in_port_data *in_port = context;
+	int mode = in_port->port.mode;
 
-	switch (in_port->port.mode) {
-	case BRICKPI_IN_PORT_MODE_NXT_ANALOG:
-		brickpi_unregister_sensor(in_port);
-		return brickpi_register_nxt_analog_sensor(in_port, name);
-	}
+	brickpi_in_port_unregister_sensor(in_port);
 
-	return -EOPNOTSUPP;
+	if (mode == BRICKPI_IN_PORT_MODE_NONE)
+		return -EOPNOTSUPP;
+
+	return brickpi_in_port_register_sensor(in_port,
+					       &brickpi_device_type[mode], name);
 }
 
 static int brickpi_in_port_set_pin5_gpio(void *context,
@@ -165,23 +187,34 @@ static int brickpi_in_port_set_pin5_gpio(void *context,
 static int brickpi_in_port_set_mode(void *context, u8 mode)
 {
 	struct brickpi_in_port_data *in_port = context;
+	const char *name = NULL;
 	int err;
 
-	brickpi_unregister_sensor(in_port);
+	brickpi_in_port_unregister_sensor(in_port);
 	switch (mode) {
 	case BRICKPI_IN_PORT_MODE_NONE:
 		in_port->sensor_type = BRICKPI_SENSOR_TYPE_FW_VERSION;
 		return brickpi_set_sensors(in_port->ch_data);
 	case BRICKPI_IN_PORT_MODE_NXT_ANALOG:
 		in_port->sensor_type = BRICKPI_SENSOR_TYPE_NXT_ANALOG;
-		err = brickpi_set_sensors(in_port->ch_data);
-		if (err < 0)
-			return err;
-		return brickpi_register_nxt_analog_sensor(in_port,
-						GENERIC_NXT_ANALOG_SENSOR_NAME);
+		name = GENERIC_NXT_ANALOG_SENSOR_NAME;
+		break;
+	case BRICKPI_IN_PORT_MODE_EV3_ANALOG:
+		in_port->sensor_type = BRICKPI_SENSOR_TYPE_EV3_TOUCH;
+		name = LEGO_EV3_TOUCH_SENSOR_NAME;
+		break;
 	}
 
-	return -EOPNOTSUPP;
+	/* TODO: This check shouldn't be needed when we have all of the modes implemented */
+	if (!name)
+		return -EOPNOTSUPP;
+
+	err = brickpi_set_sensors(in_port->ch_data);
+	if (err < 0)
+		return err;
+
+	return brickpi_in_port_register_sensor(in_port,
+					       &brickpi_device_type[mode], name);
 }
 
 static struct lego_port_nxt_analog_ops brickpi_in_port_nxt_analog_ops = {
@@ -225,7 +258,7 @@ void brickpi_unregister_in_ports(struct brickpi_channel_data *ch_data)
 	int i;
 
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
-		brickpi_unregister_sensor(&ch_data->in_port[i]);
+		brickpi_in_port_unregister_sensor(&ch_data->in_port[i]);
 		lego_port_unregister(&ch_data->in_port[i].port);
 	}
 }

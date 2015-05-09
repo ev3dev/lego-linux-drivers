@@ -49,7 +49,6 @@
 
 #include "brickpi_internal.h"
 
-//#define DEBUG
 #ifdef DEBUG
 #define debug_pr(fmt, ...) printk(fmt, ##__VA_ARGS__)
 #else
@@ -213,6 +212,7 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 
 		switch (ch_data->in_port[i].sensor_type) {
 		case BRICKPI_SENSOR_TYPE_NXT_TOUCH:
+		case BRICKPI_SENSOR_TYPE_NXT_TOUCH_DEBOUNCED:
 			sensor_values[0] = brickpi_read_rx(data, 1);
 			break;
 		case BRICKPI_SENSOR_TYPE_NXT_ULTRASONIC_CONT:
@@ -263,7 +263,6 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 		case BRICKPI_SENSOR_TYPE_EV3_INFRARED_M3:
 		case BRICKPI_SENSOR_TYPE_EV3_INFRARED_M4:
 		case BRICKPI_SENSOR_TYPE_EV3_INFRARED_M5:
-		case BRICKPI_SENSOR_TYPE_EV3_TOUCH:
 			sensor_values[0] = brickpi_read_rx(data, 16);
 			break;
 		case BRICKPI_SENSOR_TYPE_EV3_COLOR_M3:
@@ -271,11 +270,22 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 		case BRICKPI_SENSOR_TYPE_EV3_INFRARED_M2:
 			sensor_values[0] = brickpi_read_rx(data, 32);
 			break;
+		case BRICKPI_SENSOR_TYPE_EV3_TOUCH:
+		case BRICKPI_SENSOR_TYPE_EV3_TOUCH_DEBOUNCED:
+			/*
+			 * The EV3 Touch sensor returns a value of 0x07 or 0x10
+			 * when pressed, so this converts it to an approx. mV
+			 * value that is close enough for the ev3-analog-sensor
+			 * driver to interpret correctly.
+			 */
+			sensor_values[0] = brickpi_read_rx(data, 16) << 8;
+			break;
 		default:
-			sensor_values[0] = brickpi_read_rx(data, 10);
 			/* NXT Analog expects value in mV */
 			if (ch_data->in_port[i].sensor_type <= BRICKPI_SENSOR_TYPE_NXT_ANALOG_MAX)
-				sensor_values[0] = sensor_values[0] * 5000 / 1024;
+				sensor_values[0] = brickpi_read_rx(data, 10) * 5000 / 1024;
+			else
+				sensor_values[0] = brickpi_read_rx(data, 10);
 			break;
 		}
 		debug_pr("ch_data->sensor_values[%d][0]: %ld\n", i,
