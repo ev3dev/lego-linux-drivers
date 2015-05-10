@@ -49,6 +49,7 @@
 
 #include "ev3_uart_sensor.h"
 #include "ms_ev3_smux.h"
+#include "../brickpi/brickpi.h"
 
 struct ev3_uart_sensor_data {
 	struct lego_device *ldev;
@@ -66,6 +67,15 @@ static int ev3_uart_sensor_set_mode(void *context, u8 mode)
 		int ret;
 
 		ret = ms_ev3_smux_set_uart_sensor_mode(data->ldev->port, mode);
+		if (ret < 0)
+			return ret;
+	} else
+#endif
+#if defined(CONFIG_BRICKPI) || defined(CONFIG_BRICKPI_MODULE)
+	if (data->ldev->port->dev.type == &brickpi_in_port_type) {
+		int ret;
+
+		ret = brickpi_set_uart_sensor_mode(data->ldev, mode);
 		if (ret < 0)
 			return ret;
 	} else

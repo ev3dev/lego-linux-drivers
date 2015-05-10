@@ -207,7 +207,7 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 		debug_pr("motor_position[%d]: %d\n", i, (int)position);
 	}
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
-		long *sensor_values = ch_data->in_port[i].sensor_values;
+		s32 *sensor_values = ch_data->in_port[i].sensor_values;
 		u8 *raw_data = ch_data->in_port[i].port.raw_data;
 
 		switch (ch_data->in_port[i].sensor_type) {
@@ -264,11 +264,28 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 		case BRICKPI_SENSOR_TYPE_EV3_INFRARED_M4:
 		case BRICKPI_SENSOR_TYPE_EV3_INFRARED_M5:
 			sensor_values[0] = brickpi_read_rx(data, 16);
+			/*
+			 * There is a race condition in the BrickPi firmware v2 that
+			 * causes these errors to be returned quite frequently. This
+			 * is unfortunate because these may actually be legitimate
+			 * values. Hopefully this can be fixed in future versions
+			 * of the frimware, in which case we can add a version check
+			 * here. But for now, we just ignore these values.
+			 */
+			if (sensor_values[0] == (s16)(-2))
+				continue;
+			if (sensor_values[0] == (s16)(-4))
+				continue;
 			break;
 		case BRICKPI_SENSOR_TYPE_EV3_COLOR_M3:
 		case BRICKPI_SENSOR_TYPE_EV3_GYRO_M3:
 		case BRICKPI_SENSOR_TYPE_EV3_INFRARED_M2:
 			sensor_values[0] = brickpi_read_rx(data, 32);
+			/* see comment above */
+			if (sensor_values[0] == (s32)(-2))
+				continue;
+			if (sensor_values[0] == (s32)(-4))
+				continue;
 			break;
 		case BRICKPI_SENSOR_TYPE_EV3_TOUCH:
 		case BRICKPI_SENSOR_TYPE_EV3_TOUCH_DEBOUNCED:
@@ -294,7 +311,7 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 		if (!raw_data)
 			continue;
 		memcpy(raw_data, sensor_values,
-		       sizeof(long) * NUM_BRICKPI_SENSOR_VALUES);
+		       sizeof(s32) * NUM_BRICKPI_SENSOR_VALUES);
 		lego_port_call_raw_data_func(&ch_data->in_port[i].port);
 	}
 	mutex_unlock(&data->tx_mutex);

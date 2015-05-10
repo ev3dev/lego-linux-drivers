@@ -107,4 +107,6 @@ enum brickpi_in_port_mode {
 extern const struct device_type brickpi_in_port_type;
 extern const struct device_type brickpi_out_port_type;
 
+extern int brickpi_set_uart_sensor_mode(struct lego_device *sensor, u8 mode);
+
 #endif /* _BRICKPI_H_ */

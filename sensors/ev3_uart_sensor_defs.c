@@ -130,7 +130,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 		 */
 		.name		= LEGO_EV3_ULTRASONIC_NAME,
 		.type_id	= LEGO_EV3_ULTRASONIC_TYPE_ID,
-		.num_modes	= 5,
+		.num_modes	= 7,
 		.num_view_modes	= 3,
 		.mode_info	= {
 			[0] = {

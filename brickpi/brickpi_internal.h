@@ -68,7 +68,7 @@ struct brickpi_in_port_data {
 	struct brickpi_channel_data *ch_data;
 	struct lego_port_device port;
 	struct lego_device *sensor;
-	long sensor_values[NUM_BRICKPI_SENSOR_VALUES];
+	s32 sensor_values[NUM_BRICKPI_SENSOR_VALUES];
 	enum brickpi_sensor_type sensor_type;
 	u8 i2c_speed;
 	u8 i2c_msg_count;

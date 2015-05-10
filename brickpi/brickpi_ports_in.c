@@ -111,7 +111,7 @@ static const struct lego_port_mode_info brickpi_in_port_mode_info[NUM_BRICKPI_IN
 		 * [^ev3-uart-mode]: Only the LEGO EV3 Ultrasonic, Color, Gyro,
 		 * and Infrared sensors are supported. They cannot be automatically
 		 * detected, so you must specify the sensor manually using the
-		 * `set_device` attribute.
+		 * `set_device` attribute. No sensors are loaded by default.
 		 *
 		 * @description: UART/EV3 sensor
 		 * @name_footnote: [^ev3-uart-mode]
@@ -193,6 +193,8 @@ static int brickpi_in_port_set_mode(void *context, u8 mode)
 	brickpi_in_port_unregister_sensor(in_port);
 	switch (mode) {
 	case BRICKPI_IN_PORT_MODE_NONE:
+	case BRICKPI_IN_PORT_MODE_EV3_UART:
+		/* We don't want to load the wrong UART sensor because it causes problems. */
 		in_port->sensor_type = BRICKPI_SENSOR_TYPE_FW_VERSION;
 		return brickpi_set_sensors(in_port->ch_data);
 	case BRICKPI_IN_PORT_MODE_NXT_ANALOG:
@@ -220,6 +222,26 @@ static int brickpi_in_port_set_mode(void *context, u8 mode)
 static struct lego_port_nxt_analog_ops brickpi_in_port_nxt_analog_ops = {
 	.set_pin5_gpio = brickpi_in_port_set_pin5_gpio,
 };
+
+int brickpi_set_uart_sensor_mode(struct lego_device *sensor, u8 mode)
+{
+	struct brickpi_in_port_data *in_port =
+			container_of(sensor->port, struct brickpi_in_port_data, port);
+
+	if (!strncmp(sensor->name, LEGO_EV3_COLOR_NAME, LEGO_NAME_SIZE))
+		in_port->sensor_type = BRICKPI_SENSOR_TYPE_EV3_COLOR_M0 + mode;
+	else if (!strncmp(sensor->name, LEGO_EV3_ULTRASONIC_NAME, LEGO_NAME_SIZE))
+		in_port->sensor_type = BRICKPI_SENSOR_TYPE_EV3_US_M0 + mode;
+	else if (!strncmp(sensor->name, LEGO_EV3_GYRO_NAME, LEGO_NAME_SIZE))
+		in_port->sensor_type = BRICKPI_SENSOR_TYPE_EV3_GYRO_M0 + mode;
+	else if (!strncmp(sensor->name, LEGO_EV3_INFRARED_NAME, LEGO_NAME_SIZE))
+		in_port->sensor_type = BRICKPI_SENSOR_TYPE_EV3_INFRARED_M0 + mode;
+	else
+		return -EINVAL;
+
+	return brickpi_set_sensors(in_port->ch_data);
+}
+EXPORT_SYMBOL_GPL(brickpi_set_uart_sensor_mode);
 
 int brickpi_register_in_ports(struct brickpi_channel_data *ch_data,
 			      struct device *parent)
