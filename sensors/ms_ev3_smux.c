@@ -119,7 +119,7 @@ static const struct device_type ms_ev3_smux_device_type[] = {
 static int ms_ev3_smux_set_device(void* context, const char* name)
 {
 	struct nxt_i2c_sensor_data *data = context;
-	struct ms_ev3_smux_data *smux = data->info.callback_data;
+	struct ms_ev3_smux_data *smux = data->callback_data;
 	struct lego_device *new_sensor;
 	const char **match_name = ms_ev3_smux_sensor_names[smux->port.mode];
 
@@ -146,7 +146,7 @@ static int ms_ev3_smux_set_device(void* context, const char* name)
 static int ms_ev3_smux_set_mode(void *context, u8 mode)
 {
 	struct nxt_i2c_sensor_data *data = context;
-	struct ms_ev3_smux_data *smux = data->info.callback_data;
+	struct ms_ev3_smux_data *smux = data->callback_data;
 	int ret;
 
 	ret = i2c_smbus_write_byte_data(data->client, MS_EV3_SMUX_MODE_REG,
@@ -168,7 +168,7 @@ static int ms_ev3_smux_set_mode(void *context, u8 mode)
 
 void ms_ev3_smux_poll_cb(struct nxt_i2c_sensor_data *data)
 {
-	struct ms_ev3_smux_data *smux = data->info.callback_data;
+	struct ms_ev3_smux_data *smux = data->callback_data;
 
 	if (!smux->sensor || !smux->port.raw_data)
 		return;
@@ -228,7 +228,7 @@ int ms_ev3_smux_probe_cb(struct nxt_i2c_sensor_data *data)
 			"Failed to register lego-port. (%d)", ret);
 		goto err_lego_port_register;
 	}
-	data->info.callback_data = smux;
+	data->callback_data = smux;
 	ret = ms_ev3_smux_set_mode(data, 0);
 	if (ret < 0)
 		dev_warn(&data->client->dev,
@@ -237,7 +237,7 @@ int ms_ev3_smux_probe_cb(struct nxt_i2c_sensor_data *data)
 	return 0;
 
 err_lego_port_register:
-	data->info.callback_data = NULL;
+	data->callback_data = NULL;
 err_get_channel:
 	kfree(smux);
 	return ret;
@@ -245,13 +245,13 @@ err_get_channel:
 
 void ms_ev3_smux_remove_cb(struct nxt_i2c_sensor_data *data)
 {
-	struct ms_ev3_smux_data *smux = data->info.callback_data;
+	struct ms_ev3_smux_data *smux = data->callback_data;
 
 	if (smux) {
 		if (smux->sensor)
 			lego_device_unregister(smux->sensor);
 		lego_port_unregister(&smux->port);
-		data->info.callback_data = NULL;
+		data->callback_data = NULL;
 		kfree(smux);
 	}
 }

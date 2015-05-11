@@ -488,10 +488,10 @@ int ms_nxtmmx_probe_cb(struct nxt_i2c_sensor_data *data)
 	if (!mmx)
 		return -ENOMEM;
 
-	data->info.callback_data = mmx;
+	data->callback_data = mmx;
 
 	for (i = 0; i < 2; i++) {
-		mmx[i].tm.driver_name = data->info.name;
+		mmx[i].tm.driver_name = data->info->name;
 		snprintf(mmx[i].port_name, LEGO_PORT_NAME_SIZE, "%s:i2c%d:mux%d",
 			 data->port_name, data->client->addr, i + 1);
 		mmx[i].tm.port_name = mmx[i].port_name;
@@ -515,7 +515,7 @@ int ms_nxtmmx_probe_cb(struct nxt_i2c_sensor_data *data)
 err_register_tacho_motor1:
 	unregister_tacho_motor(&mmx[0].tm);
 err_register_tacho_motor0:
-	data->info.callback_data = NULL;
+	data->callback_data = NULL;
 	kfree(mmx);
 
 	return err;
@@ -523,10 +523,10 @@ err_register_tacho_motor0:
 
 void ms_nxtmmx_remove_cb(struct nxt_i2c_sensor_data *data)
 {
-	struct ms_nxtmmx_data *mmx = data->info.callback_data;
+	struct ms_nxtmmx_data *mmx = data->callback_data;
 
 	unregister_tacho_motor(&mmx[1].tm);
 	unregister_tacho_motor(&mmx[0].tm);
-	data->info.callback_data = NULL;
+	data->callback_data = NULL;
 	kfree(mmx);
 }

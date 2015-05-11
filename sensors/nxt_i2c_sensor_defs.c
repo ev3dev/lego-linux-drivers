@@ -121,7 +121,7 @@ static int ms_8ch_servo_probe_cb(struct nxt_i2c_sensor_data *data)
 		dev_err(&data->client->dev, "Error registering servos. %d", err);
 		return err;
 	}
-	data->info.callback_data = servos;
+	data->callback_data = servos;
 	data->poll_ms = 1000;
 
 	return 0;
@@ -129,7 +129,7 @@ static int ms_8ch_servo_probe_cb(struct nxt_i2c_sensor_data *data)
 
 static void ms_8ch_servo_remove_cb(struct nxt_i2c_sensor_data *data)
 {
-	struct ms_8ch_servo_data *servos = data->info.callback_data;
+	struct ms_8ch_servo_data *servos = data->callback_data;
 	int i;
 
 	if (servos) {
@@ -174,7 +174,7 @@ static int ms_imu_scale(void *context, struct lego_sensor_mode_info *mode_info,
 static void ms_imu_send_cmd_post_cb(struct nxt_i2c_sensor_data *sensor,
 				    u8 command)
 {
-	struct lego_sensor_mode_info *gyro_mode_info = &sensor->info.mode_info[4];
+	struct lego_sensor_mode_info *gyro_mode_info = &sensor->sensor.mode_info[4];
 
 	switch (command) {
 	case 1: /* ACCEL-2G */
@@ -201,7 +201,7 @@ static int mi_xg1300l_scale(void *context,
 			    u8 index, long int *value)
 {
 	struct nxt_i2c_sensor_data *data = context;
-	u8 *scaling_factor = data->info.callback_data;
+	u8 *scaling_factor = data->callback_data;
 	s16 *raw_as_s16 = (s16*)mode_info->raw_data;
 
 	/* scale values for acceleration */
@@ -218,7 +218,7 @@ static int mi_xg1300l_scale(void *context,
 static void mi_xg1300l_send_cmd_post_cb(struct nxt_i2c_sensor_data *data,
 					u8 command)
 {
-	u8 *scaling_factor = data->info.callback_data;
+	u8 *scaling_factor = data->callback_data;
 
 	if (command == 0 || command == 1)	/* "RESET", "ACCEL-2G"	*/
 		*scaling_factor = 1;
@@ -232,18 +232,18 @@ static int  mi_xg1300l_probe_cb(struct nxt_i2c_sensor_data *data)
 {
 	u8 *scaling_factor = kzalloc(sizeof(u8), GFP_KERNEL);
 	*scaling_factor = 1;
-	data->info.callback_data = scaling_factor;
+	data->callback_data = scaling_factor;
 
 	return 0;
 }
 
 static void mi_xg1300l_remove_cb(struct nxt_i2c_sensor_data *data)
 {
-	u8 *scaling_factor = data->info.callback_data;
+	u8 *scaling_factor = data->callback_data;
 
 	if(scaling_factor)
 	{
-		data->info.callback_data = NULL;
+		data->callback_data = NULL;
 		kfree(scaling_factor);
 	}
 }
@@ -313,7 +313,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.num_read_only_modes = 2,
 		.pin1_state	= LEGO_PORT_GPIO_HIGH,
 		.slow		= true,
-		.mode_info	= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * @description: Continuous measurement
@@ -375,7 +375,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.si_max  = 1,
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x02,
@@ -415,7 +415,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "LEGO",
 		.product_id	= "", /* LMS2012 fakes this with "Store." */
 		.num_modes	= 8,
-		.mode_info	= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * @description: Input Voltage
@@ -525,7 +525,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_type = LEGO_SENSOR_DATA_S16_BE,
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x0A,
 			},
@@ -564,7 +564,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HITECHNC",
 		.product_id	= "PIR",
 		.num_modes	= 1,
-		.mode_info	= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * @description: IR Proximity
@@ -578,7 +578,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.units = "pct",
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x42,
 			},
@@ -596,7 +596,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "Barometr",
 		.num_modes	= 2,
-		.mode_info	= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * @description: Barometric Pressure
@@ -623,7 +623,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.units = "C",
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x42,
 			},
@@ -644,7 +644,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "NewIRDir",
 		.num_modes	= 4,
-		.mode_info	= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * [^values]: Direction values:
@@ -717,7 +717,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_sets = 6,
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x42,
 			},
@@ -742,7 +742,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "Color",
 		.num_modes	= 7,
-		.mode_info	= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * [^color-value]: Color Values:<br />
@@ -814,7 +814,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_sets = 4,
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x42,
 			},
@@ -851,7 +851,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.product_id	= "ColorPD",
 		.num_modes	= 8,
 		.num_read_only_modes = 7,
-		.mode_info	= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * [^color-value]: Color Values:<br />
@@ -931,7 +931,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_type = LEGO_SENSOR_DATA_U16,
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.set_mode_reg	= 0x41,
 				.read_data_reg	= 0x42,
@@ -979,7 +979,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HITECHNC",
 		.product_id	= "AnglSnsr",
 		.num_modes	= 3,
-		.mode_info	= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * @description: Angle
@@ -1021,7 +1021,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.units = "RPM",
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x42,
 			},
@@ -1033,7 +1033,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 		.num_commands	= 2,
-		.cmd_info	= {
+		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
 			[0] = {
 				/**
 				 * @description: Reset accumulated angle
@@ -1053,7 +1053,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.name = "CAL",
 			},
 		},
-		.i2c_cmd_info	= {
+		.i2c_cmd_info	= (const struct nxt_i2c_sensor_cmd_info[]) {
 			[0] = {
 				.cmd_reg	= 0x41,
 				.cmd_data	= 0x52,
@@ -1076,7 +1076,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HITECHNC",
 		.product_id	= "Compass",
 		.num_modes	= 1,
-		.mode_info	= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * @description: Compass Direction
@@ -1090,7 +1090,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_type = LEGO_SENSOR_DATA_S8,
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x42,
 			},
@@ -1108,7 +1108,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "IRRecv",
 		.num_modes	= 2,
-		.mode_info	= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * [^values]: Value of -128 is brake. Speed values only occur in
@@ -1154,7 +1154,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_type = LEGO_SENSOR_DATA_S8,
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x42,
 			},
@@ -1175,7 +1175,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HITECHNC",
 		.product_id	= "Accel.",
 		.num_modes	= 2,
-		.mode_info	= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * [^mode-0-value]: Value is 8 most significant bits out of 10-bit total resolution.
@@ -1207,7 +1207,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_sets = 6,
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x42,
 			},
@@ -1228,7 +1228,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "IRLink",
 		.num_modes	= 1,
-		.mode_info	= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * @description: ???
@@ -1237,7 +1237,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.name = "IRLINK",
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x42,
 			},
@@ -1256,7 +1256,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.product_id	= "SuperPro",
 		.pin1_state	= LEGO_PORT_GPIO_HIGH,
 		.num_modes	= 5,
-		.mode_info	= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * @description: Analog inputs
@@ -1339,7 +1339,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_sets = 5,
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg = 0x42,
 			},
@@ -1381,18 +1381,18 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @default_address: 0x08
 		 * @device_class_footnote: [^more-devices]
 		 */
-		.name			= HT_NXT_SENSOR_MUX_NAME,
-		.vendor_id		= "HiTechnc",
-		.product_id		= "SensrMUX",
-		.num_modes		= 1,
-		.ops			= &(const struct nxt_i2c_sensor_ops) {
+		.name		= HT_NXT_SENSOR_MUX_NAME,
+		.vendor_id	= "HiTechnc",
+		.product_id	= "SensrMUX",
+		.num_modes	= 1,
+		.ops		= &(const struct nxt_i2c_sensor_ops) {
 			.send_cmd_pre_cb	= ht_nxt_smux_send_cmd_pre_cb,
 			.send_cmd_post_cb	= ht_nxt_smux_send_cmd_post_cb,
 			.poll_cb		= ht_nxt_smux_poll_cb,
 			.probe_cb		= ht_nxt_smux_probe_cb,
 			.remove_cb		= ht_nxt_smux_remove_cb,
 		},
-		.mode_info = {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * [^state]: Run state:
@@ -1422,7 +1422,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_sets = 2,
 			},
 		},
-		.i2c_mode_info = {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x20,
 				.set_mode_reg = 0x20,
@@ -1440,7 +1440,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 		.num_commands	= 3,
-		.cmd_info	= {
+		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
 			[0]= {
 				/**
 				 * @description: Halt
@@ -1477,7 +1477,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.name = "RUN",
 			},
 		},
-		.i2c_cmd_info = {
+		.i2c_cmd_info	= (const struct nxt_i2c_sensor_cmd_info[]) {
 			[0] = {
 				.cmd_reg	= HT_NXT_SMUX_COMMAND_REG,
 				.cmd_data	= HT_NXT_SMUX_COMMAND_HALT,
@@ -1515,15 +1515,15 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @default_address_footnote: [^address]
 		 * @device_class_footnote: [^servo-motor-devices]
 		 */
-		.name			= MS_8CH_SERVO_NAME,
-		.vendor_id		= "mndsnsrs",
-		.product_id		= "NXTServo",
-		.num_modes		= 2,
-		.ops			= &(const struct nxt_i2c_sensor_ops) {
+		.name		= MS_8CH_SERVO_NAME,
+		.vendor_id	= "mndsnsrs",
+		.product_id	= "NXTServo",
+		.num_modes	= 2,
+		.ops		= &(const struct nxt_i2c_sensor_ops) {
 			.probe_cb		= ms_8ch_servo_probe_cb,
 			.remove_cb		= ms_8ch_servo_remove_cb,
 		},
-		.mode_info		= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 *
@@ -1566,7 +1566,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.units = "V",
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x62,
 			},
@@ -1587,14 +1587,14 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @default_address: 0x11
 		 * @default_address_footnote: [^address]
 		 */
-		.name			= MS_ABSOLUTE_IMU_NAME,
-		.vendor_id		= "mndsnsrs",
-		.product_id		= "AbsIMU",
-		.num_modes		= 6,
-		.ops			= &(const struct nxt_i2c_sensor_ops) {
+		.name		= MS_ABSOLUTE_IMU_NAME,
+		.vendor_id	= "mndsnsrs",
+		.product_id	= "AbsIMU",
+		.num_modes	= 6,
+		.ops		= &(const struct nxt_i2c_sensor_ops) {
 			.send_cmd_post_cb	= ms_imu_send_cmd_post_cb,
 		},
-		.mode_info	= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * @description: Tilt
@@ -1691,7 +1691,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_sets	= 23,
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x42,
 			},
@@ -1712,7 +1712,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 		.num_commands	= 6,
-		.cmd_info	= {
+		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
 			[0] = {
 				/**
 				 * @description: Begin compass calibration
@@ -1756,7 +1756,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.name = "ACCEL-16G",
 			},
 		},
-		.i2c_cmd_info	= {
+		.i2c_cmd_info	= (const struct nxt_i2c_sensor_cmd_info[]) {
 			[0] = {
 				.cmd_reg	= 0x41,
 				.cmd_data	= 'C',
@@ -1791,11 +1791,11 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_website: http://www.mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=173
 		 * @default_address: 0x18
 		 */
-		.name			= MS_ANGLE_SENSOR_NAME,
-		.vendor_id		= "mndsnsrs",
-		.product_id		= "AngSens",
-		.num_modes		= 4,
-		.mode_info	= {
+		.name		= MS_ANGLE_SENSOR_NAME,
+		.vendor_id	= "mndsnsrs",
+		.product_id	= "AngSens",
+		.num_modes	= 4,
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * @description: Angle
@@ -1857,7 +1857,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_type	= LEGO_SENSOR_DATA_S32,
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x42,
 			},
@@ -1872,7 +1872,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 		.num_commands	= 1,
-		.cmd_info	= {
+		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
 			[0] = {
 				/**
 				 * @description: Reset angle values
@@ -1880,7 +1880,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.name = "RESET",
 			}
 		},
-		.i2c_cmd_info	= {
+		.i2c_cmd_info	= (const struct nxt_i2c_sensor_cmd_info[]) {
 			[0] = {
 				.cmd_reg	= 0x41,
 				.cmd_data	= 'r',
@@ -1908,17 +1908,17 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @default_address_footnote: [^addresses]
 		 * @device_class_footnote: [^port-and-sensor-devices]
 		 */
-		.name			= MS_EV3_SENSOR_MUX_NAME,
-		.vendor_id		= "mndsnsrs",
-		.product_id		= "Ev3SMux",
-		.num_modes		= 2,
-		.num_read_only_modes	= 1,
-		.ops			= &(const struct nxt_i2c_sensor_ops) {
+		.name		= MS_EV3_SENSOR_MUX_NAME,
+		.vendor_id	= "mndsnsrs",
+		.product_id	= "Ev3SMux",
+		.num_modes	= 2,
+		.num_read_only_modes = 1,
+		.ops		= &(const struct nxt_i2c_sensor_ops) {
 			.poll_cb		= ms_ev3_smux_poll_cb,
 			.probe_cb		= ms_ev3_smux_probe_cb,
 			.remove_cb		= ms_ev3_smux_remove_cb,
 		},
-		.mode_info = {
+		.mode_info		= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * [^mode]: This mode does not do anything useful.
@@ -1943,11 +1943,11 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @default_address: 0x0A
 		 * @default_address_footnote: [^address]
 		 */
-		.name			= MS_LIGHT_SENSOR_ARRAY_NAME,
-		.vendor_id		= "mndsnsrs",
-		.product_id		= "LSArray",
-		.num_modes		= 2,
-		.mode_info	= {
+		.name		= MS_LIGHT_SENSOR_ARRAY_NAME,
+		.vendor_id	= "mndsnsrs",
+		.product_id	= "LSArray",
+		.num_modes	= 2,
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * @description: Calibrated values
@@ -1986,7 +1986,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_type = LEGO_SENSOR_DATA_S16,
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x42,
 			},
@@ -1995,7 +1995,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 		.num_commands	= 7,
-		.cmd_info	= {
+		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
 			[0] = {
 				/**
 				 * @description: Calibrate white
@@ -2046,7 +2046,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.name = "UNIVERSAL",
 			},
 		},
-		.i2c_cmd_info	= {
+		.i2c_cmd_info	= (const struct nxt_i2c_sensor_cmd_info[]) {
 			[0] = {
 				.cmd_reg	= 0x41,
 				.cmd_data	= 'W',
@@ -2089,11 +2089,11 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @default_address: 0x01
 		 * @default_address_footnote: [^address]
 		 */
-		.name			= MS_LINE_LEADER_NAME,
-		.vendor_id		= "mndsnsrs",
-		.product_id		= "LineLdr",
-		.num_modes		= 4,
-		.mode_info	= {
+		.name		= MS_LINE_LEADER_NAME,
+		.vendor_id	= "mndsnsrs",
+		.product_id	= "LineLdr",
+		.num_modes	= 4,
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * [^pid-mode-value0]: "Steering" is the power value
@@ -2172,7 +2172,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_type = LEGO_SENSOR_DATA_S16,
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x42,
 			},
@@ -2187,7 +2187,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 		.num_commands	= 10,
-		.cmd_info	= {
+		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
 			[0] = {
 				/**
 				 * @description: Calibrate white
@@ -2264,7 +2264,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.name = "UNIVERSAL",
 			},
 		},
-		.i2c_cmd_info	= {
+		.i2c_cmd_info	= (const struct nxt_i2c_sensor_cmd_info[]) {
 			[0] = {
 				.cmd_reg	= 0x41,
 				.cmd_data	= 'W',
@@ -2328,15 +2328,15 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @default_address_footnote: [^address]
 		 * @device_class_footnote: [^tacho-motor-devices]
 		 */
-		.name			= MS_NXTMMX_NAME,
-		.vendor_id		= "mndsnsrs",
-		.product_id		= "NxTMMX",
-		.num_modes		= 2,
-		.ops			= &(const struct nxt_i2c_sensor_ops) {
+		.name		= MS_NXTMMX_NAME,
+		.vendor_id	= "mndsnsrs",
+		.product_id	= "NxTMMX",
+		.num_modes	= 2,
+		.ops		= &(const struct nxt_i2c_sensor_ops) {
 			.probe_cb		= ms_nxtmmx_probe_cb,
 			.remove_cb		= ms_nxtmmx_remove_cb,
 		},
-		.mode_info	= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * @description: Status
@@ -2368,7 +2368,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.si_max		= 255 * 37,
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x90,
 			},
@@ -2398,17 +2398,17 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_id_footnote: [^ids]
 		 * @product_id_footnote: [^ids]
 		 */
-		.name			= MI_CRUIZCORE_XG1300L_NAME,
-		.vendor_id		= "mnfinity", /* The sensor doesn't return vendor_id, it can't be autodetected this way */
-		.product_id		= "XG1300L",  /* The sensor doesn't return product_id, it can't be autodetected this way */
-		.num_modes		= 4,
-		.num_read_only_modes	= 4,
-		.ops			= &(const struct nxt_i2c_sensor_ops) {
+		.name		= MI_CRUIZCORE_XG1300L_NAME,
+		.vendor_id	= "mnfinity", /* The sensor doesn't return vendor_id, it can't be autodetected this way */
+		.product_id	= "XG1300L",  /* The sensor doesn't return product_id, it can't be autodetected this way */
+		.num_modes	= 4,
+		.num_read_only_modes = 4,
+		.ops		= &(const struct nxt_i2c_sensor_ops) {
 			.send_cmd_post_cb	= mi_xg1300l_send_cmd_post_cb,
 			.probe_cb		= mi_xg1300l_probe_cb,
 			.remove_cb		= mi_xg1300l_remove_cb,
 		},
-		.mode_info	= {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * @description: Angle
@@ -2476,7 +2476,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_type	= LEGO_SENSOR_DATA_S16,
 			},
 		},
-		.i2c_mode_info	= {
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x42,
 			},
@@ -2491,7 +2491,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 		.num_commands	= 4,
-		.cmd_info	= {
+		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
 			[0] = {
 				/**
 				 * [^reset-description]: Recalculate bias drift, reset accumulated angle,
@@ -2523,7 +2523,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.name		= "ACCEL-8G",
 			},
 		},
-		.i2c_cmd_info	= {
+		.i2c_cmd_info	= (const struct nxt_i2c_sensor_cmd_info[]) {
 			[0] = {
 				.cmd_reg	= 0x60,
 			},

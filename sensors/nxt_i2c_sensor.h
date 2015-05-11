@@ -80,7 +80,6 @@ struct nxt_i2c_sensor_cmd_info {
  * @name: The driver name. Must match name in id_table.
  * @vendor_id: The vendor ID string to match to the sensor.
  * @product_id: The product ID string to match to the sensor.
- * @callback_data: Pointer for private data used by ops.
  * @ops: Optional hooks for special-case drivers.
  * @mode_info: Array of mode information for each sensor mode. Used by the
  * 	lego-sensor class.
@@ -101,12 +100,11 @@ struct nxt_i2c_sensor_info {
 	const char *name;
 	const char *vendor_id;
 	const char *product_id;
-	void *callback_data;
 	const struct nxt_i2c_sensor_ops *ops;
-	struct lego_sensor_mode_info mode_info[LEGO_SENSOR_MODE_MAX + 1];
-	struct nxt_i2c_sensor_mode_info i2c_mode_info[LEGO_SENSOR_MODE_MAX + 1];
-	struct lego_sensor_cmd_info cmd_info[LEGO_SENSOR_MODE_MAX + 1];
-	struct nxt_i2c_sensor_cmd_info i2c_cmd_info[LEGO_SENSOR_MODE_MAX + 1];
+	const struct lego_sensor_mode_info *mode_info;
+	const struct nxt_i2c_sensor_mode_info *i2c_mode_info;
+	const struct lego_sensor_cmd_info *cmd_info;
+	const struct nxt_i2c_sensor_cmd_info *i2c_cmd_info;
 	int num_modes;
 	int num_read_only_modes;
 	int num_commands;
@@ -203,7 +201,8 @@ struct nxt_i2c_sensor_data {
 	struct i2c_client *client;
 	struct lego_port_device *in_port;
 	char port_name[LEGO_PORT_NAME_SIZE + 1];
-	struct nxt_i2c_sensor_info info;
+	const struct nxt_i2c_sensor_info *info;
+	void *callback_data;
 	struct lego_sensor_device sensor;
 	struct delayed_work poll_work;
 	enum nxt_i2c_sensor_type type;

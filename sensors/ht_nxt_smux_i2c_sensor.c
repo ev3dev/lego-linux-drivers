@@ -1,7 +1,7 @@
 /*
  * HiTechnic NXT Sensor Multiplexer device driver
  *
- * Copyright (C) 2013-2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -61,7 +61,7 @@
 
 struct ht_nxt_smux_i2c_sensor_data {
 	struct lego_device *ldev;
-	struct nxt_i2c_sensor_info info;
+	const struct nxt_i2c_sensor_info *info;
 	struct lego_sensor_device sensor;
 	enum nxt_i2c_sensor_type type;
 };
@@ -70,8 +70,8 @@ static int ht_nxt_smux_i2c_sensor_set_mode(void *context, u8 mode)
 {
 	struct ht_nxt_smux_i2c_sensor_data *data = context;
 	struct lego_port_device *port = data->ldev->port;
-	struct lego_sensor_mode_info *mode_info = &data->info.mode_info[mode];
-	struct nxt_i2c_sensor_mode_info *i2c_mode_info = data->info.i2c_mode_info;
+	struct lego_sensor_mode_info *mode_info = &data->sensor.mode_info[mode];
+	const struct nxt_i2c_sensor_mode_info *i2c_mode_info = data->info->i2c_mode_info;
 	int size = lego_sensor_get_raw_data_size(mode_info);
 
 	ht_nxt_smux_port_set_i2c_data_reg(port, i2c_mode_info[mode].read_data_reg,
@@ -88,6 +88,7 @@ static int ht_nxt_smux_i2c_sensor_probe(struct lego_device *ldev)
 	const struct nxt_i2c_sensor_info *sensor_info;
 	struct ht_nxt_smux_i2c_sensor_platform_data *pdata =
 		ldev->dev.platform_data;
+	size_t mode_info_size;
 	int err, i;
 
 	if (WARN_ON(!ldev->entry_id))
@@ -109,23 +110,29 @@ static int ht_nxt_smux_i2c_sensor_probe(struct lego_device *ldev)
 	if (!data)
 		return -ENOMEM;
 
+	mode_info_size = sizeof(struct nxt_i2c_sensor_info) * sensor_info->num_modes;
+	if (!data->sensor.mode_info) {
+		err = -ENOMEM;
+		goto err_kalloc_mode_info;
+	}
+
 	data->ldev = ldev;
 	data->type = ldev->entry_id->driver_data;
-	memcpy(&data->info, sensor_info, sizeof(struct nxt_i2c_sensor_info));
+	data->info = sensor_info;
 
 	data->sensor.name = ldev->entry_id->name;
 	data->sensor.port_name = data->ldev->port->port_name;
-	if (data->info.num_read_only_modes)
-		data->sensor.num_modes = data->info.num_read_only_modes;
+	if (data->info->num_read_only_modes)
+		data->sensor.num_modes = data->info->num_read_only_modes;
 	else
-		data->sensor.num_modes = data->info.num_modes;
+		data->sensor.num_modes = data->info->num_modes;
 	data->sensor.num_view_modes = 1;
-	data->sensor.mode_info = data->info.mode_info;
+	memcpy(data->sensor.mode_info, data->info->mode_info, mode_info_size);
 	data->sensor.set_mode = ht_nxt_smux_i2c_sensor_set_mode;
 	data->sensor.context = data;
 
 	for (i = 0; i < data->sensor.num_modes; i++) {
-		struct lego_sensor_mode_info *minfo = &data->info.mode_info[i];
+		struct lego_sensor_mode_info *minfo = &data->sensor.mode_info[i];
 
 		if (!minfo->raw_min && !minfo->raw_max)
 			minfo->raw_max = 255;
@@ -148,14 +155,16 @@ static int ht_nxt_smux_i2c_sensor_probe(struct lego_device *ldev)
 	}
 
 	ldev->port->nxt_i2c_ops->set_pin1_gpio(ldev->port->context,
-					       data->info.pin1_state);
+					       data->info->pin1_state);
 	ht_nxt_smux_port_set_i2c_addr(data->ldev->port, pdata->address,
-				      data->info.slow);
+				      data->info->slow);
 	ht_nxt_smux_i2c_sensor_set_mode(data, 0);
 
 	return 0;
 
 err_register_lego_sensor:
+	kfree(data->sensor.mode_info);
+err_kalloc_mode_info:
 	kfree(data);
 
 	return err;
@@ -170,6 +179,7 @@ static int ht_nxt_smux_i2c_sensor_remove(struct lego_device *ldev)
 					       LEGO_PORT_GPIO_FLOAT);
 	unregister_lego_sensor(&data->sensor);
 	dev_set_drvdata(&ldev->dev, NULL);
+	kfree(data->sensor.mode_info);
 	kfree(data);
 
 	return 0;

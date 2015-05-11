@@ -1,7 +1,7 @@
 /*
  * LEGO sensor device class
  *
- * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -117,7 +117,7 @@ struct lego_sensor_device {
 	u8 mode;
 	struct lego_sensor_mode_info *mode_info;
 	u8 num_commands;
-	struct lego_sensor_cmd_info *cmd_info;
+	const struct lego_sensor_cmd_info *cmd_info;
 	int (* set_mode)(void *context, u8 mode);
 	int (* send_command)(void *context, u8 command);
 	ssize_t (*direct_read)(void *context, char *data, loff_t off, size_t count);

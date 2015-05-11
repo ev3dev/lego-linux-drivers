@@ -393,7 +393,7 @@ int ht_nxt_smux_send_cmd_pre_cb(struct nxt_i2c_sensor_data *data, u8 command)
 
 void ht_nxt_smux_send_cmd_post_cb(struct nxt_i2c_sensor_data *data, u8 command)
 {
-	struct ht_nxt_smux_port_data *ports = data->info.callback_data;
+	struct ht_nxt_smux_port_data *ports = data->callback_data;
 	int i, status;
 
 	if (command == HT_NXT_SMUX_COMMAND_RUN) {
@@ -423,10 +423,10 @@ void ht_nxt_smux_send_cmd_post_cb(struct nxt_i2c_sensor_data *data, u8 command)
 void ht_nxt_smux_poll_cb(struct nxt_i2c_sensor_data *data)
 {
 	struct lego_sensor_mode_info *mode_info =
-		&data->info.mode_info[data->sensor.mode];
-	struct nxt_i2c_sensor_mode_info *i2c_info =
-		&data->info.i2c_mode_info[data->sensor.mode];
-	struct ht_nxt_smux_port_data *ports = data->info.callback_data;
+		&data->sensor.mode_info[data->sensor.mode];
+	const struct nxt_i2c_sensor_mode_info *i2c_info =
+		&data->info->i2c_mode_info[data->sensor.mode];
+	struct ht_nxt_smux_port_data *ports = data->callback_data;
 	int i;
 	u8 raw_analog[2];
 
@@ -463,7 +463,7 @@ int ht_nxt_smux_probe_cb(struct nxt_i2c_sensor_data *data)
 	if (!ports)
 		return -ENOMEM;
 
-	data->info.callback_data = ports;
+	data->callback_data = ports;
 	for (i = 0; i < NUM_HT_NXT_SMUX_CH; i++) {
 		ports[i].port.name = ht_nxt_smux_port_type.name;
 		snprintf(ports[i].port.port_name, LEGO_PORT_NAME_SIZE,
@@ -486,7 +486,7 @@ int ht_nxt_smux_probe_cb(struct nxt_i2c_sensor_data *data)
 				ret);
 			for (i--; i >= 0; i--)
 				lego_port_unregister(&ports[i].port);
-			data->info.callback_data = NULL;
+			data->callback_data = NULL;
 			kfree(ports);
 			return ret;
 		}
@@ -513,7 +513,7 @@ int ht_nxt_smux_probe_cb(struct nxt_i2c_sensor_data *data)
 
 void ht_nxt_smux_remove_cb(struct nxt_i2c_sensor_data *data)
 {
-	struct ht_nxt_smux_port_data *ports = data->info.callback_data;
+	struct ht_nxt_smux_port_data *ports = data->callback_data;
 	int i;
 
 	if (ports) {
@@ -521,7 +521,7 @@ void ht_nxt_smux_remove_cb(struct nxt_i2c_sensor_data *data)
 			ht_nxt_smux_unregister_sensor(&ports[i]);
 			lego_port_unregister(&ports[i].port);
 		}
-		data->info.callback_data = NULL;
+		data->callback_data = NULL;
 		kfree(ports);
 	}
 }

@@ -59,7 +59,7 @@
 struct brickpi_i2c_sensor_data {
 	struct lego_device *ldev;
 	char port_name[LEGO_PORT_NAME_SIZE + 1];
-	struct nxt_i2c_sensor_info info;
+	const struct nxt_i2c_sensor_info *info;
 	struct lego_sensor_device sensor;
 	enum nxt_i2c_sensor_type type;
 };
@@ -68,8 +68,8 @@ static int brickpi_i2c_sensor_set_mode(void *context, u8 mode)
 {
 	struct brickpi_i2c_sensor_data *data = context;
 	struct lego_port_device *port = data->ldev->port;
-	struct lego_sensor_mode_info *mode_info = &data->info.mode_info[mode];
-	struct nxt_i2c_sensor_mode_info *i2c_mode_info = data->info.i2c_mode_info;
+	struct lego_sensor_mode_info *mode_info = &data->sensor.mode_info[mode];
+	const struct nxt_i2c_sensor_mode_info *i2c_mode_info = data->info->i2c_mode_info;
 	int size = lego_sensor_get_raw_data_size(mode_info);
 	int err;
 
@@ -90,9 +90,9 @@ static int brickpi_i2c_sensor_set_mode(void *context, u8 mode)
 static int brickpi_i2c_sensor_send_command(void *context, u8 mode)
 {
 	struct brickpi_i2c_sensor_data *data = context;
-	struct lego_sensor_mode_info *mode_info = &data->info.mode_info[mode];
-	struct nxt_i2c_sensor_cmd_info *i2c_cmd_info = data->info.i2c_cmd_info;
-	struct nxt_i2c_sensor_mode_info *i2c_mode_info = data->info.i2c_mode_info;
+	struct lego_sensor_mode_info *mode_info = &data->sensor.mode_info[mode];
+	const struct nxt_i2c_sensor_cmd_info *i2c_cmd_info = data->info->i2c_cmd_info;
+	const struct nxt_i2c_sensor_mode_info *i2c_mode_info = data->info->i2c_mode_info;
 	int size = lego_sensor_get_raw_data_size(mode_info);
 
 	/* set mode function also works for sending command */
@@ -109,6 +109,7 @@ static int brickpi_i2c_sensor_probe(struct lego_device *ldev)
 	const struct nxt_i2c_sensor_info *sensor_info;
 	struct brickpi_i2c_sensor_platform_data *pdata =
 		ldev->dev.platform_data;
+	size_t mode_info_size;
 	int err, i;
 
 	if (WARN_ON(!ldev->entry_id))
@@ -130,23 +131,30 @@ static int brickpi_i2c_sensor_probe(struct lego_device *ldev)
 	if (!data)
 		return -ENOMEM;
 
+	mode_info_size = sizeof(struct lego_sensor_mode_info) * sensor_info->num_modes;
+	data->sensor.mode_info = kmalloc(mode_info_size, GFP_KERNEL);
+	if (!data->sensor.mode_info) {
+		err = -ENOMEM;
+		goto err_kalloc_mode_info;
+	}
+
 	data->ldev = ldev;
 	data->type = ldev->entry_id->driver_data;
-	memcpy(&data->info, sensor_info, sizeof(struct nxt_i2c_sensor_info));
+	data->info = sensor_info;
 
 	data->sensor.name = ldev->entry_id->name;
 	snprintf(data->port_name, LEGO_PORT_NAME_SIZE, "%s:i2c%d",
 		 data->ldev->port->port_name, pdata->address);
 	data->sensor.port_name = data->port_name;
-	data->sensor.num_modes = data->info.num_modes;
+	data->sensor.num_modes = data->info->num_modes;
 	data->sensor.num_view_modes = 1;
-	data->sensor.mode_info = data->info.mode_info;
+	memcpy(data->sensor.mode_info, data->info->mode_info, mode_info_size);
 	data->sensor.set_mode = brickpi_i2c_sensor_set_mode;
 	data->sensor.send_command = brickpi_i2c_sensor_send_command;
 	data->sensor.context = data;
 
 	for (i = 0; i < data->sensor.num_modes; i++) {
-		struct lego_sensor_mode_info *minfo = &data->info.mode_info[i];
+		struct lego_sensor_mode_info *minfo = &data->sensor.mode_info[i];
 
 		if (!minfo->raw_min && !minfo->raw_max)
 			minfo->raw_max = 255;
@@ -168,12 +176,14 @@ static int brickpi_i2c_sensor_probe(struct lego_device *ldev)
 		goto err_register_lego_sensor;
 	}
 
-	brickpi_in_port_set_i2c_data(ldev, data->info.slow, data->info.pin1_state);
+	brickpi_in_port_set_i2c_data(ldev, data->info->slow, data->info->pin1_state);
 	brickpi_i2c_sensor_set_mode(data, 0);
 
 	return 0;
 
 err_register_lego_sensor:
+	kfree(data->sensor.mode_info);
+err_kalloc_mode_info:
 	kfree(data);
 
 	return err;
@@ -186,6 +196,7 @@ static int brickpi_i2c_sensor_remove(struct lego_device *ldev)
 	lego_port_set_raw_data_ptr_and_func(ldev->port, NULL, 0, NULL, NULL);
 	unregister_lego_sensor(&data->sensor);
 	dev_set_drvdata(&ldev->dev, NULL);
+	kfree(data->sensor.mode_info);
 	kfree(data);
 
 	return 0;

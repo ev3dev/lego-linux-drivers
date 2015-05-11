@@ -86,24 +86,24 @@ static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
 	struct nxt_i2c_sensor_data *sensor = context;
 	int err;
 
-	if (sensor->info.ops && sensor->info.ops->set_mode_pre_cb) {
-		err = sensor->info.ops->set_mode_pre_cb(sensor, mode);
+	if (sensor->info->ops && sensor->info->ops->set_mode_pre_cb) {
+		err = sensor->info->ops->set_mode_pre_cb(sensor, mode);
 		if (err < 0)
 			return err;
 	}
 
-	if (sensor->info.i2c_mode_info[mode].set_mode_reg) {
+	if (sensor->info->i2c_mode_info[mode].set_mode_reg) {
 		err = i2c_smbus_write_byte_data(sensor->client,
-			sensor->info.i2c_mode_info[mode].set_mode_reg,
-			sensor->info.i2c_mode_info[mode].set_mode_data);
+			sensor->info->i2c_mode_info[mode].set_mode_reg,
+			sensor->info->i2c_mode_info[mode].set_mode_data);
 		if (err < 0)
 			return err;
 	}
 
 	nxt_i2c_sensor_poll_work(&sensor->poll_work.work);
 
-	if (sensor->info.ops && sensor->info.ops->set_mode_post_cb)
-		sensor->info.ops->set_mode_post_cb(sensor, mode);
+	if (sensor->info->ops && sensor->info->ops->set_mode_post_cb)
+		sensor->info->ops->set_mode_post_cb(sensor, mode);
 
 	return 0;
 }
@@ -113,20 +113,20 @@ static int nxt_i2c_sensor_send_command(void *context, u8 command)
 	struct nxt_i2c_sensor_data *sensor = context;
 	int err;
 
-	if (sensor->info.ops && sensor->info.ops->send_cmd_pre_cb) {
-		err = sensor->info.ops->send_cmd_pre_cb(sensor, command);
+	if (sensor->info->ops && sensor->info->ops->send_cmd_pre_cb) {
+		err = sensor->info->ops->send_cmd_pre_cb(sensor, command);
 		if (err)
 			return err;
 	}
 
 	err = i2c_smbus_write_byte_data(sensor->client,
-		sensor->info.i2c_cmd_info[command].cmd_reg,
-		sensor->info.i2c_cmd_info[command].cmd_data);
+		sensor->info->i2c_cmd_info[command].cmd_reg,
+		sensor->info->i2c_cmd_info[command].cmd_data);
 	if (err)
 		return err;
 
-	if (sensor->info.ops && sensor->info.ops->send_cmd_post_cb)
-		sensor->info.ops->send_cmd_post_cb(sensor, command);
+	if (sensor->info->ops && sensor->info->ops->send_cmd_post_cb)
+		sensor->info->ops->send_cmd_post_cb(sensor, command);
 
 	return 0;
 }
@@ -191,24 +191,24 @@ static int nxt_i2c_sensor_set_poll_ms(void *context, unsigned value)
 void nxt_i2c_sensor_poll_work(struct work_struct *work)
 {
 	struct delayed_work *dwork = to_delayed_work(work);
-	struct nxt_i2c_sensor_data *sensor =
+	struct nxt_i2c_sensor_data *data =
 		container_of(dwork, struct nxt_i2c_sensor_data, poll_work);
-	struct nxt_i2c_sensor_mode_info *i2c_mode_info =
-		&sensor->info.i2c_mode_info[sensor->sensor.mode];
+	const struct nxt_i2c_sensor_mode_info *i2c_mode_info =
+		&data->info->i2c_mode_info[data->sensor.mode];
 	struct lego_sensor_mode_info *mode_info =
-			&sensor->info.mode_info[sensor->sensor.mode];
+			&data->sensor.mode_info[data->sensor.mode];
 
-	if (sensor->info.ops && sensor->info.ops->poll_cb)
-		sensor->info.ops->poll_cb(sensor);
+	if (data->info->ops && data->info->ops->poll_cb)
+		data->info->ops->poll_cb(data);
 	else
-		i2c_smbus_read_i2c_block_data(sensor->client,
+		i2c_smbus_read_i2c_block_data(data->client,
 			i2c_mode_info->read_data_reg,
 			lego_sensor_get_raw_data_size(mode_info),
 			mode_info->raw_data);
 
-	if (sensor->poll_ms && !delayed_work_pending(&sensor->poll_work))
-		schedule_delayed_work(&sensor->poll_work,
-				      msecs_to_jiffies(sensor->poll_ms));
+	if (data->poll_ms && !delayed_work_pending(&data->poll_work))
+		schedule_delayed_work(&data->poll_work,
+				      msecs_to_jiffies(data->poll_ms));
 }
 
 static int nxt_i2c_sensor_probe(struct i2c_client *client,
@@ -219,6 +219,7 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 	const struct nxt_i2c_sensor_info *sensor_info;
 	const struct i2c_device_id *i2c_dev_id = id;
 	char version[NXT_I2C_ID_STR_LEN + 1] = { 0 };
+	size_t mode_info_size;
 	int err, i;
 
 #if defined(CONFIG_I2C_LEGOEV3) || defined(CONFIG_I2C_LEGOEV3_MODULE)
@@ -236,10 +237,17 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 	if (!data)
 		return -ENOMEM;
 
+	mode_info_size = sizeof(struct lego_sensor_mode_info) * sensor_info->num_modes;
+	data->sensor.mode_info = kmalloc(mode_info_size, GFP_KERNEL);
+	if (!data->sensor.mode_info) {
+		err = -ENOMEM;
+		goto err_kalloc_mode_info;
+	}
+
 	data->client = client;
 	data->in_port = in_port;
 	data->type = i2c_dev_id->driver_data;
-	memcpy(&data->info, sensor_info, sizeof(struct nxt_i2c_sensor_info));
+	data->info = sensor_info;
 
 	data->sensor.name = i2c_dev_id->name;
 	snprintf(data->port_name, LEGO_PORT_NAME_SIZE, "%s:i2c%d",
@@ -247,11 +255,11 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 		 client->addr);
 
 	data->sensor.port_name = data->port_name;
-	data->sensor.num_modes = data->info.num_modes;
+	data->sensor.num_modes = data->info->num_modes;
 	data->sensor.num_view_modes = 1;
-	data->sensor.mode_info = data->info.mode_info;
-	data->sensor.num_commands = data->info.num_commands;
-	data->sensor.cmd_info = data->info.cmd_info;
+	memcpy(data->sensor.mode_info, data->info->mode_info, mode_info_size);
+	data->sensor.num_commands = data->info->num_commands;
+	data->sensor.cmd_info = data->info->cmd_info;
 	data->sensor.set_mode = nxt_i2c_sensor_set_mode;
 	data->sensor.send_command = nxt_i2c_sensor_send_command;
 	data->sensor.direct_read = nxt_i2c_sensor_direct_read;
@@ -270,7 +278,7 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 		(version + 1) : version), NXT_I2C_ID_STR_LEN + 1);
 
 	for (i = 0; i < data->sensor.num_modes; i++) {
-		struct lego_sensor_mode_info *minfo = &data->info.mode_info[i];
+		struct lego_sensor_mode_info *minfo = &data->sensor.mode_info[i];
 
 		if (!minfo->raw_min && !minfo->raw_max)
 			minfo->raw_max = 255;
@@ -290,8 +298,8 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 	data->poll_ms = default_poll_ms;
 	i2c_set_clientdata(client, data);
 
-	if (data->info.ops && data->info.ops->probe_cb) {
-		err = data->info.ops->probe_cb(data);
+	if (data->info->ops && data->info->ops->probe_cb) {
+		err = data->info->ops->probe_cb(data);
 		if (err < 0)
 			goto err_probe_cb;
 	}
@@ -304,7 +312,7 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 
 	if (data->in_port)
 		data->in_port->nxt_i2c_ops->set_pin1_gpio(data->in_port->context,
-							  data->info.pin1_state);
+							  data->info->pin1_state);
 	if (data->type == LEGO_NXT_ULTRASONIC_SENSOR)
 		msleep (1);
 	nxt_i2c_sensor_set_mode(data, data->sensor.mode);
@@ -314,6 +322,8 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 err_probe_cb:
 err_register_lego_sensor:
 	i2c_set_clientdata(client, NULL);
+	kfree(data->sensor.mode_info);
+err_kalloc_mode_info:
 	kfree(data);
 
 	return err;
@@ -323,8 +333,8 @@ static int nxt_i2c_sensor_remove(struct i2c_client *client)
 {
 	struct nxt_i2c_sensor_data *data = i2c_get_clientdata(client);
 
-	if (data->info.ops && data->info.ops->remove_cb)
-		data->info.ops->remove_cb(data);
+	if (data->info->ops && data->info->ops->remove_cb)
+		data->info->ops->remove_cb(data);
 	data->poll_ms = 0;
 	if (delayed_work_pending(&data->poll_work))
 		cancel_delayed_work_sync(&data->poll_work);
@@ -332,6 +342,7 @@ static int nxt_i2c_sensor_remove(struct i2c_client *client)
 		data->in_port->nxt_i2c_ops->set_pin1_gpio(data->in_port->context,
 							  LEGO_PORT_GPIO_FLOAT);
 	unregister_lego_sensor(&data->sensor);
+	kfree(data->sensor.mode_info);
 	kfree(data);
 
 	return 0;
