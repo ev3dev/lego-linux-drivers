@@ -17,6 +17,7 @@
 #include "../sensors/ev3_analog_sensor.h"
 #include "../sensors/ev3_uart_sensor.h"
 #include "../sensors/nxt_analog_sensor.h"
+#include "../sensors/nxt_i2c_sensor.h"
 
 const struct device_type brickpi_in_port_type = {
 	.name   = "brickpi-in-port",
@@ -35,7 +36,7 @@ static const struct device_type brickpi_device_type[NUM_BRICKPI_IN_PORT_MODES] =
 		.name = "nxt-color-sensor",
 	},
 	[BRICKPI_IN_PORT_MODE_NXT_I2C] = {
-		.name = "nxt-i2c-sensor",
+		.name = "brickpi-i2c-sensor",
 	},
 	[BRICKPI_IN_PORT_MODE_EV3_ANALOG] = {
 		.name = "ev3-analog-sensor",
@@ -126,8 +127,18 @@ int brickpi_in_port_register_sensor(struct brickpi_in_port_data *in_port,
 {
 	struct lego_device *new_sensor;
 
-	new_sensor = lego_device_register(name, device_type, &in_port->port,
-					  NULL, 0);
+	if (device_type == &brickpi_device_type[BRICKPI_IN_PORT_MODE_NXT_I2C]) {
+		struct brickpi_i2c_sensor_platform_data pdata;
+
+		pdata.address = in_port->i2c_msg[0].addr;
+		new_sensor = lego_device_register(name, device_type,
+			&in_port->port, &pdata,
+			sizeof(struct brickpi_i2c_sensor_platform_data));
+	} else {
+		new_sensor = lego_device_register(name, device_type,
+						  &in_port->port, NULL, 0);
+	}
+
 	if (IS_ERR(new_sensor))
 		return PTR_ERR(new_sensor);
 
@@ -141,6 +152,8 @@ void brickpi_in_port_unregister_sensor(struct brickpi_in_port_data *in_port)
 	if (in_port->sensor) {
 		lego_device_unregister(in_port->sensor);
 		in_port->sensor = NULL;
+		in_port->sensor_type = BRICKPI_SENSOR_TYPE_FW_VERSION;
+		brickpi_set_sensors(in_port->ch_data);
 	}
 }
 
@@ -153,6 +166,40 @@ static int brickpi_in_port_set_device(void *context, const char *name)
 
 	if (mode == BRICKPI_IN_PORT_MODE_NONE)
 		return -EOPNOTSUPP;
+	else if (mode == BRICKPI_IN_PORT_MODE_NXT_I2C) {
+		char i2c_name[I2C_NAME_SIZE] = { 0 };
+		char *blank, end;
+		int ret, hex;
+
+		/* TODO: Modify to allow multiple sensors */
+
+		/* credit: parameter parsing code copied from i2c_core.c */
+		blank = strchr(name, ' ');
+		if (!blank) {
+			dev_err(&in_port->port.dev, "%s: Missing parameters\n",
+				"set_device");
+			return -EINVAL;
+		}
+		if (blank - name >= I2C_NAME_SIZE) {
+			dev_err(&in_port->port.dev, "%s: Invalid device name\n",
+				"set_device");
+			return -EINVAL;
+		}
+		memcpy(i2c_name, name, blank - name);
+
+		/* Parse remaining parameters, reject extra parameters */
+		ret = sscanf(++blank, "%hhu%c%x", &in_port->i2c_msg[0].addr,
+			     &end, &hex);
+		if (ret < 1) {
+			dev_err(&in_port->port.dev, "%s: Can't parse I2C address\n",
+				"set_device");
+			return -EINVAL;
+		}
+		if (in_port->i2c_msg[0].addr == 0 && end == 'x')
+			in_port->i2c_msg[0].addr = hex;
+		in_port->num_i2c_msg = 1;
+		name = i2c_name;
+	}
 
 	return brickpi_in_port_register_sensor(in_port,
 					       &brickpi_device_type[mode], name);
@@ -193,6 +240,8 @@ static int brickpi_in_port_set_mode(void *context, u8 mode)
 	brickpi_in_port_unregister_sensor(in_port);
 	switch (mode) {
 	case BRICKPI_IN_PORT_MODE_NONE:
+	case BRICKPI_IN_PORT_MODE_NXT_I2C:
+		/* brickpi_i2c_sensor driver takes care of setting proper sensor_type later */
 	case BRICKPI_IN_PORT_MODE_EV3_UART:
 		/* We don't want to load the wrong UART sensor because it causes problems. */
 		in_port->sensor_type = BRICKPI_SENSOR_TYPE_FW_VERSION;
@@ -223,10 +272,70 @@ static struct lego_port_nxt_analog_ops brickpi_in_port_nxt_analog_ops = {
 	.set_pin5_gpio = brickpi_in_port_set_pin5_gpio,
 };
 
-int brickpi_set_uart_sensor_mode(struct lego_device *sensor, u8 mode)
+int brickpi_in_port_set_i2c_data(struct lego_device *sensor, bool slow,
+				 enum lego_port_gpio_state pin1_state)
 {
 	struct brickpi_in_port_data *in_port =
-			container_of(sensor->port, struct brickpi_in_port_data, port);
+		container_of(sensor->port, struct brickpi_in_port_data, port);
+
+	in_port->i2c_msg[0].settings = 0;
+	if (!strcmp(sensor->name, LEGO_NXT_ULTRASONIC_SENSOR_NAME))
+		in_port->i2c_msg[0].settings = BRICKPI_I2C_EXTRA_CLK;
+	in_port->i2c_msg[0].write_size = 0;
+	in_port->i2c_msg[0].read_size = 0;
+	in_port->num_i2c_msg = 0; /*gets set when setting mode */
+	/*
+	 * Theoretically !slow should be 100kHz (0), but in practice, many
+	 * sensors have trouble so we are using 50kHz (5) instead.
+	 * Slow, of course, is the LEGO standard 10KHz (10).
+	 */
+	in_port->i2c_speed = slow ? 10 : 5;
+	in_port->sensor_type = pin1_state == LEGO_PORT_GPIO_HIGH ?
+		BRICKPI_SENSOR_TYPE_NXT_I2C_9V : BRICKPI_SENSOR_TYPE_NXT_I2C;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(brickpi_in_port_set_i2c_data);
+
+int brickpi_in_port_set_i2c_mode(struct lego_device *sensor, u8 set_mode_reg,
+				 u8 set_mode_data, u8 read_reg, unsigned size)
+{
+	struct brickpi_in_port_data *in_port =
+		container_of(sensor->port, struct brickpi_in_port_data, port);
+	int err;
+
+	if (size > BRICKPI_MAX_I2C_DATA_SIZE) {
+		dev_err(&sensor->dev, "I2C message size is too big.\n");
+		return -EINVAL;
+	}
+
+	in_port->num_i2c_msg = 1;
+	in_port->i2c_msg[0].settings |= BRICKPI_I2C_SAME;
+	if (set_mode_reg) {
+		in_port->i2c_msg[0].write_size = 2;
+		in_port->i2c_msg[0].write_data[0] = set_mode_reg;
+		in_port->i2c_msg[0].write_data[1] = set_mode_data;
+		in_port->i2c_msg[0].read_size = 0;
+		err = brickpi_set_sensors(in_port->ch_data);
+		if (err < 0)
+			return err;
+		err = brickpi_get_values(in_port->ch_data);
+		if (err < 0)
+			return err;
+	}
+
+	in_port->i2c_msg[0].write_size = 1;
+	in_port->i2c_msg[0].write_data[0] = read_reg;
+	in_port->i2c_msg[0].read_size = size;
+
+	return brickpi_set_sensors(in_port->ch_data);
+}
+EXPORT_SYMBOL_GPL(brickpi_in_port_set_i2c_mode);
+
+int brickpi_in_port_set_uart_sensor_mode(struct lego_device *sensor, u8 mode)
+{
+	struct brickpi_in_port_data *in_port =
+		container_of(sensor->port, struct brickpi_in_port_data, port);
 
 	if (!strncmp(sensor->name, LEGO_EV3_COLOR_NAME, LEGO_NAME_SIZE))
 		in_port->sensor_type = BRICKPI_SENSOR_TYPE_EV3_COLOR_M0 + mode;
@@ -241,7 +350,7 @@ int brickpi_set_uart_sensor_mode(struct lego_device *sensor, u8 mode)
 
 	return brickpi_set_sensors(in_port->ch_data);
 }
-EXPORT_SYMBOL_GPL(brickpi_set_uart_sensor_mode);
+EXPORT_SYMBOL_GPL(brickpi_in_port_set_uart_sensor_mode);
 
 int brickpi_register_in_ports(struct brickpi_channel_data *ch_data,
 			      struct device *parent)

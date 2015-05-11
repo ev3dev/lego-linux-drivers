@@ -149,7 +149,7 @@ int brickpi_send_message(struct brickpi_data *data, u8 addr,
 int brickpi_set_sensors(struct brickpi_channel_data *ch_data)
 {
 	struct brickpi_data *data = ch_data->data;
-	int err;
+	int i, err;
 
 	if (data->closing)
 		return 0;
@@ -157,7 +157,34 @@ int brickpi_set_sensors(struct brickpi_channel_data *ch_data)
 	data->tx_buffer_tail = BRICKPI_TX_BUFFER_TAIL_INIT;
 	brickpi_append_tx(data, 8, ch_data->in_port[BRICKPI_PORT_1].sensor_type);
 	brickpi_append_tx(data, 8, ch_data->in_port[BRICKPI_PORT_2].sensor_type);
-	/* TODO: Handle I2C sensor stuff */
+	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
+		struct brickpi_in_port_data *port = &ch_data->in_port[i];
+		int num_msg = port->num_i2c_msg;
+		int j;
+
+		if (port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C
+			|| port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C_9V)
+		{
+			brickpi_append_tx(data, 8, port->i2c_speed);
+			brickpi_append_tx(data, 3, num_msg -1);
+			for (j = 0; j < num_msg; j++) {
+				struct brickpi_i2c_msg_data *msg = &port->i2c_msg[j];
+
+				brickpi_append_tx(data, 7, msg->addr);
+				brickpi_append_tx(data, 2, msg->settings);
+
+				if (msg->settings & BRICKPI_I2C_SAME) {
+					int k;
+
+					brickpi_append_tx(data, 4, msg->write_size);
+					brickpi_append_tx(data, 4, msg->read_size);
+					for (k = 0; k < msg->write_size; k++) {
+						brickpi_append_tx(data, 8, msg->write_data[k]);
+					}
+				}
+			}
+		}
+	}
 	err = brickpi_send_message(data, ch_data->address,
 				   BRICK_PI_MESSAGE_SET_SENSOR, 5000);
 	mutex_unlock(&data->tx_mutex);
@@ -184,7 +211,28 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 		brickpi_append_tx(data, 1, ch_data->out_port[i].motor_direction);
 		brickpi_append_tx(data, 1, ch_data->out_port[i].motor_enable);
 	}
-	/* TODO: Handle I2C sensor stuff */
+	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
+		struct brickpi_in_port_data *port = &ch_data->in_port[i];
+		int num_msg = port->num_i2c_msg;
+
+		if (port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C
+			|| port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C_9V)
+		{
+			for (j = 0; j < num_msg; j++) {
+				struct brickpi_i2c_msg_data *msg = &port->i2c_msg[j];
+
+				if (!(msg->settings & BRICKPI_I2C_SAME)) {
+					int k;
+
+					brickpi_append_tx(data, 4, msg->write_size);
+					brickpi_append_tx(data, 4, msg->read_size);
+					for (k = 0; k < msg->write_size; k++) {
+						brickpi_append_tx(data, 8, msg->write_data[k]);
+					}
+				}
+			}
+		}
+	}
 	err = brickpi_send_message(data, ch_data->address,
 				   BRICK_PI_MESSAGE_GET_VALUES, 100);
 	if (err < 0) {
@@ -229,8 +277,8 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 		case BRICKPI_SENSOR_TYPE_NXT_I2C:
 		case BRICKPI_SENSOR_TYPE_NXT_I2C_9V:
 			sensor_values[0] = brickpi_read_rx(data,
-					ch_data->in_port[i].i2c_msg_count);
-			for (j = 0; j < ch_data->in_port[i].i2c_msg_count; j++) {
+					ch_data->in_port[i].num_i2c_msg);
+			for (j = 0; j < ch_data->in_port[i].num_i2c_msg; j++) {
 				if (sensor_values[0] & (1 << j)) {
 					int k;
 					struct brickpi_i2c_msg_data *msg =
@@ -310,8 +358,15 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 
 		if (!raw_data)
 			continue;
-		memcpy(raw_data, sensor_values,
-		       sizeof(s32) * NUM_BRICKPI_SENSOR_VALUES);
+		if (ch_data->in_port[i].sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C
+			|| ch_data->in_port[i].sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C_9V)
+		{
+			memcpy(raw_data, ch_data->in_port[i].i2c_msg[0].read_data,
+				ch_data->in_port[i].i2c_msg[0].read_size);
+		} else {
+			memcpy(raw_data, sensor_values,
+			       sizeof(s32) * NUM_BRICKPI_SENSOR_VALUES);
+		}
 		lego_port_call_raw_data_func(&ch_data->in_port[i].port);
 	}
 	mutex_unlock(&data->tx_mutex);

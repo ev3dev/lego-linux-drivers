@@ -75,7 +75,7 @@ static int ev3_uart_sensor_set_mode(void *context, u8 mode)
 	if (data->ldev->port->dev.type == &brickpi_in_port_type) {
 		int ret;
 
-		ret = brickpi_set_uart_sensor_mode(data->ldev, mode);
+		ret = brickpi_in_port_set_uart_sensor_mode(data->ldev, mode);
 		if (ret < 0)
 			return ret;
 	} else

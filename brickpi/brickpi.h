@@ -104,9 +104,24 @@ enum brickpi_in_port_mode {
 	NUM_BRICKPI_IN_PORT_MODES
 };
 
+/* I2C Settings flags */
+
+/* Extra clock pulse between stop and start for NXT Ultrasonic sensor */
+#define BRICKPI_I2C_EXTRA_CLK	0x01
+/* The read and write data will not be changed in subsequent calls to get values */
+#define BRICKPI_I2C_SAME	0x02
+
 extern const struct device_type brickpi_in_port_type;
 extern const struct device_type brickpi_out_port_type;
 
-extern int brickpi_set_uart_sensor_mode(struct lego_device *sensor, u8 mode);
+struct brickpi_i2c_sensor_platform_data {
+	u8 address;
+};
+
+extern int brickpi_in_port_set_i2c_data(struct lego_device *sensor, bool slow,
+					enum lego_port_gpio_state pin1_state);
+extern int brickpi_in_port_set_i2c_mode(struct lego_device *sensor, u8 set_mode_reg,
+					u8 set_mode_data, u8 read_reg, unsigned size);
+extern int brickpi_in_port_set_uart_sensor_mode(struct lego_device *sensor, u8 mode);
 
 #endif /* _BRICKPI_H_ */

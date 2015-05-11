@@ -61,7 +61,7 @@ struct brickpi_channel_data;
  * @sensor_values: The sensor value(s) read back from the Arduino.
  * @sensor_type: Tells the Arduino which type of sensor is attached.
  * @i2c_speed: Divider for slowing down the I2C clock. e.g. 10 => ~10kHz
- * @i2c_msg_count: The number of I2C messages to be sent. Max value is 8.
+ * @num_i2c_msg: The number of I2C messages to be sent. Max value is 8.
  * @i2c_msg: Data for each I2C message.
  */
 struct brickpi_in_port_data {
@@ -71,7 +71,7 @@ struct brickpi_in_port_data {
 	s32 sensor_values[NUM_BRICKPI_SENSOR_VALUES];
 	enum brickpi_sensor_type sensor_type;
 	u8 i2c_speed;
-	u8 i2c_msg_count;
+	u8 num_i2c_msg;
 	struct brickpi_i2c_msg_data i2c_msg[NUM_BRICKPI_I2C_PER_PORT];
 };
 
@@ -159,6 +159,7 @@ struct brickpi_data {
 };
 
 int brickpi_set_sensors(struct brickpi_channel_data *ch_data);
+int brickpi_get_values(struct brickpi_channel_data *ch_data);
 
 int brickpi_register_in_ports(struct brickpi_channel_data *ch_data,
 			      struct device *parent);
