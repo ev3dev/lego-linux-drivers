@@ -119,6 +119,13 @@ static int brickpi_i2c_sensor_probe(struct lego_device *ldev)
 
 	sensor_info = &nxt_i2c_sensor_defs[ldev->entry_id->driver_data];
 
+	if (sensor_info->ops) {
+		dev_err(&ldev->dev, "The '%s' driver requires special operations"
+			" that are not supported in the '%s' module.",
+			ldev->entry_id->name, "brickpi-i2c-sensor");
+		return -EINVAL;
+	}
+
 	data = kzalloc(sizeof(struct brickpi_i2c_sensor_data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;

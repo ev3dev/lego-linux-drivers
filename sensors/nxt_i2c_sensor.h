@@ -102,7 +102,7 @@ struct nxt_i2c_sensor_info {
 	const char *vendor_id;
 	const char *product_id;
 	void *callback_data;
-	struct nxt_i2c_sensor_ops ops;
+	const struct nxt_i2c_sensor_ops *ops;
 	struct lego_sensor_mode_info mode_info[LEGO_SENSOR_MODE_MAX + 1];
 	struct nxt_i2c_sensor_mode_info i2c_mode_info[LEGO_SENSOR_MODE_MAX + 1];
 	struct lego_sensor_cmd_info cmd_info[LEGO_SENSOR_MODE_MAX + 1];

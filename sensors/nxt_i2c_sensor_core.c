@@ -86,8 +86,8 @@ static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
 	struct nxt_i2c_sensor_data *sensor = context;
 	int err;
 
-	if (sensor->info.ops.set_mode_pre_cb) {
-		err = sensor->info.ops.set_mode_pre_cb(sensor, mode);
+	if (sensor->info.ops && sensor->info.ops->set_mode_pre_cb) {
+		err = sensor->info.ops->set_mode_pre_cb(sensor, mode);
 		if (err < 0)
 			return err;
 	}
@@ -102,8 +102,8 @@ static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
 
 	nxt_i2c_sensor_poll_work(&sensor->poll_work.work);
 
-	if (sensor->info.ops.set_mode_post_cb)
-		sensor->info.ops.set_mode_post_cb(sensor, mode);
+	if (sensor->info.ops && sensor->info.ops->set_mode_post_cb)
+		sensor->info.ops->set_mode_post_cb(sensor, mode);
 
 	return 0;
 }
@@ -113,8 +113,8 @@ static int nxt_i2c_sensor_send_command(void *context, u8 command)
 	struct nxt_i2c_sensor_data *sensor = context;
 	int err;
 
-	if (sensor->info.ops.send_cmd_pre_cb) {
-		err = sensor->info.ops.send_cmd_pre_cb(sensor, command);
+	if (sensor->info.ops && sensor->info.ops->send_cmd_pre_cb) {
+		err = sensor->info.ops->send_cmd_pre_cb(sensor, command);
 		if (err)
 			return err;
 	}
@@ -125,8 +125,8 @@ static int nxt_i2c_sensor_send_command(void *context, u8 command)
 	if (err)
 		return err;
 
-	if (sensor->info.ops.send_cmd_post_cb)
-		sensor->info.ops.send_cmd_post_cb(sensor, command);
+	if (sensor->info.ops && sensor->info.ops->send_cmd_post_cb)
+		sensor->info.ops->send_cmd_post_cb(sensor, command);
 
 	return 0;
 }
@@ -198,8 +198,8 @@ void nxt_i2c_sensor_poll_work(struct work_struct *work)
 	struct lego_sensor_mode_info *mode_info =
 			&sensor->info.mode_info[sensor->sensor.mode];
 
-	if (sensor->info.ops.poll_cb)
-		sensor->info.ops.poll_cb(sensor);
+	if (sensor->info.ops && sensor->info.ops->poll_cb)
+		sensor->info.ops->poll_cb(sensor);
 	else
 		i2c_smbus_read_i2c_block_data(sensor->client,
 			i2c_mode_info->read_data_reg,
@@ -290,8 +290,8 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 	data->poll_ms = default_poll_ms;
 	i2c_set_clientdata(client, data);
 
-	if (data->info.ops.probe_cb) {
-		err = data->info.ops.probe_cb(data);
+	if (data->info.ops && data->info.ops->probe_cb) {
+		err = data->info.ops->probe_cb(data);
 		if (err < 0)
 			goto err_probe_cb;
 	}
@@ -323,8 +323,8 @@ static int nxt_i2c_sensor_remove(struct i2c_client *client)
 {
 	struct nxt_i2c_sensor_data *data = i2c_get_clientdata(client);
 
-	if (data->info.ops.remove_cb)
-		data->info.ops.remove_cb(data);
+	if (data->info.ops && data->info.ops->remove_cb)
+		data->info.ops->remove_cb(data);
 	data->poll_ms = 0;
 	if (delayed_work_pending(&data->poll_work))
 		cancel_delayed_work_sync(&data->poll_work);

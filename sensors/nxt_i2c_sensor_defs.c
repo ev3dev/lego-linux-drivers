@@ -263,13 +263,14 @@ static void mi_xg1300l_remove_cb(struct nxt_i2c_sensor_data *data)
  * - pin1_state
  * - slow
  * - num_read_only_modes (default num_modes)
- * - ops.set_mode_pre_cb
- * - ops.set_mode_post_cb
- * - ops.send_command_pre_cb
- * - ops.send_command_post_cb
- * - ops.poll_cb
- * - ops.probe_cb
- * - ops.remove_cb
+ * - ops (each *_cb is optional)
+ * 	- .set_mode_pre_cb
+ * 	- .set_mode_post_cb
+ * 	- .send_command_pre_cb
+ * 	- .send_command_post_cb
+ * 	- .poll_cb
+ * 	- .probe_cb
+ * 	- .remove_cb
  * - ms_mode_info.raw_min
  * - ms_mode_info.raw_max (default 255)
  * - ms_mode_info.pct_min
@@ -1384,11 +1385,13 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id		= "HiTechnc",
 		.product_id		= "SensrMUX",
 		.num_modes		= 1,
-		.ops.send_cmd_pre_cb	= ht_nxt_smux_send_cmd_pre_cb,
-		.ops.send_cmd_post_cb	= ht_nxt_smux_send_cmd_post_cb,
-		.ops.poll_cb		= ht_nxt_smux_poll_cb,
-		.ops.probe_cb		= ht_nxt_smux_probe_cb,
-		.ops.remove_cb		= ht_nxt_smux_remove_cb,
+		.ops			= &(const struct nxt_i2c_sensor_ops) {
+			.send_cmd_pre_cb	= ht_nxt_smux_send_cmd_pre_cb,
+			.send_cmd_post_cb	= ht_nxt_smux_send_cmd_post_cb,
+			.poll_cb		= ht_nxt_smux_poll_cb,
+			.probe_cb		= ht_nxt_smux_probe_cb,
+			.remove_cb		= ht_nxt_smux_remove_cb,
+		},
 		.mode_info = {
 			[0] = {
 				/**
@@ -1516,8 +1519,10 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "NXTServo",
 		.num_modes		= 2,
-		.ops.probe_cb		= ms_8ch_servo_probe_cb,
-		.ops.remove_cb		= ms_8ch_servo_remove_cb,
+		.ops			= &(const struct nxt_i2c_sensor_ops) {
+			.probe_cb		= ms_8ch_servo_probe_cb,
+			.remove_cb		= ms_8ch_servo_remove_cb,
+		},
 		.mode_info		= {
 			[0] = {
 				/**
@@ -1586,7 +1591,9 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "AbsIMU",
 		.num_modes		= 6,
-		.ops.send_cmd_post_cb	= ms_imu_send_cmd_post_cb,
+		.ops			= &(const struct nxt_i2c_sensor_ops) {
+			.send_cmd_post_cb	= ms_imu_send_cmd_post_cb,
+		},
 		.mode_info	= {
 			[0] = {
 				/**
@@ -1906,9 +1913,11 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.product_id		= "Ev3SMux",
 		.num_modes		= 2,
 		.num_read_only_modes	= 1,
-		.ops.poll_cb		= ms_ev3_smux_poll_cb,
-		.ops.probe_cb		= ms_ev3_smux_probe_cb,
-		.ops.remove_cb		= ms_ev3_smux_remove_cb,
+		.ops			= &(const struct nxt_i2c_sensor_ops) {
+			.poll_cb		= ms_ev3_smux_poll_cb,
+			.probe_cb		= ms_ev3_smux_probe_cb,
+			.remove_cb		= ms_ev3_smux_remove_cb,
+		},
 		.mode_info = {
 			[0] = {
 				/**
@@ -2323,8 +2332,10 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "NxTMMX",
 		.num_modes		= 2,
-		.ops.probe_cb		= ms_nxtmmx_probe_cb,
-		.ops.remove_cb		= ms_nxtmmx_remove_cb,
+		.ops			= &(const struct nxt_i2c_sensor_ops) {
+			.probe_cb		= ms_nxtmmx_probe_cb,
+			.remove_cb		= ms_nxtmmx_remove_cb,
+		},
 		.mode_info	= {
 			[0] = {
 				/**
@@ -2392,9 +2403,11 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.product_id		= "XG1300L",  /* The sensor doesn't return product_id, it can't be autodetected this way */
 		.num_modes		= 4,
 		.num_read_only_modes	= 4,
-		.ops.send_cmd_post_cb	= mi_xg1300l_send_cmd_post_cb,
-		.ops.probe_cb		= mi_xg1300l_probe_cb,
-		.ops.remove_cb		= mi_xg1300l_remove_cb,
+		.ops			= &(const struct nxt_i2c_sensor_ops) {
+			.send_cmd_post_cb	= mi_xg1300l_send_cmd_post_cb,
+			.probe_cb		= mi_xg1300l_probe_cb,
+			.remove_cb		= mi_xg1300l_remove_cb,
+		},
 		.mode_info	= {
 			[0] = {
 				/**
