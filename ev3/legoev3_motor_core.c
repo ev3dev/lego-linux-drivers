@@ -341,7 +341,7 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 
 void legoev3_motor_update_output(struct legoev3_motor_data *ev3_tm)
 {
-	const struct dc_motor_ops *motor_ops = ev3_tm->ldev->port->motor_ops;
+	const struct dc_motor_ops *motor_ops = ev3_tm->ldev->port->dc_motor_ops;
 	void *context = ev3_tm->ldev->port->context;
 	int err;
 
@@ -879,7 +879,7 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(timer, struct legoev3_motor_data, timer);
-	const struct dc_motor_ops *motor_ops = ev3_tm->ldev->port->motor_ops;
+	const struct dc_motor_ops *motor_ops = ev3_tm->ldev->port->dc_motor_ops;
 	void *context = ev3_tm->ldev->port->context;
 	int speed;
 	bool reprocess = true;
@@ -1279,20 +1279,18 @@ static void legoev3_motor_notify_state_change_work(struct work_struct *work)
 	tacho_motor_notify_state_change(&ev3_tm->tm);
 }
 
-static int legoev3_motor_get_position(struct tacho_motor_device *tm, long *position)
+static int legoev3_motor_get_position(void *context, long *position)
 {
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
+	struct legoev3_motor_data *ev3_tm = context;
 
 	*position = ev3_tm->position;
 
 	return 0;
 }
 
-static int legoev3_motor_set_position(struct tacho_motor_device *tm, long position)
+static int legoev3_motor_set_position(void *context, long position)
 {
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
+	struct legoev3_motor_data *ev3_tm = context;
 
 	if (ev3_tm->run || TM_STOP_COMMAND_HOLD == ev3_tm->active_params.stop_command)
 		return -EBUSY;
@@ -1302,29 +1300,26 @@ static int legoev3_motor_set_position(struct tacho_motor_device *tm, long positi
 	return 0;
 }
 
-static int legoev3_motor_get_count_per_rot(struct tacho_motor_device *tm)
+static int legoev3_motor_get_count_per_rot(void *context)
 {
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
+	struct legoev3_motor_data *ev3_tm = context;
 
 	return ev3_tm->info->count_per_rot;
 }
 
-static int legoev3_motor_get_duty_cycle(struct tacho_motor_device *tm,
+static int legoev3_motor_get_duty_cycle(void *context,
 					int *duty_cycle)
 {
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
+	struct legoev3_motor_data *ev3_tm = context;
 
 	*duty_cycle = ev3_tm->duty_cycle;
 
 	return 0;
 }
 
-static int legoev3_motor_get_state(struct tacho_motor_device *tm)
+static int legoev3_motor_get_state(void *context)
 {
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
+	struct legoev3_motor_data *ev3_tm = context;
 
 	unsigned state = 0;
 	if (ev3_tm->run && ev3_tm->state < STATE_STOP) {
@@ -1340,95 +1335,88 @@ static int legoev3_motor_get_state(struct tacho_motor_device *tm)
 	return state;
 }
 
-static int legoev3_motor_get_speed(struct tacho_motor_device *tm, int *speed)
+static int legoev3_motor_get_speed(void *context, int *speed)
 {
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
+	struct legoev3_motor_data *ev3_tm = context;
 
 	*speed = ev3_tm->speed;
 
 	return 0;
 }
 
-static unsigned legoev3_motor_get_speed_regulations(struct tacho_motor_device *tm)
+static unsigned legoev3_motor_get_speed_regulations(void *context)
 {
 	return BIT(TM_SPEED_REGULATION_OFF) | BIT(TM_SPEED_REGULATION_ON);
 }
 
-static unsigned legoev3_motor_get_stop_commands(struct tacho_motor_device *tm)
+static unsigned legoev3_motor_get_stop_commands(void *context)
 {
 	return BIT(TM_STOP_COMMAND_COAST) | BIT(TM_STOP_COMMAND_BRAKE) |
 		BIT(TM_STOP_COMMAND_HOLD);
 }
 
-static int legoev3_motor_get_speed_Kp(struct tacho_motor_device *tm)
+static int legoev3_motor_get_speed_Kp(void *context)
 {
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
+	struct legoev3_motor_data *ev3_tm = context;
 
 	return ev3_tm->pid.speed_Kp;
 }
 
-static int legoev3_motor_set_speed_Kp(struct tacho_motor_device *tm, int k)
+static int legoev3_motor_set_speed_Kp(void *context, int k)
 {
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
+	struct legoev3_motor_data *ev3_tm = context;
 
 	ev3_tm->pid.speed_Kp = k;
 
 	return 0;
 }
 
-static int legoev3_motor_get_speed_Ki(struct tacho_motor_device *tm)
+static int legoev3_motor_get_speed_Ki(void *context)
 {
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
+	struct legoev3_motor_data *ev3_tm = context;
 
 	return ev3_tm->pid.speed_Ki;
 }
 
-static int legoev3_motor_set_speed_Ki(struct tacho_motor_device *tm, int k)
+static int legoev3_motor_set_speed_Ki(void *context, int k)
 {
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
+	struct legoev3_motor_data *ev3_tm = context;
 
 	ev3_tm->pid.speed_Ki = k;
 
 	return 0;
 }
 
-static int legoev3_motor_get_speed_Kd(struct tacho_motor_device *tm)
+static int legoev3_motor_get_speed_Kd(void *context)
 {
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
+	struct legoev3_motor_data *ev3_tm = context;
 
 	return ev3_tm->pid.speed_Kd;
 }
 
-static int legoev3_motor_set_speed_Kd(struct tacho_motor_device *tm, int k)
+static int legoev3_motor_set_speed_Kd(void *context, int k)
 {
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
+	struct legoev3_motor_data *ev3_tm = context;
 
 	ev3_tm->pid.speed_Kd = k;
 
 	return 0;
 }
 
-static unsigned legoev3_motor_get_commands (struct tacho_motor_device *tm)
+static unsigned legoev3_motor_get_commands (void *context)
 {
 	return BIT(TM_COMMAND_RUN_FOREVER) | BIT (TM_COMMAND_RUN_TO_ABS_POS)
 		| BIT(TM_COMMAND_RUN_TO_REL_POS) | BIT(TM_COMMAND_RUN_DIRECT)
 		| BIT(TM_COMMAND_STOP) | BIT(TM_COMMAND_RESET);
 }
 
-static int legoev3_motor_send_command(struct tacho_motor_device *tm,
+static int legoev3_motor_send_command(void *context,
+				      struct tacho_motor_params *params,
 				      enum tacho_motor_command command)
 {
-	struct legoev3_motor_data *ev3_tm =
-			container_of(tm, struct legoev3_motor_data, tm);
+	struct legoev3_motor_data *ev3_tm = context;
 
-	ev3_tm->active_params = ev3_tm->tm.params;
+	ev3_tm->active_params = *params;
 	ev3_tm->run_command = command;
 
 	if (command == TM_COMMAND_RESET) {
@@ -1498,7 +1486,7 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 
 	if (WARN_ON(!pdata))
 		return -EINVAL;
-	if (WARN_ON(!ldev->port->motor_ops))
+	if (WARN_ON(!ldev->port->dc_motor_ops))
 		return -EINVAL;
 	if (WARN_ON(!ldev->entry_id))
 		return -EINVAL;
@@ -1513,6 +1501,7 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 	ev3_tm->tm.driver_name = ldev->entry_id->name;
 	ev3_tm->tm.port_name = ldev->port->port_name;
 	ev3_tm->tm.ops = &legoev3_motor_ops;
+	ev3_tm->tm.context = ev3_tm;
 	ev3_tm->tm.supports_encoder_polarity = true;
 	ev3_tm->tm.supports_ramping = true;
 	ev3_tm->pid.speed_Kp = ev3_tm->info->speed_pid_k.p;

@@ -782,7 +782,7 @@ struct lego_port_device
 	data->out_port.set_mode = ev3_output_port_set_mode;
 	data->out_port.set_device = ev3_output_port_set_device;
 	data->out_port.get_status = ev3_output_port_get_status;
-	data->out_port.motor_ops = &ev3_output_port_motor_ops;
+	data->out_port.dc_motor_ops = &ev3_output_port_motor_ops;
 	data->out_port.context = data;
 	err = lego_port_register(&data->out_port, &ev3_output_port_type, parent);
 	if (err) {

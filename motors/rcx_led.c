@@ -59,7 +59,7 @@ static void rcx_led_brightness_set(struct led_classdev *led_cdev,
 			container_of(led_cdev, struct rcx_led_data, cdev);
 	struct lego_port_device *port = data->motor->port;
 
-	port->motor_ops->set_duty_cycle(port->context, brightness);
+	port->dc_motor_ops->set_duty_cycle(port->context, brightness);
 }
 
 enum led_brightness rcx_led_brightness_get(struct led_classdev *led_cdev)
@@ -68,7 +68,7 @@ enum led_brightness rcx_led_brightness_get(struct led_classdev *led_cdev)
 			container_of(led_cdev, struct rcx_led_data, cdev);
 	struct lego_port_device *port = data->motor->port;
 
-	return port->motor_ops->get_duty_cycle(port->context);
+	return port->dc_motor_ops->get_duty_cycle(port->context);
 }
 
 /*
@@ -81,7 +81,7 @@ static int rcx_led_probe(struct lego_device *motor)
 	struct rcx_led_data *data;
 	int err;
 
-	if (WARN_ON(!motor->port->motor_ops))
+	if (WARN_ON(!motor->port->dc_motor_ops))
 		return -EINVAL;
 
 	data = kzalloc(sizeof(struct rcx_led_data), GFP_KERNEL);
@@ -103,7 +103,7 @@ static int rcx_led_probe(struct lego_device *motor)
 
 	dev_set_drvdata(&motor->dev, data);
 
-	motor->port->motor_ops->set_command(motor->port->context,
+	motor->port->dc_motor_ops->set_command(motor->port->context,
 					    DC_MOTOR_INTERNAL_COMMAND_RUN_FORWARD);
 	dev_info(data->cdev.dev, "Bound to device '%s'\n",
 		 dev_name(&motor->dev));
@@ -122,7 +122,7 @@ static int rcx_led_remove(struct lego_device *motor)
 
 	dev_info(data->cdev.dev, "Unregistered.\n");
 	led_classdev_unregister(&data->cdev);
-	motor->port->motor_ops->set_command(motor->port->context,
+	motor->port->dc_motor_ops->set_command(motor->port->context,
 					    DC_MOTOR_INTERNAL_COMMAND_COAST);
 	dev_set_drvdata(&motor->dev, NULL);
 	kfree(data);

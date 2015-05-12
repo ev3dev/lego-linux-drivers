@@ -270,7 +270,7 @@ static ssize_t position_show(struct device *dev, struct device_attribute *attr,
 	long position;
 	int err;
 
-	err = tm->ops->get_position(tm, &position);
+	err = tm->ops->get_position(tm->context, &position);
 	if (err < 0)
 		return err;
 
@@ -287,7 +287,7 @@ ssize_t position_store(struct device *dev, struct device_attribute *attr,
 	if (err < 0)
 		return err;
 
-	err = tm->ops->set_position(tm, position);
+	err = tm->ops->set_position(tm->context, position);
 	if (err < 0)
 		return err;
 
@@ -301,7 +301,7 @@ static ssize_t state_show(struct device *dev, struct device_attribute *attr,
 	int ret, i;
 	size_t size = 0;
 
-	ret = tm->ops->get_state(tm);
+	ret = tm->ops->get_state(tm->context);
 	if (ret < 0)
 		return ret;
 
@@ -323,7 +323,7 @@ static ssize_t count_per_rot_show(struct device *dev,
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int ret;
 
-	ret = tm->ops->get_count_per_rot(tm);
+	ret = tm->ops->get_count_per_rot(tm->context);
 	if (ret < 0)
 		return ret;
 
@@ -339,7 +339,7 @@ static ssize_t duty_cycle_show(struct device *dev, struct device_attribute *attr
 	if (!tm->ops->get_duty_cycle)
 		return -EOPNOTSUPP;
 
-	err = tm->ops->get_duty_cycle(tm, &duty_cycle);
+	err = tm->ops->get_duty_cycle(tm->context, &duty_cycle);
 	if (err < 0)
 		return err;
 
@@ -355,7 +355,7 @@ static ssize_t speed_show(struct device *dev, struct device_attribute *attr,
 	if (!tm->ops->get_speed)
 		return -EOPNOTSUPP;
 
-	err = tm->ops->get_speed(tm, &speed);
+	err = tm->ops->get_speed(tm->context, &speed);
 	if (err < 0)
 		return err;
 
@@ -367,7 +367,7 @@ static ssize_t speed_show(struct device *dev, struct device_attribute *attr,
  */
 static inline unsigned get_supported_commands(struct tacho_motor_device *tm)
 {
-	unsigned supported_commands = tm->ops->get_commands(tm);
+	unsigned supported_commands = tm->ops->get_commands(tm->context);
 
 	if ((supported_commands & BIT(TM_COMMAND_RUN_FOREVER))
 				&& (supported_commands & BIT(TM_COMMAND_STOP)))
@@ -424,7 +424,7 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 	if (i == TM_COMMAND_RESET)
 		tacho_motor_class_reset(tm);
 
-	err = tm->ops->send_command(tm, i);
+	err = tm->ops->send_command(tm->context, &tm->params, i);
 	if (err < 0)
 		return err;
 
@@ -439,7 +439,7 @@ static void tacho_motor_class_run_timed_work(struct work_struct *work)
 	struct tacho_motor_device *tm = container_of(to_delayed_work(work),
 				struct tacho_motor_device, run_timed_work);
 
-	tm->ops->send_command(tm, TM_COMMAND_STOP);
+	tm->ops->send_command(tm->context, &tm->params, TM_COMMAND_STOP);
 }
 
 static ssize_t speed_regulation_show(struct device *dev,
@@ -466,7 +466,7 @@ static ssize_t speed_regulation_store(struct device *dev,
 	if (i >= TM_NUM_SPEED_REGULATION_MODES)
 		return -EINVAL;
 
-	if (!(BIT(i) & tm->ops->get_speed_regulations(tm)))
+	if (!(BIT(i) & tm->ops->get_speed_regulations(tm->context)))
 		return -EINVAL;
 
 	tm->params.speed_regulation = i;
@@ -482,7 +482,7 @@ static ssize_t stop_commands_show(struct device *dev,
 	int i;
 	int size = 0;
 
-	commands = tm->ops->get_stop_commands(tm);
+	commands = tm->ops->get_stop_commands(tm->context);
 
 	for (i = 0; i < TM_NUM_STOP_COMMANDS; i++) {
 		if (commands & BIT(i)) {
@@ -520,7 +520,7 @@ static ssize_t stop_command_store(struct device *dev,
 	if (i >= TM_NUM_STOP_COMMANDS)
 		return -EINVAL;
 
-	if (!(BIT(i) & tm->ops->get_stop_commands(tm)))
+	if (!(BIT(i) & tm->ops->get_stop_commands(tm->context)))
 		return -EINVAL;
 
 	tm->params.stop_command = i;
@@ -660,7 +660,7 @@ static ssize_t duty_cycle_sp_store(struct device *dev,
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int duty_cycle_sp, err;
 
-	if (!(BIT(TM_SPEED_REGULATION_OFF) & tm->ops->get_speed_regulations(tm)))
+	if (!(BIT(TM_SPEED_REGULATION_OFF) & tm->ops->get_speed_regulations(tm->context)))
 		return -EOPNOTSUPP;
 
 	err = kstrtoint(buf, 10, &duty_cycle_sp);
@@ -689,8 +689,8 @@ static ssize_t speed_sp_store(struct device *dev, struct device_attribute *attr,
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int err, speed;
 
-	if (!(BIT(TM_SPEED_REGULATION_ON) & tm->ops->get_speed_regulations(tm)))
-			return -EOPNOTSUPP;
+	if (!(BIT(TM_SPEED_REGULATION_ON) & tm->ops->get_speed_regulations(tm->context)))
+		return -EOPNOTSUPP;
 
 	err = kstrtoint(buf, 10, &speed);
 	if (err < 0)
@@ -823,7 +823,7 @@ static ssize_t name##_show(struct device *dev, struct device_attribute *attr,	\
 	if (!tm->ops->get_##name)						\
 		return -EOPNOTSUPP;						\
 										\
-	ret = tm->ops->get_##name(tm);						\
+	ret = tm->ops->get_##name(tm->context);					\
 	if (ret < 0)								\
 		return ret;							\
 										\
@@ -846,7 +846,7 @@ static ssize_t name##_store(struct device *dev, struct device_attribute *attr,	\
 	if (k < 0)								\
 		return -EINVAL;							\
 										\
-	err = tm->ops->set_##name(tm, k);					\
+	err = tm->ops->set_##name(tm->context, k);				\
 	if (err < 0)								\
 		return err;							\
 										\

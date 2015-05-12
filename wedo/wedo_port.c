@@ -458,7 +458,7 @@ struct wedo_port_data *register_wedo_port(struct usb_interface *interface,
 	wpd->port.mode_info = wedo_port_mode_info;
 	wpd->port.set_mode = wedo_port_set_mode;
 	wpd->port.get_status = wedo_port_get_status;
-	wpd->port.motor_ops = &wedo_motor_ops;
+	wpd->port.dc_motor_ops = &wedo_motor_ops;
 	wpd->port.context = wpd;
 	err = lego_port_register(&wpd->port, &wedo_port_type, &interface->dev);
 	if (err) {

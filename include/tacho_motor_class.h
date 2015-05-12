@@ -112,6 +112,7 @@ struct tacho_motor_device {
 	const char *driver_name;
 	const char *port_name;
 	const struct tacho_motor_ops const *ops;
+	void *context;
 	bool supports_encoder_polarity;
 	bool supports_ramping;
 	struct tacho_motor_params params;
@@ -154,34 +155,35 @@ struct tacho_motor_device {
  * @set_position_Kd: Sets the current derivative PID constant for the position PID.
  */
 struct tacho_motor_ops {
-	int (*get_position)(struct tacho_motor_device *tm, long *position);
-	int (*set_position)(struct tacho_motor_device *tm, long position);
+	int (*get_position)(void *context, long *position);
+	int (*set_position)(void *context, long position);
 
-	int (*get_state)(struct tacho_motor_device *tm);
+	int (*get_state)(void *context);
 
-	int (*get_count_per_rot)(struct tacho_motor_device *tm);
-	int (*get_duty_cycle)(struct tacho_motor_device *tm, int *duty_cycle);
-	int (*get_speed)(struct tacho_motor_device *tm, int *speed);
+	int (*get_count_per_rot)(void *context);
+	int (*get_duty_cycle)(void *context, int *duty_cycle);
+	int (*get_speed)(void *context, int *speed);
 
-	unsigned (*get_commands)(struct tacho_motor_device *tm);
-	int (*send_command)(struct tacho_motor_device *tm, enum tacho_motor_command command);
+	unsigned (*get_commands)(void *context);
+	int (*send_command)(void *context, struct tacho_motor_params *params,
+			    enum tacho_motor_command command);
 
-	unsigned (*get_speed_regulations)(struct tacho_motor_device *tm);
-	unsigned (*get_stop_commands)(struct tacho_motor_device *tm);
+	unsigned (*get_speed_regulations)(void *context);
+	unsigned (*get_stop_commands)(void *context);
 
-	int (*get_speed_Kp)(struct tacho_motor_device *tm);
-	int (*set_speed_Kp)(struct tacho_motor_device *tm, int k);
-	int (*get_speed_Ki)(struct tacho_motor_device *tm);
-	int (*set_speed_Ki)(struct tacho_motor_device *tm, int k);
-	int (*get_speed_Kd)(struct tacho_motor_device *tm);
-	int (*set_speed_Kd)(struct tacho_motor_device *tm, int k);
+	int (*get_speed_Kp)(void *context);
+	int (*set_speed_Kp)(void *context, int k);
+	int (*get_speed_Ki)(void *context);
+	int (*set_speed_Ki)(void *context, int k);
+	int (*get_speed_Kd)(void *context);
+	int (*set_speed_Kd)(void *context, int k);
 
-	int (*get_hold_Kp)(struct tacho_motor_device *tm);
-	int (*set_hold_Kp)(struct tacho_motor_device *tm, int k);
-	int (*get_hold_Ki)(struct tacho_motor_device *tm);
-	int (*set_hold_Ki)(struct tacho_motor_device *tm, int k);
-	int (*get_hold_Kd)(struct tacho_motor_device *tm);
-	int (*set_hold_Kd)(struct tacho_motor_device *tm, int k);
+	int (*get_hold_Kp)(void *context);
+	int (*set_hold_Kp)(void *context, int k);
+	int (*get_hold_Ki)(void *context);
+	int (*set_hold_Ki)(void *context, int k);
+	int (*get_hold_Kd)(void *context);
+	int (*set_hold_Kd)(void *context, int k);
 };
 
 extern void tacho_motor_notify_state_change(struct tacho_motor_device *);

@@ -86,11 +86,6 @@ struct ms_nxtmmx_data {
 	unsigned command_flags;
 };
 
-static inline struct ms_nxtmmx_data *to_mx_nxtmmx(struct tacho_motor_device *tm)
-{
-	return container_of(tm, struct ms_nxtmmx_data, tm);
-}
-
 /*
  * Converts speed in deg/sec to value that will be sent to the NxtMMX.
  * Scaling was determined by interpolation.
@@ -108,9 +103,9 @@ static inline int ms_nxtmmx_scale_speed(int speed)
 	return scaled;
 }
 
-static int ms_nxtmmx_get_position(struct tacho_motor_device *tm, long *position)
+static int ms_nxtmmx_get_position(void *context, long *position)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	struct ms_nxtmmx_data *mmx = context;
 	int err;
 	u8 bytes[ENCODER_SIZE];
 
@@ -124,9 +119,9 @@ static int ms_nxtmmx_get_position(struct tacho_motor_device *tm, long *position)
 	return 0;
 }
 
-static int ms_nxtmmx_set_position(struct tacho_motor_device *tm, long position)
+static int ms_nxtmmx_set_position(void *context, long position)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	struct ms_nxtmmx_data *mmx = context;
 	int ret;
 
 	/* we can only reset the encoder reading to 0. */
@@ -151,9 +146,9 @@ static int ms_nxtmmx_set_position(struct tacho_motor_device *tm, long position)
 	return 0;
 }
 
-static int ms_nxtmmx_get_state(struct tacho_motor_device *tm)
+static int ms_nxtmmx_get_state(void *context)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	struct ms_nxtmmx_data *mmx = context;
 	int ret;
 	unsigned state = 0;
 
@@ -184,23 +179,24 @@ static int ms_nxtmmx_get_state(struct tacho_motor_device *tm)
 	return state;
 }
 
-static int ms_nxtmmx_get_count_per_rot(struct tacho_motor_device *tm)
+static int ms_nxtmmx_get_count_per_rot(void *context)
 {
 	/* Only supports LEGO motors */
 	return 360;
 }
 
-static unsigned ms_nxtmmx_get_commands(struct tacho_motor_device *tm)
+static unsigned ms_nxtmmx_get_commands(void *context)
 {
 	return BIT(TM_COMMAND_RUN_FOREVER) | BIT (TM_COMMAND_RUN_TO_ABS_POS)
 		| BIT(TM_COMMAND_RUN_TO_REL_POS)
 		| BIT(TM_COMMAND_STOP) | BIT(TM_COMMAND_RESET);
 }
 
-static int ms_nxtmmx_send_command(struct tacho_motor_device *tm,
+static int ms_nxtmmx_send_command(void *context,
+				  struct tacho_motor_params *param,
 				  enum tacho_motor_command command)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	struct ms_nxtmmx_data *mmx = context;
 	int err;
 	u8 command_bytes[WRITE_SIZE];
 
@@ -295,7 +291,7 @@ static int ms_nxtmmx_send_command(struct tacho_motor_device *tm,
 	return 0;
 }
 
-static unsigned ms_nxtmmx_get_speed_regulations(struct tacho_motor_device *tm)
+static unsigned ms_nxtmmx_get_speed_regulations(void *context)
 {
 	/*
 	 * This controller only works with speed control enabled - except when
@@ -306,15 +302,15 @@ static unsigned ms_nxtmmx_get_speed_regulations(struct tacho_motor_device *tm)
 	return BIT(TM_SPEED_REGULATION_ON);
 }
 
-static unsigned ms_nxtmmx_get_stop_commands(struct tacho_motor_device *tm)
+static unsigned ms_nxtmmx_get_stop_commands(void *context)
 {
 	return BIT(TM_STOP_COMMAND_COAST) | BIT(TM_STOP_COMMAND_BRAKE) |
 		BIT(TM_STOP_COMMAND_HOLD);
 }
 
-static int ms_nxtmmx_get_speed_Kp(struct tacho_motor_device *tm)
+static int ms_nxtmmx_get_speed_Kp(void *context)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	struct ms_nxtmmx_data *mmx = context;
 	int err;
 	u8 k[PID_K_SIZE];
 
@@ -326,9 +322,9 @@ static int ms_nxtmmx_get_speed_Kp(struct tacho_motor_device *tm)
 	return le16_to_cpu(*(s16*)k);
 }
 
-static int ms_nxtmmx_set_speed_Kp(struct tacho_motor_device *tm, int Kp)
+static int ms_nxtmmx_set_speed_Kp(void *context, int Kp)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	struct ms_nxtmmx_data *mmx = context;
 	u8 k[PID_K_SIZE];
 
 	*(s16*)k = cpu_to_le16(Kp);
@@ -336,9 +332,9 @@ static int ms_nxtmmx_set_speed_Kp(struct tacho_motor_device *tm, int Kp)
 								PID_K_SIZE, k);
 }
 
-static int ms_nxtmmx_get_speed_Ki(struct tacho_motor_device *tm)
+static int ms_nxtmmx_get_speed_Ki(void *context)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	struct ms_nxtmmx_data *mmx = context;
 	int err;
 	u8 k[PID_K_SIZE];
 
@@ -350,9 +346,9 @@ static int ms_nxtmmx_get_speed_Ki(struct tacho_motor_device *tm)
 	return le16_to_cpu(*(s16*)k);
 }
 
-static int ms_nxtmmx_set_speed_Ki(struct tacho_motor_device *tm, int Ki)
+static int ms_nxtmmx_set_speed_Ki(void *context, int Ki)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	struct ms_nxtmmx_data *mmx = context;
 	u8 k[PID_K_SIZE];
 
 	*(s16*)k = cpu_to_le16(Ki);
@@ -360,9 +356,9 @@ static int ms_nxtmmx_set_speed_Ki(struct tacho_motor_device *tm, int Ki)
 								PID_K_SIZE, k);
 }
 
-static int ms_nxtmmx_get_speed_Kd(struct tacho_motor_device *tm)
+static int ms_nxtmmx_get_speed_Kd(void *context)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	struct ms_nxtmmx_data *mmx = context;
 	int err;
 	u8 k[PID_K_SIZE];
 
@@ -374,9 +370,9 @@ static int ms_nxtmmx_get_speed_Kd(struct tacho_motor_device *tm)
 	return le16_to_cpu(*(s16*)k);
 }
 
-static int ms_nxtmmx_set_speed_Kd(struct tacho_motor_device *tm, int Kd)
+static int ms_nxtmmx_set_speed_Kd(void *context, int Kd)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	struct ms_nxtmmx_data *mmx = context;
 	u8 k[PID_K_SIZE];
 
 	*(s16*)k = cpu_to_le16(Kd);
@@ -384,9 +380,9 @@ static int ms_nxtmmx_set_speed_Kd(struct tacho_motor_device *tm, int Kd)
 								PID_K_SIZE, k);
 }
 
-static int ms_nxtmmx_get_position_Kp(struct tacho_motor_device *tm)
+static int ms_nxtmmx_get_position_Kp(void *context)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	struct ms_nxtmmx_data *mmx = context;
 	int err;
 	u8 k[PID_K_SIZE];
 
@@ -398,9 +394,9 @@ static int ms_nxtmmx_get_position_Kp(struct tacho_motor_device *tm)
 	return le16_to_cpu(*(s16*)k);
 }
 
-static int ms_nxtmmx_set_position_Kp(struct tacho_motor_device *tm, int Kp)
+static int ms_nxtmmx_set_position_Kp(void *context, int Kp)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	struct ms_nxtmmx_data *mmx = context;
 	u8 k[PID_K_SIZE];
 
 	*(s16*)k = cpu_to_le16(Kp);
@@ -408,9 +404,9 @@ static int ms_nxtmmx_set_position_Kp(struct tacho_motor_device *tm, int Kp)
 					ENCODER_PID_KP_REG, PID_K_SIZE, k);
 }
 
-static int ms_nxtmmx_get_position_Ki(struct tacho_motor_device *tm)
+static int ms_nxtmmx_get_position_Ki(void *context)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	struct ms_nxtmmx_data *mmx = context;
 	int err;
 	u8 k[PID_K_SIZE];
 
@@ -422,9 +418,9 @@ static int ms_nxtmmx_get_position_Ki(struct tacho_motor_device *tm)
 	return le16_to_cpu(*(s16*)k);
 }
 
-static int ms_nxtmmx_set_position_Ki(struct tacho_motor_device *tm, int Ki)
+static int ms_nxtmmx_set_position_Ki(void *context, int Ki)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	struct ms_nxtmmx_data *mmx = context;
 	u8 k[PID_K_SIZE];
 
 	*(s16*)k = cpu_to_le16(Ki);
@@ -432,9 +428,9 @@ static int ms_nxtmmx_set_position_Ki(struct tacho_motor_device *tm, int Ki)
 					ENCODER_PID_KI_REG, PID_K_SIZE, k);
 }
 
-static int ms_nxtmmx_get_position_Kd(struct tacho_motor_device *tm)
+static int ms_nxtmmx_get_position_Kd(void *context)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	struct ms_nxtmmx_data *mmx = context;
 	int err;
 	u8 k[PID_K_SIZE];
 
@@ -446,9 +442,9 @@ static int ms_nxtmmx_get_position_Kd(struct tacho_motor_device *tm)
 	return le16_to_cpu(*(s16*)k);
 }
 
-static int ms_nxtmmx_set_position_Kd(struct tacho_motor_device *tm, int Kd)
+static int ms_nxtmmx_set_position_Kd(void *context, int Kd)
 {
-	struct ms_nxtmmx_data *mmx = to_mx_nxtmmx(tm);
+	struct ms_nxtmmx_data *mmx = context;
 	u8 k[PID_K_SIZE];
 
 	*(s16*)k = cpu_to_le16(Kd);
@@ -496,6 +492,7 @@ int ms_nxtmmx_probe_cb(struct nxt_i2c_sensor_data *data)
 			 data->port_name, data->client->addr, i + 1);
 		mmx[i].tm.port_name = mmx[i].port_name;
 		mmx[i].tm.ops = &ms_nxtmmx_tacho_motor_ops;
+		mmx[i].tm.context = &mmx[i];
 		mmx[i].i2c = data;
 		mmx[i].index = i;
 		mmx[i].command_flags = CMD_FLAGS_DEFAULT_VALUE;

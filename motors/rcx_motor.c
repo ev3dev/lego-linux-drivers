@@ -56,7 +56,7 @@ static int rcx_motor_probe(struct lego_device *motor)
 
 	if (WARN_ON(!pdata))
 		return -EINVAL;
-	if (WARN_ON(!motor->port->motor_ops))
+	if (WARN_ON(!motor->port->dc_motor_ops))
 		return -EINVAL;
 
 	data = kzalloc(sizeof(struct rcx_motor_data), GFP_KERNEL);
@@ -65,7 +65,7 @@ static int rcx_motor_probe(struct lego_device *motor)
 
 	data->motor.name = motor->name;
 	data->motor.port_name = motor->port->port_name;
-	data->motor.ops = motor->port->motor_ops;
+	data->motor.ops = motor->port->dc_motor_ops;
 	data->motor.context = motor->port->context;
 
 	err = register_dc_motor(&data->motor, &motor->dev);

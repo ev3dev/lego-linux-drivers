@@ -64,7 +64,8 @@ struct lego_port_nxt_i2c_ops {
  * @get_status: Callback to get the status string. (optional)
  * @nxt_analog_ops: Functions used by Analog/NXT ports (optional).
  * @nxt_i2c_ops: Functions used by I2C/NXT ports (optional).
- * @motor_ops: Functions used by motor ports (optional);
+ * @dc_motor_ops: Functions used by motor ports (optional);
+ * @tacho_motor_ops: Functions used by motor ports (optional);
  * @context: Pointer to pass back to callback functions.
  * @dev: The device data structure.
  * @raw_data: Pointer to raw data storage.
@@ -85,7 +86,8 @@ struct lego_port_device {
 	const char *(*get_status)(void *context);
 	const struct lego_port_nxt_analog_ops *nxt_analog_ops;
 	const struct lego_port_nxt_i2c_ops *nxt_i2c_ops;
-	const struct dc_motor_ops *motor_ops;
+	const struct dc_motor_ops *dc_motor_ops;
+	const struct tacho_motor_ops *tacho_motor_ops;
 	void *context;
 	/* private */
 	struct device dev;
