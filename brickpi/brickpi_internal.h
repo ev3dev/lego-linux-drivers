@@ -22,6 +22,7 @@
 #ifndef _BRICKPI_INTERNAL_H_
 #define _BRICKPI_INTERNAL_H_
 
+#include <linux/hrtimer.h>
 #include <linux/module.h>
 #include <linux/types.h>
 
@@ -145,9 +146,8 @@ struct brickpi_channel_data {
  * @rx_data_size: Size of the received data.
  * @rx_completion: Completion to wait for received data.
  * @rx_data_work: Workqueue item for handling received data.
- * @poll_work: Delayed work for polling.
- * @last_poll_timestamp: Timestamp for measuring the actual duration of a
- *	polling period.
+ * @poll_work: Work for polling.
+ * @poll_timer: Timer for polling.
  * @closing: Flag to indicate that we are closing the connection and any data
  *  received should be ignored.
  */
@@ -164,8 +164,8 @@ struct brickpi_data {
 	unsigned rx_data_size;
 	struct completion rx_completion;
 	struct work_struct rx_data_work;
-	struct delayed_work poll_work;
-	unsigned long last_poll_timestamp;
+	struct work_struct poll_work;
+	struct hrtimer poll_timer;
 	bool closing;
 };
 

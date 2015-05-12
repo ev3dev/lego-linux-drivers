@@ -60,8 +60,7 @@
 #endif
 
 /* TODO: Make this a module parameter */
-#define BRICKPI_POLL_MS		500
-#define BRICKPI_POLL_PERIOD	msecs_to_jiffies(BRICKPI_POLL_MS)
+#define BRICKPI_POLL_MS		10
 
 /* tx_buffer offsets */
 #define BRICKPI_TX_ADDR		0
@@ -426,10 +425,9 @@ static void brickpi_handle_rx_data(struct work_struct *work)
 
 static void brickpi_poll_work(struct work_struct *work)
 {
-	struct brickpi_data *data = container_of(to_delayed_work(work),
-						 struct brickpi_data, poll_work);
+	struct brickpi_data *data = container_of(work, struct brickpi_data,
+						 poll_work);
 	int i, err;
-	unsigned long time_since_last_poll;
 
 	if (data->closing)
 		return;
@@ -443,18 +441,12 @@ static void brickpi_poll_work(struct work_struct *work)
 				ch_data->address, err);
 		}
 	}
-
-	time_since_last_poll = jiffies - data->last_poll_timestamp;
-	data->last_poll_timestamp = jiffies;
-	schedule_delayed_work(&data->poll_work,
-		time_since_last_poll >= BRICKPI_POLL_PERIOD
-		? 0 : BRICKPI_POLL_PERIOD - time_since_last_poll);
 }
 
 static void brickpi_init_work(struct work_struct *work)
 {
-	struct brickpi_data *data = container_of(to_delayed_work(work),
-						 struct brickpi_data, poll_work);
+	struct brickpi_data *data = container_of(work, struct brickpi_data,
+						 poll_work);
 	int i, err;
 
 	for (i = 0; i < data->num_channels; i++) {
@@ -497,12 +489,33 @@ static void brickpi_init_work(struct work_struct *work)
 				err);
 			return;
 		}
+		err = brickpi_register_out_ports(ch_data, data->tty->dev);
+		if (err < 0) {
+			brickpi_unregister_in_ports(ch_data);
+			dev_err(data->tty->dev,
+				"Failed to register output ports (%d)",
+				err);
+			return;
+		}
 		ch_data->init_ok = true;
 	}
 
-	INIT_DELAYED_WORK(&data->poll_work, brickpi_poll_work);
-	data->last_poll_timestamp = jiffies;
-	schedule_delayed_work(&data->poll_work, 0);
+	INIT_WORK(&data->poll_work, brickpi_poll_work);
+	hrtimer_start(&data->poll_timer, ktime_set(0, 0), HRTIMER_MODE_REL);
+}
+
+enum hrtimer_restart brickpi_poll_timer_function(struct hrtimer *timer)
+{
+	struct brickpi_data *data = container_of(timer, struct brickpi_data,
+						 poll_timer);
+
+	hrtimer_forward_now(timer, ms_to_ktime(BRICKPI_POLL_MS));
+	if (data->closing)
+		return HRTIMER_NORESTART;
+
+	schedule_work(&data->poll_work);
+
+	return HRTIMER_RESTART;
 }
 
 static int brickpi_open(struct tty_struct *tty)
@@ -514,7 +527,7 @@ static int brickpi_open(struct tty_struct *tty)
 	data = kzalloc(sizeof(struct brickpi_data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
-	data->num_channels = 1;
+	data->num_channels = 2;
 	data->channel_data = kzalloc(sizeof(struct brickpi_channel_data)
 		* data->num_channels, GFP_KERNEL);
 	if (!data) {
@@ -526,7 +539,9 @@ static int brickpi_open(struct tty_struct *tty)
 	mutex_init(&data->tx_mutex);
 	init_completion(&data->rx_completion);
 	INIT_WORK(&data->rx_data_work, brickpi_handle_rx_data);
-	INIT_DELAYED_WORK(&data->poll_work, brickpi_init_work);
+	INIT_WORK(&data->poll_work, brickpi_init_work);
+	hrtimer_init(&data->poll_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	data->poll_timer.function = brickpi_poll_timer_function;
 	tty->disc_data = data;
 
 	/* set baud rate and other data settings */
@@ -567,7 +582,7 @@ static int brickpi_open(struct tty_struct *tty)
 		data->tty->ldisc->ops->flush_buffer(data->tty);
 	tty_driver_flush_buffer(data->tty);
 
-	schedule_delayed_work(&data->poll_work, 0);
+	schedule_work(&data->poll_work);
 
 	return 0;
 
@@ -585,7 +600,8 @@ static void brickpi_close(struct tty_struct *tty)
 	mutex_lock(&data->tx_mutex);
 	data->closing = true;
 	mutex_unlock(&data->tx_mutex);
-	cancel_delayed_work_sync(&data->poll_work);
+	hrtimer_cancel(&data->poll_timer);
+	cancel_work_sync(&data->poll_work);
 	cancel_work_sync(&data->rx_data_work);
 	for (i = 0; i < data->num_channels; i++) {
 		struct brickpi_channel_data *ch_data = &data->channel_data[i];
