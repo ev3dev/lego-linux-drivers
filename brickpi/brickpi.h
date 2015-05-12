@@ -104,6 +104,13 @@ enum brickpi_in_port_mode {
 	NUM_BRICKPI_IN_PORT_MODES
 };
 
+enum brickpi_out_port_mode {
+	BRICKPI_OUT_PORT_MODE_NXT_MOTOR,
+	BRICKPI_OUT_PORT_MODE_RCX_MOTOR,
+	BRICKPI_OUT_PORT_MODE_RCX_LED,
+	NUM_BRICKPI_OUT_PORT_MODES
+};
+
 /* I2C Settings flags */
 
 /* Extra clock pulse between stop and start for NXT Ultrasonic sensor */

@@ -80,20 +80,31 @@ struct brickpi_in_port_data {
  *
  * @ch_data: Pointer to the containing channel.
  * @port: The lego-port class device for each output port.
- * @motor_speed: The motor speed to send to the Arduino.
- * @motor_direction: The motor direction to send to the Arduino.
- * @motor_enable: Tells the motor to run or not.
+ * @motor: Pointer to hold device when it is registered.
  * @motor_use_offset:
+ * @motor_enable: Tells the motor to run or not.
+ * @motor_direction: The motor direction to send to the Arduino.
+ * @stop_at_target_position: Indicates that we should stop when the target
+ * 	position is reached.
+ * @motor_speed: The motor speed to send to the Arduino.
  * @motor_position: The position read back from the Arduino.
+ * @motor_offset: Keeps track of the difference between the userland position
+ * 	value and the kernel position value. Could be sent to the BrickPi, but
+ * 	currently just used internally in the kernel.
+ * @target_position: The target for run-to-*-pos commands.
  */
 struct brickpi_out_port_data {
 	struct brickpi_channel_data *ch_data;
 	struct lego_port_device port;
-	s16 motor_speed;
-	bool motor_direction;
-	bool motor_enable;
+	struct lego_device *motor;
 	bool motor_use_offset;
+	bool motor_enabled;
+	bool motor_reversed;
+	bool stop_at_target_position;
+	u8 motor_speed;
 	long motor_position;
+	long motor_offset;
+	long target_position;
 };
 
 struct brickpi_data;
@@ -164,5 +175,9 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data);
 int brickpi_register_in_ports(struct brickpi_channel_data *ch_data,
 			      struct device *parent);
 void brickpi_unregister_in_ports(struct brickpi_channel_data *ch_data);
+
+int brickpi_register_out_ports(struct brickpi_channel_data *ch_data,
+			       struct device *parent);
+void brickpi_unregister_out_ports(struct brickpi_channel_data *ch_data);
 
 #endif /* _BRICKPI_INTERNAL_H_ */

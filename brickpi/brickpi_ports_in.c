@@ -25,7 +25,7 @@ const struct device_type brickpi_in_port_type = {
 EXPORT_SYMBOL_GPL(brickpi_in_port_type);
 
 
-static const struct device_type brickpi_device_type[NUM_BRICKPI_IN_PORT_MODES] = {
+static const struct device_type brickpi_in_port_device_types[NUM_BRICKPI_IN_PORT_MODES] = {
 	[BRICKPI_IN_PORT_MODE_NONE] = {
 		.name = NULL,
 	},
@@ -55,9 +55,9 @@ static const struct device_type brickpi_device_type[NUM_BRICKPI_IN_PORT_MODES] =
 
 static const struct lego_port_mode_info brickpi_in_port_mode_info[NUM_BRICKPI_IN_PORT_MODES] = {
 	/**
-	 * @description: HiTechnic NXT Sensor Multiplexer Input Port
-	 * @connection_types: I2C/NXT, Analog/NXT
-	 * @prefix: mux
+	 * @description: Dexter Industries BrickPi Input Port
+	 * @connection_types: NXT/Analog, NXT/I2C, EV3/Analog, EV3/UART
+	 * @prefix: in
 	 */
 	[BRICKPI_IN_PORT_MODE_NONE] = {
 		/**
@@ -127,7 +127,7 @@ int brickpi_in_port_register_sensor(struct brickpi_in_port_data *in_port,
 {
 	struct lego_device *new_sensor;
 
-	if (device_type == &brickpi_device_type[BRICKPI_IN_PORT_MODE_NXT_I2C]) {
+	if (device_type == &brickpi_in_port_device_types[BRICKPI_IN_PORT_MODE_NXT_I2C]) {
 		struct brickpi_i2c_sensor_platform_data pdata;
 
 		pdata.address = in_port->i2c_msg[0].addr;
@@ -202,7 +202,7 @@ static int brickpi_in_port_set_device(void *context, const char *name)
 	}
 
 	return brickpi_in_port_register_sensor(in_port,
-					       &brickpi_device_type[mode], name);
+					       &brickpi_in_port_device_types[mode], name);
 }
 
 static int brickpi_in_port_set_pin5_gpio(void *context,
@@ -265,7 +265,7 @@ static int brickpi_in_port_set_mode(void *context, u8 mode)
 		return err;
 
 	return brickpi_in_port_register_sensor(in_port,
-					       &brickpi_device_type[mode], name);
+					       &brickpi_in_port_device_types[mode], name);
 }
 
 static struct lego_port_nxt_analog_ops brickpi_in_port_nxt_analog_ops = {

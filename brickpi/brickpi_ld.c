@@ -207,9 +207,9 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 		/* TODO: handle use_offset */
 	}
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
+		brickpi_append_tx(data, 1, ch_data->out_port[i].motor_enabled);
+		brickpi_append_tx(data, 1, ch_data->out_port[i].motor_reversed);
 		brickpi_append_tx(data, 8, ch_data->out_port[i].motor_speed);
-		brickpi_append_tx(data, 1, ch_data->out_port[i].motor_direction);
-		brickpi_append_tx(data, 1, ch_data->out_port[i].motor_enable);
 	}
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
 		struct brickpi_in_port_data *port = &ch_data->in_port[i];
@@ -253,6 +253,15 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 			position *= -1;
 		ch_data->out_port[i].motor_position = position;
 		debug_pr("motor_position[%d]: %d\n", i, (int)position);
+		if (ch_data->out_port[i].stop_at_target_position) {
+			if (((ch_data->out_port[i].motor_reversed)
+			     && position < (ch_data->out_port[i].target_position))
+			    || (!(ch_data->out_port[i].motor_reversed)
+			     && position > (ch_data->out_port[i].target_position)))
+			{
+				ch_data->out_port[i].motor_enabled = false;
+			}
+		}
 	}
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
 		s32 *sensor_values = ch_data->in_port[i].sensor_values;
@@ -467,6 +476,8 @@ static void brickpi_init_work(struct work_struct *work)
 				err);
 			return;
 		}
+		ch_data->out_port[BRICKPI_PORT_1].ch_data = ch_data;
+		ch_data->out_port[BRICKPI_PORT_2].ch_data = ch_data;
 		err = brickpi_get_values(ch_data);
 		if (err < 0) {
 			dev_err(data->tty->dev,
@@ -580,6 +591,7 @@ static void brickpi_close(struct tty_struct *tty)
 		struct brickpi_channel_data *ch_data = &data->channel_data[i];
 		if (ch_data->init_ok) {
 			brickpi_unregister_in_ports(ch_data);
+			brickpi_unregister_out_ports(ch_data);
 		}
 	}
 	tty->disc_data = NULL;

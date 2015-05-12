@@ -51,11 +51,8 @@ struct rcx_motor_data {
 static int rcx_motor_probe(struct lego_device *motor)
 {
 	struct rcx_motor_data *data;
-	struct ev3_motor_platform_data *pdata = motor->dev.platform_data;
 	int err;
 
-	if (WARN_ON(!pdata))
-		return -EINVAL;
 	if (WARN_ON(!motor->port->dc_motor_ops))
 		return -EINVAL;
 
