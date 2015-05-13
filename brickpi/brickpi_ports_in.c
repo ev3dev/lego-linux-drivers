@@ -363,6 +363,9 @@ int brickpi_register_in_ports(struct brickpi_channel_data *ch_data,
 		snprintf(port->port_name, LEGO_PORT_NAME_SIZE, "%s:in%d",
 			 dev_name(parent), ch_data->address * 2 + i - 1);
 		port->num_modes = NUM_BRICKPI_IN_PORT_MODES;
+		/* only firmware version 2 supports EV3 sensors */
+		if (ch_data->fw_version != 2)
+			port->num_modes -= 2;
 		port->mode_info = brickpi_in_port_mode_info;
 		port->set_mode = brickpi_in_port_set_mode;
 		port->set_device = brickpi_in_port_set_device;
