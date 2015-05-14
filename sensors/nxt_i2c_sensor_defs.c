@@ -1660,7 +1660,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * (AbsoluteIMU-ACG).
 				 *
 				 * @name_footnote: [^gyro]
-				 * @description: Gryo
+				 * @description: Gyro
 				 * @value0: X-axis rotational speed
 				 * @value1: Y-axis rotational speed
 				 * @value2: Z-axis rotational speed
