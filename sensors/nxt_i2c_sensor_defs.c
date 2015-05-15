@@ -1918,7 +1918,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			.probe_cb		= ms_ev3_smux_probe_cb,
 			.remove_cb		= ms_ev3_smux_remove_cb,
 		},
-		.mode_info		= (const struct lego_sensor_mode_info[]) {
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
 				 * [^mode]: This mode does not do anything useful.
@@ -1928,6 +1928,10 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 */
 				.name		= "MUX",
 				.data_sets	= 0,
+			},
+		},
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
+			[0] = {
 			},
 		},
 	},
