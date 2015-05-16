@@ -55,7 +55,7 @@ enum dc_motor_stop_command {
 
 enum dc_motor_polarity {
 	DC_MOTOR_POLARITY_NORMAL,
-	DC_MOTOR_POLARITY_INVERTED,
+	DC_MOTOR_POLARITY_INVERSED,
 	NUM_DC_MOTOR_POLARITY
 };
 

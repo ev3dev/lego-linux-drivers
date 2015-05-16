@@ -106,7 +106,7 @@ const char *servo_motor_command_values[] = {
 
 const char *servo_motor_polarity_values[] = {
 	[SERVO_MOTOR_POLARITY_NORMAL]	= "normal",
-	[SERVO_MOTOR_POLARITY_INVERTED]	= "inverted",
+	[SERVO_MOTOR_POLARITY_INVERSED]	= "inversed",
 };
 
 inline bool has_fixed_pulse_ms(struct servo_motor_device *sd)
@@ -148,7 +148,7 @@ int servo_motor_class_set_position(struct servo_motor_device *motor,
 	motor->position_sp = new_position;
 
 	if (motor->command == SERVO_MOTOR_COMMAND_RUN) {
-		if (new_polarity == SERVO_MOTOR_POLARITY_INVERTED)
+		if (new_polarity == SERVO_MOTOR_POLARITY_INVERSED)
 			new_position = -new_position;
 		if (new_position > 0)
 			scaled_position = servo_motor_class_scale(0, 100,

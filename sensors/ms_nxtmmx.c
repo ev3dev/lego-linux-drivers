@@ -204,7 +204,7 @@ static int ms_nxtmmx_send_command(void *context,
 		/* fill in the setpoints with the correct polarity */
 		*(int *)command_bytes = cpu_to_le32(mmx->tm.params.position_sp);
 		command_bytes[WRITE_SPEED] = ms_nxtmmx_scale_speed(mmx->tm.params.speed_sp);
-		if (mmx->tm.params.polarity == DC_MOTOR_POLARITY_INVERTED) {
+		if (mmx->tm.params.polarity == DC_MOTOR_POLARITY_INVERSED) {
 			*(int *)command_bytes *= -1;
 			command_bytes[WRITE_SPEED] *= -1;
 		}

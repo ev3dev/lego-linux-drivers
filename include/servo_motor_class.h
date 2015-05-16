@@ -29,7 +29,7 @@ enum servo_motor_command {
 
 enum servo_motor_polarity {
 	SERVO_MOTOR_POLARITY_NORMAL,
-	SERVO_MOTOR_POLARITY_INVERTED,
+	SERVO_MOTOR_POLARITY_INVERSED,
 	NUM_SERVO_MOTOR_POLARITY
 };
 

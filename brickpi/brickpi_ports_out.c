@@ -197,7 +197,7 @@ static int brickpi_out_port_send_command(void *context,
 	if (IS_RUN_CMD(command)) {
 		int duty_cycle_sp = params->duty_cycle_sp;
 		int position_sp = params->position_sp;
-		if (params->polarity == DC_MOTOR_POLARITY_INVERTED) {
+		if (params->polarity == DC_MOTOR_POLARITY_INVERSED) {
 			duty_cycle_sp *= -1;
 			position_sp *= -1;
 		}

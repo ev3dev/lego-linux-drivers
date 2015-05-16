@@ -41,7 +41,7 @@ const struct legoev3_motor_info legoev3_motor_defs[] = {
 		.max_us_per_sample	= 100000, /* TODO: need to put a scope on this and get correct values */
 		.max_speed		= 1200,
 		.count_per_rot		= 360, /* TODO: need to get value in count per cm */
-		.encoder_polarity	= DC_MOTOR_POLARITY_INVERTED,
+		.encoder_polarity	= DC_MOTOR_POLARITY_INVERSED,
 	},
 };
 

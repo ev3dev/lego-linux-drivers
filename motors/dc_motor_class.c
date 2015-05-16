@@ -58,7 +58,7 @@
  *   setpoint.
  * .
  * `polarity`: (read/write)
- * : Sets the polarity of the motor. Valid values are `normal` and `inverted`.
+ * : Sets the polarity of the motor. Valid values are `normal` and `inversed`.
  * .
  * `port_name` (read-only)
  * : Returns the name of the port that the motor is connected to.
@@ -112,7 +112,7 @@ const char* dc_motor_stop_command_names[] = {
 
 const char* dc_motor_polarity_values[] = {
 	[DC_MOTOR_POLARITY_NORMAL]	= "normal",
-	[DC_MOTOR_POLARITY_INVERTED]	= "inverted",
+	[DC_MOTOR_POLARITY_INVERSED]	= "inversed",
 };
 EXPORT_SYMBOL_GPL(dc_motor_polarity_values);
 
@@ -339,7 +339,7 @@ static ssize_t duty_cycle_show(struct device *dev,
 
 	if (motor->ops->get_command(motor->context) == DC_MOTOR_INTERNAL_COMMAND_RUN_REVERSE)
 		duty_cycle *= -1;
-	if (motor->active_params.polarity == DC_MOTOR_POLARITY_INVERTED)
+	if (motor->active_params.polarity == DC_MOTOR_POLARITY_INVERSED)
 		duty_cycle *= -1;
 
 	return sprintf(buf, "%d\n", duty_cycle);
@@ -397,7 +397,7 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 			motor->active_params = motor->params;
 			if (!IS_DC_MOTOR_RUN_COMMAND(i))
 				motor->active_params.duty_cycle_sp = 0;
-			else if (motor->active_params.polarity == DC_MOTOR_POLARITY_INVERTED)
+			else if (motor->active_params.polarity == DC_MOTOR_POLARITY_INVERSED)
 				motor->active_params.duty_cycle_sp *= -1;
 			motor->command = i;
 			dc_motor_class_start_motor_ramp(motor);
