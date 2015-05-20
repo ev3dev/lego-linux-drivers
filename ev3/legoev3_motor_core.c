@@ -378,6 +378,8 @@ static void legoev3_motor_set_power(struct legoev3_motor_data *ev3_tm, int power
  *
  * This is the same as initializing a motor - we will set everything
  * to default values, as if it had just been plugged in
+ *
+ * @ev3_tm: The motor data structure.
  */
 static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 {
