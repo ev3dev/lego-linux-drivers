@@ -42,7 +42,7 @@ enum ms_ev3_smux_mode {
 static const struct lego_port_mode_info ms_ev3_smux_port_mode_info[] = {
 	/**
 	 * @description: mindsensors.com EV3 Sensor Multiplexer Input Port
-	 * @connection_types: UART/EV3, Analog/EV3
+	 * @connection_types: EV3/UART, EV3/Analog
 	 * @prefix: mux
 	 */
 	[MS_EV3_SMUX_MODE_UART] = {
@@ -61,7 +61,7 @@ static const struct lego_port_mode_info ms_ev3_smux_port_mode_info[] = {
 		 * | LEGO EV3 GYRO       | `lego-ev3-gyro`    |
 		 * | LEGO EV3 Infrared   | `lego-ev3-ir`      |
 		 *
-		 * @description: UART/EV3 sensor
+		 * @description: EV3/UART sensor
 		 * @name_footnote: [^uart-mode]
 		 */
 		.name	= "uart",
@@ -72,7 +72,7 @@ static const struct lego_port_mode_info ms_ev3_smux_port_mode_info[] = {
 		 * supported. The `lego-ev3-touch` device/driver is loaded when
 		 * this mode is set.
 		 *
-		 * @description: Analog/EV3 sensor
+		 * @description: EV3/Analog sensor
 		 * @name_footnote: [^analog-mode]
 		 */
 		.name	= "analog",

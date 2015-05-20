@@ -292,7 +292,7 @@ static const struct lego_port_mode_info legoev3_input_port_mode_info[] = {
 	/**
 	 * @description: EV3 Input Port
 	 * @module: legoev3-ports
-	 * @connection_types: UART/EV3, UART/Other, I2C/NXT, I2C/Other, Analog/EV3, Analog/NXT
+	 * @connection_types: EV3/UART, Other/UART, NXT/I2C, Other/I2C, EV3/Analog, NXT/Analog
 	 * @prefix: in
 	 */
 	[EV3_INPUT_PORT_MODE_AUTO] = {

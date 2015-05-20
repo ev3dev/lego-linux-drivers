@@ -24,7 +24,7 @@
  *
  * NXT Analog Sensor Driver
  *
- * The `nxt-analog-sensor` module provides all of the drivers for Analog/NXT
+ * The `nxt-analog-sensor` module provides all of the drivers for NXT/Analog
  * sensors. You can find the complete list [here][supported sensors]. These
  * drivers scale the analog voltage read from the sensor to a useful value.
  * .
@@ -35,7 +35,7 @@
  * [lego-sensor device], which is where all the really useful attributes are.
  * .
  * `driver_names` (read-only)
- * : Returns a space-separated list of all Analog/NXT sensor driver names.
+ * : Returns a space-separated list of all NXT/Analog sensor driver names.
  * .
  * [lego-sensor device]: ../lego-sensor-class
  * [supported sensors]: /docs/sensors#supported-sensors

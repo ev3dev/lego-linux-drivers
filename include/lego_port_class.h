@@ -62,8 +62,8 @@ struct lego_port_nxt_i2c_ops {
  * @set_mode: Callback to set the sensor mode.
  * @set_device: Callback to load a device attached to this port.
  * @get_status: Callback to get the status string. (optional)
- * @nxt_analog_ops: Functions used by Analog/NXT ports (optional).
- * @nxt_i2c_ops: Functions used by I2C/NXT ports (optional).
+ * @nxt_analog_ops: Functions used by NXT/Analog ports (optional).
+ * @nxt_i2c_ops: Functions used by NXT/I2C ports (optional).
  * @dc_motor_ops: Functions used by motor ports (optional);
  * @tacho_motor_ops: Functions used by motor ports (optional);
  * @context: Pointer to pass back to callback functions.

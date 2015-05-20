@@ -39,7 +39,7 @@ enum ht_nxt_smux_port_mode {
 static const struct lego_port_mode_info ht_nxt_smux_port_mode_info[] = {
 	/**
 	 * @description: HiTechnic NXT Sensor Multiplexer Input Port
-	 * @connection_types: I2C/NXT, Analog/NXT
+	 * @connection_types: NXT/I2C, NXT/Analog
 	 * @prefix: mux
 	 */
 	[HT_NXT_SMUX_PORT_MODE_ANALOG] = {
@@ -48,11 +48,11 @@ static const struct lego_port_mode_info ht_nxt_smux_port_mode_info[] = {
 		 * this mode is set. You must manually specify the correct
 		 * driver for your sensor using `set_device` if you want to use
 		 * another driver. Any driver with a connection type of
-		 * Analog/NXT is allowed.
+		 * NXT/Analog is allowed.
 		 * ^
 		 * [nxt-analog]: /docs/sensors/generic-nxt-analog-sensor
 		 *
-		 * @description: Analog/NXT sensor
+		 * @description: NXT/Analog sensor
 		 * @name_footnote: [^analog-mode]
 		 */
 		.name	= "analog",
@@ -64,11 +64,11 @@ static const struct lego_port_mode_info ht_nxt_smux_port_mode_info[] = {
 		 * associated with this port, then the appropriate driver will
 		 * be automatically loaded. Otherwise, you can use `set_device`
 		 * to load the correct driver for your sensor. Any driver with
-		 * a connection type of I2C/NXT is allowed.
+		 * a connection type of NXT/I2C is allowed.
 		 * ^
 		 * [ht-nxt-smux]: /docs/sensors/hitechnic-nxt-sensor-multiplexer
 		 *
-		 * @description: I2C/NXT sensor
+		 * @description: NXT/I2C sensor
 		 * @name_footnote: [^i2c-mode]
 		 */
 		.name	= "i2c",

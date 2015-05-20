@@ -411,7 +411,7 @@ struct lego_port_mode_info wedo_port_mode_info[] = {
 	/**
 	 * @description: LEGO WeDo Port
 	 * @module: wedo
-	 * @connection_types: Analog/WeDo, dc-motor, led
+	 * @connection_types: WeDo/Analog, dc-motor, led
 	 * @prefix: wedo
 	 */
 	[0] = {

@@ -25,7 +25,7 @@
  * EV3 UART Sensor Line Discipline
  *
  * This driver is a tty [line discipline] that runs on top of a tty. It listens
- * for the information data that is sent from UART/EV3 sensors. When it receives
+ * for the information data that is sent from EV3/UART sensors. When it receives
  * valid data, it negotiates with the sensor, telling the sensor to enter data
  * sending mode. After successful negotiation, it creates an [lego-sensor class]
  * that is used to monitor and control the sensor.
@@ -36,7 +36,7 @@
  * tty], which means the sensor does not necessarily have to be plugged into
  * one of the input ports on the EV3.
  * .
- * UART/EV3 sensors do not require individual drivers like other types of
+ * EV3/UART sensors do not require individual drivers like other types of
  * sensors. Instead, all of the needed info to sent from the sensor in a common
  * format.  As a result, the name returned by the [lego-sensor][lego-sensor
  * class] `driver_name` attribute may not be a real driver name. For well-known

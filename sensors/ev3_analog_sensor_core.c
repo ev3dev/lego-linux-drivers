@@ -24,7 +24,7 @@
  *
  * EV3 Analog Sensor Driver
  *
- * The `ev3-analog-sensor` module provides all of the drivers for Analog/EV3
+ * The `ev3-analog-sensor` module provides all of the drivers for EV3/Analog
  * sensors. You can find the complete list [here][supported sensors].
  * .
  * ### sysfs

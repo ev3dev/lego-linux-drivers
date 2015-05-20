@@ -71,11 +71,11 @@ static const struct lego_port_mode_info brickpi_in_port_mode_info[NUM_BRICKPI_IN
 		 * this mode is set. You must manually specify the correct
 		 * driver for your sensor using `set_device` if you want to use
 		 * another driver. Any driver with a connection type of
-		 * Analog/NXT is allowed.
+		 * NXT/Analog is allowed.
 		 * ^
 		 * [nxt-analog]: /docs/sensors/generic-nxt-analog-sensor
 		 *
-		 * @description: Analog/NXT sensor
+		 * @description: NXT/Analog sensor
 		 * @name_footnote: [^nxt-analog-mode]
 		 */
 		.name	= "nxt-analog",
@@ -92,7 +92,7 @@ static const struct lego_port_mode_info brickpi_in_port_mode_info[NUM_BRICKPI_IN
 		 * manually specify the sensor that is connected by using the
 		 * `set_device` attribute.
 		 *
-		 * @description: I2C/NXT sensor
+		 * @description: NXT/I2C sensor
 		 * @name_footnote: [^nxt-i2c-mode]
 		 */
 		.name	= "nxt-i2c",
@@ -102,7 +102,7 @@ static const struct lego_port_mode_info brickpi_in_port_mode_info[NUM_BRICKPI_IN
 		 * [^ev3-analog-mode]: Only the LEGO EV3 Touch sensor is supported.
 		 * The driver will load by default.
 		 *
-		 * @description: Analog/EV3 sensor
+		 * @description: EV3/Analog sensor
 		 * @name_footnote: [^ev3-analog-mode]
 		 */
 		.name	= "ev3-analog",
@@ -114,7 +114,7 @@ static const struct lego_port_mode_info brickpi_in_port_mode_info[NUM_BRICKPI_IN
 		 * detected, so you must specify the sensor manually using the
 		 * `set_device` attribute. No sensors are loaded by default.
 		 *
-		 * @description: UART/EV3 sensor
+		 * @description: EV3/UART sensor
 		 * @name_footnote: [^ev3-uart-mode]
 		 */
 		.name	= "ev3-uart",

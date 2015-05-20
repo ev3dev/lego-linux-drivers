@@ -24,7 +24,7 @@
  *
  * NXT I2C Sensor Driver
  *
- * The `nxt-i2c-sensor` module provides all of the drivers for I2C/NXT
+ * The `nxt-i2c-sensor` module provides all of the drivers for NXT/I2C
  * sensors. You can find the complete list [here][supported sensors].
  * .
  * ### Module Parameters

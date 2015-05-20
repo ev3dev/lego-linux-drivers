@@ -24,7 +24,7 @@
  *
  * LEGO EV3 UART Sensor Driver
  *
- * The `ev3-uart-sensor` module provides all of the drivers for UART/EV3
+ * The `ev3-uart-sensor` module provides all of the drivers for EV3/UART
  * sensors. You can find the complete list [here][supported sensors].
  * .
  * These drivers provide a [lego-sensor class] device, which is where all the

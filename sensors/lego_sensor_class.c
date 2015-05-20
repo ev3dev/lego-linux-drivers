@@ -88,7 +88,7 @@
  * .
  * `fw_version` (read-only)
  * : Returns the firmware version of the sensor if available. Currently only
- *   I2C/NXT sensors support this.
+ *   NXT/I2C sensors support this.
  * .
  * `mode` (read/write)
  * : Returns the current mode. Writing one of the values returned by `modes`
@@ -105,7 +105,7 @@
  * : Returns the polling period of the sensor in milliseconds. Writing sets the
  *   polling period. Setting to 0 disables polling. Minimum value is hard
  *   coded as 50 msec. Returns -EOPNOTSUPP if changing polling is not supported.
- *   Currently only I2C/NXT sensors support changing the polling period.
+ *   Currently only NXT/I2C sensors support changing the polling period.
  * .
  * `port_name` (read-only)
  * : Returns the name of the port that the sensor is connected to, e.g. `in1`.
