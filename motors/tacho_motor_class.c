@@ -80,16 +80,16 @@
 * .
 * `encoder_polarity` (read/write)
 * : Sets the polarity of the rotary encoder. This is an advanced feature to all
-*   use of motors that send inverted encoder signals to the EV3. This should
+*   use of motors that send inversed encoder signals to the EV3. This should
 *   be set correctly by the driver of a device. It You only need to change this
 *   value if you are using a unsupported device. Valid values are `normal` and
-*   `inverted`.
+*   `inversed`.
 * .
 * `polarity` (read/write)
 * : Sets the polarity of the motor. With `normal` polarity, a positive duty
-*   cycle will cause the motor to rotate clockwise. With `inverted` polarity,
+*   cycle will cause the motor to rotate clockwise. With `inversed` polarity,
 *   a positive duty cycle will cause the motor to rotate counter-clockwise.
-*   Valid values are `normal` and `inverted`.
+*   Valid values are `normal` and `inversed`.
 * .
 * `port_name` (read-only)
 * : Returns the name of the port that the motor is connected to.
