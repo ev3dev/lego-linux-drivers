@@ -1626,6 +1626,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_sets	= 3,
 				.data_type	= LEGO_SENSOR_DATA_S16,
 				.units		= "g",
+				.decimals	= 3,
 			},
 			[2] = {
 				/**
