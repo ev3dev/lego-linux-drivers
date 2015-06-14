@@ -16,6 +16,8 @@
 #ifndef NXT_I2C_SENSOR_H_
 #define NXT_I2C_SENSOR_H_
 
+#include <linux/hrtimer.h>
+
 #include <lego.h>
 #include <lego_port_class.h>
 #include <lego_sensor_class.h>
@@ -204,7 +206,8 @@ struct nxt_i2c_sensor_data {
 	const struct nxt_i2c_sensor_info *info;
 	void *callback_data;
 	struct lego_sensor_device sensor;
-	struct delayed_work poll_work;
+	struct hrtimer poll_timer;
+	struct work_struct poll_work;
 	enum nxt_i2c_sensor_type type;
 	unsigned poll_ms;
 };

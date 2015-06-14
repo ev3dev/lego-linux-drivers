@@ -69,12 +69,9 @@
 #include "../ev3/legoev3_ports.h"
 #endif
 
-#define NXT_I2C_MIN_POLL_MS 50
-
 static u16 default_poll_ms = 100;
 module_param(default_poll_ms, ushort, 0644);
-MODULE_PARM_DESC(default_poll_ms, "Polling period in milliseconds. Minimum "
-	"value is "__stringify(NXT_I2C_MIN_POLL_MS)" or 0 to disable polling.");
+MODULE_PARM_DESC(default_poll_ms, "Polling period in milliseconds.Set to 0 to disable polling.");
 static bool allow_autodetect = 1;
 module_param(allow_autodetect, bool, 0644);
 MODULE_PARM_DESC(allow_autodetect, "Allow NXT I2C sensors to be automatically detected.");
@@ -92,6 +89,8 @@ static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
 			return err;
 	}
 
+	hrtimer_cancel(&sensor->poll_timer);
+
 	if (sensor->info->i2c_mode_info[mode].set_mode_reg) {
 		err = i2c_smbus_write_byte_data(sensor->client,
 			sensor->info->i2c_mode_info[mode].set_mode_reg,
@@ -100,7 +99,11 @@ static int nxt_i2c_sensor_set_mode(void *context, u8 mode)
 			return err;
 	}
 
-	nxt_i2c_sensor_poll_work(&sensor->poll_work.work);
+	/* If we are not polling, we still call the poll function once */
+	if (sensor->poll_ms)
+		hrtimer_start(&sensor->poll_timer, ktime_set(0, 0), HRTIMER_MODE_REL);
+	else
+		nxt_i2c_sensor_poll_work(&sensor->poll_work);
 
 	if (sensor->info->ops && sensor->info->ops->set_mode_post_cb)
 		sensor->info->ops->set_mode_post_cb(sensor, mode);
@@ -174,25 +177,33 @@ static int nxt_i2c_sensor_set_poll_ms(void *context, unsigned value)
 {
 	struct nxt_i2c_sensor_data *sensor = context;
 
-	if (value > 0 && value < NXT_I2C_MIN_POLL_MS)
-		return -EINVAL;
 	if (sensor->poll_ms == value)
 		return 0;
 	if (!value)
-		cancel_delayed_work(&sensor->poll_work);
+		hrtimer_cancel(&sensor->poll_timer);
 	else if (!sensor->poll_ms)
-		schedule_delayed_work(&sensor->poll_work,
-				      msecs_to_jiffies(value));
+		hrtimer_start(&sensor->poll_timer, ktime_set(0, 0),
+			HRTIMER_MODE_REL);
 
 	sensor->poll_ms = value;
 	return 0;
 }
 
+enum hrtimer_restart nxt_i2c_sensor_poll_timer(struct hrtimer *timer)
+{
+	struct nxt_i2c_sensor_data *data =
+		container_of(timer, struct nxt_i2c_sensor_data, poll_timer);
+
+	hrtimer_forward_now(timer, ms_to_ktime(data->poll_ms));
+	schedule_work(&data->poll_work);
+
+	return HRTIMER_RESTART;
+}
+
 void nxt_i2c_sensor_poll_work(struct work_struct *work)
 {
-	struct delayed_work *dwork = to_delayed_work(work);
 	struct nxt_i2c_sensor_data *data =
-		container_of(dwork, struct nxt_i2c_sensor_data, poll_work);
+		container_of(work, struct nxt_i2c_sensor_data, poll_work);
 	const struct nxt_i2c_sensor_mode_info *i2c_mode_info =
 		&data->info->i2c_mode_info[data->sensor.mode];
 	struct lego_sensor_mode_info *mode_info =
@@ -205,10 +216,6 @@ void nxt_i2c_sensor_poll_work(struct work_struct *work)
 			i2c_mode_info->read_data_reg,
 			lego_sensor_get_raw_data_size(mode_info),
 			mode_info->raw_data);
-
-	if (data->poll_ms && !delayed_work_pending(&data->poll_work))
-		schedule_delayed_work(&data->poll_work,
-				      msecs_to_jiffies(data->poll_ms));
 }
 
 static int nxt_i2c_sensor_probe(struct i2c_client *client,
@@ -292,9 +299,9 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 			minfo->figures = 5;
 	}
 
-	INIT_DELAYED_WORK(&data->poll_work, nxt_i2c_sensor_poll_work);
-	if (default_poll_ms && default_poll_ms < NXT_I2C_MIN_POLL_MS)
-		default_poll_ms = NXT_I2C_MIN_POLL_MS;
+	INIT_WORK(&data->poll_work, nxt_i2c_sensor_poll_work);
+	hrtimer_init(&data->poll_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	data->poll_timer.function = nxt_i2c_sensor_poll_timer;
 	data->poll_ms = default_poll_ms;
 	i2c_set_clientdata(client, data);
 
@@ -336,8 +343,8 @@ static int nxt_i2c_sensor_remove(struct i2c_client *client)
 	if (data->info->ops && data->info->ops->remove_cb)
 		data->info->ops->remove_cb(data);
 	data->poll_ms = 0;
-	if (delayed_work_pending(&data->poll_work))
-		cancel_delayed_work_sync(&data->poll_work);
+	hrtimer_cancel(&data->poll_timer);
+	cancel_work_sync(&data->poll_work);
 	if (data->in_port)
 		data->in_port->nxt_i2c_ops->set_pin1_gpio(data->in_port->context,
 							  LEGO_PORT_GPIO_FLOAT);
