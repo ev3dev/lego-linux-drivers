@@ -1500,9 +1500,9 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * servo motor devices (one for each of the 8 channels) in addition
 		 * to the [lego-sensor class] device. See the [servo-motor class]
 		 * for more information. The `servo-motor` class `port_name` attribute
-		 * will return `in<N>:sv<M>` where `<N>` is the input port the servo
-		 * controller is connected to and `<M>` is the channel as indicated
-		 * on the servo controller itself.
+		 * will return `in<X>:i2c<Y>:sv<Z>` where `<X>` is the input port
+		 * the servo controller is connected to, `<Y>` is the address and
+		 * `<Z>` is the channel as indicated on the servo controller itself.
 		 * ^
 		 * [lego-sensor class]: /docs/drivers/lego-sensor-class
 		 * [servo-motor class]: /docs/drivers/servo-motor-class
@@ -2320,7 +2320,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * [tacho-motor] class devices. Use the tacho-motor class devices
 		 * to actually control the motors. You can identify the motors
 		 * by the `port_name` attribute. It will be `in<X>:i2c<Y>:mux<Z>`
-		 * where `<X>` is A-D, `<Y>` is 3 (unless you changed the address)
+		 * where `<X>` is 1-4, `<Y>` is 3 (unless you changed the address)
 		 * and `<Z>` is 1 or 2 (matches M1 or M2 printed on the NxtMMX).
 		 * ^
 		 * [tacho-motor]: /docs/drivers/tacho-motor-class
