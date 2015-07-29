@@ -1272,11 +1272,13 @@ static int legoev3_motor_get_position(void *context, long *position)
 	return 0;
 }
 
+static int legoev3_motor_get_state(void *context);
+
 static int legoev3_motor_set_position(void *context, long position)
 {
 	struct legoev3_motor_data *ev3_tm = context;
 
-	if (ev3_tm->run || TM_STOP_COMMAND_HOLD == ev3_tm->active_params.stop_command)
+	if (legoev3_motor_get_state(ev3_tm) & TM_STATE_RUNNING)
 		return -EBUSY;
 
 	ev3_tm->position = position;
@@ -1304,16 +1306,17 @@ static int legoev3_motor_get_duty_cycle(void *context,
 static int legoev3_motor_get_state(void *context)
 {
 	struct legoev3_motor_data *ev3_tm = context;
+	const struct dc_motor_ops *motor_ops = ev3_tm->ldev->port->dc_motor_ops;
+	void *motor_ops_context = ev3_tm->ldev->port->context;
 
 	unsigned state = 0;
-	if (ev3_tm->run && ev3_tm->state < STATE_STOP) {
+	if (IS_DC_MOTOR_INTERNAL_RUN_COMMAND(motor_ops->get_command(motor_ops_context)))
 		state |= BIT(TM_STATE_RUNNING);
-		if (ev3_tm->state > STATE_RUN_FOREVER && ev3_tm->state != STATE_RAMP_CONST)
-			state |= BIT(TM_STATE_RAMPING);
-	} else if (!ev3_tm->run && ev3_tm->active_params.stop_command == TM_STOP_COMMAND_HOLD) {
-		state |= BIT(TM_STATE_RUNNING);
+	if (ev3_tm->state > STATE_RUN_FOREVER && ev3_tm->state != STATE_RAMP_CONST && ev3_tm->state < STATE_STOP)
+		state |= BIT(TM_STATE_RAMPING);
+	if (ev3_tm->state >= STATE_STOP && ev3_tm->active_params.stop_command == TM_STOP_COMMAND_HOLD)
 		state |= BIT(TM_STATE_HOLDING);
-	}
+
 	/* TODO: implement stall detection */
 
 	return state;
