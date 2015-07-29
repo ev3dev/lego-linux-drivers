@@ -88,8 +88,7 @@
  * .
  * `state` (read-only)
  * : Returns a space separated list of flags indicating the state of the servo.
- *   Possible values are:
- *   * `running`: Indicates that the motor is powered.
+ *   Possible flag is `running` - indicates that the motor is powered.
  * .
  * [supported devices]: /docs/motors/#supported-devices
 */
