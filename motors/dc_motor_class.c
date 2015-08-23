@@ -36,9 +36,11 @@
  * the motor is plugged in to).
  * .
  * `command` (write-only)
- * : Sets the command for the motor. Possible values are `run-forever`, `run-timed` and
- *  `stop`. Not all commands may be supported, so be sure to check the contents
- *   of the `commands` attribute.
+ * : Sets the command for the motor. Possible values are `run-forever`,
+ *   `run-timed`, `run-direct` and `stop`. Not all commands may be supported.
+ *   `run-direct` will run the motor at the duty cycle specified by `duty_cycle_sp`.
+ *   Unlike other run commands, changing `duty_cycle_sp` while running *will*
+ *   take effect immediately.
  * .
  * `commands` (read-only)
  * : Returns a space separated list of commands supported by the motor
@@ -102,6 +104,7 @@
 const char* dc_motor_command_names[] = {
 	[DC_MOTOR_COMMAND_RUN_FOREVER]	= "run-forever",
 	[DC_MOTOR_COMMAND_RUN_TIMED]	= "run-timed",
+	[DC_MOTOR_COMMAND_RUN_DIRECT]	= "run-direct",
 	[DC_MOTOR_COMMAND_STOP]		= "stop",
 };
 
@@ -325,6 +328,16 @@ static ssize_t duty_cycle_sp_store(struct device *dev,
 	if (sscanf(buf, "%d", &value) != 1 || value < -100 || value > 100)
 		return -EINVAL;
 	motor->params.duty_cycle_sp = value;
+
+	/* If we're in run-direct mode, allow the duty_cycle_sp to change */
+
+	if( motor->command == DC_MOTOR_COMMAND_RUN_DIRECT ) {
+		if (motor->active_params.polarity == DC_MOTOR_POLARITY_INVERSED)
+			motor->active_params.duty_cycle_sp = motor->params.duty_cycle_sp * -1;
+		else
+			motor->active_params.duty_cycle_sp = motor->params.duty_cycle_sp;
+		dc_motor_class_start_motor_ramp(motor);
+	}
 
 	return count;
 }

@@ -64,7 +64,7 @@ static void wedo_motor_update_output(struct wedo_motor_data *wmd)
 
 static unsigned wedo_motor_get_supported_commands(void* context)
 {
-	return BIT(DC_MOTOR_COMMAND_RUN_FOREVER) | BIT(DC_MOTOR_COMMAND_STOP);
+	return BIT(DC_MOTOR_COMMAND_RUN_FOREVER) | BIT(DC_MOTOR_COMMAND_RUN_DIRECT) | BIT(DC_MOTOR_COMMAND_STOP);
 }
 
 static unsigned wedo_motor_get_supported_stop_commands(void* context)

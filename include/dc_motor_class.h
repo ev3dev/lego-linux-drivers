@@ -26,12 +26,13 @@
 enum dc_motor_command {
 	DC_MOTOR_COMMAND_RUN_FOREVER,
 	DC_MOTOR_COMMAND_RUN_TIMED,
+	DC_MOTOR_COMMAND_RUN_DIRECT,
 	DC_MOTOR_COMMAND_STOP,
 	NUM_DC_MOTOR_COMMANDS
 };
 
 #define IS_DC_MOTOR_RUN_COMMAND(cmd) \
-	(cmd == DC_MOTOR_COMMAND_RUN_FOREVER || cmd == DC_MOTOR_COMMAND_RUN_TIMED)
+	(cmd == DC_MOTOR_COMMAND_RUN_FOREVER || cmd == DC_MOTOR_COMMAND_RUN_TIMED || cmd == DC_MOTOR_COMMAND_RUN_DIRECT)
 
 /*
  * These commands are used internally by drivers that implement the dc-motor class.
