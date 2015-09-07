@@ -276,7 +276,8 @@ int ev3_output_port_set_direction_gpios(struct ev3_output_port_data *data)
 
 static unsigned ev3_ouput_port_get_supported_commands(void* context)
 {
-	return BIT(DC_MOTOR_COMMAND_RUN_FOREVER) | BIT(DC_MOTOR_COMMAND_STOP);
+	return BIT(DC_MOTOR_COMMAND_RUN_FOREVER) | BIT(DC_MOTOR_COMMAND_RUN_DIRECT)
+		| BIT(DC_MOTOR_COMMAND_STOP);
 }
 
 static unsigned ev3_ouput_port_get_supported_stop_commands(void* context)
