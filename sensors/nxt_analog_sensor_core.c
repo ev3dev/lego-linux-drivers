@@ -54,11 +54,12 @@
 static int nxt_analog_sensor_set_mode(void *context, u8 mode)
 {
 	struct nxt_analog_sensor_data *data = context;
-	struct lego_sensor_mode_info *mode_info = &data->info.mode_info[mode];
+	struct lego_sensor_mode_info *mode_info;
 
 	if (mode >= data->info.num_modes)
 		return -EINVAL;
 
+	mode_info = &data->info.mode_info[mode];
 	data->ldev->port->nxt_analog_ops->set_pin5_gpio(data->ldev->port->context,
 			data->info.analog_mode_info[mode].pin5_state);
 	lego_port_set_raw_data_ptr_and_func(data->ldev->port, mode_info->raw_data,
