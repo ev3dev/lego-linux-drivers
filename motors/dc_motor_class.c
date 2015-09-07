@@ -38,9 +38,14 @@
  * `command` (write-only)
  * : Sets the command for the motor. Possible values are `run-forever`,
  *   `run-timed`, `run-direct` and `stop`. Not all commands may be supported.
- *   `run-direct` will run the motor at the duty cycle specified by `duty_cycle_sp`.
- *   Unlike other run commands, changing `duty_cycle_sp` while running *will*
- *   take effect immediately.
+*    `run-forever` will cause the motor to run until another command is sent.
+*    `run-timed` will run the motor for the amount of time specified in `time_sp`
+*    and then stop the motor using the command specified by `stop_command`.
+*    `run-direct` will run the motor at the duty cycle specified by `duty_cycle_sp`.
+*    Unlike other run commands, changing `duty_cycle_sp` while running *will*
+*    take effect immediately.
+*    `stop` will stop any of the run commands before they are complete using the
+*    command specified by `stop_command`.
  * .
  * `commands` (read-only)
  * : Returns a space separated list of commands supported by the motor
