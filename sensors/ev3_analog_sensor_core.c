@@ -55,7 +55,7 @@ static int ev3_analog_sensor_set_mode(void *context, u8 mode)
 	lego_port_set_raw_data_ptr_and_func(data->ldev->port, mode_info->raw_data,
 		lego_sensor_get_raw_data_size(mode_info), NULL, NULL);
 
-	return -EINVAL;
+	return 0;
 }
 
 static int ev3_analog_sensor_probe(struct lego_device *ldev)
