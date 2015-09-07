@@ -47,6 +47,7 @@ enum nxt_analog_sensor_types {
 	LEGO_NXT_TOUCH_SENSOR,
 	LEGO_NXT_LIGHT_SENSOR,
 	LEGO_NXT_SOUND_SENSOR,
+	DI_DFLEX_SENSOR,
 	HT_EOPD_SENSOR,
 	HT_FORCE_SENSOR,
 	HT_GYRO_SENSOR,
@@ -58,6 +59,7 @@ enum nxt_analog_sensor_types {
 #define LEGO_NXT_TOUCH_SENSOR_NAME	"lego-nxt-touch"
 #define LEGO_NXT_LIGHT_SENSOR_NAME	"lego-nxt-light"
 #define LEGO_NXT_SOUND_SENSOR_NAME	"lego-nxt-sound"
+#define DI_DFLEX_SENSOR_NAME		"di-dflex"
 #define HT_EOPD_SENSOR_NAME		"ht-nxt-eopd"
 #define HT_FORCE_SENSOR_NAME		"ht-nxt-force"
 #define HT_GYRO_SENSOR_NAME		"ht-nxt-gyro"

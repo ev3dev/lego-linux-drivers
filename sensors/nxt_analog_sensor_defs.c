@@ -294,6 +294,31 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 			},
 		},
 	},
+	[DI_DFLEX_SENSOR] = {
+		/**
+		 * @vendor_name: Dexter Industries
+		 * @vendor_part_name: dFlex
+		 * @vendor_website: http://www.dexterindustries.com/shop/dflex-lego-mindstorms-nxt-flexible-sensor-for-mindstorms/
+		 */
+		.name = DI_DFLEX_SENSOR_NAME,
+		.num_modes = 1,
+		.mode_info = {
+			[0] = {
+				/**
+				 * @description: Flex
+				 * @value0: Flex (0-100)
+				 * @value0_footnote: [^adjusted-value]
+				 */
+				.name = "FLEX",
+				.raw_min = 4150,
+				.raw_max = 4510,
+				.si_min = 0,
+				.si_max = 100,
+				.data_sets = 1,
+				.data_type = LEGO_SENSOR_DATA_S32,
+			},
+		}
+	},
 	[HT_EOPD_SENSOR] = {
 		/**
 		 * @vendor_name: HiTechnic
