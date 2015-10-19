@@ -2727,6 +2727,176 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
+	[PX_PIXY] = {
+		/**
+		 * @vendor_name: Charmed Labs
+		 * @vendor_part_name: Pixy (CMUcam5) for LEGO
+		 * @vendor_website: http://charmedlabs.com/default/pixy-cmucam5-for-lego/
+		 * @default_address: 0x01
+		 */
+		/* based on https://github.com/charmedlabs/pixy/blob/master/src/device/main_m4/src/serial.cpp */
+		.name		= PX_PIXY_NAME,
+		.vendor_id	= "Pixy",
+		.product_id	= "Pixy",
+		.num_modes	= 10,
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
+			[0] = {
+				/**
+				 * [^angle]: Angle information is only available for color codes, otherwise the value is 0.
+				 *
+				 * @description: All
+				 * @value0: Signature low byte
+				 * @value1: Signature high byte
+				 * @value2: X
+				 * @value3: Y
+				 * @value4: Width
+				 * @value5: Height
+				 * @value6: Angle
+				 * @value6_footnote: [^angle]
+				 */
+				.name		= "ALL",
+				.data_sets	= 7,
+			},
+			[1] = {
+				/**
+				 * @description: Signature #1
+				 * @value0: Count
+				 * @value1: X
+				 * @value2: Y
+				 * @value3: Width
+				 * @value4: Height
+				 */
+				.name		= "SIG1",
+				.data_sets	= 5,
+			},
+			[2] = {
+				/**
+				 * @description: Signature #2
+				 * @value0: Count
+				 * @value1: X
+				 * @value2: Y
+				 * @value3: Width
+				 * @value4: Height
+				 */
+				.name		= "SIG2",
+				.data_sets	= 5,
+			},
+			[3] = {
+				/**
+				 * @description: Signature #3
+				 * @value0: Count
+				 * @value1: X
+				 * @value2: Y
+				 * @value3: Width
+				 * @value4: Height
+				 */
+				.name		= "SIG3",
+				.data_sets	= 5,
+			},
+			[4] = {
+				/**
+				 * @description: Signature #4
+				 * @value0: Count
+				 * @value1: X
+				 * @value2: Y
+				 * @value3: Width
+				 * @value4: Height
+				 */
+				.name		= "SIG4",
+				.data_sets	= 5,
+			},
+			[5] = {
+				/**
+				 * @description: Signature #5
+				 * @value0: Count
+				 * @value1: X
+				 * @value2: Y
+				 * @value3: Width
+				 * @value4: Height
+				 */
+				.name		= "SIG5",
+				.data_sets	= 5,
+			},
+			[6] = {
+				/**
+				 * @description: Signature #6
+				 * @value0: Count
+				 * @value1: X
+				 * @value2: Y
+				 * @value3: Width
+				 * @value4: Height
+				 */
+				.name		= "SIG6",
+				.data_sets	= 5,
+			},
+			[7] = {
+				/**
+				 * @description: Signature #7
+				 * @value0: Count
+				 * @value1: X
+				 * @value2: Y
+				 * @value3: Width
+				 * @value4: Height
+				 */
+				.name		= "SIG7",
+				.data_sets	= 5,
+			},
+			[8] = {
+				/**
+				 * @description: Color code
+				 * @value0: Count
+				 * @value1: X
+				 * @value2: Y
+				 * @value3: Width
+				 * @value4: Height
+				 * @value5: Angle
+				 */
+				.name		= "COL-CODE",
+				.data_sets	= 6,
+			},
+			[9] = {
+				/**
+				 * @description: Angle
+				 * @description_footnote: [^angle]
+				 * @value0: Angle
+				 */
+				.name		= "ANGLE",
+				.data_sets	= 1,
+			},
+		},
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
+			[0] = {
+				.read_data_reg	= 0x50,
+			},
+			[1] = {
+				.read_data_reg	= 0x51,
+			},
+			[2] = {
+				.read_data_reg	= 0x52,
+			},
+			[3] = {
+				.read_data_reg	= 0x53,
+			},
+			[4] = {
+				.read_data_reg	= 0x54,
+			},
+			[5] = {
+				.read_data_reg	= 0x55,
+			},
+			[6] = {
+				.read_data_reg	= 0x56,
+			},
+			[7] = {
+				.read_data_reg	= 0x57,
+			},
+			[8] = {
+				.read_data_reg	= 0x58,
+			},
+			[9] = {
+				.read_data_reg	= 0x60,
+			},
+		},
+	},
 };
 
 EXPORT_SYMBOL_GPL(nxt_i2c_sensor_defs);
