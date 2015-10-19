@@ -1510,7 +1510,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: NxtServo
 		 * @vendor_part_name: 8-channel Servo Controller
-		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=93
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/25-8-channel-servo-controller-for-nxt-or-ev3
 		 * @default_address: 0x58
 		 * @default_address_footnote: [^address]
 		 * @device_class_footnote: [^servo-motor-devices]
@@ -1583,7 +1583,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: AbsoluteIMU(-A/C/G)
 		 * @vendor_part_name: Gyro, MultiSensitivity Accelerometer and Compass
-		 * @vendor_website: http://www.mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=169&MMN_position=30:30
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/15-gyro-multisensitivity-accelerometer-and-compass-for-nxt-or-ev3
 		 * @default_address: 0x11
 		 * @default_address_footnote: [^address]
 		 */
@@ -1789,7 +1789,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: AngleSensor
 		 * @vendor_part_name: GlideWheel-AS
-		 * @vendor_website: http://www.mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=173
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/17-glidewheel-as-angle-sensor-for-nxt-or-ev3
 		 * @default_address: 0x18
 		 */
 		.name		= MS_ANGLE_SENSOR_NAME,
@@ -1904,7 +1904,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: EV3SensorMUX
 		 * @vendor_part_name: EV3 Sensor Multiplexer
-		 * @vendor_website: http://www.mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=207
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/23-ev3-sensor-multiplexer-for-ev3-or-nxt
 		 * @default_address: 0x50, 0x51, 0x52
 		 * @default_address_footnote: [^addresses]
 		 * @device_class_footnote: [^port-and-sensor-devices]
@@ -1944,7 +1944,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: LightSensorArray
 		 * @vendor_part_name: Light Sensor Array
-		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=168
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/47-light-sensor-array-for-nxt-or-ev3
 		 * @default_address: 0x0A
 		 * @default_address_footnote: [^address]
 		 */
@@ -2090,7 +2090,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: LineLeader
 		 * @vendor_part_name: Line Follower Sensor
-		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=111
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/48-line-follower-sensor-for-nxt-or-ev3
 		 * @default_address: 0x01
 		 * @default_address_footnote: [^address]
 		 */
@@ -2328,7 +2328,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: NXTMMX-v2
 		 * @vendor_part_name: Multiplexer for NXT/EV3 Motors
-		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=134
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/21-multiplexer-for-nxtev3-motors
 		 * @default_address: 0x03
 		 * @default_address_footnote: [^address]
 		 * @device_class_footnote: [^tacho-motor-devices]
