@@ -2382,6 +2382,190 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
+	[MS_NXTCAM] = {
+		/**
+		 * [^address]: The address is programmable. See manufacturer
+		 * documentation for more information.
+		 *
+		 * @vendor_name: mindsensors.com
+		 * @vendor_part_number: NXTCam-v4
+		 * @vendor_part_name: Vision Subsystem v4 for NXT or EV3
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/14-vision-subsystem-v4-for-nxt-or-ev3-nxtcam-v4
+		 * @default_address: 0x01
+		 * @default_address_footnote: [^address]
+		 */
+		.name		= MS_NXTCAM_NAME,
+		.vendor_id	= "mndsnsrs",
+		.product_id	= "NXTCAM",
+		.num_modes	= 1,
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
+			[0] = {
+				/**
+				 * [^advanced]: This driver only allows for tracking a single
+				 * object. To track more than one object and for other more
+				 * advanced uses, you can disable this driver by setting `poll_ms`
+				 * to `0` and using the `direct` attribute to directly read and
+				 * write I2C messages. See the [Using I2C Sensors] page and the
+				 * manufacturers documentation for more information.
+				 * ^
+				 * [Using I2C Sensors]: /docs/sensors/using-i2c-sensors
+				 *
+				 * @name_footnote: [^advanced]
+				 * @description: Tracking
+				 * @value0: Object count
+				 * @value1: Color index
+				 * @value2: X upper left
+				 * @value3: Y upper left
+				 * @value4: X lower right
+				 * @value5: Y lower right
+				 */
+				.name		= "TRACK",
+				.data_sets	= 6,
+			},
+		},
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
+			[0] = {
+				.read_data_reg	= 0x42,
+			},
+		},
+		.num_commands	= 6,
+		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
+			[0] = {
+				/**
+				 * @description: Enable tracking
+				 */
+				.name = "TRACK-ON",
+			},
+			[1] = {
+				/**
+				 * @description: Disable tracking
+				 */
+				.name = "TRACK-OFF",
+			},
+			[2] = {
+				/**
+				 * @description: Set to object tracking mode
+				 */
+				.name = "TRACK-OBJ",
+			},
+			[3] = {
+				/**
+				 * @description: Set to line tracking mode
+				 */
+				.name = "TRACK-LINE",
+			},
+			[4] = {
+				/**
+				 * @description: Sort by size
+				 */
+				.name = "SORT-SIZE",
+			},
+			[5] = {
+				/**
+				 * @description: Sort by color
+				 */
+				.name = "SORT-COL",
+			},
+		},
+		.i2c_cmd_info	= (const struct nxt_i2c_sensor_cmd_info[]) {
+			[0] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'E',
+			},
+			[1] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'D',
+			},
+			[2] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'B',
+			},
+			[3] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'L',
+			},
+			[4] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'A',
+			},
+			[5] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'U',
+			},
+		},
+	},
+	[MS_PIXYADAPTER] = {
+		/**
+		 * [^address]: The address is programmable. See manufacturer
+		 * documentation for more information.
+		 *
+		 * @vendor_name: mindsensors.com
+		 * @vendor_part_number: PixyAdapter
+		 * @vendor_part_name: Pixy Adapter for MINDSTORMS EV3 or NXT
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/35-pixy-adapter
+		 * @default_address: 0x01
+		 * @default_address_footnote: [^address]
+		 */
+		.name		= MS_PIXYADAPTER_NAME,
+		.vendor_id	= "mndsnsrs",
+		.product_id	= "PixyAdpt",
+		.num_modes	= 1,
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
+			[0] = {
+				/**
+				 * [^advanced]: This driver only allows for tracking a single
+				 * object. To track more than one object and for other more
+				 * advanced uses, you can disable this driver by setting `poll_ms`
+				 * to `0` and using the `direct` attribute to directly read and
+				 * write I2C messages. See the [Using I2C Sensors] page and the
+				 * manufacturers documentation for more information.
+				 * ^
+				 * [Using I2C Sensors]: /docs/sensors/using-i2c-sensors
+				 *
+				 * @name_footnote: [^advanced]
+				 * @description: Tracking
+				 * @value0: Object count
+				 * @value1: Color index
+				 * @value2: X upper left
+				 * @value3: Y upper left
+				 * @value4: X lower right
+				 * @value5: Y lower right
+				 */
+				.name		= "TRACK",
+				.data_sets	= 6,
+			},
+		},
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
+			[0] = {
+				.read_data_reg	= 0x42,
+			},
+		},
+		.num_commands	= 2,
+		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
+			[0] = {
+				/**
+				 * @description: Sort by size
+				 */
+				.name = "SORT-SIZE",
+			},
+			[1] = {
+				/**
+				 * @description: Sort by color
+				 */
+				.name = "SORT-COL",
+			},
+		},
+		.i2c_cmd_info	= (const struct nxt_i2c_sensor_cmd_info[]) {
+			[0] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'A',
+			},
+			[1] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'U',
+			},
+		},
+	},
 	[MI_CRUIZCORE_XG1300L] = {
 		/**
 		 * [^ids]: CruizCore XG1300L doesn't follow LEGO guidelines by

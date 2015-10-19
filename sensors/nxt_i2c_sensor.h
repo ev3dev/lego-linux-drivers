@@ -136,6 +136,8 @@ enum nxt_i2c_sensor_type {
 	MS_LIGHT_SENSOR_ARRAY,
 	MS_LINE_LEADER,
 	MS_NXTMMX,
+	MS_NXTCAM,
+	MS_PIXYADAPTER,
 	MI_CRUIZCORE_XG1300L,
 	NUM_NXT_I2C_SENSORS
 };
@@ -167,6 +169,8 @@ enum nxt_i2c_sensor_type {
 #define MS_LIGHT_SENSOR_ARRAY_NAME		"ms-light-array"
 #define MS_LINE_LEADER_NAME			"ms-line-leader"
 #define MS_NXTMMX_NAME				"ms-nxtmmx"
+#define MS_NXTCAM_NAME				"ms-nxtcam"
+#define MS_PIXYADAPTER_NAME			"ms-pixy-adapter"
 #define MI_CRUIZCORE_XG1300L_NAME		"mi-xg1300l"
 
 /*
@@ -194,6 +198,8 @@ enum nxt_i2c_sensor_type {
 	LEGO_DEVICE_ID(MS_LIGHT_SENSOR_ARRAY),			\
 	LEGO_DEVICE_ID(MS_LINE_LEADER),				\
 	LEGO_DEVICE_ID(MS_NXTMMX),				\
+	LEGO_DEVICE_ID(MS_NXTCAM),				\
+	LEGO_DEVICE_ID(MS_PIXYADAPTER),				\
 	LEGO_DEVICE_ID(MI_CRUIZCORE_XG1300L),			\
 	{ }
 
