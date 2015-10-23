@@ -275,8 +275,10 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 			err = sensor->set_mode(sensor->context, i);
 			if (err)
 				return err;
-			sensor->mode = i;
-			kobject_uevent(&dev->kobj, KOBJ_CHANGE);
+			if (sensor->mode != i) {
+				sensor->mode = i;
+				kobject_uevent(&dev->kobj, KOBJ_CHANGE);
+			}
 			return count;
 		}
 	}
