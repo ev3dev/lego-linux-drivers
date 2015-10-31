@@ -412,7 +412,7 @@ static struct i2c_device_id nxt_i2c_sensor_id_table[] = {
 };
 MODULE_DEVICE_TABLE(i2c, nxt_i2c_sensor_id_table);
 
-const struct i2c_driver nxt_i2c_sensor_driver = {
+struct i2c_driver nxt_i2c_sensor_driver = {
 	.driver = {
 		.name	= "nxt-i2c-sensor",
 	},

@@ -206,7 +206,7 @@ enum nxt_i2c_sensor_type {
 	LEGO_DEVICE_ID(PX_PIXY),				\
 	{ }
 
-extern const struct i2c_driver nxt_i2c_sensor_driver;
+extern struct i2c_driver nxt_i2c_sensor_driver;
 extern const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[];
 
 struct nxt_i2c_sensor_data {
