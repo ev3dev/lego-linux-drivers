@@ -31,12 +31,12 @@
  * Dexter Industries BrickPi Line Discipline
  *
  * This driver is a tty [line discipline] that runs on top of a tty. It provides
- * [lego-port] class instances for the datas themselves (excluding input data 5).
+ * [lego-port] class instances for the ports themselves (excluding input port 5).
  * and [lego-sensor] and [tacho-motor] instances for the devices connected to
- * the datas.
+ * the ports.
  * .
  * [line discipline]: https://en.wikipedia.org/wiki/Line_discipline
- * [lego-data]: ../lego-port-class
+ * [lego-port]: ../lego-port-class
  * [lego-sensor]: ../lego-sensor-class
  * [tacho-motor]: ../tacho-motor-class
  */
