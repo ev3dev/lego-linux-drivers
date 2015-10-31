@@ -283,7 +283,7 @@ struct ev3_input_port_mode_name {
 
 /*
  * Documentation is automatically generated from this struct, so formatting is
- * very important. Make sure any new modes have the same layout. The comments
+ * very important. Make sure any new modes have the same syntax. The comments
  * are also parsed to provide more information for the documentation. The
  * parser can be found in the ev3dev-kpkg repository.
  */
@@ -292,7 +292,7 @@ static const struct lego_port_mode_info legoev3_input_port_mode_info[] = {
 	/**
 	 * @description: EV3 Input Port
 	 * @module: legoev3-ports
-	 * @connection_types: EV3/UART, Other/UART, NXT/I2C, Other/I2C, EV3/Analog, NXT/Analog
+	 * @connection_types: NXT/Analog, NXT/I2C, Other/I2C, EV3/Analog, EV3/UART, Other/UART
 	 * @prefix: in
 	 */
 	[EV3_INPUT_PORT_MODE_AUTO] = {

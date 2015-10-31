@@ -407,16 +407,42 @@ struct device_type wedo_port_type = {
 	.name	= "wedo-port",
 };
 
+/*
+ * Documentation is automatically generated from this struct, so formatting is
+ * very important. Make sure any new modes have the same syntax. The comments
+ * are also parsed to provide more information for the documentation. The
+ * parser can be found in the ev3dev-kpkg repository.
+ */
+
 struct lego_port_mode_info wedo_port_mode_info[] = {
 	/**
+	 * [^port-name-prefix]: The full `port_name` is in the format:
+	 * ^
+	 *        usb<usb-path>:wedo<n>
+	 * ^
+	 *    The USB path might be something like `1-1.3:1.0`. Read more about
+	 *    it [here](http://gajjarpremal.blogspot.in/2015/04/sysfs-structures-for-linux-usb.html).
+	 *    Run `lsusb -t` to help figure out the correct path for your WeDo hub.
+	 * ^
+	 *    For example, this...
+	 * ^
+	 *         /:  Bus 05.Port 1: Dev 1, Class=root_hub, Driver=ehci-pci/4p, 480M
+	 *             |__ Port 4: Dev 5, If 0, Class=Hub, Driver=hub/4p, 480M
+	 *                 |__ Port 2: Dev 6, If 0, Class=Human Interface Device, Driver=wedo, 1.5M
+	 * ^
+	 *    ...translates to `usb5-4.2:1.0:wedo0`. You can see how `Bus 05`,
+	 *    `Port 4` and `Port 2` result in `5-4.2`. The last bit (configuration
+	 *    and interface) will always be `:1.0`.
+	 *
 	 * @description: LEGO WeDo Port
 	 * @module: wedo
 	 * @connection_types: WeDo/Analog, dc-motor, led
 	 * @prefix: wedo
+	 * @prefix_footnote: [^port-name-prefix]
 	 */
 	[0] = {
 		/**
-		 * @description: Automatic
+		 * @description: The attached device is automatically detected.
 		 */
 		.name = "auto",
 	},

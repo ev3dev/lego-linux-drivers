@@ -34,16 +34,24 @@ enum ms_ev3_smux_mode {
 
 /*
  * Documentation is automatically generated from this struct, so formatting is
- * very important. Make sure any new modes have the same layout. The comments
+ * very important. Make sure any new modes have the same syntax. The comments
  * are also parsed to provide more information for the documentation. The
  * parser can be found in the ev3dev-kpkg repository.
  */
 
 static const struct lego_port_mode_info ms_ev3_smux_port_mode_info[] = {
 	/**
+	 * [^port-name-prefix]: The full `port_name` is in the format:
+	 * ^
+	 *        [<parent-port-name>:]mux<n>
+	 * ^
+	 *    For example, if we are looking at port 1 of this mux plugged into
+	 *    input port 2 on the EV3, the port name will be `in2:i2c50:mux1`.
+	 *
 	 * @description: mindsensors.com EV3 Sensor Multiplexer Input Port
 	 * @connection_types: EV3/UART, EV3/Analog
 	 * @prefix: mux
+	 * @prefix_footnote: [^port-name-prefix]
 	 */
 	[MS_EV3_SMUX_MODE_UART] = {
 		/**
