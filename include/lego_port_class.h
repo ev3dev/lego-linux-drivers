@@ -50,6 +50,10 @@ struct lego_port_nxt_i2c_ops {
 	int (*set_pin1_gpio)(void *context, enum lego_port_gpio_state state);
 };
 
+struct lego_port_ev3_uart_ops {
+	int (* set_mode)(void *context, u8 mode);
+};
+
 /**
  * struct lego_port_device
  * @name: Name of the driver that loaded this device.
@@ -64,6 +68,7 @@ struct lego_port_nxt_i2c_ops {
  * @get_status: Callback to get the status string. (optional)
  * @nxt_analog_ops: Functions used by NXT/Analog ports (optional).
  * @nxt_i2c_ops: Functions used by NXT/I2C ports (optional).
+ * @ev3_uart_ops: Functions used by EV3/UART ports (optional).
  * @dc_motor_ops: Functions used by motor ports (optional);
  * @tacho_motor_ops: Functions used by motor ports (optional);
  * @context: Pointer to pass back to callback functions.
@@ -86,6 +91,7 @@ struct lego_port_device {
 	const char *(*get_status)(void *context);
 	const struct lego_port_nxt_analog_ops *nxt_analog_ops;
 	const struct lego_port_nxt_i2c_ops *nxt_i2c_ops;
+	const struct lego_port_ev3_uart_ops *ev3_uart_ops;
 	const struct dc_motor_ops *dc_motor_ops;
 	const struct tacho_motor_ops *tacho_motor_ops;
 	void *context;

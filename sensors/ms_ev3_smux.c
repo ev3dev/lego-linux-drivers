@@ -178,14 +178,17 @@ void ms_ev3_smux_poll_cb(struct nxt_i2c_sensor_data *data)
 	lego_port_call_raw_data_func(&smux->port);
 }
 
-int ms_ev3_smux_set_uart_sensor_mode(struct lego_port_device *port, u8 mode)
+static int ms_ev3_smux_set_ev3_uart_sensor_mode(void *context, u8 mode)
 {
-	struct nxt_i2c_sensor_data *data = port->context;
+	struct nxt_i2c_sensor_data *data = context;
 
 	return i2c_smbus_write_byte_data(data->client, MS_EV3_SMUX_MODE_REG,
 					 mode);
 }
-EXPORT_SYMBOL_GPL(ms_ev3_smux_set_uart_sensor_mode);
+
+static struct lego_port_ev3_uart_ops ms_ev3_smux_ev3_uart_ops = {
+	.set_mode = ms_ev3_smux_set_ev3_uart_sensor_mode,
+};
 
 const struct device_type ms_ev3_smux_port_type = {
 	.name	= "ms-ev3-smux-port",
@@ -219,6 +222,7 @@ int ms_ev3_smux_probe_cb(struct nxt_i2c_sensor_data *data)
 	smux->port.mode_info = ms_ev3_smux_port_mode_info;
 	smux->port.set_mode = ms_ev3_smux_set_mode;
 	smux->port.set_device = ms_ev3_smux_set_device;
+	smux->port.ev3_uart_ops = &ms_ev3_smux_ev3_uart_ops;
 	smux->port.context = data;
 
 	ret = lego_port_register(&smux->port, &ms_ev3_smux_port_type,

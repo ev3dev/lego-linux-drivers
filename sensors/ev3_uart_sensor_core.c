@@ -49,7 +49,6 @@
 
 #include "ev3_uart_sensor.h"
 #include "ms_ev3_smux.h"
-#include "../brickpi/brickpi.h"
 
 struct ev3_uart_sensor_data {
 	struct lego_device *ldev;
@@ -61,26 +60,17 @@ struct ev3_uart_sensor_data {
 static int ev3_uart_sensor_set_mode(void *context, u8 mode)
 {
 	struct ev3_uart_sensor_data *data = context;
+	struct lego_port_device *port = data->ldev->port;
 	struct lego_sensor_mode_info *mode_info = &data->info.mode_info[mode];
-#if defined(CONFIG_NXT_I2C_SENSORS) || defined(CONFIG_NXT_I2C_SENSORS_MODULE)
-	if (data->ldev->port->dev.type == &ms_ev3_smux_port_type) {
+
+	if (port->ev3_uart_ops && port->ev3_uart_ops->set_mode) {
 		int ret;
 
-		ret = ms_ev3_smux_set_uart_sensor_mode(data->ldev->port, mode);
+		ret = port->ev3_uart_ops->set_mode(port->context, mode);
 		if (ret < 0)
 			return ret;
 	} else
-#endif
-#if defined(CONFIG_BRICKPI) || defined(CONFIG_BRICKPI_MODULE)
-	if (data->ldev->port->dev.type == &brickpi_in_port_type) {
-		int ret;
-
-		ret = brickpi_in_port_set_uart_sensor_mode(data->ldev, mode);
-		if (ret < 0)
-			return ret;
-	} else
-#endif
-		return -EINVAL;
+		return -EOPNOTSUPP;
 
 	lego_port_set_raw_data_ptr_and_func(data->ldev->port, mode_info->raw_data,
 		lego_sensor_get_raw_data_size(mode_info), NULL, NULL);

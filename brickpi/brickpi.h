@@ -129,6 +129,5 @@ extern int brickpi_in_port_set_i2c_data(struct lego_device *sensor, bool slow,
 					enum lego_port_gpio_state pin1_state);
 extern int brickpi_in_port_set_i2c_mode(struct lego_device *sensor, u8 set_mode_reg,
 					u8 set_mode_data, u8 read_reg, unsigned size);
-extern int brickpi_in_port_set_uart_sensor_mode(struct lego_device *sensor, u8 mode);
 
 #endif /* _BRICKPI_H_ */

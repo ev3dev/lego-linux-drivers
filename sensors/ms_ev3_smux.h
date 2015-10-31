@@ -35,6 +35,4 @@ extern void ms_ev3_smux_remove_cb(struct nxt_i2c_sensor_data *data);
 
 extern const struct device_type ms_ev3_smux_port_type;
 
-extern int ms_ev3_smux_set_uart_sensor_mode(struct lego_port_device *port, u8 mode);
-
 #endif /* MS_EV3_SMUX_H_ */

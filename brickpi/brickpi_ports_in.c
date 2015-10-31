@@ -332,10 +332,10 @@ int brickpi_in_port_set_i2c_mode(struct lego_device *sensor, u8 set_mode_reg,
 }
 EXPORT_SYMBOL_GPL(brickpi_in_port_set_i2c_mode);
 
-int brickpi_in_port_set_uart_sensor_mode(struct lego_device *sensor, u8 mode)
+static int brickpi_in_port_set_ev3_uart_sensor_mode(void *context, u8 mode)
 {
-	struct brickpi_in_port_data *in_port =
-		container_of(sensor->port, struct brickpi_in_port_data, port);
+	struct brickpi_in_port_data *in_port = context;
+	struct lego_device *sensor = in_port->sensor;
 
 	if (!strncmp(sensor->name, LEGO_EV3_COLOR_NAME, LEGO_NAME_SIZE))
 		in_port->sensor_type = BRICKPI_SENSOR_TYPE_EV3_COLOR_M0 + mode;
@@ -350,7 +350,10 @@ int brickpi_in_port_set_uart_sensor_mode(struct lego_device *sensor, u8 mode)
 
 	return brickpi_set_sensors(in_port->ch_data);
 }
-EXPORT_SYMBOL_GPL(brickpi_in_port_set_uart_sensor_mode);
+
+static const struct lego_port_ev3_uart_ops brickpi_ev3_uart_ops = {
+	.set_mode = brickpi_in_port_set_ev3_uart_sensor_mode,
+};
 
 int brickpi_register_in_ports(struct brickpi_channel_data *ch_data,
 			      struct device *parent)
@@ -369,6 +372,7 @@ int brickpi_register_in_ports(struct brickpi_channel_data *ch_data,
 		port->mode_info = brickpi_in_port_mode_info;
 		port->set_mode = brickpi_in_port_set_mode;
 		port->set_device = brickpi_in_port_set_device;
+		port->ev3_uart_ops = &brickpi_ev3_uart_ops;
 		port->context = &ch_data->in_port[i];
 		port->nxt_analog_ops = &brickpi_in_port_nxt_analog_ops;
 		//port->nxt_i2c_ops = &brickpi_in_port_nxt_i2c_ops;
