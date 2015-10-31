@@ -231,6 +231,11 @@ static struct tacho_motor_value_names tacho_motor_states[NUM_TM_STATES] = {
 	[TM_STATE_STALLED]	= { "stalled" },
 };
 
+inline struct tacho_motor_device *to_tacho_motor(struct device *dev)
+{
+	return container_of(dev, struct tacho_motor_device, dev);
+}
+
 /*
  * Set all parameters to the default values.
  */
@@ -764,26 +769,26 @@ static ssize_t position_sp_store(struct device *dev,
 	return size;
 }
 
-DEVICE_ATTR_RO(driver_name);
-DEVICE_ATTR_RO(port_name);
-DEVICE_ATTR_RW(position);
-DEVICE_ATTR_RO(state);
-DEVICE_ATTR_RO(count_per_rot);
-DEVICE_ATTR_RO(duty_cycle);
-DEVICE_ATTR_RO(speed);
-DEVICE_ATTR_RW(duty_cycle_sp);
-DEVICE_ATTR_RW(speed_sp);
-DEVICE_ATTR_RW(time_sp);
-DEVICE_ATTR_RW(position_sp);
-DEVICE_ATTR_RO(commands);
-DEVICE_ATTR_WO(command);
-DEVICE_ATTR_RW(speed_regulation);
-DEVICE_ATTR_RO(stop_commands);
-DEVICE_ATTR_RW(stop_command);
-DEVICE_ATTR_RW(polarity);
-DEVICE_ATTR_RW(encoder_polarity);
-DEVICE_ATTR_RW(ramp_up_sp);
-DEVICE_ATTR_RW(ramp_down_sp);
+static DEVICE_ATTR_RO(driver_name);
+static DEVICE_ATTR_RO(port_name);
+static DEVICE_ATTR_RW(position);
+static DEVICE_ATTR_RO(state);
+static DEVICE_ATTR_RO(count_per_rot);
+static DEVICE_ATTR_RO(duty_cycle);
+static DEVICE_ATTR_RO(speed);
+static DEVICE_ATTR_RW(duty_cycle_sp);
+static DEVICE_ATTR_RW(speed_sp);
+static DEVICE_ATTR_RW(time_sp);
+static DEVICE_ATTR_RW(position_sp);
+static DEVICE_ATTR_RO(commands);
+static DEVICE_ATTR_WO(command);
+static DEVICE_ATTR_RW(speed_regulation);
+static DEVICE_ATTR_RO(stop_commands);
+static DEVICE_ATTR_RW(stop_command);
+static DEVICE_ATTR_RW(polarity);
+static DEVICE_ATTR_RW(encoder_polarity);
+static DEVICE_ATTR_RW(ramp_up_sp);
+static DEVICE_ATTR_RW(ramp_down_sp);
 
 static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_driver_name.attr,
