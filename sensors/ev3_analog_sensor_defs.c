@@ -23,15 +23,13 @@ static int lego_ev3_touch_sensor_scale(void *context,
 				       struct lego_sensor_mode_info *mode_info,
 				       u8 index, long int *value)
 {
-	s32 raw_value = *(s32 *)mode_info->raw_data;
-#if defined(CONFIG_NXT_I2C_SENSORS) || defined(CONFIG_NXT_I2C_SENSORS_MODULE)
 	struct ev3_analog_sensor_data *data = context;
+	struct lego_port_device *port = data->ldev->port;
+	s32 raw_value = *(s32 *)mode_info->raw_data;
 
-	/* mindsensors.com EV3 Sensor Multiplexer returns scaled value */
-	if (data->ldev->port->dev.type == &ms_ev3_smux_port_type) {
+	/* some devices return a scaled value */
+	if (port->ev3_analog_ops && port->ev3_analog_ops->lego_touch_sensor_is_scaled)
 		return lego_sensor_default_scale(mode_info, index, value);
-	}
-#endif
 
 	*value = (raw_value > 250) ? 1 : 0;
 

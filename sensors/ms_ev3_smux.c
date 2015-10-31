@@ -178,6 +178,10 @@ void ms_ev3_smux_poll_cb(struct nxt_i2c_sensor_data *data)
 	lego_port_call_raw_data_func(&smux->port);
 }
 
+static struct lego_port_ev3_analog_ops ms_ev3_smux_ev3_analog_ops = {
+	.lego_touch_sensor_is_scaled = true,
+};
+
 static int ms_ev3_smux_set_ev3_uart_sensor_mode(void *context, u8 mode)
 {
 	struct nxt_i2c_sensor_data *data = context;
@@ -222,6 +226,7 @@ int ms_ev3_smux_probe_cb(struct nxt_i2c_sensor_data *data)
 	smux->port.mode_info = ms_ev3_smux_port_mode_info;
 	smux->port.set_mode = ms_ev3_smux_set_mode;
 	smux->port.set_device = ms_ev3_smux_set_device;
+	smux->port.ev3_analog_ops = &ms_ev3_smux_ev3_analog_ops;
 	smux->port.ev3_uart_ops = &ms_ev3_smux_ev3_uart_ops;
 	smux->port.context = data;
 

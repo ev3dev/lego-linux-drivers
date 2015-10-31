@@ -50,6 +50,14 @@ struct lego_port_nxt_i2c_ops {
 	int (*set_pin1_gpio)(void *context, enum lego_port_gpio_state state);
 };
 
+struct lego_port_ev3_analog_ops {
+	/*
+	 * a number of 3rd party devices only support the LEGO EV3 Touch sensor
+	 * and returned a scaled (0 or 1) value.
+	 */
+	bool lego_touch_sensor_is_scaled;
+};
+
 struct lego_port_ev3_uart_ops {
 	int (* set_mode)(void *context, u8 mode);
 };
@@ -91,6 +99,7 @@ struct lego_port_device {
 	const char *(*get_status)(void *context);
 	const struct lego_port_nxt_analog_ops *nxt_analog_ops;
 	const struct lego_port_nxt_i2c_ops *nxt_i2c_ops;
+	const struct lego_port_ev3_analog_ops *ev3_analog_ops;
 	const struct lego_port_ev3_uart_ops *ev3_uart_ops;
 	const struct dc_motor_ops *dc_motor_ops;
 	const struct tacho_motor_ops *tacho_motor_ops;
