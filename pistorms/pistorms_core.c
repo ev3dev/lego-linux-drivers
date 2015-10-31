@@ -135,11 +135,19 @@ static int pistorms_detect(struct i2c_client *client,
 	return 0;
 }
 
-static struct i2c_device_id pistorms_id_table[] = {
+static const struct i2c_device_id pistorms_id_table[] = {
 	{ "pistorms" },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, pistorms_id_table);
+
+#ifdef CONFIG_OF
+static const struct of_device_id pistorms_of_match[] = {
+	{ .compatible = "mindsensors,pistorms" },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, pistorms_of_match);
+#endif
 
 static struct i2c_driver pistorms_driver = {
 	.driver = {
@@ -153,6 +161,6 @@ static struct i2c_driver pistorms_driver = {
 };
 module_i2c_driver(pistorms_driver);
 
-MODULE_DESCRIPTION("mindesensors.com PiStorms driver");
+MODULE_DESCRIPTION("mindsensors.com PiStorms driver");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
