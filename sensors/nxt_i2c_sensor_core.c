@@ -240,6 +240,9 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 
 	sensor_info = &nxt_i2c_sensor_defs[i2c_dev_id->driver_data];
 
+	/* TODO: check for PiStorms here and set in_port */
+	/* could also use sensor_info to return error in case of NXT Ultrasonic sensor */
+
 	data = kzalloc(sizeof(struct nxt_i2c_sensor_data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
@@ -317,7 +320,7 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 		goto err_register_lego_sensor;
 	}
 
-	if (data->in_port)
+	if (data->in_port && data->in_port->nxt_i2c_ops)
 		data->in_port->nxt_i2c_ops->set_pin1_gpio(data->in_port->context,
 							  data->info->pin1_state);
 	if (data->type == LEGO_NXT_ULTRASONIC_SENSOR)
@@ -409,7 +412,7 @@ static struct i2c_device_id nxt_i2c_sensor_id_table[] = {
 };
 MODULE_DEVICE_TABLE(i2c, nxt_i2c_sensor_id_table);
 
-static struct i2c_driver nxt_i2c_sensor_driver = {
+const struct i2c_driver nxt_i2c_sensor_driver = {
 	.driver = {
 		.name	= "nxt-i2c-sensor",
 	},
@@ -422,6 +425,7 @@ static struct i2c_driver nxt_i2c_sensor_driver = {
 				    0x50, 0x51, 0x52, 0x58),
 };
 module_i2c_driver(nxt_i2c_sensor_driver);
+EXPORT_SYMBOL_GPL(nxt_i2c_sensor_driver);
 
 MODULE_DESCRIPTION("LEGO MINDSTORMS NXT I2C sensor device driver");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");

@@ -19,8 +19,6 @@
 
 #include <tacho_motor_class.h>
 
-#include "ms_nxtmmx.h"
-
 #define COMMAND_REG		0x41
 
 #define WRITE_SIZE		8
@@ -33,11 +31,30 @@
 #define WRITE_COMMAND_B		6
 #define WRITE_COMMAND_A		7
 
+#ifdef PISTORMS
+
+/*
+ * The PiStorms motor interface is virtually identical to the NXTMMX, so this
+ * code is shared with both modules. Just a few register addresses are different.
+ */
+
+#define READ_ENCODER_POS_REG(idx)	(0x52 + ENCODER_SIZE * idx)
+#define READ_STATUS_REG(idx)		(0x5A + idx)
+#define READ_TASKS_REG(idx)		(0x5C + idx)
+
+#define ENCODER_PID_KP_REG	0x5E
+#define ENCODER_PID_KI_REG	0x50
+#define ENCODER_PID_KD_REG	0x62
+
+#define SPEED_PID_KP_REG	0x64
+#define SPEED_PID_KI_REG	0x66
+#define SPEED_PID_KD_REG	0x68
+
+#else
+
 #define READ_ENCODER_POS_REG(idx)	(0x62 + ENCODER_SIZE * idx)
 #define READ_STATUS_REG(idx)		(0x72 + idx)
 #define READ_TASKS_REG(idx)		(0x76 + idx)
-
-#define PID_K_SIZE		2
 
 #define ENCODER_PID_KP_REG	0x7A
 #define ENCODER_PID_KI_REG	0x7C
@@ -46,6 +63,10 @@
 #define SPEED_PID_KP_REG	0x80
 #define SPEED_PID_KI_REG	0x82
 #define SPEED_PID_KD_REG	0x84
+
+#endif
+
+#define PID_K_SIZE		2
 
 #define COMMAND_RESET_ALL		'R'
 #define COMMAND_SYNC_START		'S'
@@ -80,7 +101,7 @@
 
 struct ms_nxtmmx_data {
 	struct tacho_motor_device tm;
-	struct nxt_i2c_sensor_data *i2c;
+	struct i2c_client *i2c_client;
 	char port_name[LEGO_PORT_NAME_SIZE];
 	int index;
 	unsigned command_flags;
@@ -109,7 +130,7 @@ static int ms_nxtmmx_get_position(void *context, long *position)
 	int err;
 	u8 bytes[ENCODER_SIZE];
 
-	err = i2c_smbus_read_i2c_block_data(mmx->i2c->client,
+	err = i2c_smbus_read_i2c_block_data(mmx->i2c_client,
 		READ_ENCODER_POS_REG(mmx->index), ENCODER_SIZE, bytes);
 	if (err < 0)
 		return err;
@@ -132,13 +153,13 @@ static int ms_nxtmmx_set_position(void *context, long position)
 	 * Can't change the position while the motor is running or it will make
 	 * the controller confused.
 	 */
-	ret = i2c_smbus_read_byte_data(mmx->i2c->client, READ_STATUS_REG(mmx->index));
+	ret = i2c_smbus_read_byte_data(mmx->i2c_client, READ_STATUS_REG(mmx->index));
 	if (ret < 0)
 		return ret;
 	if (ret & STATUS_FLAG_POWERED)
 		return -EBUSY;
 
-	ret = i2c_smbus_write_byte_data(mmx->i2c->client, COMMAND_REG,
+	ret = i2c_smbus_write_byte_data(mmx->i2c_client, COMMAND_REG,
 		COMMAND_RESET_ENCODER(mmx->index));
 	if (ret < 0)
 		return ret;
@@ -152,7 +173,7 @@ static int ms_nxtmmx_get_state(void *context)
 	int ret;
 	unsigned state = 0;
 
-	ret = i2c_smbus_read_byte_data(mmx->i2c->client, READ_STATUS_REG(mmx->index));
+	ret = i2c_smbus_read_byte_data(mmx->i2c_client, READ_STATUS_REG(mmx->index));
 	if (ret < 0)
 		return ret;
 
@@ -169,7 +190,7 @@ static int ms_nxtmmx_get_state(void *context)
 	 * then we are still running, otherwise we are holding.
 	 */
 	if ((ret & STATUS_FLAG_POWERED) && (mmx->command_flags & CMD_FLAG_HOLD)) {
-		ret = i2c_smbus_read_byte_data(mmx->i2c->client, READ_TASKS_REG(mmx->index));
+		ret = i2c_smbus_read_byte_data(mmx->i2c_client, READ_TASKS_REG(mmx->index));
 		if (ret < 0)
 			return ret;
 		if (!ret)
@@ -241,7 +262,7 @@ static int ms_nxtmmx_send_command(void *context,
 
 		/* then write to the individual motor register to GO! */
 
-		err = i2c_smbus_write_i2c_block_data(mmx->i2c->client,
+		err = i2c_smbus_write_i2c_block_data(mmx->i2c_client,
 			WRITE_REG(mmx->index), WRITE_SIZE, command_bytes);
 		if (err < 0)
 			return err;
@@ -249,7 +270,7 @@ static int ms_nxtmmx_send_command(void *context,
 		mmx->command_flags = CMD_FLAGS_DEFAULT_VALUE;
 		command_bytes[0] = (mmx->tm.params.stop_command == TM_STOP_COMMAND_COAST)
 			? COMMAND_FLOAT_STOP(mmx->index) : COMMAND_BRAKE_STOP(mmx->index);
-		err = i2c_smbus_write_byte_data(mmx->i2c->client,
+		err = i2c_smbus_write_byte_data(mmx->i2c_client,
 			COMMAND_REG, command_bytes[0]);
 		if (err < 0)
 			return err;
@@ -259,7 +280,7 @@ static int ms_nxtmmx_send_command(void *context,
 			 * we have to issue a run command to tell it to run to
 			 * the current position so that it will hold that position.
 			 */
-			err = i2c_smbus_read_i2c_block_data(mmx->i2c->client,
+			err = i2c_smbus_read_i2c_block_data(mmx->i2c_client,
 				READ_ENCODER_POS_REG(mmx->index), ENCODER_SIZE, command_bytes);
 			if (err < 0)
 				return err;
@@ -268,7 +289,7 @@ static int ms_nxtmmx_send_command(void *context,
 			command_bytes[WRITE_TIME] = 0;
 			command_bytes[WRITE_COMMAND_B] = 0;
 			command_bytes[WRITE_COMMAND_A] = mmx->command_flags;
-			err = i2c_smbus_write_i2c_block_data(mmx->i2c->client,
+			err = i2c_smbus_write_i2c_block_data(mmx->i2c_client,
 				WRITE_REG(mmx->index), WRITE_SIZE, command_bytes);
 			if (err < 0)
 				return err;
@@ -277,12 +298,12 @@ static int ms_nxtmmx_send_command(void *context,
 		mmx->tm.params.speed_regulation = TM_SPEED_REGULATION_ON;
 		mmx->command_flags = CMD_FLAGS_DEFAULT_VALUE;
 		command_bytes[0] = COMMAND_FLOAT_STOP(mmx->index);
-		err = i2c_smbus_write_byte_data(mmx->i2c->client,
+		err = i2c_smbus_write_byte_data(mmx->i2c_client,
 			COMMAND_REG, command_bytes[0]);
 		if (err < 0)
 			return err;
 		command_bytes[0] = COMMAND_RESET_ENCODER(mmx->index);
-		err = i2c_smbus_write_byte_data(mmx->i2c->client,
+		err = i2c_smbus_write_byte_data(mmx->i2c_client,
 			COMMAND_REG, command_bytes[0]);
 		if (err < 0)
 			return err;
@@ -314,7 +335,7 @@ static int ms_nxtmmx_get_speed_Kp(void *context)
 	int err;
 	u8 k[PID_K_SIZE];
 
-	err = i2c_smbus_read_i2c_block_data(mmx->i2c->client, SPEED_PID_KP_REG,
+	err = i2c_smbus_read_i2c_block_data(mmx->i2c_client, SPEED_PID_KP_REG,
 								PID_K_SIZE, k);
 	if (err < 0)
 		return err;
@@ -328,7 +349,7 @@ static int ms_nxtmmx_set_speed_Kp(void *context, int Kp)
 	u8 k[PID_K_SIZE];
 
 	*(s16*)k = cpu_to_le16(Kp);
-	return i2c_smbus_write_i2c_block_data(mmx->i2c->client, SPEED_PID_KP_REG,
+	return i2c_smbus_write_i2c_block_data(mmx->i2c_client, SPEED_PID_KP_REG,
 								PID_K_SIZE, k);
 }
 
@@ -338,7 +359,7 @@ static int ms_nxtmmx_get_speed_Ki(void *context)
 	int err;
 	u8 k[PID_K_SIZE];
 
-	err = i2c_smbus_read_i2c_block_data(mmx->i2c->client, SPEED_PID_KI_REG,
+	err = i2c_smbus_read_i2c_block_data(mmx->i2c_client, SPEED_PID_KI_REG,
 								PID_K_SIZE, k);
 	if (err < 0)
 		return err;
@@ -352,7 +373,7 @@ static int ms_nxtmmx_set_speed_Ki(void *context, int Ki)
 	u8 k[PID_K_SIZE];
 
 	*(s16*)k = cpu_to_le16(Ki);
-	return i2c_smbus_write_i2c_block_data(mmx->i2c->client, SPEED_PID_KI_REG,
+	return i2c_smbus_write_i2c_block_data(mmx->i2c_client, SPEED_PID_KI_REG,
 								PID_K_SIZE, k);
 }
 
@@ -362,7 +383,7 @@ static int ms_nxtmmx_get_speed_Kd(void *context)
 	int err;
 	u8 k[PID_K_SIZE];
 
-	err = i2c_smbus_read_i2c_block_data(mmx->i2c->client, SPEED_PID_KD_REG,
+	err = i2c_smbus_read_i2c_block_data(mmx->i2c_client, SPEED_PID_KD_REG,
 								PID_K_SIZE, k);
 	if (err < 0)
 		return err;
@@ -376,7 +397,7 @@ static int ms_nxtmmx_set_speed_Kd(void *context, int Kd)
 	u8 k[PID_K_SIZE];
 
 	*(s16*)k = cpu_to_le16(Kd);
-	return i2c_smbus_write_i2c_block_data(mmx->i2c->client, SPEED_PID_KD_REG,
+	return i2c_smbus_write_i2c_block_data(mmx->i2c_client, SPEED_PID_KD_REG,
 								PID_K_SIZE, k);
 }
 
@@ -386,7 +407,7 @@ static int ms_nxtmmx_get_position_Kp(void *context)
 	int err;
 	u8 k[PID_K_SIZE];
 
-	err = i2c_smbus_read_i2c_block_data(mmx->i2c->client,
+	err = i2c_smbus_read_i2c_block_data(mmx->i2c_client,
 					ENCODER_PID_KP_REG, PID_K_SIZE, k);
 	if (err < 0)
 		return err;
@@ -400,7 +421,7 @@ static int ms_nxtmmx_set_position_Kp(void *context, int Kp)
 	u8 k[PID_K_SIZE];
 
 	*(s16*)k = cpu_to_le16(Kp);
-	return i2c_smbus_write_i2c_block_data(mmx->i2c->client,
+	return i2c_smbus_write_i2c_block_data(mmx->i2c_client,
 					ENCODER_PID_KP_REG, PID_K_SIZE, k);
 }
 
@@ -410,7 +431,7 @@ static int ms_nxtmmx_get_position_Ki(void *context)
 	int err;
 	u8 k[PID_K_SIZE];
 
-	err = i2c_smbus_read_i2c_block_data(mmx->i2c->client,
+	err = i2c_smbus_read_i2c_block_data(mmx->i2c_client,
 					ENCODER_PID_KI_REG, PID_K_SIZE, k);
 	if (err < 0)
 		return err;
@@ -424,7 +445,7 @@ static int ms_nxtmmx_set_position_Ki(void *context, int Ki)
 	u8 k[PID_K_SIZE];
 
 	*(s16*)k = cpu_to_le16(Ki);
-	return i2c_smbus_write_i2c_block_data(mmx->i2c->client,
+	return i2c_smbus_write_i2c_block_data(mmx->i2c_client,
 					ENCODER_PID_KI_REG, PID_K_SIZE, k);
 }
 
@@ -434,7 +455,7 @@ static int ms_nxtmmx_get_position_Kd(void *context)
 	int err;
 	u8 k[PID_K_SIZE];
 
-	err = i2c_smbus_read_i2c_block_data(mmx->i2c->client,
+	err = i2c_smbus_read_i2c_block_data(mmx->i2c_client,
 					ENCODER_PID_KD_REG, PID_K_SIZE, k);
 	if (err < 0)
 		return err;
@@ -448,7 +469,7 @@ static int ms_nxtmmx_set_position_Kd(void *context, int Kd)
 	u8 k[PID_K_SIZE];
 
 	*(s16*)k = cpu_to_le16(Kd);
-	return i2c_smbus_write_i2c_block_data(mmx->i2c->client,
+	return i2c_smbus_write_i2c_block_data(mmx->i2c_client,
 					ENCODER_PID_KD_REG, PID_K_SIZE, k);
 }
 
@@ -475,6 +496,10 @@ struct tacho_motor_ops ms_nxtmmx_tacho_motor_ops = {
 	.set_hold_Kd		= ms_nxtmmx_set_position_Kd,
 };
 
+#ifndef PISTORMS
+
+#include "ms_nxtmmx.h"
+
 int ms_nxtmmx_probe_cb(struct nxt_i2c_sensor_data *data)
 {
 	struct ms_nxtmmx_data *mmx;
@@ -493,7 +518,7 @@ int ms_nxtmmx_probe_cb(struct nxt_i2c_sensor_data *data)
 		mmx[i].tm.port_name = mmx[i].port_name;
 		mmx[i].tm.ops = &ms_nxtmmx_tacho_motor_ops;
 		mmx[i].tm.context = &mmx[i];
-		mmx[i].i2c = data;
+		mmx[i].i2c_client = data->client;
 		mmx[i].index = i;
 		mmx[i].command_flags = CMD_FLAGS_DEFAULT_VALUE;
 	}
@@ -527,3 +552,5 @@ void ms_nxtmmx_remove_cb(struct nxt_i2c_sensor_data *data)
 	data->callback_data = NULL;
 	kfree(mmx);
 }
+
+# endif

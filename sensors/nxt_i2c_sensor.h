@@ -197,6 +197,7 @@ enum nxt_i2c_sensor_type {
 	LEGO_DEVICE_ID(MI_CRUIZCORE_XG1300L),			\
 	{ }
 
+extern const struct i2c_driver nxt_i2c_sensor_driver;
 extern const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[];
 
 struct nxt_i2c_sensor_data {

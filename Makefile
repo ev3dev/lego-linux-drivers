@@ -6,5 +6,6 @@ obj-y	+= brickpi/
 obj-y	+= core/
 obj-y	+= ev3/
 obj-y	+= motors/
+obj-y	+= pistorms/
 obj-y	+= sensors/
 obj-y	+= wedo/

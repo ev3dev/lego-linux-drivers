@@ -104,9 +104,8 @@
  * `poll_ms` (read/write)
  * : Returns the polling period of the sensor in milliseconds. Writing sets the
  *   polling period. Setting to 0 disables polling. Returns -EOPNOTSUPP if
- *   changing polling is not supported. Currently only NXT/I2C sensors support
- *   changing the polling period. Note: Setting poll_ms too low can cause the
- *   input port autodetection to fail. In if this happens, use the `mode`
+ *   changing polling is not supported. Note: Setting poll_ms too low can cause
+ *   the input port autodetection to fail. If this happens, use the `mode`
  *   attribute of the port to force the port to nxt-i2c mode.
  * .
  * `port_name` (read-only)

@@ -1,0 +1,7 @@
+menuconfig PISTORMS
+    tristate "mindsensors.com PiStorms support"
+    help
+      Say Y here if you want to use mindsensors.com PiStorms.
+
+      To compile this driver as a module, choose M here: the
+      module will be called pistorms.

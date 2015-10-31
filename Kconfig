@@ -130,5 +130,6 @@ config LEGO_DC_MOTORS
 source "drivers/lego/wedo/Kconfig"
 
 source "drivers/lego/brickpi/Kconfig"
+source "drivers/lego/pistorms/Kconfig"
 
 endif #LEGO_DRIVERS
