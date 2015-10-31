@@ -1510,7 +1510,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: NxtServo
 		 * @vendor_part_name: 8-channel Servo Controller
-		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=93
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/25-8-channel-servo-controller-for-nxt-or-ev3
 		 * @default_address: 0x58
 		 * @default_address_footnote: [^address]
 		 * @device_class_footnote: [^servo-motor-devices]
@@ -1583,7 +1583,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: AbsoluteIMU(-A/C/G)
 		 * @vendor_part_name: Gyro, MultiSensitivity Accelerometer and Compass
-		 * @vendor_website: http://www.mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=169&MMN_position=30:30
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/15-gyro-multisensitivity-accelerometer-and-compass-for-nxt-or-ev3
 		 * @default_address: 0x11
 		 * @default_address_footnote: [^address]
 		 */
@@ -1789,7 +1789,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: AngleSensor
 		 * @vendor_part_name: GlideWheel-AS
-		 * @vendor_website: http://www.mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=173
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/17-glidewheel-as-angle-sensor-for-nxt-or-ev3
 		 * @default_address: 0x18
 		 */
 		.name		= MS_ANGLE_SENSOR_NAME,
@@ -1904,7 +1904,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: EV3SensorMUX
 		 * @vendor_part_name: EV3 Sensor Multiplexer
-		 * @vendor_website: http://www.mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=207
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/23-ev3-sensor-multiplexer-for-ev3-or-nxt
 		 * @default_address: 0x50, 0x51, 0x52
 		 * @default_address_footnote: [^addresses]
 		 * @device_class_footnote: [^port-and-sensor-devices]
@@ -1944,7 +1944,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: LightSensorArray
 		 * @vendor_part_name: Light Sensor Array
-		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=168
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/47-light-sensor-array-for-nxt-or-ev3
 		 * @default_address: 0x0A
 		 * @default_address_footnote: [^address]
 		 */
@@ -2090,7 +2090,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: LineLeader
 		 * @vendor_part_name: Line Follower Sensor
-		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=111
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/48-line-follower-sensor-for-nxt-or-ev3
 		 * @default_address: 0x01
 		 * @default_address_footnote: [^address]
 		 */
@@ -2328,7 +2328,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: NXTMMX-v2
 		 * @vendor_part_name: Multiplexer for NXT/EV3 Motors
-		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=134
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/21-multiplexer-for-nxtev3-motors
 		 * @default_address: 0x03
 		 * @default_address_footnote: [^address]
 		 * @device_class_footnote: [^tacho-motor-devices]
@@ -2379,6 +2379,190 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[1] = {
 				.read_data_reg	= 0x41,
+			},
+		},
+	},
+	[MS_NXTCAM] = {
+		/**
+		 * [^address]: The address is programmable. See manufacturer
+		 * documentation for more information.
+		 *
+		 * @vendor_name: mindsensors.com
+		 * @vendor_part_number: NXTCam-v4
+		 * @vendor_part_name: Vision Subsystem v4 for NXT or EV3
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/14-vision-subsystem-v4-for-nxt-or-ev3-nxtcam-v4
+		 * @default_address: 0x01
+		 * @default_address_footnote: [^address]
+		 */
+		.name		= MS_NXTCAM_NAME,
+		.vendor_id	= "mndsnsrs",
+		.product_id	= "NXTCAM",
+		.num_modes	= 1,
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
+			[0] = {
+				/**
+				 * [^advanced]: This driver only allows for tracking a single
+				 * object. To track more than one object and for other more
+				 * advanced uses, you can disable this driver by setting `poll_ms`
+				 * to `0` and using the `direct` attribute to directly read and
+				 * write I2C messages. See the [Using I2C Sensors] page and the
+				 * manufacturers documentation for more information.
+				 * ^
+				 * [Using I2C Sensors]: /docs/sensors/using-i2c-sensors
+				 *
+				 * @name_footnote: [^advanced]
+				 * @description: Tracking
+				 * @value0: Object count
+				 * @value1: Color index
+				 * @value2: X upper left
+				 * @value3: Y upper left
+				 * @value4: X lower right
+				 * @value5: Y lower right
+				 */
+				.name		= "TRACK",
+				.data_sets	= 6,
+			},
+		},
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
+			[0] = {
+				.read_data_reg	= 0x42,
+			},
+		},
+		.num_commands	= 6,
+		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
+			[0] = {
+				/**
+				 * @description: Enable tracking
+				 */
+				.name = "TRACK-ON",
+			},
+			[1] = {
+				/**
+				 * @description: Disable tracking
+				 */
+				.name = "TRACK-OFF",
+			},
+			[2] = {
+				/**
+				 * @description: Set to object tracking mode
+				 */
+				.name = "TRACK-OBJ",
+			},
+			[3] = {
+				/**
+				 * @description: Set to line tracking mode
+				 */
+				.name = "TRACK-LINE",
+			},
+			[4] = {
+				/**
+				 * @description: Sort by size
+				 */
+				.name = "SORT-SIZE",
+			},
+			[5] = {
+				/**
+				 * @description: Sort by color
+				 */
+				.name = "SORT-COL",
+			},
+		},
+		.i2c_cmd_info	= (const struct nxt_i2c_sensor_cmd_info[]) {
+			[0] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'E',
+			},
+			[1] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'D',
+			},
+			[2] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'B',
+			},
+			[3] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'L',
+			},
+			[4] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'A',
+			},
+			[5] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'U',
+			},
+		},
+	},
+	[MS_PIXYADAPTER] = {
+		/**
+		 * [^address]: The address is programmable. See manufacturer
+		 * documentation for more information.
+		 *
+		 * @vendor_name: mindsensors.com
+		 * @vendor_part_number: PixyAdapter
+		 * @vendor_part_name: Pixy Adapter for MINDSTORMS EV3 or NXT
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/35-pixy-adapter
+		 * @default_address: 0x01
+		 * @default_address_footnote: [^address]
+		 */
+		.name		= MS_PIXYADAPTER_NAME,
+		.vendor_id	= "mndsnsrs",
+		.product_id	= "PixyAdpt",
+		.num_modes	= 1,
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
+			[0] = {
+				/**
+				 * [^advanced]: This driver only allows for tracking a single
+				 * object. To track more than one object and for other more
+				 * advanced uses, you can disable this driver by setting `poll_ms`
+				 * to `0` and using the `direct` attribute to directly read and
+				 * write I2C messages. See the [Using I2C Sensors] page and the
+				 * manufacturers documentation for more information.
+				 * ^
+				 * [Using I2C Sensors]: /docs/sensors/using-i2c-sensors
+				 *
+				 * @name_footnote: [^advanced]
+				 * @description: Tracking
+				 * @value0: Object count
+				 * @value1: Color index
+				 * @value2: X upper left
+				 * @value3: Y upper left
+				 * @value4: X lower right
+				 * @value5: Y lower right
+				 */
+				.name		= "TRACK",
+				.data_sets	= 6,
+			},
+		},
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
+			[0] = {
+				.read_data_reg	= 0x42,
+			},
+		},
+		.num_commands	= 2,
+		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
+			[0] = {
+				/**
+				 * @description: Sort by size
+				 */
+				.name = "SORT-SIZE",
+			},
+			[1] = {
+				/**
+				 * @description: Sort by color
+				 */
+				.name = "SORT-COL",
+			},
+		},
+		.i2c_cmd_info	= (const struct nxt_i2c_sensor_cmd_info[]) {
+			[0] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'A',
+			},
+			[1] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'U',
 			},
 		},
 	},
@@ -2540,6 +2724,176 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[3] = {
 				.cmd_reg	= 0x63,
+			},
+		},
+	},
+	[PX_PIXY] = {
+		/**
+		 * @vendor_name: Charmed Labs
+		 * @vendor_part_name: Pixy (CMUcam5) for LEGO
+		 * @vendor_website: http://charmedlabs.com/default/pixy-cmucam5-for-lego/
+		 * @default_address: 0x01
+		 */
+		/* based on https://github.com/charmedlabs/pixy/blob/master/src/device/main_m4/src/serial.cpp */
+		.name		= PX_PIXY_NAME,
+		.vendor_id	= "Pixy",
+		.product_id	= "Pixy",
+		.num_modes	= 10,
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
+			[0] = {
+				/**
+				 * [^angle]: Angle information is only available for color codes, otherwise the value is 0.
+				 *
+				 * @description: All
+				 * @value0: Signature low byte
+				 * @value1: Signature high byte
+				 * @value2: X
+				 * @value3: Y
+				 * @value4: Width
+				 * @value5: Height
+				 * @value6: Angle
+				 * @value6_footnote: [^angle]
+				 */
+				.name		= "ALL",
+				.data_sets	= 7,
+			},
+			[1] = {
+				/**
+				 * @description: Signature #1
+				 * @value0: Count
+				 * @value1: X
+				 * @value2: Y
+				 * @value3: Width
+				 * @value4: Height
+				 */
+				.name		= "SIG1",
+				.data_sets	= 5,
+			},
+			[2] = {
+				/**
+				 * @description: Signature #2
+				 * @value0: Count
+				 * @value1: X
+				 * @value2: Y
+				 * @value3: Width
+				 * @value4: Height
+				 */
+				.name		= "SIG2",
+				.data_sets	= 5,
+			},
+			[3] = {
+				/**
+				 * @description: Signature #3
+				 * @value0: Count
+				 * @value1: X
+				 * @value2: Y
+				 * @value3: Width
+				 * @value4: Height
+				 */
+				.name		= "SIG3",
+				.data_sets	= 5,
+			},
+			[4] = {
+				/**
+				 * @description: Signature #4
+				 * @value0: Count
+				 * @value1: X
+				 * @value2: Y
+				 * @value3: Width
+				 * @value4: Height
+				 */
+				.name		= "SIG4",
+				.data_sets	= 5,
+			},
+			[5] = {
+				/**
+				 * @description: Signature #5
+				 * @value0: Count
+				 * @value1: X
+				 * @value2: Y
+				 * @value3: Width
+				 * @value4: Height
+				 */
+				.name		= "SIG5",
+				.data_sets	= 5,
+			},
+			[6] = {
+				/**
+				 * @description: Signature #6
+				 * @value0: Count
+				 * @value1: X
+				 * @value2: Y
+				 * @value3: Width
+				 * @value4: Height
+				 */
+				.name		= "SIG6",
+				.data_sets	= 5,
+			},
+			[7] = {
+				/**
+				 * @description: Signature #7
+				 * @value0: Count
+				 * @value1: X
+				 * @value2: Y
+				 * @value3: Width
+				 * @value4: Height
+				 */
+				.name		= "SIG7",
+				.data_sets	= 5,
+			},
+			[8] = {
+				/**
+				 * @description: Color code
+				 * @value0: Count
+				 * @value1: X
+				 * @value2: Y
+				 * @value3: Width
+				 * @value4: Height
+				 * @value5: Angle
+				 */
+				.name		= "COL-CODE",
+				.data_sets	= 6,
+			},
+			[9] = {
+				/**
+				 * @description: Angle
+				 * @description_footnote: [^angle]
+				 * @value0: Angle
+				 */
+				.name		= "ANGLE",
+				.data_sets	= 1,
+			},
+		},
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
+			[0] = {
+				.read_data_reg	= 0x50,
+			},
+			[1] = {
+				.read_data_reg	= 0x51,
+			},
+			[2] = {
+				.read_data_reg	= 0x52,
+			},
+			[3] = {
+				.read_data_reg	= 0x53,
+			},
+			[4] = {
+				.read_data_reg	= 0x54,
+			},
+			[5] = {
+				.read_data_reg	= 0x55,
+			},
+			[6] = {
+				.read_data_reg	= 0x56,
+			},
+			[7] = {
+				.read_data_reg	= 0x57,
+			},
+			[8] = {
+				.read_data_reg	= 0x58,
+			},
+			[9] = {
+				.read_data_reg	= 0x60,
 			},
 		},
 	},

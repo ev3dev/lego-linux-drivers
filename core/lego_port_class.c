@@ -124,8 +124,10 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 	if (ret < 0)
 		return ret;
 
-	port->mode = new_mode;
-	kobject_uevent(&dev->kobj, KOBJ_CHANGE);
+	if (port->mode != new_mode) {
+		port->mode = new_mode;
+		kobject_uevent(&dev->kobj, KOBJ_CHANGE);
+	}
 
 	return count;
 }
