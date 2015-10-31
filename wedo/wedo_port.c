@@ -430,7 +430,7 @@ struct lego_port_mode_info wedo_port_mode_info[] = {
 	 *             |__ Port 4: Dev 5, If 0, Class=Hub, Driver=hub/4p, 480M
 	 *                 |__ Port 2: Dev 6, If 0, Class=Human Interface Device, Driver=wedo, 1.5M
 	 * ^
-	 *    ...translates to `usb5-4.2:1.0:wedo0`. You can see how `Bus 05`,
+	 *    ...translates to `usb5-4.2:1.0:wedo1`. You can see how `Bus 05`,
 	 *    `Port 4` and `Port 2` result in `5-4.2`. The last bit (configuration
 	 *    and interface) will always be `:1.0`.
 	 *
@@ -479,7 +479,7 @@ struct wedo_port_data *register_wedo_port(struct usb_interface *interface,
 	wpd->usb = interface;
 	wpd->port.name = wedo_port_type.name;
 	snprintf(wpd->port.port_name, LEGO_PORT_NAME_SIZE, "usb%s:wedo%d",
-		 dev_name(&interface->dev), port_num);
+		 dev_name(&interface->dev), port_num + 1);
 	wpd->port.num_modes = 1;
 	wpd->port.mode_info = wedo_port_mode_info;
 	wpd->port.set_mode = wedo_port_set_mode;
