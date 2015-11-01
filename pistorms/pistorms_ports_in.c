@@ -473,10 +473,12 @@ static int pistorms_in_port_set_mode(void *context, u8 mode)
 			dummy_client.addr = addr_list[i];
 			if (nxt_i2c_sensor_driver.detect(&dummy_client, &info) == 0) {
 				info.addr = addr_list[i];
-				in_port->i2c_sensor = i2c_new_device (adap, &info);
-				return 0;
+				in_port->i2c_sensor = i2c_new_device(adap, &info);
+				if (in_port->i2c_sensor)
+					return 0;
 			}
 		}
+		return 0;
 	}
 
 	if (mode == PS_IN_PORT_MODE_EV3_UART) {
