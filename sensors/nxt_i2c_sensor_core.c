@@ -348,7 +348,7 @@ static int nxt_i2c_sensor_remove(struct i2c_client *client)
 	data->poll_ms = 0;
 	hrtimer_cancel(&data->poll_timer);
 	cancel_work_sync(&data->poll_work);
-	if (data->in_port)
+	if (data->in_port && data->in_port->nxt_i2c_ops)
 		data->in_port->nxt_i2c_ops->set_pin1_gpio(data->in_port->context,
 							  LEGO_PORT_GPIO_FLOAT);
 	unregister_lego_sensor(&data->sensor);
