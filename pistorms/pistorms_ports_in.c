@@ -76,6 +76,7 @@ struct pistorms_in_port_data {
 	struct lego_port_device port;
 	struct work_struct poll_work;
 	struct hrtimer poll_timer;
+	struct nxt_i2c_sensor_platform_data i2c_platform_data;
 	struct lego_device *sensor;
 	struct i2c_client *i2c_sensor;
 	struct i2c_client *client;
@@ -318,6 +319,7 @@ int pistorms_in_port_register_sensor(struct pistorms_in_port_data *in_port,
 
 		memset(&info, 0, sizeof(struct i2c_board_info));
 		snprintf(info.type, I2C_NAME_SIZE, name);
+		info.platform_data = &in_port->i2c_platform_data;
 		info.addr = in_port->i2c_sensor_addr;
 
 		in_port->i2c_sensor = i2c_new_device(in_port->client->adapter,
@@ -468,6 +470,7 @@ static int pistorms_in_port_set_mode(void *context, u8 mode)
 		memset(&dummy_client, 0, sizeof(struct i2c_client));
 		memset(&info, 0, sizeof(struct i2c_board_info));
 		dummy_client.adapter = adap;
+		info.platform_data = &in_port->i2c_platform_data;
 
 		for (i = 0; addr_list[i] != I2C_CLIENT_END; i++) {
 			dummy_client.addr = addr_list[i];
@@ -557,6 +560,8 @@ int pistorms_in_ports_register(struct pistorms_data *data)
 		INIT_WORK(&in_port->poll_work, pistorms_poll_work);
 		hrtimer_init(&in_port->poll_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 		in_port->poll_timer.function = pistorms_poll_timer_function;
+
+		in_port->i2c_platform_data.in_port = &in_port->port;
 
 		in_port->port.name = pistorms_in_port_type.name;
 		snprintf(in_port->port.port_name, LEGO_PORT_NAME_SIZE, "%sS%d",

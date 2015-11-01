@@ -31,6 +31,15 @@
 struct nxt_i2c_sensor_data;
 
 /**
+ * struct nxt_i2c_sensor_platform_data
+ *
+ * @in_port: Used to pass an input port to be associated with the sensor.
+ */
+struct nxt_i2c_sensor_platform_data {
+	struct lego_port_device *in_port;
+};
+
+/**
  * struct nxt_i2c_sensor_ops
  *
  * If these functions need private data, they should use callback_data

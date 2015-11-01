@@ -221,6 +221,7 @@ void nxt_i2c_sensor_poll_work(struct work_struct *work)
 static int nxt_i2c_sensor_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
+	struct nxt_i2c_sensor_platform_data *pdata = client->dev.platform_data;
 	struct nxt_i2c_sensor_data *data;
 	struct lego_port_device *in_port = NULL;
 	const struct nxt_i2c_sensor_info *sensor_info;
@@ -229,19 +230,10 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client,
 	size_t mode_info_size;
 	int err, i;
 
-#if defined(CONFIG_I2C_LEGOEV3) || defined(CONFIG_I2C_LEGOEV3_MODULE)
-	if (client->adapter->algo == &i2c_legoev3_algo) {
-		struct i2c_legoev3_platform_data *apdata =
-					client->adapter->dev.platform_data;
-
-		in_port = apdata->in_port;
-	}
-#endif
-
 	sensor_info = &nxt_i2c_sensor_defs[i2c_dev_id->driver_data];
 
-	/* TODO: check for PiStorms here and set in_port */
-	/* could also use sensor_info to return error in case of NXT Ultrasonic sensor */
+	if (pdata)
+		in_port = pdata->in_port;
 
 	data = kzalloc(sizeof(struct nxt_i2c_sensor_data), GFP_KERNEL);
 	if (!data)
@@ -370,6 +362,15 @@ static int nxt_i2c_sensor_detect(struct i2c_client *client,
 
 	if (!allow_autodetect)
 		return -ENODEV;
+
+#if defined(CONFIG_I2C_LEGOEV3) || defined(CONFIG_I2C_LEGOEV3_MODULE)
+	if (!info->platform_data && client->adapter->algo == &i2c_legoev3_algo) {
+		struct i2c_legoev3_platform_data *apdata =
+					client->adapter->dev.platform_data;
+
+		info->platform_data = apdata->sensor_platform_data;
+	}
+#endif
 
 	/*
 	 * Some sensors can fall asleep during boot, so we try reading twice

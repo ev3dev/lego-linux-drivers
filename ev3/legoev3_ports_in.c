@@ -1050,10 +1050,10 @@ struct lego_port_device
 	data->pin5_mux[PIN5_MUX_MODE_I2C] = pdata->i2c_pin_mux;
 	data->pin5_mux[PIN5_MUX_MODE_UART] = pdata->uart_pin_mux;
 
+	data->i2c_data.sensor_platform_data.in_port = &data->port;
 	data->i2c_data.sda_pin	= pdata->pin6_gpio;
 	data->i2c_data.scl_pin	= pdata->i2c_clk_gpio;
 	data->i2c_data.port_id	= pdata->id;
-	data->i2c_data.in_port	= &data->port;
 
 	data->i2c_pdev_info.name	= "i2c-legoev3";
 	data->i2c_pdev_info.id		= pdata->i2c_dev_id;
