@@ -20,18 +20,25 @@
 
 #include "../ev3/legoev3_motor.h"
 
+/*
+ * Be sure to add devices to ev3_motor_driver_id_table in ev3_motor_core.c
+ * when adding to the list here!
+ */
+
 enum ev3_motor_id {
 	LEGO_NXT_MOTOR,
 	LEGO_EV3_LARGE_MOTOR,
 	LEGO_EV3_MEDIUM_MOTOR,
-	FIRGELLI_L12_EV3,
+	FIRGELLI_L12_EV3_50,
+	FIRGELLI_L12_EV3_100,
 	NUM_EV3_MOTOR_ID
 };
 
 #define LEGO_NXT_MOTOR_NAME		"lego-nxt-motor"
 #define LEGO_EV3_LARGE_MOTOR_NAME	"lego-ev3-l-motor"
 #define LEGO_EV3_MEDIUM_MOTOR_NAME	"lego-ev3-m-motor"
-#define FIRGELLI_L12_EV3_NAME		"fi-l12-ev3"
+#define FIRGELLI_L12_EV3_50_NAME	"fi-l12-ev3-50"
+#define FIRGELLI_L12_EV3_100_NAME	"fi-l12-ev3-100"
 
 /**
  * @name: The driver name.

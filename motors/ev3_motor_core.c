@@ -77,7 +77,8 @@ static const struct lego_device_id ev3_motor_driver_id_table[] = {
 	LEGO_DEVICE_ID(LEGO_NXT_MOTOR),
 	LEGO_DEVICE_ID(LEGO_EV3_LARGE_MOTOR),
 	LEGO_DEVICE_ID(LEGO_EV3_MEDIUM_MOTOR),
-	LEGO_DEVICE_ID(FIRGELLI_L12_EV3),
+	LEGO_DEVICE_ID(FIRGELLI_L12_EV3_50),
+	LEGO_DEVICE_ID(FIRGELLI_L12_EV3_100),
 };
 
 static ssize_t driver_names_show(struct device_driver *drv, char *buf)

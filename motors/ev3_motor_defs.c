@@ -17,8 +17,21 @@
 
 #include "ev3_motor.h"
 
+/*
+ * Documentation is automatically generated from this struct, so formatting is
+ * very important. Make sure any new motors have the same syntax. The comments
+ * are also parsed to provide more information for the documentation. The
+ * parser can be found in the ev3dev-kpkg repository.
+ */
+
 const struct ev3_motor_info ev3_motor_defs[] = {
 	[LEGO_NXT_MOTOR] = {
+		/**
+		 * @vendor_name: LEGO
+		 * @vendor_part_number: 9842
+		 * @vendor_part_name: Interactive Servo Motor (NXT)
+		 * @vendor_website: http://shop.lego.com/en-US/Interactive-Servo-Motor-9842
+		 */
 		.name			= LEGO_NXT_MOTOR_NAME,
 		.max_speed		= 1200,
 		.count_per_rot		= 360,
@@ -29,6 +42,12 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		},
 	},
 	[LEGO_EV3_LARGE_MOTOR] = {
+		/**
+		 * @vendor_name: LEGO
+		 * @vendor_part_number: 45502
+		 * @vendor_part_name: EV3 Large Servo Motor
+		 * @vendor_website: http://shop.lego.com/en-US/EV3-Large-Servo-Motor-45502
+		 */
 		.name			= LEGO_EV3_LARGE_MOTOR_NAME,
 		.max_speed		= 1200,
 		.count_per_rot		= 360,
@@ -39,6 +58,12 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		},
 	},
 	[LEGO_EV3_MEDIUM_MOTOR] = {
+		/**
+		 * @vendor_name: LEGO
+		 * @vendor_part_number: 45503
+		 * @vendor_part_name: EV3 Medium Servo Motor
+		 * @vendor_website: http://shop.lego.com/en-US/EV3-Medium-Servo-Motor-45503
+		 */
 		.name			= LEGO_EV3_MEDIUM_MOTOR_NAME,
 		.max_speed		= 900,
 		.count_per_rot		= 360,
@@ -48,8 +73,32 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 			.max_us_per_sample	= 75000,
 		},
 	},
-	[FIRGELLI_L12_EV3] = {
-		.name			= FIRGELLI_L12_EV3_NAME,
+	[FIRGELLI_L12_EV3_50] = {
+		/**
+		 * @vendor_name: Firgelli
+		 * @vendor_part_number: L12-EV3-50
+		 * @vendor_part_name: L12 EV3 50mm
+		 * @vendor_website: http://store.firgelli.com/product_p/l12-ev3-50.htm
+		 */
+		.name			= FIRGELLI_L12_EV3_50_NAME,
+		.max_speed		= 1200,
+		.count_per_rot		= 360, /* TODO: need to get value in count per cm */
+		.encoder_polarity	= DC_MOTOR_POLARITY_INVERSED,
+		.legoev3_info		= {
+			.samples_for_speed	= { 4, 16, 32, 64 },
+			.speed_pid_k		= { .p = 1000, .i = 60, .d = 0 },
+			/* TODO: need to put a scope on this and get correct values */
+			.max_us_per_sample	= 100000,
+		},
+	},
+	[FIRGELLI_L12_EV3_100] = {
+		/**
+		 * @vendor_name: Firgelli
+		 * @vendor_part_number: L12-EV3-100
+		 * @vendor_part_name: L12 EV3 100mm
+		 * @vendor_website: http://store.firgelli.com/product_p/l12-ev3-100.htm
+		 */
+		.name			= FIRGELLI_L12_EV3_100_NAME,
 		.max_speed		= 1200,
 		.count_per_rot		= 360, /* TODO: need to get value in count per cm */
 		.encoder_polarity	= DC_MOTOR_POLARITY_INVERSED,
