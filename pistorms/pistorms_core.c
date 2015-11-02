@@ -73,15 +73,15 @@ static int pistorms_probe(struct i2c_client *client,
 	ret = pistorms_in_ports_register(data);
 	if (ret < 0)
 		goto err_pistorms_in_ports_register;
-	ret = pistorms_motors_register(data);
+	ret = pistorms_out_ports_register(data);
 	if (ret < 0)
-		goto err_pistorms_motors_register;
+		goto err_pistorms_out_ports_register;
 
 	dev_info(&client->dev, "Registered pistorms.");
 	return 0;
 
-	pistorms_motors_unregister(data);
-err_pistorms_motors_register:
+	pistorms_out_ports_unregister(data);
+err_pistorms_out_ports_register:
 	pistorms_in_ports_unregister(data);
 err_pistorms_in_ports_register:
 	pistorms_leds_unregister(data);
@@ -99,7 +99,7 @@ err_pistorms_battery_register:
 static int pistorms_remove(struct i2c_client *client)
 {
 	struct pistorms_data *data = i2c_get_clientdata(client);
-	pistorms_motors_unregister(data);
+	pistorms_out_ports_unregister(data);
 	pistorms_in_ports_unregister(data);
 	pistorms_leds_unregister(data);
 	pistorms_input_unregister(data);

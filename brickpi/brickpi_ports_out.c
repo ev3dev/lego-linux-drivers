@@ -20,53 +20,59 @@
 #include "../ev3/legoev3_motor.h"
 
 const struct device_type brickpi_out_port_type = {
-	.name   = "brickpi-out-port",
+	.name = "brickpi-out-port",
 };
 EXPORT_SYMBOL_GPL(brickpi_out_port_type);
 
-
-static const struct device_type brickpi_out_port_device_types[NUM_BRICKPI_OUT_PORT_MODES] = {
-	[BRICKPI_OUT_PORT_MODE_NXT_MOTOR] = {
-		.name = "brickpi-motor",
+static const struct device_type
+brickpi_out_port_device_types[NUM_BRICKPI_OUT_PORT_MODES] = {
+	[BRICKPI_OUT_PORT_MODE_TACHO_MOTOR] = {
+		.name = "ev3-motor",
 	},
-	[BRICKPI_OUT_PORT_MODE_RCX_MOTOR] = {
+	[BRICKPI_OUT_PORT_MODE_DC_MOTOR] = {
 		.name = "rcx-motor",
 	},
-	[BRICKPI_OUT_PORT_MODE_RCX_LED] = {
+	[BRICKPI_OUT_PORT_MODE_LED] = {
 		.name = "rcx-led",
 	},
 };
 
+static const char *brickpi_out_port_default_driver[NUM_BRICKPI_OUT_PORT_MODES] = {
+	[BRICKPI_OUT_PORT_MODE_TACHO_MOTOR]	= "lego-nxt-motor",
+	[BRICKPI_OUT_PORT_MODE_DC_MOTOR]	= "rcx-motor",
+	[BRICKPI_OUT_PORT_MODE_LED] 		= "rcx-led",
+};
+
 /*
  * Documentation is automatically generated from this struct, so formatting is
- * very important. Make sure any new modes have the same layout. The comments
+ * very important. Make sure any new modes have the same syntax. The comments
  * are also parsed to provide more information for the documentation. The
  * parser can be found in the ev3dev-kpkg repository.
  */
 
 static const struct lego_port_mode_info brickpi_out_port_mode_info[NUM_BRICKPI_OUT_PORT_MODES] = {
 	/**
-	 * @description: Dexter Industries BrickPi Input Port
-	 * @connection_types: tacho-motor
+	 * @description: Dexter Industries BrickPi Output Port
+	 * @connection_types: tacho-motor, dc-motor, led
 	 * @prefix: out
 	 */
-	[BRICKPI_OUT_PORT_MODE_NXT_MOTOR] = {
+	[BRICKPI_OUT_PORT_MODE_TACHO_MOTOR] = {
 		/**
 		 * @description: NXT/EV3 Large Motor
 		 */
-		.name	= "nxt-motor",
+		.name	= "tacho-motor",
 	},
-	[BRICKPI_OUT_PORT_MODE_RCX_MOTOR] = {
+	[BRICKPI_OUT_PORT_MODE_DC_MOTOR] = {
 		/**
 		 * @description: RCX/Power Functions motor
 		 */
-		.name	= "rcx-motor",
+		.name	= "dc-motor",
 	},
-	[BRICKPI_OUT_PORT_MODE_RCX_LED] = {
+	[BRICKPI_OUT_PORT_MODE_LED] = {
 		/**
 		 * @description: RCX/Power Functions LED
 		 */
-		.name	= "rcx-led",
+		.name	= "led",
 	},
 };
 
@@ -278,7 +284,6 @@ void brickpi_out_port_unregister_motor(struct brickpi_out_port_data *out_port)
 	}
 }
 
-
 static int brickpi_out_port_set_mode(void *context, u8 mode)
 {
 	struct brickpi_out_port_data *out_port = context;
@@ -287,7 +292,7 @@ static int brickpi_out_port_set_mode(void *context, u8 mode)
 
 	return brickpi_out_port_register_motor(out_port,
 				&brickpi_out_port_device_types[mode],
-				brickpi_out_port_device_types[mode].name);
+				brickpi_out_port_default_driver[mode]);
 }
 
 int brickpi_register_out_ports(struct brickpi_channel_data *ch_data,
@@ -310,14 +315,14 @@ int brickpi_register_out_ports(struct brickpi_channel_data *ch_data,
 		err = lego_port_register(port, &brickpi_out_port_type, parent);
 		if (!err)
 			err = brickpi_out_port_set_mode(&ch_data->out_port[i],
-						BRICKPI_OUT_PORT_MODE_NXT_MOTOR);
+					BRICKPI_OUT_PORT_MODE_TACHO_MOTOR);
 		if (err) {
 			dev_err(parent,
 				"Failed to register BrickPi output port. (%d)\n",
 				err);
 			for (i--; i >= 0; i--) {
 				brickpi_out_port_unregister_motor(&ch_data->out_port[i]);
-				lego_port_unregister(port);
+				lego_port_unregister(&ch_data->out_port[i].port);
 			}
 			return err;
 		}

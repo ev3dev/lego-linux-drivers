@@ -1,5 +1,5 @@
 /*
- * Motor driver for LEGO MINDSTORMS EV3
+ * Motor driver for LEGO MINDSTORMS LEGOEV3
  *
  * Copyright (C) 2015 David Lechner <david@lechnology.com>
  *
@@ -17,17 +17,6 @@
 #define __LEGOEV3_MOTOR_H
 
 #include <dc_motor_class.h>
-
-enum legoev3_motor_id {
-	LEGO_EV3_LARGE_MOTOR,
-	LEGO_EV3_MEDIUM_MOTOR,
-	FIRGELLI_L12_EV3,
-	NUM_LEGOEV3_MOTOR_ID
-};
-
-#define LEGO_EV3_LARGE_MOTOR_NAME	"lego-ev3-l-motor"
-#define LEGO_EV3_MEDIUM_MOTOR_NAME	"lego-ev3-m-motor"
-#define FIRGELLI_L12_EV3_NAME		"fi-l12-ev3"
 
 enum legoev3_motor_speed_range {
 	SPEED_BELOW_40,
@@ -47,29 +36,21 @@ struct legoev3_motor_pid_k {
 };
 
 /**
- * @name: The driver name.
+ * struct legoev3_motor_info - motor parameter data specific to the legoev3
+ * 	driver implementation
+ *
  * @samples_for_speed: Array of how many samples to use in the speed calculation
  * 	for a given speed range. Must be a power of two???
  * @speed_pid_k: PID constants for speed regulation.
  * @max_us_per_sample: Maximum duration of a single sample in microseconds.
  * 	This number should be 50 * the tacho period at full speed.
  * 	Used for motor stall and direction calculations.
- * @max_speed: Maximum speed of the motor in tacho counts per second.
- * @count_per_rot: The number of tacho counts in one rotation of the motor.
- * @encoder_polarity: Set to DC_MOTOR_POLARITY_INVERTED for motors with inverted
- * 	tacho outputs.
  */
 struct legoev3_motor_info {
-	const char *name;
 	int samples_for_speed[NUM_LEGOEV3_MOTOR_SPEED_RANGE];
 	struct legoev3_motor_pid_k speed_pid_k;
 	/* TODO: clock_ticks_per_sample needs to be converted to usec */
 	int max_us_per_sample;
-	int max_speed;
-	int count_per_rot;
-	enum dc_motor_polarity encoder_polarity;
 };
-
-extern const struct legoev3_motor_info legoev3_motor_defs[];
 
 #endif /* __LEGOEV3_MOTOR_H */

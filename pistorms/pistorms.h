@@ -29,7 +29,7 @@
  * @input_data: Pointer to the private data used by the input driver.
  * @leds_data: Pointer to the private data used by the led driver.
  * @in_port_data: Pointer to the private data used by the input port driver.
- * @motor_data: Pointer to the private data used by the motor driver.
+ * @out_port_data: Pointer to the private data used by the output port driver.
  */
 struct pistorms_data {
 	char			name[PISTORMS_NAME_SIZE];
@@ -38,7 +38,7 @@ struct pistorms_data {
 	void			*input_data;
 	void			*leds_data;
 	void			*in_port_data;
-	void			*motors_data;
+	void			*out_port_data;
 };
 
 extern int pistorms_battery_register(struct pistorms_data *data);
@@ -49,8 +49,8 @@ extern int pistorms_leds_register(struct pistorms_data *data);
 extern void pistorms_leds_unregister(struct pistorms_data *data);
 extern int pistorms_in_ports_register(struct pistorms_data *data);
 extern void pistorms_in_ports_unregister(struct pistorms_data *data);
-extern int pistorms_motors_register(struct pistorms_data *data);
-extern void pistorms_motors_unregister(struct pistorms_data *data);
+extern int pistorms_out_ports_register(struct pistorms_data *data);
+extern void pistorms_out_ports_unregister(struct pistorms_data *data);
 
 extern const struct device_type pistorms_in_port_type;
 

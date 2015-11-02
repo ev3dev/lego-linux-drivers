@@ -17,6 +17,7 @@
 #include <linux/kernel.h>
 #include <linux/slab.h>
 
+#include <lego.h>
 #include <tacho_motor_class.h>
 
 #define COMMAND_REG		0x41
@@ -31,7 +32,7 @@
 #define WRITE_COMMAND_B		6
 #define WRITE_COMMAND_A		7
 
-#ifdef PISTORMS
+#ifdef PISTORMS_NXTMMX
 
 /*
  * The PiStorms motor interface is virtually identical to the NXTMMX, so this
@@ -99,12 +100,58 @@
 #define STATUS_FLAG_TIMED	BIT(6)
 #define STATUS_FLAG_STALL	BIT(7)
 
+enum ms_nxtmmx_out_port_mode {
+	MS_NXTMMX_OUT_PORT_MODE_TACHO_MOTOR,
+	NUM_MS_NXTMMX_OUT_PORT_MODES
+};
+
 struct ms_nxtmmx_data {
-	struct tacho_motor_device tm;
-	struct i2c_client *i2c_client;
 	char port_name[LEGO_PORT_NAME_SIZE];
+	struct lego_port_device port;
+	struct i2c_client *i2c_client;
+	struct lego_device *motor;
 	int index;
 	unsigned command_flags;
+};
+
+const struct device_type ms_nxtmmx_out_port_type = {
+	.name = "ms-nxtmmx-out-port",
+};
+
+static const struct device_type
+ms_nxtmmx_out_port_device_types[NUM_MS_NXTMMX_OUT_PORT_MODES] = {
+	[MS_NXTMMX_OUT_PORT_MODE_TACHO_MOTOR] = {
+		.name = "ev3-motor",
+	},
+};
+
+static const char *ms_nxtmmx_out_port_default_driver[NUM_MS_NXTMMX_OUT_PORT_MODES] = {
+	[MS_NXTMMX_OUT_PORT_MODE_TACHO_MOTOR]	= "lego-nxt-motor",
+};
+
+/*
+ * Documentation is automatically generated from this struct, so formatting is
+ * very important. Make sure any new modes have the same syntax. The comments
+ * are also parsed to provide more information for the documentation. The
+ * parser can be found in the ev3dev-kpkg repository.
+ */
+
+static const struct lego_port_mode_info ms_nxtmmx_out_port_mode_info[NUM_MS_NXTMMX_OUT_PORT_MODES] = {
+	/**
+	 * [^prefix]: The full port name will be something like `in2:i2c3:M1`
+	 * depending on what port the motor multiplexer is plugged into.
+	 *
+	 * @description: mindsensors.com NXTMMX Output Port
+	 * @connection_types: tacho-motor
+	 * @prefix: M
+	 * @prefix_footnote: [^prefix]
+	 */
+	[MS_NXTMMX_OUT_PORT_MODE_TACHO_MOTOR] = {
+		/**
+		 * @description: NXT/EV3 Large Motor
+		 */
+		.name	= "tacho-motor",
+	},
 };
 
 /*
@@ -214,7 +261,7 @@ static unsigned ms_nxtmmx_get_commands(void *context)
 }
 
 static int ms_nxtmmx_send_command(void *context,
-				  struct tacho_motor_params *param,
+				  struct tacho_motor_params *params,
 				  enum tacho_motor_command command)
 {
 	struct ms_nxtmmx_data *mmx = context;
@@ -223,9 +270,9 @@ static int ms_nxtmmx_send_command(void *context,
 
 	if (IS_RUN_CMD(command)) {
 		/* fill in the setpoints with the correct polarity */
-		*(int *)command_bytes = cpu_to_le32(mmx->tm.params.position_sp);
-		command_bytes[WRITE_SPEED] = ms_nxtmmx_scale_speed(mmx->tm.params.speed_sp);
-		if (mmx->tm.params.polarity == DC_MOTOR_POLARITY_INVERSED) {
+		*(int *)command_bytes = cpu_to_le32(params->position_sp);
+		command_bytes[WRITE_SPEED] = ms_nxtmmx_scale_speed(params->speed_sp);
+		if (params->polarity == DC_MOTOR_POLARITY_INVERSED) {
 			*(int *)command_bytes *= -1;
 			command_bytes[WRITE_SPEED] *= -1;
 		}
@@ -244,12 +291,12 @@ static int ms_nxtmmx_send_command(void *context,
 
 		/* set bits for stop command */
 
-		if (mmx->tm.params.stop_command == TM_STOP_COMMAND_HOLD)
+		if (params->stop_command == TM_STOP_COMMAND_HOLD)
 			mmx->command_flags |= CMD_FLAG_HOLD;
 		else
 			mmx->command_flags &= ~CMD_FLAG_HOLD;
 
-		if (mmx->tm.params.stop_command == TM_STOP_COMMAND_BRAKE)
+		if (params->stop_command == TM_STOP_COMMAND_BRAKE)
 			mmx->command_flags |= CMD_FLAG_BRAKE;
 		else
 			mmx->command_flags &= ~CMD_FLAG_BRAKE;
@@ -268,13 +315,13 @@ static int ms_nxtmmx_send_command(void *context,
 			return err;
 	} else if (command == TM_COMMAND_STOP) {
 		mmx->command_flags = CMD_FLAGS_DEFAULT_VALUE;
-		command_bytes[0] = (mmx->tm.params.stop_command == TM_STOP_COMMAND_COAST)
+		command_bytes[0] = (params->stop_command == TM_STOP_COMMAND_COAST)
 			? COMMAND_FLOAT_STOP(mmx->index) : COMMAND_BRAKE_STOP(mmx->index);
 		err = i2c_smbus_write_byte_data(mmx->i2c_client,
 			COMMAND_REG, command_bytes[0]);
 		if (err < 0)
 			return err;
-		if (mmx->tm.params.stop_command == TM_STOP_COMMAND_HOLD) {
+		if (params->stop_command == TM_STOP_COMMAND_HOLD) {
 			/*
 			 * Hold only happens when encoder mode is enabled, so
 			 * we have to issue a run command to tell it to run to
@@ -295,7 +342,7 @@ static int ms_nxtmmx_send_command(void *context,
 				return err;
 		}
 	} else if (command == TM_COMMAND_RESET) {
-		mmx->tm.params.speed_regulation = TM_SPEED_REGULATION_ON;
+		params->speed_regulation = TM_SPEED_REGULATION_ON;
 		mmx->command_flags = CMD_FLAGS_DEFAULT_VALUE;
 		command_bytes[0] = COMMAND_FLOAT_STOP(mmx->index);
 		err = i2c_smbus_write_byte_data(mmx->i2c_client,
@@ -496,7 +543,73 @@ struct tacho_motor_ops ms_nxtmmx_tacho_motor_ops = {
 	.set_hold_Kd		= ms_nxtmmx_set_position_Kd,
 };
 
-#ifndef PISTORMS
+int ms_nxtmmx_out_port_register_motor(struct ms_nxtmmx_data *mmx,
+				      const struct device_type *device_type,
+				      const char *name)
+{
+	struct lego_device *new_motor;
+
+	new_motor = lego_device_register(name, device_type,
+					 &mmx->port, NULL, 0);
+	if (IS_ERR(new_motor))
+		return PTR_ERR(new_motor);
+
+	mmx->motor = new_motor;
+
+	return 0;
+}
+
+void ms_nxtmmx_out_port_unregister_motor(struct ms_nxtmmx_data *mmx)
+{
+	if (mmx->motor) {
+		lego_device_unregister(mmx->motor);
+		mmx->motor = NULL;
+	}
+}
+
+static int ms_nxtmmx_out_port_set_mode(void *context, u8 mode)
+{
+	struct ms_nxtmmx_data *mmx = context;
+
+	ms_nxtmmx_out_port_unregister_motor(mmx);
+
+	return ms_nxtmmx_out_port_register_motor(mmx,
+				&ms_nxtmmx_out_port_device_types[mode],
+				ms_nxtmmx_out_port_default_driver[mode]);
+}
+
+void ms_nxtmmx_unregister_out_port(struct ms_nxtmmx_data *mmx)
+{
+	ms_nxtmmx_out_port_unregister_motor(mmx);
+	lego_port_unregister(&mmx->port);
+}
+
+int ms_nxtmmx_register_out_port(struct ms_nxtmmx_data *mmx)
+{
+	struct lego_port_device *port = &mmx->port;
+	int err;
+
+	port->name = ms_nxtmmx_out_port_type.name;
+	strncpy(port->port_name, mmx->port_name, LEGO_PORT_NAME_SIZE);
+	port->num_modes = NUM_MS_NXTMMX_OUT_PORT_MODES;
+	port->mode_info = ms_nxtmmx_out_port_mode_info;
+	port->set_mode = ms_nxtmmx_out_port_set_mode;
+	port->tacho_motor_ops = &ms_nxtmmx_tacho_motor_ops;
+	port->context = mmx;
+
+	err = lego_port_register(port, &ms_nxtmmx_out_port_type, &mmx->i2c_client->dev);
+	if (err)
+		return err;
+	err = ms_nxtmmx_out_port_set_mode(mmx, MS_NXTMMX_OUT_PORT_MODE_TACHO_MOTOR);
+	if (err) {
+		lego_port_unregister(port);
+		return err;
+	}
+
+	return 0;
+}
+
+#ifndef PISTORMS_NXTMMX
 
 #include "ms_nxtmmx.h"
 
@@ -512,31 +625,25 @@ int ms_nxtmmx_probe_cb(struct nxt_i2c_sensor_data *data)
 	data->callback_data = mmx;
 
 	for (i = 0; i < 2; i++) {
-		mmx[i].tm.driver_name = data->info->name;
-		snprintf(mmx[i].port_name, LEGO_PORT_NAME_SIZE, "%s:i2c%d:mux%d",
+		snprintf(mmx[i].port_name, LEGO_PORT_NAME_SIZE, "%s:M%d",
 			 data->port_name, data->client->addr, i + 1);
-		mmx[i].tm.port_name = mmx[i].port_name;
-		mmx[i].tm.ops = &ms_nxtmmx_tacho_motor_ops;
-		mmx[i].tm.context = &mmx[i];
 		mmx[i].i2c_client = data->client;
 		mmx[i].index = i;
-		mmx[i].command_flags = CMD_FLAGS_DEFAULT_VALUE;
 	}
-
-	err = register_tacho_motor(&mmx[0].tm, &data->client->dev);
+	err = ms_nxtmmx_register_out_port(&mmx[0]);
 	if (err)
-		goto err_register_tacho_motor0;
-	err = register_tacho_motor(&mmx[1].tm, &data->client->dev);
+		goto err_register_out_port0;
+	err = ms_nxtmmx_register_out_port(&mmx[1]);
 	if (err)
-		goto err_register_tacho_motor1;
+		goto err_register_out_port1;
 
 	data->poll_ms = 1000;
 
 	return 0;
 
-err_register_tacho_motor1:
-	unregister_tacho_motor(&mmx[0].tm);
-err_register_tacho_motor0:
+err_register_out_port1:
+	ms_nxtmmx_unregister_out_port(&mmx[0]);
+err_register_out_port0:
 	data->callback_data = NULL;
 	kfree(mmx);
 
@@ -547,8 +654,8 @@ void ms_nxtmmx_remove_cb(struct nxt_i2c_sensor_data *data)
 {
 	struct ms_nxtmmx_data *mmx = data->callback_data;
 
-	unregister_tacho_motor(&mmx[1].tm);
-	unregister_tacho_motor(&mmx[0].tm);
+	ms_nxtmmx_unregister_out_port(&mmx[1]);
+	ms_nxtmmx_unregister_out_port(&mmx[0]);
 	data->callback_data = NULL;
 	kfree(mmx);
 }

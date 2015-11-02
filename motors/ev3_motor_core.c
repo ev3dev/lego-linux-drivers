@@ -1,5 +1,5 @@
 /*
- * Dexter Industries BrickPi data driver
+ * NXT/EV3 Motor driver
  *
  * Copyright (C) 2015 David Lechner <david@lechnology.com>
  *
@@ -20,16 +20,16 @@
 #include <lego.h>
 #include <tacho_motor_class.h>
 
-#include "brickpi.h"
+#include "ev3_motor.h"
 
-struct brickpi_motor_data {
+struct ev3_motor_data {
 	struct tacho_motor_device tm;
 	struct lego_device *data;
 };
 
-int brickpi_motor_probe(struct lego_device *ldev)
+static int ev3_motor_probe(struct lego_device *ldev)
 {
-	struct brickpi_motor_data *data;
+	struct ev3_motor_data *data;
 	int err;
 
 	if (!ldev->port->tacho_motor_ops) {
@@ -38,7 +38,7 @@ int brickpi_motor_probe(struct lego_device *ldev)
 		return -EINVAL;
 	}
 
-	data = kzalloc(sizeof(struct brickpi_motor_data), GFP_KERNEL);
+	data = kzalloc(sizeof(struct ev3_motor_data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
 
@@ -62,9 +62,9 @@ err_register_tacho_motor:
 	return err;
 }
 
-int brickpi_motor_remove(struct lego_device *ldev)
+static int ev3_motor_remove(struct lego_device *ldev)
 {
-	struct brickpi_motor_data *data = dev_get_drvdata(&ldev->dev);
+	struct ev3_motor_data *data = dev_get_drvdata(&ldev->dev);
 
 	unregister_tacho_motor(&data->tm);
 	dev_set_drvdata(&ldev->dev, NULL);
@@ -73,17 +73,50 @@ int brickpi_motor_remove(struct lego_device *ldev)
 	return 0;
 }
 
-struct lego_device_driver brickpi_motor_driver = {
-	.probe	= brickpi_motor_probe,
-	.remove	= brickpi_motor_remove,
-	.driver = {
-		.name	= "brickpi-motor",
-		.owner	= THIS_MODULE,
-	},
+static const struct lego_device_id ev3_motor_driver_id_table[] = {
+	LEGO_DEVICE_ID(LEGO_NXT_MOTOR),
+	LEGO_DEVICE_ID(LEGO_EV3_LARGE_MOTOR),
+	LEGO_DEVICE_ID(LEGO_EV3_MEDIUM_MOTOR),
+	LEGO_DEVICE_ID(FIRGELLI_L12_EV3),
 };
-lego_device_driver(brickpi_motor_driver);
 
-MODULE_DESCRIPTION("Dexter Industries BrickPi motor driver");
+static ssize_t driver_names_show(struct device_driver *drv, char *buf)
+{
+	int i;
+	int size = 0;
+
+	for (i = 0; i < NUM_EV3_MOTOR_ID; i++) {
+		size += sprintf(buf + size, "%s ",
+				ev3_motor_driver_id_table[i].name);
+	}
+
+	buf[size - 1] = '\n';
+
+	return size;
+}
+
+static DRIVER_ATTR_RO(driver_names);
+
+static struct attribute *ev3_motor_attrs[] = {
+	&driver_attr_driver_names.attr,
+	NULL
+};
+
+ATTRIBUTE_GROUPS(ev3_motor);
+
+struct lego_device_driver ev3_motor_driver = {
+	.probe	= ev3_motor_probe,
+	.remove	= ev3_motor_remove,
+	.driver = {
+		.name	= "ev3-motor",
+		.owner	= THIS_MODULE,
+		.groups	= ev3_motor_groups,
+	},
+	.id_table = ev3_motor_driver_id_table,
+};
+lego_device_driver(ev3_motor_driver);
+
+MODULE_DESCRIPTION("LEGO MINDSTORMS NXT/EV3 motor driver");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("lego:brickpi-motor");
+MODULE_ALIAS("lego:ev3-motor");

@@ -127,44 +127,44 @@ static const struct lego_port_mode_info legoev3_output_port_mode_info[] = {
 	},
 	[EV3_OUTPUT_PORT_MODE_TACHO_MOTOR] = {
 		/**
-		 * [^legoev3-motor-mode]: Configures the port to use the
-		 * [legoev3-motor] driver module. The default driver is the
-		 * EV3/NXT Large Motor (`lego-ev3-l-motor`). You can change
+		 * [^tacho-motor-mode]: Configures the port to use the
+		 * [tacho-motor] driver module. The default driver is the
+		 * EV3 Large Motor (`lego-ev3-l-motor`). You can change
 		 * the driver using the `set_device` attribute.
 		 * ^
-		 * [legoev3-motor]: /docs/drivers/legoev3-motor
+		 * [tacho-motor]: /docs/drivers/tacho-motor
 		 *
-		 * @description: Load the [legoev3-motor] device.
-		 * @name_footnote: [^legoev3-motor-mode]
+		 * @description: Load the [tacho-motor] device.
+		 * @name_footnote: [^tacho-motor-mode]
 		 */
-		.name	= "legoev3-motor",
+		.name	= "tacho-motor",
 	},
 	[EV3_OUTPUT_PORT_MODE_DC_MOTOR] = {
 		/**
-		 * [^rcx-motor-mode]: This can be use with MINDSTORMS RCX
+		 * [^dc-motor-mode]: This can be use with MINDSTORMS RCX
 		 * motors, Power Functions motors and any other 'plain' DC
 		 * motor. By 'plain', we mean the motor is just a motor without
 		 * any feedback.
 		 * ^
-		 * [rcx-motor]: /docs/drivers/rcx-motor
+		 * [dc-motor]: /docs/drivers/dc-motor
 		 *
-		 * @description: Load the [rcx-motor] device.
-		 * @name_footnote: [^rcx-motor-mode]
+		 * @description: Load the [dc-motor] device.
+		 * @name_footnote: [^dc-motor-mode]
 		 */
-		.name	= "rcx-motor",
+		.name	= "dc-motor",
 	},
 	[EV3_OUTPUT_PORT_MODE_LED] = {
 		/**
-		 * [^rcx-led-mode]: This can be used with MINDSTORMS RCX LEDs,
+		 * [^led-mode]: This can be used with MINDSTORMS RCX LEDs,
 		 * Power Functions LEDs or any other LED connected to pins 1
 		 * and 2 of the output port.
 		 * ^
-		 * [rcx-led]: /docs/drivers/rcx-led
+		 * [led]: /docs/drivers/led
 		 *
-		 * @description: Load the [rcx-led] device.
-		 * @name_footnote: [^rcx-led-mode]
+		 * @description: Load the [led] device.
+		 * @name_footnote: [^led-mode]
 		 */
-		.name	= "rcx-led",
+		.name	= "led",
 	},
 	[EV3_OUTPUT_PORT_MODE_RAW] = {
 		/**
@@ -188,22 +188,30 @@ enum motor_type {
 	NUM_MOTOR
 };
 
-struct device_type ev3_motor_device_types[] = {
+static const struct device_type ev3_motor_device_types[] = {
 	[MOTOR_NONE] = {
-		.name	= "no-motor",
+		.name	= NULL,
 	},
 	[MOTOR_TACHO] = {
-		.name	= legoev3_output_port_mode_info[EV3_OUTPUT_PORT_MODE_TACHO_MOTOR].name,
+		.name	= "ev3-motor",
 	},
 	[MOTOR_DC] = {
-		.name	= legoev3_output_port_mode_info[EV3_OUTPUT_PORT_MODE_DC_MOTOR].name,
+		.name	= "rcx-motor",
 	},
 	[MOTOR_LED] = {
-		.name	= legoev3_output_port_mode_info[EV3_OUTPUT_PORT_MODE_LED].name,
+		.name	= "rcx-led",
 	},
 	[MOTOR_ERR] = {
-		.name	= "error",
+		.name	= NULL,
 	}
+};
+
+static const struct char *ev3_motor_status_names[] {
+	[MOTOR_NONE]	= "no-motor",
+	[MOTOR_TACHO]	= legoev3_output_port_mode_info[MOTOR_TACHO].name,
+	[MOTOR_DC]	= legoev3_output_port_mode_info[MOTOR_DC].name,
+	[MOTOR_LED]	= legoev3_output_port_mode_info[MOTOR_LED].name,
+	[MOTOR_ERR]	= "error",
 };
 
 /**
@@ -360,9 +368,8 @@ void ev3_output_port_register_motor(struct work_struct *work)
 	struct ev3_motor_platform_data pdata;
 	const char *driver_name;
 
-	if (data->motor_type == MOTOR_NONE
-		|| data->motor_type == MOTOR_ERR
-		|| data->motor_type >= NUM_MOTOR)
+	if (data->motor_type >= NUM_MOTOR
+	    || !ev3_motor_device_types[data->motor_type].name)
 	{
 		dev_err(&data->out_port.dev,
 			"Trying to register an invalid motor type on %s.\n",
@@ -693,7 +700,7 @@ static const char *ev3_output_port_get_status(void *context)
 	struct ev3_output_port_data *data = context;
 
 	if (data->out_port.mode == EV3_OUTPUT_PORT_MODE_AUTO)
-		return ev3_motor_device_types[data->motor_type].name;
+		return ev3_motor_status_names[data->motor_type];
 
 	return legoev3_output_port_mode_info[data->out_port.mode].name;
 }

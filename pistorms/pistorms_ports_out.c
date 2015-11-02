@@ -16,10 +16,11 @@
 #include "pistorms.h"
 
 /* most of the implementation is shared with the NXTMMX */
-#define PISTORMS
+#define PISTORMS_NXTMMX
 #include "../sensors/ms_nxtmmx.c"
+#undef PISTORMS_NXTMMX
 
-int pistorms_motors_register(struct pistorms_data *data)
+int pistorms_out_ports_register(struct pistorms_data *data)
 {
 	struct ms_nxtmmx_data *mmx;
 	int i, err;
@@ -28,44 +29,38 @@ int pistorms_motors_register(struct pistorms_data *data)
 	if (!mmx)
 		return -ENOMEM;
 
-	data->motors_data = mmx;
+	data->out_port_data = mmx;
 
 	for (i = 0; i < 2; i++) {
-		mmx[i].tm.driver_name = "pistorms";
 		snprintf(mmx[i].port_name, LEGO_PORT_NAME_SIZE, "%sM%d",
 			 data->name, i + 1);
-		mmx[i].tm.port_name = mmx[i].port_name;
-		mmx[i].tm.ops = &ms_nxtmmx_tacho_motor_ops;
-		mmx[i].tm.context = &mmx[i];
 		mmx[i].i2c_client = data->client;
 		mmx[i].index = i;
-		mmx[i].command_flags = CMD_FLAGS_DEFAULT_VALUE;
 	}
-
-	err = register_tacho_motor(&mmx[0].tm, &data->client->dev);
+	err = ms_nxtmmx_register_out_port(&mmx[0]);
 	if (err)
-		goto err_register_tacho_motor0;
-	err = register_tacho_motor(&mmx[1].tm, &data->client->dev);
+		goto err_register_out_port0;
+	err = ms_nxtmmx_register_out_port(&mmx[1]);
 	if (err)
-		goto err_register_tacho_motor1;
+		goto err_register_out_port1;
 
 	return 0;
 
-err_register_tacho_motor1:
-	unregister_tacho_motor(&mmx[0].tm);
-err_register_tacho_motor0:
-	data->motors_data = NULL;
+err_register_out_port1:
+	ms_nxtmmx_unregister_out_port(&mmx[0]);
+err_register_out_port0:
+	data->out_port_data = NULL;
 	kfree(mmx);
 
 	return err;
 }
 
-void pistorms_motors_unregister(struct pistorms_data *data)
+void pistorms_out_ports_unregister(struct pistorms_data *data)
 {
-	struct ms_nxtmmx_data *mmx = data->motors_data;
+	struct ms_nxtmmx_data *mmx = data->out_port_data;
 
-	unregister_tacho_motor(&mmx[1].tm);
-	unregister_tacho_motor(&mmx[0].tm);
-	data->motors_data = NULL;
+	ms_nxtmmx_unregister_out_port(&mmx[1]);
+	ms_nxtmmx_unregister_out_port(&mmx[0]);
+	data->out_port_data = NULL;
 	kfree(mmx);
 }
