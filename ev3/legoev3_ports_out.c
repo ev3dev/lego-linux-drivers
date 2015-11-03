@@ -31,8 +31,8 @@
 #include <dc_motor_class.h>
 
 #include "legoev3_analog.h"
-#include "legoev3_motor.h"
 #include "legoev3_ports.h"
+#include "../motors/ev3_motor.h"
  
 #define OUTPUT_PORT_POLL_NS	10000000			/* 10 msec */
 #define SETTLE_CNT		(20000000/OUTPUT_PORT_POLL_NS)	/* 20 msec */
@@ -193,7 +193,7 @@ static const struct device_type ev3_motor_device_types[] = {
 		.name	= NULL,
 	},
 	[MOTOR_TACHO] = {
-		.name	= "ev3-motor",
+		.name	= "legoev3-motor",
 	},
 	[MOTOR_DC] = {
 		.name	= "rcx-motor",
@@ -206,7 +206,7 @@ static const struct device_type ev3_motor_device_types[] = {
 	}
 };
 
-static const struct char *ev3_motor_status_names[] {
+static const char *ev3_output_port_status_names[] = {
 	[MOTOR_NONE]	= "no-motor",
 	[MOTOR_TACHO]	= legoev3_output_port_mode_info[MOTOR_TACHO].name,
 	[MOTOR_DC]	= legoev3_output_port_mode_info[MOTOR_DC].name,
@@ -252,7 +252,7 @@ struct ev3_output_port_data {
 	unsigned pin5_float_mv;
 	unsigned pin5_low_mv;
 	enum motor_type motor_type;
-	enum legoev3_motor_id motor_id;
+	enum ev3_motor_id motor_id;
 	struct lego_device *motor;
 	enum dc_motor_internal_command command;
 };
@@ -380,7 +380,7 @@ void ev3_output_port_register_motor(struct work_struct *work)
 	pdata.tacho_int_gpio = data->gpio[GPIO_PIN5_INT].gpio;
 	pdata.tacho_dir_gpio = data->gpio[GPIO_PIN6_DIR].gpio;
 	if (data->motor_type == MOTOR_TACHO)
-		driver_name = legoev3_motor_defs[data->motor_id].name;
+		driver_name = ev3_motor_defs[data->motor_id].name;
 	else
 		driver_name = ev3_motor_device_types[data->motor_type].name;
 
@@ -700,7 +700,7 @@ static const char *ev3_output_port_get_status(void *context)
 	struct ev3_output_port_data *data = context;
 
 	if (data->out_port.mode == EV3_OUTPUT_PORT_MODE_AUTO)
-		return ev3_motor_status_names[data->motor_type];
+		return ev3_output_port_status_names[data->motor_type];
 
 	return legoev3_output_port_mode_info[data->out_port.mode].name;
 }

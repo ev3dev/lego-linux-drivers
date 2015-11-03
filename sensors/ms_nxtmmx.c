@@ -86,8 +86,6 @@
 #define CMD_FLAG_TIMED		BIT(6)
 #define CMD_FLAG_GO		BIT(7)
 
-/* default value for mmx->command_flags */
-#define CMD_FLAGS_DEFAULT_VALUE (CMD_FLAG_SPEED_CTRL | CMD_FLAG_BRAKE)
 /* special value used when stop command is "hold" */
 #define CMD_FLAGS_STOP_HOLD (CMD_FLAG_SPEED_CTRL | CMD_FLAG_ENCODER_CTRL | CMD_FLAG_HOLD | CMD_FLAG_GO)
 
@@ -111,7 +109,7 @@ struct ms_nxtmmx_data {
 	struct i2c_client *i2c_client;
 	struct lego_device *motor;
 	int index;
-	unsigned command_flags;
+	unsigned holding:1;
 };
 
 const struct device_type ms_nxtmmx_out_port_type = {
@@ -236,7 +234,7 @@ static int ms_nxtmmx_get_state(void *context)
 	 * to check the tasks register as well. If the tasks register is > 0,
 	 * then we are still running, otherwise we are holding.
 	 */
-	if ((ret & STATUS_FLAG_POWERED) && (mmx->command_flags & CMD_FLAG_HOLD)) {
+	if ((ret & STATUS_FLAG_POWERED) && (mmx->holding)) {
 		ret = i2c_smbus_read_byte_data(mmx->i2c_client, READ_TASKS_REG(mmx->index));
 		if (ret < 0)
 			return ret;
@@ -269,6 +267,8 @@ static int ms_nxtmmx_send_command(void *context,
 	u8 command_bytes[WRITE_SIZE];
 
 	if (IS_RUN_CMD(command)) {
+		u8 command_flags = CMD_FLAG_SPEED_CTRL;
+
 		/* fill in the setpoints with the correct polarity */
 		*(int *)command_bytes = cpu_to_le32(params->position_sp);
 		command_bytes[WRITE_SPEED] = ms_nxtmmx_scale_speed(params->speed_sp);
@@ -280,32 +280,24 @@ static int ms_nxtmmx_send_command(void *context,
 		/* set the appropriate command flags based on the run command */
 
 		if (IS_POS_CMD(command))
-			mmx->command_flags |= CMD_FLAG_ENCODER_CTRL;
-		else
-			mmx->command_flags &= ~CMD_FLAG_ENCODER_CTRL;
+			command_flags |= CMD_FLAG_ENCODER_CTRL;
 
 		if (command == TM_COMMAND_RUN_TO_REL_POS)
-			mmx->command_flags |= CMD_FLAG_RELATIVE;
-		else
-			mmx->command_flags &= ~CMD_FLAG_RELATIVE;
+			command_flags |= CMD_FLAG_RELATIVE;
 
 		/* set bits for stop command */
 
 		if (params->stop_command == TM_STOP_COMMAND_HOLD)
-			mmx->command_flags |= CMD_FLAG_HOLD;
-		else
-			mmx->command_flags &= ~CMD_FLAG_HOLD;
+			command_flags |= CMD_FLAG_HOLD;
 
 		if (params->stop_command == TM_STOP_COMMAND_BRAKE)
-			mmx->command_flags |= CMD_FLAG_BRAKE;
-		else
-			mmx->command_flags &= ~CMD_FLAG_BRAKE;
+			command_flags |= CMD_FLAG_BRAKE;
 
-		mmx->command_flags |= CMD_FLAG_GO;
+		command_flags |= CMD_FLAG_GO;
 
 		command_bytes[WRITE_TIME] = 0; /* never use timed mode */
 		command_bytes[WRITE_COMMAND_B] = 0;
-		command_bytes[WRITE_COMMAND_A] = mmx->command_flags;
+		command_bytes[WRITE_COMMAND_A] = command_flags;
 
 		/* then write to the individual motor register to GO! */
 
@@ -313,14 +305,15 @@ static int ms_nxtmmx_send_command(void *context,
 			WRITE_REG(mmx->index), WRITE_SIZE, command_bytes);
 		if (err < 0)
 			return err;
+		mmx->holding = false;
 	} else if (command == TM_COMMAND_STOP) {
-		mmx->command_flags = CMD_FLAGS_DEFAULT_VALUE;
 		command_bytes[0] = (params->stop_command == TM_STOP_COMMAND_COAST)
 			? COMMAND_FLOAT_STOP(mmx->index) : COMMAND_BRAKE_STOP(mmx->index);
 		err = i2c_smbus_write_byte_data(mmx->i2c_client,
 			COMMAND_REG, command_bytes[0]);
 		if (err < 0)
 			return err;
+		mmx->holding = false;
 		if (params->stop_command == TM_STOP_COMMAND_HOLD) {
 			/*
 			 * Hold only happens when encoder mode is enabled, so
@@ -331,19 +324,18 @@ static int ms_nxtmmx_send_command(void *context,
 				READ_ENCODER_POS_REG(mmx->index), ENCODER_SIZE, command_bytes);
 			if (err < 0)
 				return err;
-			mmx->command_flags = CMD_FLAGS_STOP_HOLD;
 			command_bytes[WRITE_SPEED] = 100;
 			command_bytes[WRITE_TIME] = 0;
 			command_bytes[WRITE_COMMAND_B] = 0;
-			command_bytes[WRITE_COMMAND_A] = mmx->command_flags;
+			command_bytes[WRITE_COMMAND_A] = CMD_FLAGS_STOP_HOLD;
 			err = i2c_smbus_write_i2c_block_data(mmx->i2c_client,
 				WRITE_REG(mmx->index), WRITE_SIZE, command_bytes);
 			if (err < 0)
 				return err;
+			mmx->holding = true;
 		}
 	} else if (command == TM_COMMAND_RESET) {
 		params->speed_regulation = TM_SPEED_REGULATION_ON;
-		mmx->command_flags = CMD_FLAGS_DEFAULT_VALUE;
 		command_bytes[0] = COMMAND_FLOAT_STOP(mmx->index);
 		err = i2c_smbus_write_byte_data(mmx->i2c_client,
 			COMMAND_REG, command_bytes[0]);
@@ -354,6 +346,7 @@ static int ms_nxtmmx_send_command(void *context,
 			COMMAND_REG, command_bytes[0]);
 		if (err < 0)
 			return err;
+		mmx->holding = false;
 	}
 
 	return 0;
@@ -626,7 +619,7 @@ int ms_nxtmmx_probe_cb(struct nxt_i2c_sensor_data *data)
 
 	for (i = 0; i < 2; i++) {
 		snprintf(mmx[i].port_name, LEGO_PORT_NAME_SIZE, "%s:M%d",
-			 data->port_name, data->client->addr, i + 1);
+			 data->port_name, i + 1);
 		mmx[i].i2c_client = data->client;
 		mmx[i].index = i;
 	}

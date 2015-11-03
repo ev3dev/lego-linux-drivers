@@ -54,6 +54,7 @@
 #include <tacho_motor_class.h>
 
 #include "legoev3_motor.h"
+#include "../motors/ev3_motor.h"
 
 #define TACHO_MOTOR_POLL_NS	2000000	/* 2 msec */
 
@@ -96,7 +97,7 @@ struct legoev3_motor_data {
 	struct tacho_motor_device tm;
 	struct tacho_motor_params active_params;
 	struct lego_device *ldev;
-	const struct legoev3_motor_info *info;
+	const struct ev3_motor_info *info;
 
 	struct hrtimer timer;
 	struct work_struct notify_state_change_work;
@@ -157,15 +158,16 @@ struct legoev3_motor_data {
 
 static void set_num_samples_for_speed(struct legoev3_motor_data *ev3_tm, int speed)
 {
-	if (speed > 80) {
-		ev3_tm->num_samples = ev3_tm->info->samples_for_speed[SPEED_ABOVE_80];
-	} else if (speed > 60) {
-		ev3_tm->num_samples = ev3_tm->info->samples_for_speed[SPEED_ABOVE_60];
-	} else if (speed > 40) {
-		ev3_tm->num_samples = ev3_tm->info->samples_for_speed[SPEED_ABOVE_40];
-	} else {
-		ev3_tm->num_samples = ev3_tm->info->samples_for_speed[SPEED_BELOW_40];
-	}
+	const int *samples_for_speed = ev3_tm->info->legoev3_info.samples_for_speed;
+
+	if (speed > 80)
+		ev3_tm->num_samples = samples_for_speed[SPEED_ABOVE_80];
+	else if (speed > 60)
+		ev3_tm->num_samples = samples_for_speed[SPEED_ABOVE_60];
+	else if (speed > 40)
+		ev3_tm->num_samples = samples_for_speed[SPEED_ABOVE_40];
+	else
+		ev3_tm->num_samples = samples_for_speed[SPEED_BELOW_40];
 }
 
 /*
@@ -383,13 +385,15 @@ static void legoev3_motor_set_power(struct legoev3_motor_data *ev3_tm, int power
  */
 static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 {
+	const struct legoev3_motor_info *info = &ev3_tm->info->legoev3_info;
+
 	memset(ev3_tm->tacho_samples, 0, sizeof(unsigned) * TACHO_SAMPLES);
 
 	ev3_tm->tacho_samples_head	= 0;
 	ev3_tm->got_new_sample		= false;
-	ev3_tm->num_samples		= ev3_tm->info->samples_for_speed[SPEED_BELOW_40];
+	ev3_tm->num_samples		= info->samples_for_speed[SPEED_BELOW_40];
 	ev3_tm->dir_chg_samples		= 0;
-	ev3_tm->max_us_per_sample	= ev3_tm->info->max_us_per_sample;
+	ev3_tm->max_us_per_sample	= info->max_us_per_sample;
 	ev3_tm->speed			= 0;
 	ev3_tm->ramp.up.start		= 0;
 	ev3_tm->ramp.up.end		= 0;
@@ -693,9 +697,10 @@ static void regulate_speed(struct legoev3_motor_data *ev3_tm)
 
 	ev3_tm->pid.prev_speed = ev3_tm->speed;
 
-	power =  ((ev3_tm->pid.P * ev3_tm->info->speed_pid_k.p)
-		+ (ev3_tm->pid.I * ev3_tm->info->speed_pid_k.i)
-		+ (ev3_tm->pid.D * ev3_tm->info->speed_pid_k.d)) / 10000;
+	power = ((ev3_tm->pid.P * ev3_tm->info->legoev3_info.speed_pid_k.p)
+		 + (ev3_tm->pid.I * ev3_tm->info->legoev3_info.speed_pid_k.i)
+		 + (ev3_tm->pid.D * ev3_tm->info->legoev3_info.speed_pid_k.d))
+		/ 10000;
 
 	/*
 	 * Subtract the speed error to avoid integral windup if the resulting
@@ -1483,7 +1488,7 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 		return -ENOMEM;
 
 	ev3_tm->ldev = ldev;
-	ev3_tm->info = &legoev3_motor_defs[ldev->entry_id->driver_data];
+	ev3_tm->info = &ev3_motor_defs[ldev->entry_id->driver_data];
 
 	ev3_tm->tm.driver_name = ldev->entry_id->name;
 	ev3_tm->tm.port_name = ldev->port->port_name;
@@ -1491,9 +1496,9 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 	ev3_tm->tm.context = ev3_tm;
 	ev3_tm->tm.supports_encoder_polarity = true;
 	ev3_tm->tm.supports_ramping = true;
-	ev3_tm->pid.speed_Kp = ev3_tm->info->speed_pid_k.p;
-	ev3_tm->pid.speed_Ki = ev3_tm->info->speed_pid_k.i;
-	ev3_tm->pid.speed_Kd = ev3_tm->info->speed_pid_k.d;
+	ev3_tm->pid.speed_Kp = ev3_tm->info->legoev3_info.speed_pid_k.p;
+	ev3_tm->pid.speed_Ki = ev3_tm->info->legoev3_info.speed_pid_k.i;
+	ev3_tm->pid.speed_Kd = ev3_tm->info->legoev3_info.speed_pid_k.d;
 
 	dev_set_drvdata(&ldev->dev, ev3_tm);
 
@@ -1543,10 +1548,12 @@ static int legoev3_motor_remove(struct lego_device *ldev)
 	return 0;
 }
 
-struct lego_device_id legoev3_motor_driver_id_table[] = {
+struct lego_device_id legoev3_motor_driver_id_table[NUM_EV3_MOTOR_ID] = {
+	LEGO_DEVICE_ID(LEGO_NXT_MOTOR),
 	LEGO_DEVICE_ID(LEGO_EV3_LARGE_MOTOR),
 	LEGO_DEVICE_ID(LEGO_EV3_MEDIUM_MOTOR),
-	LEGO_DEVICE_ID(FIRGELLI_L12_EV3),
+	LEGO_DEVICE_ID(FIRGELLI_L12_EV3_50),
+	LEGO_DEVICE_ID(FIRGELLI_L12_EV3_100),
 };
 
 /* TODO: Make this a bus driver attribute instead so it is present for all drivers on the lego bus */
@@ -1555,7 +1562,7 @@ static ssize_t driver_names_show(struct device_driver *drv, char *buf)
 	int i;
 	int size = 0;
 
-	for (i = 0; i < NUM_LEGOEV3_MOTOR_ID; i++) {
+	for (i = 0; i < NUM_EV3_MOTOR_ID; i++) {
 		size += sprintf(buf + size, "%s ",
 			legoev3_motor_driver_id_table[i].name);
 	}
@@ -1590,4 +1597,3 @@ MODULE_DESCRIPTION("Motor driver for LEGO MINDSTORMS EV3");
 MODULE_AUTHOR("Ralph Hempel <rhempel@hempeldesigngroup.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("lego:legoev3-motor");
-
