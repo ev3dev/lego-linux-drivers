@@ -51,6 +51,9 @@
 #define SPEED_PID_KI_REG	0x66
 #define SPEED_PID_KD_REG	0x68
 
+/* Motor rotation on PiStorms is backwards from standard rotation */
+#define NXTMMX_POLARITY_INVERSED DC_MOTOR_POLARITY_NORMAL
+
 #else
 
 #define READ_ENCODER_POS_REG(idx)	(0x62 + ENCODER_SIZE * idx)
@@ -64,6 +67,8 @@
 #define SPEED_PID_KP_REG	0x80
 #define SPEED_PID_KI_REG	0x82
 #define SPEED_PID_KD_REG	0x84
+
+#define NXTMMX_POLARITY_INVERSED DC_MOTOR_POLARITY_INVERSED
 
 #endif
 
@@ -272,7 +277,7 @@ static int ms_nxtmmx_send_command(void *context,
 		/* fill in the setpoints with the correct polarity */
 		*(int *)command_bytes = cpu_to_le32(params->position_sp);
 		command_bytes[WRITE_SPEED] = ms_nxtmmx_scale_speed(params->speed_sp);
-		if (params->polarity == DC_MOTOR_POLARITY_INVERSED) {
+		if (params->polarity == NXTMMX_POLARITY_INVERSED) {
 			*(int *)command_bytes *= -1;
 			command_bytes[WRITE_SPEED] *= -1;
 		}
