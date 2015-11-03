@@ -64,8 +64,8 @@
 
 #include "nxt_i2c_sensor.h"
 
-#if defined(CONFIG_I2C_LEGOEV3) || defined(CONFIG_I2C_LEGOEV3_MODULE)
-#include <linux/i2c-legoev3.h>
+#if defined(CONFIG_LEGOEV3_I2C) || defined(CONFIG_LEGOEV3_I2C_MODULE)
+#include "../ev3/legoev3_i2c.h"
 #include "../ev3/legoev3_ports.h"
 #endif
 
@@ -363,12 +363,12 @@ static int nxt_i2c_sensor_detect(struct i2c_client *client,
 	if (!allow_autodetect)
 		return -ENODEV;
 
-#if defined(CONFIG_I2C_LEGOEV3) || defined(CONFIG_I2C_LEGOEV3_MODULE)
+#if defined(CONFIG_LEGOEV3_I2C) || defined(CONFIG_LEGOEV3_I2C_MODULE)
 	if (!info->platform_data && client->adapter->algo == &i2c_legoev3_algo) {
 		struct i2c_legoev3_platform_data *apdata =
 					client->adapter->dev.platform_data;
 
-		info->platform_data = apdata->sensor_platform_data;
+		info->platform_data = &apdata->sensor_platform_data;
 	}
 #endif
 

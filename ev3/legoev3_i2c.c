@@ -14,7 +14,6 @@
  */
 
 #include <linux/i2c.h>
-#include <linux/i2c-legoev3.h>
 #include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/module.h>
@@ -23,6 +22,8 @@
 #include <linux/platform_device.h>
 
 #include <mach/legoev3-fiq.h>
+
+#include "legoev3_i2c.h"
 
 struct i2c_legoev3_algo_data {
 	struct i2c_legoev3_platform_data *pdata;

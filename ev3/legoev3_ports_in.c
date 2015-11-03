@@ -18,7 +18,6 @@
 #include <linux/module.h>
 #include <linux/workqueue.h>
 #include <linux/gpio.h>
-#include <linux/i2c-legoev3.h>
 #include <linux/platform_device.h>
 #include <linux/platform_data/legoev3.h>
 
@@ -28,6 +27,7 @@
 #include <lego_port_class.h>
 
 #include "legoev3_analog.h"
+#include "legoev3_i2c.h"
 #include "legoev3_ports.h"
 #include "../sensors/ev3_analog_sensor.h"
 #include "../sensors/nxt_analog_sensor.h"
