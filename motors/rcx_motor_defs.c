@@ -35,7 +35,7 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 	[LEGO_PF_M_MOTOR] = {
 		/**
 		 * @vendor_name: LEGO
-		 * @vendor_part_number: 9842
+		 * @vendor_part_number: 8883
 		 * @vendor_part_name: Power Functions M-Motor
 		 * @vendor_website: http://shop.lego.com/en-US/LEGO-Power-Functions-M-Motor-8883
 		 */
