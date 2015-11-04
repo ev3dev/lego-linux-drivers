@@ -23,6 +23,60 @@
  */
 
 const struct rcx_motor_info rcx_motor_defs[] = {
+	[LEGO_9V_MICROMOTOR] = {
+		/**
+		 * @vendor_name: LEGO
+		 * @vendor_part_number: 70823
+		 * @vendor_part_name: Motor 9V Micromotor
+		 * @vendor_website: http://www.bricklink.com/catalogItem.asp?P=2986
+		 */
+		.name			= "rcx-motor",
+	},
+	[LEGO_9V_MINI_MOTOR_NEWER] = {
+		/**
+		 * @vendor_name: LEGO
+		 * @vendor_part_number: 43362
+		 * @vendor_part_name: Motor 9V Mini-motor, newer lighter weight
+		 * @vendor_website: http://www.bricklink.com/catalogItem.asp?P=43362c01
+		 */
+		.name			= "rcx-motor",
+	},
+	[LEGO_9V_MINI_MOTOR_OLDER] = {
+		/**
+		 * @vendor_name: LEGO
+		 * @vendor_part_number: 71427
+		 * @vendor_part_name: Motor 9V Mini-motor, older heavier weight
+		 * @vendor_website: http://www.bricklink.com/catalogItem.asp?P=71427c01
+		 */
+		.name			= "rcx-motor",
+	},
+	[LEGO_9V_GEARED] = {
+		/**
+		 * @vendor_name: LEGO
+		 * @vendor_part_number: 47154
+		 * @vendor_part_name: Technic Motor 9V Geared 
+		 * @vendor_website: http://alpha.bricklink.com/pages/clone/catalogitem.page?P=47154c01
+		 */
+		.name			= "rcx-motor",
+	},
+	[LEGO_TECHNIC_MOTOR_9V] = {
+		/**
+		 * @vendor_name: LEGO
+		 * @vendor_part_number: 74569
+		 * @vendor_part_name: Technic Motor 9V
+		 * @vendor_website: http://www.bricklink.com/catalogItem.asp?P=2838c01
+		 */
+		.name			= "rcx-motor",
+	},
+	[LEGO_PF_E_MOTOR] = {
+		/**
+		 * @vendor_name: LEGO
+		 * @vendor_part_number: 9670
+		 * @vendor_part_name: E-Motor
+		 * @vendor_website: https://education.lego.com/en-us/lego-education-product-database/machines-and-mechanisms/9670-e-motor
+		 */
+		.name			= "rcx-motor",
+	},
 	[LEGO_PF_L_MOTOR] = {
 		/**
 		 * @vendor_name: LEGO
