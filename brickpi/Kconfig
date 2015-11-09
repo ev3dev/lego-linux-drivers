@@ -7,3 +7,12 @@ menuconfig BRICKPI
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called brickpi.
+
+menuconfig BRICKPI_BATTERY
+    tristate "Dexter Industries BrickPi+ battery support"
+    help
+      Say Y here if you want to use Dexter Industries BrickPi+. This provides
+      a power_supply class driver to monitor the battery voltage.
+
+      To compile this driver as a module, choose M here: the
+      module will be called brickpi-battery.
