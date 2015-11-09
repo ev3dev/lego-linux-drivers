@@ -8,6 +8,22 @@
  * published by the Free Software Foundation.
  */
 
+/*
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * Dexter Industries BrickPi+ Battery Driver
+ *
+ * A `brickpi-battery` is available to monitor battery voltage on the BrickPi+.
+ * (Not available on the original BrickPi.) Use the `voltage_now` attribute to
+ * read the instantaneous battery voltage.
+ */
+
 #include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/kernel.h>

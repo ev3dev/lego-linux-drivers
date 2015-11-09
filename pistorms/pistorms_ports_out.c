@@ -20,6 +20,33 @@
 #include "../sensors/ms_nxtmmx.c"
 #undef PISTORMS_NXTMMX
 
+#if 0 /* This section is for automatic documentation generation only */
+/*
+ * Documentation is automatically generated from this struct, so formatting is
+ * very important. Make sure any new modes have the same syntax. The comments
+ * are also parsed to provide more information for the documentation. The
+ * parser can be found in the ev3dev-kpkg repository.
+ */
+
+static const struct lego_port_mode_info pistorms_out_port_mode_info[NUM_PISTORMS_OUT_PORT_MODES] = {
+	/**
+	 * [^prefix]: The full port name will be something like `pistorms:BAM1`
+	 * depending on what port the motor multiplexer is plugged into.
+	 *
+	 * @description: mindsensors.com PiStorms Output Port
+	 * @connection_types: tacho-motor
+	 * @prefix: M
+	 * @prefix_footnote: [^prefix]
+	 */
+	[PISTORMS_OUT_PORT_MODE_TACHO_MOTOR] = {
+		/**
+		 * @description: NXT/EV3 Large Motor
+		 */
+		.name	= "tacho-motor",
+	},
+};
+#endif
+
 int pistorms_out_ports_register(struct pistorms_data *data)
 {
 	struct ms_nxtmmx_data *mmx;

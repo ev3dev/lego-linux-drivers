@@ -24,7 +24,17 @@
  *
  * mindsensors.com PiStorms
  *
- * TODO: Add some docs.
+ * The `pistorms` module provides drivers for most of the functionality of the
+ * [mindsensors.com PiStorms][pistorms] including [lego-port] class instances
+ * for the input and output ports, an [evdev] driver (evdev is not to be confused
+ * with ev3dev) for the touchscreen and GO button, a [power_supply] driver for
+ * monitoring the battery and an [leds] driver for the multi-color LEDs.
+ * .
+ * [pistorms]: http://www.mindsensors.com/stem-education/13-pistorms-base-kit
+ * [lego-port]: ../lego-port-class
+ * [evdev]: https://www.kernel.org/doc/Documentation/input/event-codes.txt
+ * [power_supply]: https://www.kernel.org/doc/Documentation/power/power_supply_class.txt
+ * [leds]: https://www.kernel.org/doc/Documentation/leds/leds-class.txt
  */
 
 #include <linux/device.h>
