@@ -30,8 +30,9 @@ struct port_info {
 	struct config_group group;
 	/* default groups */
 	struct config_group sensors_group;
+	struct config_group live_group;
 	/* future default groups may include modes, motors and leds */
-	struct config_group *default_groups[1];
+	struct config_group *default_groups[2];
 	struct lego_port_device port;
 	struct lego_port_mode_info mode0;
 	struct mutex lock;
@@ -241,41 +242,6 @@ sensor_info_fw_version_store(struct sensor_info *info, const char *page,
 	return len;
 }
 
-static ssize_t
-sensor_info_enabled_show(struct sensor_info *info, char *page)
-{
-	return sprintf(page, "%d\n", info->enabled);
-}
-
-static ssize_t
-sensor_info_enabled_store(struct sensor_info *info, const char *page, size_t len)
-{
-	int enabled, err;
-
-	err = kstrtoint(page, 10, &enabled);
-	if (err < 0)
-		return err;
-	if (enabled < 0 || enabled > 1)
-		return -EINVAL;
-	if (enabled == info->enabled)
-		return enabled ? -EBUSY : 0;
-
-	mutex_lock(&info->lock);
-	if (enabled) {
-		err = user_lego_sensor_register(&info->sensor,
-						&info->port_info->port.dev);
-		if (err < 0) {
-			mutex_unlock(&info->lock);
-			return err;
-		}
-	} else
-		user_lego_sensor_unregister(&info->sensor);
-	info->enabled = enabled;
-	mutex_unlock(&info->lock);
-
-	return len;
-}
-
 /*
  * TODO: if we ever support more than one mode, these attributes need to be
  * defined per mode.
@@ -289,9 +255,6 @@ static LEGO_USER_SENSOR_INFO_ATTR(units);
 static LEGO_USER_SENSOR_INFO_ATTR(driver_name);
 static LEGO_USER_SENSOR_INFO_ATTR(fw_version);
 
-/* and a special attribute to actually create the device */
-static LEGO_USER_SENSOR_INFO_ATTR(enabled);
-
 static struct configfs_attribute *sensor_info_attrs[] = {
 	&sensor_info_attr_bin_data_format.attr,
 	&sensor_info_attr_decimals.attr,
@@ -299,7 +262,6 @@ static struct configfs_attribute *sensor_info_attrs[] = {
 	&sensor_info_attr_units.attr,
 	&sensor_info_attr_driver_name.attr,
 	&sensor_info_attr_fw_version.attr,
-	&sensor_info_attr_enabled.attr,
 	NULL
 };
 
@@ -370,6 +332,51 @@ static struct config_item_type sensors_group_type = {
 	.ct_owner	= THIS_MODULE,
 };
 
+static int live_allow_link(struct config_item *src, struct config_item *target)
+{
+	int ret = -EPERM;
+
+	if (target->ci_type == &sensor_info_type) {
+		struct sensor_info *info = to_sensor_info(target);
+
+		mutex_lock(&info->lock);
+		if (info->enabled) {
+			ret = -EBUSY;
+		} else {
+			ret = user_lego_sensor_register(&info->sensor,
+						&info->port_info->port.dev);
+			if (ret == 0)
+				info->enabled = true;
+		}
+		mutex_unlock(&info->lock);
+	}
+
+	return ret;
+}
+
+static int live_drop_link(struct config_item *src, struct config_item *target)
+{
+	if (target->ci_type == &sensor_info_type) {
+		struct sensor_info *info = to_sensor_info(target);
+		mutex_lock(&info->lock);
+		user_lego_sensor_unregister(&info->sensor);
+		info->enabled = false;
+		mutex_unlock(&info->lock);
+	}
+
+	return 0;
+}
+
+static struct configfs_item_operations live_item_ops = {
+	.allow_link	= &live_allow_link,
+	.drop_link	= &live_drop_link,
+};
+
+static struct config_item_type live_group_type = {
+	.ct_item_ops	= &live_item_ops,
+	.ct_owner	= THIS_MODULE,
+};
+
 static inline struct port_info *to_port_info(struct config_item *item)
 {
 	return container_of(to_config_group(item), struct port_info, group);
@@ -435,9 +442,11 @@ static struct config_group
 
 	info->group.default_groups = info->default_groups;
 	info->default_groups[0] = &info->sensors_group;
+	info->default_groups[1] = &info->live_group;
 	config_group_init_type_name(&info->group, name, &port_info_type);
 	config_group_init_type_name(&info->sensors_group, "sensors",
 				    &sensors_group_type);
+	config_group_init_type_name(&info->live_group, "live", &live_group_type);
 
 	return &info->group;
 }
