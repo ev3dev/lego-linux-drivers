@@ -38,9 +38,9 @@ static struct attribute *user_lego_sensor_class_attrs[] = {
 	NULL
 };
 
-static ssize_t bin_data_read(struct file *file, struct kobject *kobj,
-			     struct bin_attribute *attr,
-			     char *buf, loff_t off, size_t count)
+static ssize_t bin_data_write(struct file *file, struct kobject *kobj,
+			      struct bin_attribute *attr,
+			      char *buf, loff_t off, size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct user_lego_sensor_device *sensor = to_user_lego_sensor_device(dev);
@@ -51,12 +51,14 @@ static ssize_t bin_data_read(struct file *file, struct kobject *kobj,
 	size -= off;
 	if (count < size)
 		size = count;
-	memcpy(buf + off, sensor->sensor.mode_info[sensor->sensor.mode].raw_data, size);
+	memcpy(sensor->sensor.mode_info[sensor->sensor.mode].raw_data + off,
+	       buf, size);
 
 	return size;
 }
 
-static BIN_ATTR_RO(bin_data, LEGO_SENSOR_RAW_DATA_SIZE);
+static BIN_ATTR(bin_data, S_IWUSR | S_IWGRP, NULL, bin_data_write,
+		LEGO_SENSOR_RAW_DATA_SIZE);
 
 static struct bin_attribute *user_lego_sensor_class_bin_attrs[] = {
 	&bin_attr_bin_data,
