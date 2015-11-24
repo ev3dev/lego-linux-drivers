@@ -85,7 +85,11 @@ int user_lego_sensor_register(struct user_lego_sensor_device *sensor,
 {
 	int err;
 
-	if (!sensor || !sensor->sensor.port_name || !parent)
+	if (WARN_ON(!sensor))
+		return -EINVAL;
+	if (WARN_ON(!sensor->sensor.port_name))
+		return -EINVAL;
+	if (WARN_ON(!parent))
 		return -EINVAL;
 
 	sensor->dev.release = user_lego_sensor_release;

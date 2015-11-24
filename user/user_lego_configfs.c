@@ -26,16 +26,6 @@
 
 #define LEGO_USER_DEVICE_NAME "lego_user_device"
 
-struct sensor_info {
-	struct config_group group;
-	struct user_lego_sensor_device sensor;
-	struct lego_sensor_mode_info mode0;
-	struct mutex lock;
-	bool enabled;
-};
-
-CONFIGFS_ATTR_STRUCT(sensor_info);
-
 struct port_info {
 	struct config_group group;
 	/* default groups */
@@ -48,6 +38,18 @@ struct port_info {
 };
 
 CONFIGFS_ATTR_STRUCT(port_info);
+
+struct sensor_info {
+	struct port_info *port_info;
+	struct config_group group;
+	struct user_lego_sensor_device sensor;
+	struct lego_sensor_mode_info mode0;
+	struct mutex lock;
+	bool enabled;
+};
+
+CONFIGFS_ATTR_STRUCT(sensor_info);
+
 
 struct device *lego_user_cfs_parent;
 
@@ -231,7 +233,8 @@ sensor_info_enabled_store(struct sensor_info *info, const char *page, size_t len
 
 	mutex_lock(&info->lock);
 	if (enabled) {
-		err = user_lego_sensor_register(&info->sensor, NULL);
+		err = user_lego_sensor_register(&info->sensor,
+						&info->port_info->port.dev);
 		if (err < 0) {
 			mutex_unlock(&info->lock);
 			return err;
@@ -284,17 +287,22 @@ static struct config_item_type sensor_info_type = {
 static struct config_group
 *sensor_make(struct config_group *group, const char *name)
 {
+	struct port_info *port_info =
+			container_of(group, struct port_info, sensors_group);
 	struct sensor_info *info;
 
 	info = kzalloc(sizeof(*info), GFP_KERNEL);
 	if (!info)
 		return ERR_PTR(-ENOMEM);
 
-	info->sensor.sensor.set_mode = sensor_info_set_mode;
-	info->sensor.sensor.context = info;
+	info->port_info = port_info;
+	info->sensor.sensor.name = LEGO_USER_DEVICE_NAME;
+	info->sensor.sensor.port_name = port_info->port.port_name;
 	/* only supporting a single mode for now */
 	info->sensor.sensor.num_modes = 1;
 	info->sensor.sensor.mode_info = &info->mode0;
+	info->sensor.sensor.set_mode = sensor_info_set_mode;
+	info->sensor.sensor.context = info;
 
 	snprintf(info->mode0.name, LEGO_NAME_SIZE, "USER");
 	info->mode0.data_sets = 1;
