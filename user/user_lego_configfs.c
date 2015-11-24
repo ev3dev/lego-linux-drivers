@@ -40,6 +40,7 @@ struct port_info {
 CONFIGFS_ATTR_STRUCT(port_info);
 
 struct sensor_info {
+	char port_name[LEGO_PORT_NAME_SIZE];
 	struct port_info *port_info;
 	struct config_group group;
 	struct user_lego_sensor_device sensor;
@@ -49,7 +50,6 @@ struct sensor_info {
 };
 
 CONFIGFS_ATTR_STRUCT(sensor_info);
-
 
 struct device *lego_user_cfs_parent;
 
@@ -295,9 +295,11 @@ static struct config_group
 	if (!info)
 		return ERR_PTR(-ENOMEM);
 
+	snprintf(info->port_name, LEGO_PORT_NAME_SIZE, "%s:%s",
+		 port_info->port.port_name, name);
 	info->port_info = port_info;
 	info->sensor.sensor.name = LEGO_USER_DEVICE_NAME;
-	info->sensor.sensor.port_name = port_info->port.port_name;
+	info->sensor.sensor.port_name = info->port_name;
 	/* only supporting a single mode for now */
 	info->sensor.sensor.num_modes = 1;
 	info->sensor.sensor.mode_info = &info->mode0;
