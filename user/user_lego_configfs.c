@@ -40,6 +40,7 @@ struct port_info {
 CONFIGFS_ATTR_STRUCT(port_info);
 
 struct sensor_info {
+	char driver_name[LEGO_NAME_SIZE];
 	char port_name[LEGO_PORT_NAME_SIZE];
 	struct port_info *port_info;
 	struct config_group group;
@@ -185,6 +186,34 @@ sensor_info_units_store(struct sensor_info *info, const char *page, size_t len)
 }
 
 static ssize_t
+sensor_info_driver_name_show(struct sensor_info *info, char *page)
+{
+	return sprintf(page, "%s\n", info->driver_name);
+}
+
+static ssize_t
+sensor_info_driver_name_store(struct sensor_info *info, const char *page,
+			      size_t len)
+{
+	char *value;
+
+	if (info->enabled)
+		return -EBUSY;
+
+	if (len > LEGO_NAME_SIZE)
+		return -EINVAL;
+
+	value = kstrndup(page, len, GFP_KERNEL);
+	if (!value)
+		return -ENOMEM;
+
+	snprintf(info->driver_name, len, "%s", strim(value));
+	kfree(value);
+
+	return len;
+}
+
+static ssize_t
 sensor_info_fw_version_show(struct sensor_info *info, char *page)
 {
 	return sprintf(page, "%s\n", info->sensor.sensor.fw_version);
@@ -257,6 +286,7 @@ static LEGO_USER_SENSOR_INFO_ATTR(num_values);
 static LEGO_USER_SENSOR_INFO_ATTR(units);
 
 /* These attributes are common for all modes */
+static LEGO_USER_SENSOR_INFO_ATTR(driver_name);
 static LEGO_USER_SENSOR_INFO_ATTR(fw_version);
 
 /* and a special attribute to actually create the device */
@@ -267,6 +297,7 @@ static struct configfs_attribute *sensor_info_attrs[] = {
 	&sensor_info_attr_decimals.attr,
 	&sensor_info_attr_num_values.attr,
 	&sensor_info_attr_units.attr,
+	&sensor_info_attr_driver_name.attr,
 	&sensor_info_attr_fw_version.attr,
 	&sensor_info_attr_enabled.attr,
 	NULL
@@ -295,10 +326,11 @@ static struct config_group
 	if (!info)
 		return ERR_PTR(-ENOMEM);
 
+	snprintf(info->driver_name, LEGO_NAME_SIZE, LEGO_USER_DEVICE_NAME);
 	snprintf(info->port_name, LEGO_PORT_NAME_SIZE, "%s:%s",
 		 port_info->port.port_name, name);
 	info->port_info = port_info;
-	info->sensor.sensor.name = LEGO_USER_DEVICE_NAME;
+	info->sensor.sensor.name = info->driver_name;
 	info->sensor.sensor.port_name = info->port_name;
 	/* only supporting a single mode for now */
 	info->sensor.sensor.num_modes = 1;
