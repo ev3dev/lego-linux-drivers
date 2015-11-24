@@ -48,7 +48,7 @@ struct sensor_info {
 	struct user_lego_sensor_device sensor;
 	struct lego_sensor_mode_info mode0;
 	struct mutex lock;
-	bool enabled;
+	bool live;
 };
 
 CONFIGFS_ATTR_STRUCT(sensor_info);
@@ -100,7 +100,7 @@ sensor_info_bin_data_format_store(struct sensor_info *info, const char *page,
 {
 	int ret;
 
-	if (info->enabled)
+	if (info->live)
 		return -EBUSY;
 
 	ret = lego_sensor_str_to_bin_data_format(page);
@@ -124,7 +124,7 @@ sensor_info_decimals_store(struct sensor_info *info, const char *page,
 {
 	unsigned int value;
 
-	if (info->enabled)
+	if (info->live)
 		return -EBUSY;
 
 	if (kstrtouint(page, 10, &value) || value > 5)
@@ -147,7 +147,7 @@ sensor_info_num_values_store(struct sensor_info *info, const char *page,
 {
 	unsigned int value;
 
-	if (info->enabled)
+	if (info->live)
 		return -EBUSY;
 
 	if (kstrtouint(page, 10, &value) || value == 0 || value > 32)
@@ -170,7 +170,7 @@ sensor_info_units_store(struct sensor_info *info, const char *page, size_t len)
 {
 	char *value;
 
-	if (info->enabled)
+	if (info->live)
 		return -EBUSY;
 
 	if (len > LEGO_SENSOR_UNITS_SIZE)
@@ -198,7 +198,7 @@ sensor_info_driver_name_store(struct sensor_info *info, const char *page,
 {
 	char *value;
 
-	if (info->enabled)
+	if (info->live)
 		return -EBUSY;
 
 	if (len > LEGO_NAME_SIZE)
@@ -226,7 +226,7 @@ sensor_info_fw_version_store(struct sensor_info *info, const char *page,
 {
 	char *value;
 
-	if (info->enabled)
+	if (info->live)
 		return -EBUSY;
 
 	if (len > LEGO_SENSOR_FW_VERSION_SIZE)
@@ -314,9 +314,9 @@ static void sensor_drop(struct config_group *group, struct config_item *item)
 	struct sensor_info *info = to_sensor_info(item);
 
 	mutex_lock(&info->lock);
-	if (info->enabled)
+	if (info->live)
 		user_lego_sensor_unregister(&info->sensor);
-	info->enabled = 0;
+	info->live = 0;
 	mutex_unlock(&info->lock);
 
 	config_item_put(item);
@@ -340,13 +340,13 @@ static int live_allow_link(struct config_item *src, struct config_item *target)
 		struct sensor_info *info = to_sensor_info(target);
 
 		mutex_lock(&info->lock);
-		if (info->enabled) {
+		if (info->live) {
 			ret = -EBUSY;
 		} else {
 			ret = user_lego_sensor_register(&info->sensor,
 						&info->port_info->port.dev);
 			if (ret == 0)
-				info->enabled = true;
+				info->live = true;
 		}
 		mutex_unlock(&info->lock);
 	}
@@ -360,7 +360,7 @@ static int live_drop_link(struct config_item *src, struct config_item *target)
 		struct sensor_info *info = to_sensor_info(target);
 		mutex_lock(&info->lock);
 		user_lego_sensor_unregister(&info->sensor);
-		info->enabled = false;
+		info->live = false;
 		mutex_unlock(&info->lock);
 	}
 
