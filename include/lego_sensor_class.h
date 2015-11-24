@@ -142,6 +142,8 @@ extern struct class lego_sensor_class;
 
 extern int lego_sensor_default_scale(struct lego_sensor_mode_info *mode_info,
 				     u8 index, long int *value);
+extern const char *lego_sensor_bin_data_format_to_str(enum lego_sensor_data_type value);
+extern int lego_sensor_str_to_bin_data_format(const char *value);
 
 static inline int lego_sensor_get_raw_data_size(struct lego_sensor_mode_info *mode_info)
 {

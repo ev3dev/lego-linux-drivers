@@ -413,41 +413,55 @@ static ssize_t value_show(struct device *dev, struct device_attribute *attr,
 	return sprintf(buf, "%ld\n", value);
 }
 
+const char *lego_sensor_bin_data_format_to_str(enum lego_sensor_data_type value)
+{
+	switch (value) {
+	case LEGO_SENSOR_DATA_U8:
+		return "u8";
+	case LEGO_SENSOR_DATA_S8:
+		return "s8";
+	case LEGO_SENSOR_DATA_U16:
+		return "u16";
+	case LEGO_SENSOR_DATA_S16:
+		return "s16";
+	case LEGO_SENSOR_DATA_S16_BE:
+		return "s16_be";
+	case LEGO_SENSOR_DATA_U32:
+		return "u32";
+	case LEGO_SENSOR_DATA_S32:
+		return "s32";
+	case LEGO_SENSOR_DATA_FLOAT:
+		return "float";
+	default:
+		return NULL;
+	}
+}
+EXPORT_SYMBOL_GPL(lego_sensor_bin_data_format_to_str);
+
+int lego_sensor_str_to_bin_data_format(const char *value)
+{
+	int i;
+
+	for (i = 0; i < NUM_LEGO_SENSOR_DATA_TYPE; i++) {
+		const char *other = lego_sensor_bin_data_format_to_str(i);
+		if (sysfs_streq(value, other))
+			return i;
+	}
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL_GPL(lego_sensor_str_to_bin_data_format);
+
 static ssize_t bin_data_format_show(struct device *dev,
 				    struct device_attribute *attr,
 				    char *buf)
 {
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
-	char *value;
+	const char *value = lego_sensor_bin_data_format_to_str(
+				sensor->mode_info[sensor->mode].data_type);
 
-	switch (sensor->mode_info[sensor->mode].data_type) {
-	case LEGO_SENSOR_DATA_U8:
-		value = "u8";
-		break;
-	case LEGO_SENSOR_DATA_S8:
-		value = "s8";
-		break;
-	case LEGO_SENSOR_DATA_U16:
-		value = "u16";
-		break;
-	case LEGO_SENSOR_DATA_S16:
-		value = "s16";
-		break;
-	case LEGO_SENSOR_DATA_S16_BE:
-		value = "s16_be";
-		break;
-	case LEGO_SENSOR_DATA_U32:
-		value = "u32";
-		break;
-	case LEGO_SENSOR_DATA_S32:
-		value = "s32";
-		break;
-	case LEGO_SENSOR_DATA_FLOAT:
-		value = "float";
-		break;
-	default:
+	if (!value)
 		return -ENXIO;
-	}
 
 	return sprintf(buf, "%s\n", value);
 }
