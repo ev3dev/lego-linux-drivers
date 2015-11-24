@@ -133,17 +133,17 @@ pistorms_in_port_device_types[NUM_PS_IN_PORT_MODES] = {
 
 static const struct lego_port_mode_info pistorms_in_port_mode_info[NUM_PS_IN_PORT_MODES] = {
 	/**
-	 * [^port-name-prefix]: The full `port_name` is in the format:
+	 * [^address-prefix]: The full `address` is in the format:
 	 * ^
 	 *        pistorms:B<b>:<prefix><n>
 	 * ^
 	 *    For example, if we are looking at the port labeled "BBS2" on the
-	 *    PiStorms, the port name will be `pistorms:BB:S2`.
+	 *    PiStorms, the address will be `pistorms:BB:S2`.
 	 *
 	 * @description: mindsensors.com PiStorms Input Port
 	 * @connection_types: NXT/Analog, NXT/Color, NXT/I2C, Other/I2C, EV3/Analog, EV3/UART
 	 * @prefix: S
-	 * @prefix_footnote: [^port-name-prefix]
+	 * @prefix_footnote: [^address-prefix]
 	 */
 	[PS_IN_PORT_MODE_NONE] = {
 		/**
@@ -564,7 +564,7 @@ int pistorms_in_ports_register(struct pistorms_data *data)
 		in_port->i2c_platform_data.in_port = &in_port->port;
 
 		in_port->port.name = pistorms_in_port_type.name;
-		snprintf(in_port->port.port_name, LEGO_PORT_NAME_SIZE, "%sS%d",
+		snprintf(in_port->port.address, LEGO_NAME_SIZE, "%sS%d",
 			 data->name, i + 1);
 		in_port->port.num_modes = NUM_PS_IN_PORT_MODES;
 		in_port->port.mode_info = pistorms_in_port_mode_info;

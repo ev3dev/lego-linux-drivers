@@ -221,7 +221,7 @@ extern const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[];
 struct nxt_i2c_sensor_data {
 	struct i2c_client *client;
 	struct lego_port_device *in_port;
-	char port_name[LEGO_PORT_NAME_SIZE + 1];
+	char address[LEGO_NAME_SIZE + 1];
 	const struct nxt_i2c_sensor_info *info;
 	void *callback_data;
 	struct lego_sensor_device sensor;

@@ -95,7 +95,7 @@ static int ev3_uart_sensor_probe(struct lego_device *ldev)
 	       &ev3_uart_sensor_defs[ldev->entry_id->driver_data],
 	       sizeof(struct ev3_uart_sensor_info));
 	data->sensor.name = ldev->entry_id->name;
-	data->sensor.port_name = ldev->port->port_name;
+	data->sensor.address = ldev->port->address;
 #if defined(CONFIG_NXT_I2C_SENSORS) || defined(CONFIG_NXT_I2C_SENSORS_MODULE)
 	/* mindsensors EV3 sensor mux only supports modes that return one value */
 	if (ldev->port->dev.type == &ms_ev3_smux_port_type)

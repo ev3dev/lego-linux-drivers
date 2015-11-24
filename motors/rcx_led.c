@@ -45,6 +45,7 @@
 
 #include <lego.h>
 #include <dc_motor_class.h>
+#include <lego_port_class.h>
 
 struct rcx_led_data {
 	char name[LEGO_NAME_SIZE];
@@ -88,7 +89,7 @@ static int rcx_led_probe(struct lego_device *motor)
 	if (IS_ERR(data))
 		return -ENOMEM;
 
-	snprintf(data->name, LEGO_NAME_SIZE, "%s::ev3dev", motor->port->port_name);
+	snprintf(data->name, LEGO_NAME_SIZE, "%s::ev3dev", motor->port->address);
 	data->cdev.name = data->name;
 	data->cdev.default_trigger = "none";
 	data->cdev.brightness_set = rcx_led_brightness_set;

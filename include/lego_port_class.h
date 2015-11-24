@@ -19,7 +19,7 @@
 #include <linux/device.h>
 #include <linux/types.h>
 
-#define LEGO_PORT_NAME_SIZE	30
+#include <lego.h>
 
 /**
  * Used by sensor drivers to get notified when a port has new raw data available.
@@ -31,7 +31,7 @@ typedef void (*lego_port_notify_raw_data_func_t)(void *context);
  * @name: The name of this mode.
  */
 struct lego_port_mode_info {
-	char name[LEGO_PORT_NAME_SIZE + 1];
+	char name[LEGO_NAME_SIZE + 1];
 };
 
 enum lego_port_gpio_state {
@@ -65,7 +65,7 @@ struct lego_port_ev3_uart_ops {
 /**
  * struct lego_port_device
  * @name: Name of the driver that loaded this device.
- * @port_name: Name of the port.
+ * @address: Name of the port.
  * @port_alias: Alternate name of port for mapping other devices such as a tty
  * 	to this port device.
  * @num_modes: The number of valid modes.
@@ -89,7 +89,7 @@ struct lego_port_ev3_uart_ops {
  */
 struct lego_port_device {
 	const char *name;
-	char port_name[LEGO_PORT_NAME_SIZE + 1];
+	char address[LEGO_NAME_SIZE + 1];
 	const char *port_alias;
 	u8 num_modes;
 	u8 mode;

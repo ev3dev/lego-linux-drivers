@@ -30,8 +30,7 @@
 
 static const struct lego_port_mode_info pistorms_out_port_mode_info[NUM_PISTORMS_OUT_PORT_MODES] = {
 	/**
-	 * [^prefix]: The full port name will be something like `pistorms:BAM1`
-	 * depending on what port the motor multiplexer is plugged into.
+	 * [^prefix]: The full address will be something like `pistorms:BAM1`.
 	 *
 	 * @description: mindsensors.com PiStorms Output Port
 	 * @connection_types: tacho-motor
@@ -59,7 +58,7 @@ int pistorms_out_ports_register(struct pistorms_data *data)
 	data->out_port_data = mmx;
 
 	for (i = 0; i < 2; i++) {
-		snprintf(mmx[i].port_name, LEGO_PORT_NAME_SIZE, "%sM%d",
+		snprintf(mmx[i].address, LEGO_NAME_SIZE, "%sM%d",
 			 data->name, i + 1);
 		mmx[i].i2c_client = data->client;
 		mmx[i].index = i;

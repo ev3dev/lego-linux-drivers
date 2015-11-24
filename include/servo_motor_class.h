@@ -53,7 +53,7 @@ struct servo_motor_ops {
 /**
  * struct servo_motor_device
  * @name: The name of the driver that loaded this device.
- * @port_name: The name of the port that this motor is connected to.
+ * @address: The name of the port that this motor is connected to.
  * @ops: Function pointers to the controller that registered this servo.
  * @fixed_min_pulse_sp: Fixed value for min_pulse_sp if it cannot be changed,
  * 	otherwise 0. Setting this value will cause writing the min_pulse_sp
@@ -74,7 +74,7 @@ struct servo_motor_ops {
  */
 struct servo_motor_device {
 	const char *name;
-	const char *port_name;
+	const char *address;
 	const struct servo_motor_ops *ops;
 	int fixed_min_pulse_sp;
 	int fixed_mid_pulse_sp;

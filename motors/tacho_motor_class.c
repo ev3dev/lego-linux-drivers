@@ -91,7 +91,7 @@
 *   a positive duty cycle will cause the motor to rotate counter-clockwise.
 *   Valid values are `normal` and `inversed`.
 * .
-* `port_name` (read-only)
+* `address` (read-only)
 * : Returns the name of the port that the motor is connected to.
 * .
 * `position` (read/write)
@@ -252,12 +252,12 @@ void tacho_motor_class_reset(struct tacho_motor_device *tm)
 	tm->params.stop_command		= TM_STOP_COMMAND_COAST;
 }
 
-static ssize_t port_name_show(struct device *dev, struct device_attribute *attr,
+static ssize_t address_show(struct device *dev, struct device_attribute *attr,
 			      char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return snprintf(buf, LEGO_PORT_NAME_SIZE, "%s\n", tm->port_name);
+	return snprintf(buf, LEGO_NAME_SIZE, "%s\n", tm->address);
 }
 
 static ssize_t driver_name_show(struct device *dev,
@@ -770,7 +770,7 @@ static ssize_t position_sp_store(struct device *dev,
 }
 
 static DEVICE_ATTR_RO(driver_name);
-static DEVICE_ATTR_RO(port_name);
+static DEVICE_ATTR_RO(address);
 static DEVICE_ATTR_RW(position);
 static DEVICE_ATTR_RO(state);
 static DEVICE_ATTR_RO(count_per_rot);
@@ -792,7 +792,7 @@ static DEVICE_ATTR_RW(ramp_down_sp);
 
 static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_driver_name.attr,
-	&dev_attr_port_name.attr,
+	&dev_attr_address.attr,
 	&dev_attr_position.attr,
 	&dev_attr_state.attr,
 	&dev_attr_count_per_rot.attr,
@@ -908,7 +908,7 @@ int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
 {
 	int err;
 
-	if (!tm || !tm->port_name || !parent)
+	if (!tm || !tm->address || !parent)
 		return -EINVAL;
 	
 	tm->dev.release = tacho_motor_release;
@@ -923,7 +923,7 @@ int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
 		return err;
 
 	dev_info(&tm->dev, "Registered '%s' on '%s'.\n", tm->driver_name,
-		 tm->port_name);
+		 tm->address);
 
 	return 0;
 }
@@ -933,7 +933,7 @@ void unregister_tacho_motor(struct tacho_motor_device *tm)
 {
 	cancel_delayed_work_sync(&tm->run_timed_work);
 	dev_info(&tm->dev, "Unregistered '%s' on '%s'.\n", tm->driver_name,
-		 tm->port_name);
+		 tm->address);
 	device_unregister(&tm->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_tacho_motor);
@@ -949,9 +949,9 @@ static int tacho_motor_dev_uevent(struct device *dev, struct kobj_uevent_env *en
 			return ret;
 		}
 
-	ret = add_uevent_var(env, "LEGO_PORT_NAME=%s", tm->port_name);
+	ret = add_uevent_var(env, "LEGO_ADDRESS=%s", tm->address);
 	if (ret) {
-		dev_err(dev, "failed to add uevent LEGO_PORT_NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_ADDRESS\n");
 		return ret;
 	}
 

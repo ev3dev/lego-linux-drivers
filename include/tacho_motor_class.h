@@ -103,14 +103,14 @@ struct tacho_motor_params {
 /**
  * struct tacho_motor_device
  *
- * Implementing drivers need to set driver_name, port_name, ops and supports_*.
+ * Implementing drivers need to set driver_name, address, ops and supports_*.
  * The tacho motor class will set the default values for params, so if a driver
  * needs to change them, it should be done after the tacho_motor_device is
  * registered.
  */
 struct tacho_motor_device {
 	const char *driver_name;
-	const char *port_name;
+	const char *address;
 	const struct tacho_motor_ops const *ops;
 	void *context;
 	bool supports_encoder_polarity;

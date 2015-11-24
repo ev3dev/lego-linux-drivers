@@ -73,7 +73,7 @@ struct lego_device *lego_device_register(const char *name,
 
 	strncpy(ldev->name, name, LEGO_NAME_SIZE);
 	ldev->port = port;
-	snprintf(init_name, LEGO_NAME_SIZE, "%s:%s", ldev->port->port_name,
+	snprintf(init_name, LEGO_NAME_SIZE, "%s:%s", ldev->port->address,
 		 ldev->name);
 	ldev->dev.init_name = init_name;
 	ldev->dev.id = -1;
@@ -164,12 +164,12 @@ void lego_device_driver_unregister(struct lego_device_driver *drv)
 }
 EXPORT_SYMBOL_GPL(lego_device_driver_unregister);
 
-static ssize_t port_name_show(struct device *dev, struct device_attribute *attr,
+static ssize_t address_show(struct device *dev, struct device_attribute *attr,
 			      char *buf)
 {
 	struct lego_device *ldev = to_lego_device(dev);
 
-	return snprintf(buf, LEGO_NAME_SIZE, "%s\n", ldev->port->port_name);
+	return snprintf(buf, LEGO_NAME_SIZE, "%s\n", ldev->port->address);
 }
 
 static ssize_t type_name_show(struct device *dev, struct device_attribute *attr,
@@ -183,7 +183,7 @@ static ssize_t modalias_show(struct device *dev, struct device_attribute *attr,
 {
 	return sprintf(buf, "lego:%s\n", dev->type->name);
 }
-DEVICE_ATTR_RO(port_name);
+DEVICE_ATTR_RO(address);
 DEVICE_ATTR_RO(type_name);
 DEVICE_ATTR_RO(modalias);
 
@@ -226,7 +226,7 @@ static int lego_bus_uevent(struct device *dev, struct kobj_uevent_env *env)
 	err = add_uevent_var(env, "LEGO_DRIVER_NAME=%s", ldev->name);
 	if (err)
 		return err;
-	err = add_uevent_var(env, "LEGO_PORT_NAME=%s", ldev->port->port_name);
+	err = add_uevent_var(env, "LEGO_ADDRESS=%s", ldev->port->address);
 	if (err)
 		return err;
 	err = add_uevent_var(env, "MODALIAS=lego:%s", dev->type->name);

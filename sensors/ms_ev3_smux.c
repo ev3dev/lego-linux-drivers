@@ -41,17 +41,17 @@ enum ms_ev3_smux_mode {
 
 static const struct lego_port_mode_info ms_ev3_smux_port_mode_info[] = {
 	/**
-	 * [^port-name-prefix]: The full `port_name` is in the format:
+	 * [^address-prefix]: The full `address` is in the format:
 	 * ^
-	 *        [<parent-port-name>:]mux<n>
+	 *        [<parent-address>:]mux<n>
 	 * ^
 	 *    For example, if we are looking at port 1 of this mux plugged into
-	 *    input port 2 on the EV3, the port name will be `in2:i2c50:mux1`.
+	 *    input port 2 on the EV3, the address will be `in2:i2c50:mux1`.
 	 *
 	 * @description: mindsensors.com EV3 Sensor Multiplexer Input Port
 	 * @connection_types: EV3/UART, EV3/Analog
 	 * @prefix: mux
-	 * @prefix_footnote: [^port-name-prefix]
+	 * @prefix_footnote: [^address-prefix]
 	 */
 	[MS_EV3_SMUX_MODE_UART] = {
 		/**
@@ -228,8 +228,8 @@ int ms_ev3_smux_probe_cb(struct nxt_i2c_sensor_data *data)
 	}
 	ret -= '0';
 	smux->port.name = ms_ev3_smux_port_type.name;
-	snprintf(smux->port.port_name, LEGO_PORT_NAME_SIZE, "%s:mux%d",
-		 data->port_name, ret);
+	snprintf(smux->port.address, LEGO_NAME_SIZE, "%s:mux%d",
+		 data->address, ret);
 	smux->port.num_modes = NUM_MS_EV3_SMUX_MODES;
 	smux->port.mode_info = ms_ev3_smux_port_mode_info;
 	smux->port.set_mode = ms_ev3_smux_set_mode;

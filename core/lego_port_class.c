@@ -49,7 +49,7 @@
  * .
  * Ports can be found at `/sys/class/lego-port/port<N>` where `<N>` is
  * incremented each time a new port is registered. Note: The number is not
- * related to the actual port at all - use the `port_name` attribute to find
+ * related to the actual port at all - use the `address` attribute to find
  * a specific port.
  * .
  * `driver_name` (read-only)
@@ -65,7 +65,7 @@
  *   associated with the port will be removed new ones loaded, however this
  *   this will depend on the individual driver implementing this class.
  * .
- * `port_name` (read-only)
+ * `address` (read-only)
  * : Returns the name of the port. See individual driver documentation for
  *   the name that will be returned.
  * .
@@ -154,12 +154,12 @@ static ssize_t driver_name_show(struct device *dev,
 	return sprintf(buf, "%s\n", lego_port->name);
 }
 
-static ssize_t port_name_show(struct device *dev, struct device_attribute *attr,
+static ssize_t address_show(struct device *dev, struct device_attribute *attr,
 			      char *buf)
 {
 	struct lego_port_device *lego_port = to_lego_port_device(dev);
 
-	return sprintf(buf, "%s\n", lego_port->port_name);
+	return sprintf(buf, "%s\n", lego_port->address);
 }
 
 static ssize_t set_device_store(struct device *dev,
@@ -167,13 +167,13 @@ static ssize_t set_device_store(struct device *dev,
 				const char *buf, size_t count)
 {
 	struct lego_port_device *port = to_lego_port_device(dev);
-	char name[LEGO_PORT_NAME_SIZE + 1];
+	char name[LEGO_NAME_SIZE + 1];
 	int ret;
 
 	if (!port->set_device)
 		return -EOPNOTSUPP;
 
-	strncpy(name, buf, LEGO_PORT_NAME_SIZE);
+	strncpy(name, buf, LEGO_NAME_SIZE);
 	ret = port->set_device(port->context, strstrip(name));
 	if (ret < 0)
 		return ret;
@@ -195,7 +195,7 @@ static ssize_t status_show(struct device *dev, struct device_attribute *attr,
 static DEVICE_ATTR_RW(mode);
 static DEVICE_ATTR_RO(modes);
 static DEVICE_ATTR_RO(driver_name);
-static DEVICE_ATTR_RO(port_name);
+static DEVICE_ATTR_RO(address);
 static DEVICE_ATTR_WO(set_device);
 static DEVICE_ATTR_RO(status);
 
@@ -203,7 +203,7 @@ static struct attribute *lego_port_class_attrs[] = {
 	&dev_attr_modes.attr,
 	&dev_attr_mode.attr,
 	&dev_attr_driver_name.attr,
-	&dev_attr_port_name.attr,
+	&dev_attr_address.attr,
 	&dev_attr_set_device.attr,
 	&dev_attr_status.attr,
 	NULL
@@ -223,7 +223,7 @@ int lego_port_register(struct lego_port_device *port,
 {
 	int err;
 
-	if (!port || !port->name || !port->port_name || !type || !parent)
+	if (!port || !port->name || !port->address || !type || !parent)
 		return -EINVAL;
 
 	port->dev.release = lego_port_release;
@@ -236,7 +236,7 @@ int lego_port_register(struct lego_port_device *port,
 	if (err)
 		return err;
 
-	dev_info(&port->dev, "Registered '%s' on '%s'.\n", port->port_name,
+	dev_info(&port->dev, "Registered '%s' on '%s'.\n", port->address,
 		 dev_name(parent));
 
 	return 0;
@@ -245,7 +245,7 @@ EXPORT_SYMBOL_GPL(lego_port_register);
 
 void lego_port_unregister(struct lego_port_device *port)
 {
-	dev_info(&port->dev, "Unregistered '%s'.\n", port->port_name);
+	dev_info(&port->dev, "Unregistered '%s'.\n", port->address);
 	device_unregister(&port->dev);
 }
 EXPORT_SYMBOL_GPL(lego_port_unregister);
@@ -261,9 +261,9 @@ static int lego_port_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
 		return ret;
 	}
 
-	ret = add_uevent_var(env, "LEGO_PORT_NAME=%s", lego_port->port_name);
+	ret = add_uevent_var(env, "LEGO_ADDRESS=%s", lego_port->address);
 	if (ret) {
-		dev_err(dev, "failed to add uevent LEGO_PORT_NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_ADDRESS\n");
 		return ret;
 	}
 

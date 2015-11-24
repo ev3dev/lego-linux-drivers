@@ -109,7 +109,7 @@ enum ms_nxtmmx_out_port_mode {
 };
 
 struct ms_nxtmmx_data {
-	char port_name[LEGO_PORT_NAME_SIZE];
+	char address[LEGO_NAME_SIZE];
 	struct lego_port_device port;
 	struct i2c_client *i2c_client;
 	struct lego_device *motor;
@@ -141,7 +141,7 @@ static const char *ms_nxtmmx_out_port_default_driver[NUM_MS_NXTMMX_OUT_PORT_MODE
 
 static const struct lego_port_mode_info ms_nxtmmx_out_port_mode_info[NUM_MS_NXTMMX_OUT_PORT_MODES] = {
 	/**
-	 * [^prefix]: The full port name will be something like `in2:i2c3:M1`
+	 * [^prefix]: The full address will be something like `in2:i2c3:M1`
 	 * depending on what port the motor multiplexer is plugged into.
 	 *
 	 * @description: mindsensors.com NXTMMX Output Port
@@ -588,7 +588,7 @@ int ms_nxtmmx_register_out_port(struct ms_nxtmmx_data *mmx)
 	int err;
 
 	port->name = ms_nxtmmx_out_port_type.name;
-	strncpy(port->port_name, mmx->port_name, LEGO_PORT_NAME_SIZE);
+	strncpy(port->address, mmx->address, LEGO_NAME_SIZE);
 	port->num_modes = NUM_MS_NXTMMX_OUT_PORT_MODES;
 	port->mode_info = ms_nxtmmx_out_port_mode_info;
 	port->set_mode = ms_nxtmmx_out_port_set_mode;
@@ -623,8 +623,8 @@ int ms_nxtmmx_probe_cb(struct nxt_i2c_sensor_data *data)
 	data->callback_data = mmx;
 
 	for (i = 0; i < 2; i++) {
-		snprintf(mmx[i].port_name, LEGO_PORT_NAME_SIZE, "%s:M%d",
-			 data->port_name, i + 1);
+		snprintf(mmx[i].address, LEGO_NAME_SIZE, "%s:M%d",
+			 data->address, i + 1);
 		mmx[i].i2c_client = data->client;
 		mmx[i].index = i;
 	}

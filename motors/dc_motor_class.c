@@ -67,7 +67,7 @@
  * `polarity`: (read/write)
  * : Sets the polarity of the motor. Valid values are `normal` and `inversed`.
  * .
- * `port_name` (read-only)
+ * `address` (read-only)
  * : Returns the name of the port that the motor is connected to.
  * .
  * `state` (read-only)
@@ -237,12 +237,12 @@ static ssize_t driver_name_show(struct device *dev,
 	return snprintf(buf, DC_MOTOR_NAME_SIZE, "%s\n", motor->name);
 }
 
-static ssize_t port_name_show(struct device *dev, struct device_attribute *attr,
+static ssize_t address_show(struct device *dev, struct device_attribute *attr,
 			      char *buf)
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
 
-	return snprintf(buf, DC_MOTOR_NAME_SIZE, "%s\n", motor->port_name);
+	return snprintf(buf, DC_MOTOR_NAME_SIZE, "%s\n", motor->address);
 }
 
 static ssize_t ramp_up_sp_show(struct device *dev,
@@ -528,7 +528,7 @@ static ssize_t time_sp_store(struct device *dev, struct device_attribute *attr,
 
 
 static DEVICE_ATTR_RO(driver_name);
-static DEVICE_ATTR_RO(port_name);
+static DEVICE_ATTR_RO(address);
 static DEVICE_ATTR_RW(ramp_up_sp);
 static DEVICE_ATTR_RW(ramp_down_sp);
 static DEVICE_ATTR_RW(polarity);
@@ -543,7 +543,7 @@ static DEVICE_ATTR_RW(time_sp);
 
 static struct attribute *dc_motor_class_attrs[] = {
 	&dev_attr_driver_name.attr,
-	&dev_attr_port_name.attr,
+	&dev_attr_address.attr,
 	&dev_attr_ramp_up_sp.attr,
 	&dev_attr_ramp_down_sp.attr,
 	&dev_attr_polarity.attr,
@@ -578,7 +578,7 @@ int register_dc_motor(struct dc_motor_device *dc, struct device *parent)
 {
 	int err;
 
-	if (!dc || !dc->port_name || !parent)
+	if (!dc || !dc->address || !parent)
 		return -EINVAL;
 
 	dc->dev.release = dc_motor_release;
@@ -593,7 +593,7 @@ int register_dc_motor(struct dc_motor_device *dc, struct device *parent)
 	if (err)
 		return err;
 
-	dev_info(&dc->dev, "Registered '%s' on '%s'.\n", dc->name, dc->port_name);
+	dev_info(&dc->dev, "Registered '%s' on '%s'.\n", dc->name, dc->address);
 
 	return 0;
 }
@@ -601,7 +601,7 @@ EXPORT_SYMBOL_GPL(register_dc_motor);
 
 void unregister_dc_motor(struct dc_motor_device *dc)
 {
-	dev_info(&dc->dev, "Unregistered '%s' on '%s'.\n", dc->name, dc->port_name);
+	dev_info(&dc->dev, "Unregistered '%s' on '%s'.\n", dc->name, dc->address);
 	cancel_delayed_work_sync(&dc->run_timed_work);
 	cancel_delayed_work_sync(&dc->ramp_work);
 	device_unregister(&dc->dev);
@@ -618,9 +618,9 @@ static int dc_motor_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
 		dev_err(dev, "failed to add uevent LEGO_DRIVER_NAME\n");
 		return ret;
 	}
-	add_uevent_var(env, "LEGO_PORT_NAME=%s", motor->port_name);
+	add_uevent_var(env, "LEGO_ADDRESS=%s", motor->address);
 	if (ret) {
-		dev_err(dev, "failed to add uevent LEGO_PORT_NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_ADDRESS\n");
 		return ret;
 	}
 

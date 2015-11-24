@@ -1491,7 +1491,7 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 	ev3_tm->info = &ev3_motor_defs[ldev->entry_id->driver_data];
 
 	ev3_tm->tm.driver_name = ldev->entry_id->name;
-	ev3_tm->tm.port_name = ldev->port->port_name;
+	ev3_tm->tm.address = ldev->port->address;
 	ev3_tm->tm.ops = &legoev3_motor_ops;
 	ev3_tm->tm.context = ev3_tm;
 	ev3_tm->tm.supports_encoder_polarity = true;

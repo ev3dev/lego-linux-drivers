@@ -30,9 +30,9 @@
  * ### Identifying sensors
  * .
  * Since the name of the `sensor<N>` device node does not correspond to the port
- * that a sensor is plugged in to, you must look at the `port_name` attribute if
+ * that a sensor is plugged in to, you must look at the `address` attribute if
  * you need to know which port a sensor is plugged in to. This will match the
- * `port_name` of the corresponding sensor in the `lego-sensor` class.
+ * `address` of the corresponding sensor in the `lego-sensor` class.
  * .
  * ### sysfs Attributes
  * .
@@ -55,18 +55,18 @@
 #define to_user_lego_sensor_device(_dev) \
 	container_of(_dev, struct user_lego_sensor_device, dev)
 
-static ssize_t port_name_show(struct device *dev, struct device_attribute *attr,
+static ssize_t address_show(struct device *dev, struct device_attribute *attr,
 			      char *buf)
 {
 	struct user_lego_sensor_device *sensor = to_user_lego_sensor_device(dev);
 
-	return snprintf(buf, LEGO_PORT_NAME_SIZE, "%s\n", sensor->sensor.port_name);
+	return snprintf(buf, LEGO_NAME_SIZE, "%s\n", sensor->sensor.address);
 }
 
-static DEVICE_ATTR_RO(port_name);
+static DEVICE_ATTR_RO(address);
 
 static struct attribute *user_lego_sensor_class_attrs[] = {
-	&dev_attr_port_name.attr,
+	&dev_attr_address.attr,
 	NULL
 };
 
@@ -121,7 +121,7 @@ int user_lego_sensor_register(struct user_lego_sensor_device *sensor,
 
 	if (WARN_ON(!sensor))
 		return -EINVAL;
-	if (WARN_ON(!sensor->sensor.port_name))
+	if (WARN_ON(!sensor->sensor.address))
 		return -EINVAL;
 	if (WARN_ON(!parent))
 		return -EINVAL;
@@ -136,7 +136,7 @@ int user_lego_sensor_register(struct user_lego_sensor_device *sensor,
 		return err;
 
 	dev_info(&sensor->dev, "Registered '%s' on '%s'.\n", sensor->sensor.name,
-		 sensor->sensor.port_name);
+		 sensor->sensor.address);
 
 	err = register_lego_sensor(&sensor->sensor, &sensor->dev);
 	if (err) {
@@ -155,7 +155,7 @@ void user_lego_sensor_unregister(struct user_lego_sensor_device *sensor)
 {
 	unregister_lego_sensor(&sensor->sensor);
 	dev_info(&sensor->dev, "Unregistered '%s' on '%s'.\n", sensor->sensor.name,
-		 sensor->sensor.port_name);
+		 sensor->sensor.address);
 	device_unregister(&sensor->dev);
 }
 EXPORT_SYMBOL_GPL(user_lego_sensor_unregister);
@@ -172,9 +172,9 @@ static int user_lego_sensor_dev_uevent(struct device *dev,
 		return ret;
 	}
 
-	add_uevent_var(env, "LEGO_PORT_NAME=%s", sensor->sensor.port_name);
+	add_uevent_var(env, "LEGO_ADDRESS=%s", sensor->sensor.address);
 	if (ret) {
-		dev_err(dev, "failed to add uevent LEGO_PORT_NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_ADDRESS\n");
 		return ret;
 	}
 

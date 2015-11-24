@@ -43,6 +43,7 @@
 
 #include <lego.h>
 #include <dc_motor_class.h>
+#include <lego_port_class.h>
 
 struct rcx_motor_data {
 	struct dc_motor_device motor;
@@ -61,7 +62,7 @@ static int rcx_motor_probe(struct lego_device *motor)
 		return -ENOMEM;
 
 	data->motor.name = motor->name;
-	data->motor.port_name = motor->port->port_name;
+	data->motor.address = motor->port->address;
 	data->motor.ops = motor->port->dc_motor_ops;
 	data->motor.context = motor->port->context;
 

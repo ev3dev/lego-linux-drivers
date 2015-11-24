@@ -18,9 +18,8 @@
 
 #include <linux/mod_devicetable.h>
 #include <linux/device.h>
-#include <lego_port_class.h>
 
-#define LEGO_NAME_SIZE LEGO_PORT_NAME_SIZE
+#define LEGO_NAME_SIZE 50
 
 struct lego_device_id {
 	char name[LEGO_NAME_SIZE + 1];

@@ -103,10 +103,10 @@ static int register_wedo_sensor(struct wedo_port_data *wpd,
 		sizeof(struct wedo_sensor_info));
 
 	wsd->sensor.name = wsd->info.name;
-	wsd->sensor.port_name = wpd->port.port_name;
+	wsd->sensor.address = wpd->port.address;
 
-	dev_info(&wpd->port.dev, "name %s port_name %s\n", wsd->sensor.name,
-		 wsd->sensor.port_name);
+	dev_info(&wpd->port.dev, "name %s address %s\n", wsd->sensor.name,
+		 wsd->sensor.address);
 
 	wsd->sensor.num_modes = wsd->info.num_modes;
 	wsd->sensor.mode_info = wsd->info.mode_info;
@@ -160,7 +160,7 @@ static int register_wedo_motor(struct wedo_port_data *wpd)
 	wmd->wpd = wpd;
 
 	wmd->md.name = "wedo-motor";
-	wmd->md.port_name = wpd->port.port_name;
+	wmd->md.address = wpd->port.address;
 
 	wmd->md.ops = &wedo_motor_ops;
 	wmd->md.context = wmd;
@@ -230,7 +230,7 @@ static int register_wedo_led(struct wedo_port_data *wpd)
 
 	wld->wpd = wpd;
 
-	snprintf(wld->name, LEGO_NAME_SIZE, "%s::ev3dev", wpd->port.port_name);
+	snprintf(wld->name, LEGO_NAME_SIZE, "%s::ev3dev", wpd->port.address);
 	wld->cdev.name = wld->name;
 	wld->cdev.max_brightness = 127;
 	wld->cdev.brightness_set = wedo_port_led_brightness_set;
@@ -284,10 +284,10 @@ static int register_wedo_servo(struct wedo_port_data *wpd)
 	wsd->wpd = wpd;
 
 	wsd->sd.name = "servo";
-	wsd->sd.port_name = wpd->port.port_name;
+	wsd->sd.address = wpd->port.address;
 
 	dev_info(&wpd->port.dev, "LEGO WeDo %s bound to %s\n", wsd->sd.name,
-		 wsd->sd.port_name);
+		 wsd->sd.address);
 
 	/*
 	 * Initialize the servo_motor_device_struct - the non-zero
@@ -416,7 +416,7 @@ struct device_type wedo_port_type = {
 
 struct lego_port_mode_info wedo_port_mode_info[] = {
 	/**
-	 * [^port-name-prefix]: The full `port_name` is in the format:
+	 * [^address-prefix]: The full `address` is in the format:
 	 * ^
 	 *        usb<usb-path>:wedo<n>
 	 * ^
@@ -438,7 +438,7 @@ struct lego_port_mode_info wedo_port_mode_info[] = {
 	 * @module: wedo
 	 * @connection_types: WeDo/Analog, dc-motor, led
 	 * @prefix: wedo
-	 * @prefix_footnote: [^port-name-prefix]
+	 * @prefix_footnote: [^address-prefix]
 	 */
 	[0] = {
 		/**
@@ -478,7 +478,7 @@ struct wedo_port_data *register_wedo_port(struct usb_interface *interface,
 
 	wpd->usb = interface;
 	wpd->port.name = wedo_port_type.name;
-	snprintf(wpd->port.port_name, LEGO_PORT_NAME_SIZE, "usb%s:wedo%d",
+	snprintf(wpd->port.address, LEGO_NAME_SIZE, "usb%s:wedo%d",
 		 dev_name(&interface->dev), port_num + 1);
 	wpd->port.num_modes = 1;
 	wpd->port.mode_info = wedo_port_mode_info;

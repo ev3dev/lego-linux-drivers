@@ -121,7 +121,7 @@ static int ht_nxt_smux_i2c_sensor_probe(struct lego_device *ldev)
 	data->info = sensor_info;
 
 	data->sensor.name = ldev->entry_id->name;
-	data->sensor.port_name = data->ldev->port->port_name;
+	data->sensor.address = data->ldev->port->address;
 	if (data->info->num_read_only_modes)
 		data->sensor.num_modes = data->info->num_read_only_modes;
 	else

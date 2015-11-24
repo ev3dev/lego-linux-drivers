@@ -29,7 +29,7 @@
 
 struct ms_8ch_servo_data {
 	int id;
-	char port_name[LEGO_PORT_NAME_SIZE + 1];
+	char address[LEGO_NAME_SIZE + 1];
 	struct nxt_i2c_sensor_data *sensor;
 	struct servo_motor_device servo;
 };
@@ -103,9 +103,9 @@ static int ms_8ch_servo_probe_cb(struct nxt_i2c_sensor_data *data)
 		servos[i].id = i;
 		servos[i].sensor = data;
 		servos[i].servo.name = data->sensor.name;
-		snprintf(servos[i].port_name, SERVO_MOTOR_NAME_SIZE,
-			 "%s:sv%d", data->sensor.port_name, i + 1);
-		servos[i].servo.port_name = servos[i].port_name;
+		snprintf(servos[i].address, SERVO_MOTOR_NAME_SIZE,
+			 "%s:sv%d", data->sensor.address, i + 1);
+		servos[i].servo.address = servos[i].address;
 
 		servos[i].servo.ops = &ms_8ch_servo_servo_ops;
 
@@ -1499,7 +1499,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * [^servo-motor-devices]: The `ms-8ch-servo` driver loads separate
 		 * servo motor devices (one for each of the 8 channels) in addition
 		 * to the [lego-sensor class] device. See the [servo-motor class]
-		 * for more information. The `servo-motor` class `port_name` attribute
+		 * for more information. The `servo-motor` class `address` attribute
 		 * will return `in<X>:i2c<Y>:sv<Z>` where `<X>` is the input port
 		 * the servo controller is connected to, `<Y>` is the address and
 		 * `<Z>` is the channel as indicated on the servo controller itself.
@@ -2319,7 +2319,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * [^tacho-motor-devices]: The NxtMMX driver also loads two
 		 * [tacho-motor] class devices. Use the tacho-motor class devices
 		 * to actually control the motors. You can identify the motors
-		 * by the `port_name` attribute. It will be `in<X>:i2c<Y>:mux<Z>`
+		 * by the `address` attribute. It will be `in<X>:i2c<Y>:mux<Z>`
 		 * where `<X>` is 1-4, `<Y>` is 3 (unless you changed the address)
 		 * and `<Z>` is 1 or 2 (matches M1 or M2 printed on the NxtMMX).
 		 * ^

@@ -105,7 +105,7 @@ struct dc_motor_ops {
 /**
  * struct dc_motor_device
  * @name: The name of the driver that loaded this device.
- * @port_name: The name of the port that this motor is connected to.
+ * @address: The name of the port that this motor is connected to.
  * @ops: Function pointers to the controller that registered this dc.
  * @context: Pointer to data structure passed back to the ops functions.
  * @dev: The device struct used by the class.
@@ -117,7 +117,7 @@ struct dc_motor_ops {
  */
 struct dc_motor_device {
 	const char *name;
-	const char *port_name;
+	const char *address;
 	const struct dc_motor_ops *ops;
 	void *context;
 	/* private */

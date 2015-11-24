@@ -58,7 +58,7 @@
 
 struct brickpi_i2c_sensor_data {
 	struct lego_device *ldev;
-	char port_name[LEGO_PORT_NAME_SIZE + 1];
+	char address[LEGO_NAME_SIZE + 1];
 	const struct nxt_i2c_sensor_info *info;
 	struct lego_sensor_device sensor;
 	enum nxt_i2c_sensor_type type;
@@ -143,9 +143,9 @@ static int brickpi_i2c_sensor_probe(struct lego_device *ldev)
 	data->info = sensor_info;
 
 	data->sensor.name = ldev->entry_id->name;
-	snprintf(data->port_name, LEGO_PORT_NAME_SIZE, "%s:i2c%d",
-		 data->ldev->port->port_name, pdata->address);
-	data->sensor.port_name = data->port_name;
+	snprintf(data->address, LEGO_NAME_SIZE, "%s:i2c%d",
+		 data->ldev->port->address, pdata->address);
+	data->sensor.address = data->address;
 	data->sensor.num_modes = data->info->num_modes;
 	data->sensor.num_view_modes = 1;
 	memcpy(data->sensor.mode_info, data->info->mode_info, mode_info_size);

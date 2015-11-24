@@ -38,17 +38,17 @@ enum ht_nxt_smux_port_mode {
 
 static const struct lego_port_mode_info ht_nxt_smux_port_mode_info[] = {
 	/**
-	 * [^port-name-prefix]: The full `port_name` is in the format:
+	 * [^address-prefix]: The full `address` is in the format:
 	 * ^
-	 *        [<parent-port-name>:]mux<n>
+	 *        [<parent-address>:]mux<n>
 	 * ^
 	 *    For example, if we are looking at port 1 of this mux plugged into
-	 *    input port 2 on the EV3, the port name will be `in2:i2c08:mux1`.
+	 *    input port 2 on the EV3, the address will be `in2:i2c08:mux1`.
 	 *
 	 * @description: HiTechnic NXT Sensor Multiplexer Input Port
 	 * @connection_types: NXT/I2C, NXT/Analog
 	 * @prefix: mux
-	 * @prefix_footnote: [^port-name-prefix]
+	 * @prefix_footnote: [^address-prefix]
 	 */
 	[HT_NXT_SMUX_PORT_MODE_ANALOG] = {
 		/**
@@ -474,8 +474,8 @@ int ht_nxt_smux_probe_cb(struct nxt_i2c_sensor_data *data)
 	data->callback_data = ports;
 	for (i = 0; i < NUM_HT_NXT_SMUX_CH; i++) {
 		ports[i].port.name = ht_nxt_smux_port_type.name;
-		snprintf(ports[i].port.port_name, LEGO_PORT_NAME_SIZE,
-			 "%s:mux%d", data->port_name, i + 1);
+		snprintf(ports[i].port.address, LEGO_NAME_SIZE,
+			 "%s:mux%d", data->address, i + 1);
 		ports[i].port.num_modes = NUM_HT_NXT_SMUX_PORT_MODES;
 		ports[i].port.mode_info = ht_nxt_smux_port_mode_info;
 		ports[i].port.set_mode = ht_nxt_smux_port_set_mode;

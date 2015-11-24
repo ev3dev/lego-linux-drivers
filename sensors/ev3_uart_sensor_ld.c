@@ -707,7 +707,7 @@ static void ev3_uart_handle_rx_data(struct work_struct *work)
 				port->sensor.mode = mode;
 				port->info_flags |= EV3_UART_INFO_FLAG_INFO_NAME;
 				debug_pr("mode %d name:%s\n",
-				       mode, port->sensor.port_name);
+				       mode, port->sensor.address);
 				break;
 			case EV3_UART_INFO_RAW:
 				if (port->sensor.mode != mode) {
@@ -930,9 +930,9 @@ static int ev3_uart_open(struct tty_struct *tty)
 					ev3_uart_match_input_port);
 	if (in_port_dev) {
 		port->in_port = to_lego_port_device(in_port_dev);
-		port->sensor.port_name = port->in_port->port_name;
+		port->sensor.address = port->in_port->address;
 	} else {
-		port->sensor.port_name = port->tty->name;
+		port->sensor.address = port->tty->name;
 	}
 	port->sensor.mode_info = port->mode_info;
 	port->sensor.set_mode = ev3_uart_set_mode;

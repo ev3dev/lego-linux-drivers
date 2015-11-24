@@ -34,7 +34,7 @@ static int ev3_motor_probe(struct lego_device *ldev)
 
 	if (!ldev->port->tacho_motor_ops) {
 		dev_err(&ldev->dev, "Port '%s' does not support tacho motor.",
-			ldev->port->port_name);
+			ldev->port->address);
 		return -EINVAL;
 	}
 
@@ -43,7 +43,7 @@ static int ev3_motor_probe(struct lego_device *ldev)
 		return -ENOMEM;
 
 	data->tm.driver_name = ldev->name;
-	data->tm.port_name = ldev->port->port_name;
+	data->tm.address = ldev->port->address;
 	data->tm.ops = ldev->port->tacho_motor_ops;
 	data->tm.context = ldev->port->context;
 

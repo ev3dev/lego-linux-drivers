@@ -69,7 +69,7 @@
 *   inversed. i.e `-100` will correspond to `max_pulse_sp`, and `100` will
 *   correspond to `min_pulse_sp`.
 * .
-* `port_name` (read-only)
+* `address` (read-only)
 * : Returns the name of the port that the motor is connected to.
 * .
 * `position_sp` (read/write)
@@ -170,12 +170,12 @@ static ssize_t driver_name_show(struct device *dev,
 	return snprintf(buf, SERVO_MOTOR_NAME_SIZE, "%s\n", motor->name);
 }
 
-static ssize_t port_name_show(struct device *dev, struct device_attribute *attr,
+static ssize_t address_show(struct device *dev, struct device_attribute *attr,
 			      char *buf)
 {
 	struct servo_motor_device *motor = to_servo_motor_device(dev);
 
-	return snprintf(buf, SERVO_MOTOR_NAME_SIZE, "%s\n", motor->port_name);
+	return snprintf(buf, SERVO_MOTOR_NAME_SIZE, "%s\n", motor->address);
 }
 
 static ssize_t min_pulse_sp_show(struct device *dev,
@@ -388,7 +388,7 @@ static ssize_t state_show(struct device *dev, struct device_attribute *attr,
 }
 
 static DEVICE_ATTR_RO(driver_name);
-static DEVICE_ATTR_RO(port_name);
+static DEVICE_ATTR_RO(address);
 static DEVICE_ATTR_RW(min_pulse_sp);
 static DEVICE_ATTR_RW(mid_pulse_sp);
 static DEVICE_ATTR_RW(max_pulse_sp);
@@ -400,7 +400,7 @@ static DEVICE_ATTR_RO(state);
 
 static struct attribute *servo_motor_class_attrs[] = {
 	&dev_attr_driver_name.attr,
-	&dev_attr_port_name.attr,
+	&dev_attr_address.attr,
 	&dev_attr_min_pulse_sp.attr,
 	&dev_attr_mid_pulse_sp.attr,
 	&dev_attr_max_pulse_sp.attr,
@@ -432,7 +432,7 @@ int register_servo_motor(struct servo_motor_device *servo, struct device *parent
 {
 	int ret;
 
-	if (!servo || !servo->port_name || !parent)
+	if (!servo || !servo->address || !parent)
 		return -EINVAL;
 
 	servo->dev.release = servo_motor_release;
@@ -460,7 +460,7 @@ int register_servo_motor(struct servo_motor_device *servo, struct device *parent
 		return ret;
 
 	dev_info(&servo->dev, "Registered '%s' on '%s'.\n", servo->name,
-		 servo->port_name);
+		 servo->address);
 
 	return 0;
 }
@@ -469,7 +469,7 @@ EXPORT_SYMBOL_GPL(register_servo_motor);
 void unregister_servo_motor(struct servo_motor_device *servo)
 {
 	dev_info(&servo->dev, "Unregistered '%s' on '%s'.\n", servo->name,
-		 servo->port_name);
+		 servo->address);
 	device_unregister(&servo->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_servo_motor);
@@ -484,9 +484,9 @@ static int servo_motor_dev_uevent(struct device *dev, struct kobj_uevent_env *en
 		dev_err(dev, "failed to add uevent LEGO_DRIVER_NAME\n");
 		return ret;
 	}
-	add_uevent_var(env, "LEGO_PORT_NAME=%s", servo->port_name);
+	add_uevent_var(env, "LEGO_ADDRESS=%s", servo->address);
 	if (ret) {
-		dev_err(dev, "failed to add uevent LEGO_PORT_NAME\n");
+		dev_err(dev, "failed to add uevent LEGO_ADDRESS\n");
 		return ret;
 	}
 

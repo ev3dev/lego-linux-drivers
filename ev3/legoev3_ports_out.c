@@ -759,9 +759,9 @@ struct lego_port_device
 	}
 
 	data->out_port.name = ev3_output_port_type.name;
-	snprintf(data->out_port.port_name, LEGO_PORT_NAME_SIZE, "out%c",
+	snprintf(data->out_port.address, LEGO_NAME_SIZE, "out%c",
 		 data->id + 'A');
-	pwm = pwm_get(NULL, data->out_port.port_name);
+	pwm = pwm_get(NULL, data->out_port.address);
 	if (IS_ERR(pwm)) {
 		dev_err(parent, "Could not get pwm! (%ld)\n", PTR_ERR(pwm));
 		err = PTR_ERR(pwm);

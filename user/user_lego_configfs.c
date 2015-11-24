@@ -95,6 +95,7 @@
 #include <linux/slab.h>
 
 #include <lego.h>
+#include <lego_port_class.h>
 #include <lego_sensor_class.h>
 
 #include "user_lego_sensor.h"
@@ -117,7 +118,7 @@ CONFIGFS_ATTR_STRUCT(port_info);
 
 struct sensor_info {
 	char driver_name[LEGO_NAME_SIZE];
-	char port_name[LEGO_PORT_NAME_SIZE];
+	char address[LEGO_NAME_SIZE];
 	struct port_info *port_info;
 	struct config_group group;
 	struct user_lego_sensor_device sensor;
@@ -364,11 +365,11 @@ static struct config_group
 		return ERR_PTR(-ENOMEM);
 
 	snprintf(info->driver_name, LEGO_NAME_SIZE, LEGO_USER_DEVICE_NAME);
-	snprintf(info->port_name, LEGO_PORT_NAME_SIZE, "%s:%s",
-		 port_info->port.port_name, name);
+	snprintf(info->address, LEGO_NAME_SIZE, "%s:%s",
+		 port_info->port.address, name);
 	info->port_info = port_info;
 	info->sensor.sensor.name = info->driver_name;
-	info->sensor.sensor.port_name = info->port_name;
+	info->sensor.sensor.address = info->address;
 	/* only supporting a single mode for now */
 	info->sensor.sensor.num_modes = 1;
 	info->sensor.sensor.mode_info = &info->mode0;
@@ -498,13 +499,13 @@ static struct config_group
 		return ERR_PTR(-ENOMEM);
 
 	info->port.name = LEGO_USER_DEVICE_NAME;
-	snprintf(info->port.port_name, LEGO_PORT_NAME_SIZE, "user:%s", name);
+	snprintf(info->port.address, LEGO_NAME_SIZE, "user:%s", name);
 	info->port.num_modes = 1;
 	info->port.mode_info = &info->mode0;
 	info->port.set_mode = port_set_mode;
 	info->port.context = info;
 
-	snprintf(info->mode0.name, LEGO_PORT_NAME_SIZE, "USER");
+	snprintf(info->mode0.name, LEGO_NAME_SIZE, "USER");
 
 	err = lego_port_register(&info->port, &lego_user_port_type,
 				 lego_user_cfs_parent);
