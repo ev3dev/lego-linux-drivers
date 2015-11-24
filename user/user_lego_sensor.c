@@ -13,6 +13,38 @@
  * GNU General Public License for more details.
  */
 
+/*
+ * Note: The comment block below is used to generate docs on the ev3dev website.
+ * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
+ * or leading whitespace is important for the markdown syntax.
+ */
+
+/**
+ * DOC: website
+ *
+ * User-defined LEGO sensor devices
+ *
+ * The `user-lego-sensor` class provides an interface for implementing user-defined
+ * sensors in userspace.
+ * .
+ * ### Identifying sensors
+ * .
+ * Since the name of the `sensor<N>` device node does not correspond to the port
+ * that a sensor is plugged in to, you must look at the `port_name` attribute if
+ * you need to know which port a sensor is plugged in to. This will match the
+ * `port_name` of the corresponding sensor in the `lego-sensor` class.
+ * .
+ * ### sysfs Attributes
+ * .
+ * Sensors can be found at `/sys/class/user-lego-sensor/sensor<N>`, where `<N>`
+ * is incremented each time a sensor is loaded (it is not related to which port
+ * the sensor is plugged in to).
+ * .
+ * `bin_data` (write-only)
+ * : The written data will be stored and can be read using the corresponding
+ *   `bin_data` attribute in the `lego-sensor` class device.
+ */
+
 #include <linux/device.h>
 #include <linux/module.h>
 
