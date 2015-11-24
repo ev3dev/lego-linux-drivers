@@ -359,10 +359,15 @@ static int port_set_mode(void *context, u8 mode)
 	return 0;
 }
 
+static const struct device_type lego_user_port_type = {
+	.name = 	"user-lego-port",
+};
+
 static struct config_group
 *port_make(struct config_group *group, const char *name)
 {
 	struct port_info *info;
+	int err;
 
 	info = kzalloc(sizeof(*info), GFP_KERNEL);
 	if (!info)
@@ -377,6 +382,13 @@ static struct config_group
 
 	snprintf(info->mode0.name, LEGO_PORT_NAME_SIZE, "USER");
 
+	err = lego_port_register(&info->port, &lego_user_port_type,
+				 lego_user_cfs_parent);
+	if (err < 0) {
+		kfree(info);
+		return ERR_PTR(err);
+	}
+
 	mutex_init(&info->lock);
 
 	info->group.default_groups = info->default_groups;
@@ -390,8 +402,9 @@ static struct config_group
 
 static void port_drop(struct config_group *group, struct config_item *item)
 {
-	/* struct port_info *info = to_port_info(item); */
+	struct port_info *info = to_port_info(item);
 
+	lego_port_unregister(&info->port);
 	config_item_put(item);
 }
 
