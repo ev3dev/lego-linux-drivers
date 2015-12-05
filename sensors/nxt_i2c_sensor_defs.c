@@ -1600,7 +1600,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @description: Tilt
 				 * @value0: X-axis angle (0 to 180)
 				 * @value1: Y-axis angle (0 to 180)
-				 * @value2: Y-axis angle (0 to 180)
+				 * @value2: Z-axis angle (0 to 180)
 				 * @units_description: degrees
 				 */
 				.name		= "TILT",
