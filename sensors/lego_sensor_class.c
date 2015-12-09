@@ -123,8 +123,8 @@
  *   error. The values are fixed point numbers, so check `decimals` to see if
  *   you need to divide to get the actual value.
  * .
- * `text_data` (read-only)
- * : Returns a string representing sensor-specific text data. The string may
+ * `text_value` (read-only)
+ * : Returns a string representing sensor-specific text value. The string may
  *   contain embedded line feed characters, is limited to PAGE_SIZE bytes
  *   in length, and has a trailing linefeed
  * .
@@ -517,15 +517,15 @@ static ssize_t fw_version_show(struct device *dev, struct device_attribute *attr
 	return snprintf(buf, LEGO_SENSOR_FW_VERSION_SIZE + 2, "%s\n", sensor->fw_version);
 }
 
-static ssize_t text_data_show(struct device *dev, struct device_attribute *attr,
+static ssize_t text_value_show(struct device *dev, struct device_attribute *attr,
 			      char *buf)
 {
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
-	if (!sensor->text_data_read)
+	if (!sensor->text_value_read)
 		return -EOPNOTSUPP;
 
-        return sensor->text_data_read(buf, PAGE_SIZE);
+        return sensor->text_value_read(buf, PAGE_SIZE);
 }
 
 static ssize_t bin_data_read(struct file *file, struct kobject *kobj,
@@ -584,7 +584,7 @@ static DEVICE_ATTR_RO(units);
 static DEVICE_ATTR_RO(decimals);
 static DEVICE_ATTR_RO(num_values);
 static DEVICE_ATTR_RO(bin_data_format);
-static DEVICE_ATTR_RO(text_data);
+static DEVICE_ATTR_RO(text_value);
 /*
  * Technically, it is possible to have 32 8-bit values from UART sensors
  * and >200 8-bit values from I2C sensors, but known UART sensors so far
@@ -614,7 +614,7 @@ static struct attribute *lego_sensor_class_attrs[] = {
 	&dev_attr_decimals.attr,
 	&dev_attr_num_values.attr,
 	&dev_attr_bin_data_format.attr,
-	&dev_attr_text_data.attr,
+	&dev_attr_text_value.attr,
 	&dev_attr_value0.attr,
 	&dev_attr_value1.attr,
 	&dev_attr_value2.attr,

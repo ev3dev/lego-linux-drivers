@@ -125,7 +125,7 @@ struct lego_sensor_device {
 	ssize_t (*direct_write)(void *context, char *data, loff_t off, size_t count);
 	int (* get_poll_ms)(void *context);
 	int (* set_poll_ms)(void *context, unsigned value);
-	ssize_t (*text_data_read)(char *data, size_t count);
+	ssize_t (*text_value_read)(char *data, size_t count);
 	void *context;
 	char fw_version[LEGO_SENSOR_FW_VERSION_SIZE + 1];
 	/* private */
