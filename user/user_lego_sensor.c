@@ -63,10 +63,20 @@ static ssize_t address_show(struct device *dev, struct device_attribute *attr,
 	return snprintf(buf, LEGO_NAME_SIZE, "%s\n", sensor->sensor.address);
 }
 
+static ssize_t text_value_store(struct device *dev, struct device_attribute *attr,
+			        const char *buf, size_t count)
+{
+ 	struct user_lego_sensor_device *sensor = to_user_lego_sensor_device(dev);
+ 
+	return snprintf( sensor->text_value, USER_LEGO_SENSOR_TEXT_VALUE_SIZE, buf );
+}
+
 static DEVICE_ATTR_RO(address);
+static DEVICE_ATTR_WO(text_value);
 
 static struct attribute *user_lego_sensor_class_attrs[] = {
 	&dev_attr_address.attr,
+	&dev_attr_text_value.attr,
 	NULL
 };
 
@@ -107,6 +117,12 @@ static const struct attribute_group *user_lego_sensor_class_groups[] = {
 	NULL
 };
 
+const char *user_lego_sensor_get_text_value(void *context) {
+	struct user_lego_sensor_device *sensor = context;
+
+        return sensor->text_value;
+}
+ 
 static void user_lego_sensor_release(struct device *dev)
 {
 }
@@ -137,6 +153,9 @@ int user_lego_sensor_register(struct user_lego_sensor_device *sensor,
 
 	dev_info(&sensor->dev, "Registered '%s' on '%s'.\n", sensor->sensor.name,
 		 sensor->sensor.address);
+
+	sensor->sensor.context = sensor; 
+        sensor->sensor.get_text_value = user_lego_sensor_get_text_value;
 
 	err = register_lego_sensor(&sensor->sensor, &sensor->dev);
 	if (err) {
