@@ -124,9 +124,10 @@
  *   you need to divide to get the actual value.
  * .
  * `text_value` (read-only)
- * : Returns a string representing sensor-specific text value. The string may
- *   contain embedded line feed characters, is limited to PAGE_SIZE bytes
- *   in length, and has a trailing linefeed
+ * : Returns a string representing sensor-specific text value. The string
+ *   contains space delimited values, is null terminated, and is limited
+ *   to PAGE_SIZE-2 bytes to take into account the NULL terminator. We force
+ *   a trailing linefeed on the return value.
  * .
  * ### Events
  * .
@@ -521,11 +522,17 @@ static ssize_t text_value_show(struct device *dev, struct device_attribute *attr
 			      char *buf)
 {
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
-
-	if (!sensor->text_value_read)
+	const char *value;
+ 
+	if (!sensor->get_text_value)
 		return -EOPNOTSUPP;
+ 
+	value = sensor->get_text_value(sensor->context);
 
-        return sensor->text_value_read(buf, PAGE_SIZE);
+	if(IS_ERR(value))
+		return PTR_ERR(value);
+
+	return snprintf(buf, PAGE_SIZE, "%s\n", value);
 }
 
 static ssize_t bin_data_read(struct file *file, struct kobject *kobj,

@@ -107,6 +107,7 @@ struct lego_sensor_cmd_info {
  * @get_poll_ms: Get the polling period in milliseconds (optional).
  * @set_poll_ms: Set the polling period in milliseconds (optional).
  * @context: Pointer to data structure used by callbacks.
+ * @get_text_value: Get the text value for the sensor (optional).
  * @fw_version: Firmware version of sensor (optional).
  * @dev: The device data structure.
  */
@@ -125,7 +126,7 @@ struct lego_sensor_device {
 	ssize_t (*direct_write)(void *context, char *data, loff_t off, size_t count);
 	int (* get_poll_ms)(void *context);
 	int (* set_poll_ms)(void *context, unsigned value);
-	ssize_t (*text_value_read)(char *data, size_t count);
+	const char *(*get_text_value)(void *context);
 	void *context;
 	char fw_version[LEGO_SENSOR_FW_VERSION_SIZE + 1];
 	/* private */
