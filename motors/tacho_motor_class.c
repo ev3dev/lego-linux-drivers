@@ -75,8 +75,9 @@
 * `duty_cycle_sp` (read/write)
 * : Writing sets the duty cycle setpoint. Reading returns the current value.
 *   Units are in percent. Valid values are -100 to 100. A negative value causes
-*   the motor to rotate in reverse. This value is only used when `speed_regulation`
-*   is off.
+*   the motor to rotate in reverse with the exception of positioning commands.
+*   For `run-to-abs-pos` and `run-to-rel-pos` the sign is ignored.
+*   This value is only used when `speed_regulation` is off.
 * .
 * `encoder_polarity` (read/write)
 * : Sets the polarity of the rotary encoder. This is an advanced feature to all
@@ -98,7 +99,8 @@
 * : Returns the current position of the motor in pulses of the rotary
 *   encoder. When the motor rotates clockwise, the position will increase.
 *   Likewise, rotating counter-clockwise causes the position to decrease.
-*   Writing will set the position to that value.
+*   Writing will set the position to that value. 
+*   The range is -2,147,483,648 and +2,147,483,647 tachometer counts.
 * .
 * `hold_pid/Kd`: (read/write)
 * : The derivative constant for the position PID.
@@ -113,7 +115,7 @@
 * : Writing specifies the target position for the `run-to-abs-pos` and `run-to-rel-pos`
 *   commands. Reading returns the current value. Units are in tacho counts. You
 *   can use the value returned by `counts_per_rot` to convert tacho counts to/from
-*   rotations or degrees.
+*   rotations or degrees. The range is -2,147,483,648 and +2,147,483,647 tachometer counts.
 * .
 * `speed` (read-only)
 * : Returns the current motor speed in tacho counts per second. Not, this is
@@ -122,8 +124,10 @@
 * .
 * `speed_sp` (read/write)
 * : Writing sets the target speed in tacho counts per second used when `speed_regulation`
-*   is on. Reading returns the current value.  Use the `count_per_rot` attribute
-*   to convert RPM or deg/sec to tacho counts per second.
+*   is on. Reading returns the current value. A negative value causes
+*   the motor to rotate in reverse with the exception of positioning commands.
+*   For `run-to-abs-pos` and `run-to-rel-pos` the sign is ignored.
+*   Use the `count_per_rot` attribute to convert RPM or deg/sec to tacho counts per second.
 * .
 * `ramp_up_sp` (read/write)
 * : Writing sets the ramp up setpoint. Reading returns the current value. Units
