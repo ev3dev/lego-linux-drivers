@@ -205,7 +205,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 			[0] = {
 				/**
 				 * @description: Reflected light<br />LED on
-				 * @value0: Reflected light intensity (0 to 100)
+				 * @value0: Reflected light intensity (0 to 1000)
 				 * @units_description: percent
 				 */
 				.name = "REFLECT",
@@ -221,7 +221,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 			[1] = {
 				/**
 				 * @description: Ambient light<br />LED off
-				 * @value0: Ambient light intensity (0 to 100)
+				 * @value0: Ambient light intensity (0 to 1000)
 				 * @units_description: percent
 				 */
 				.name = "AMBIENT",
