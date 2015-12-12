@@ -43,6 +43,11 @@
  * `bin_data` (write-only)
  * : The written data will be stored and can be read using the corresponding
  *   `bin_data` attribute in the `lego-sensor` class device.
+ * .
+ * `text_value` (write-only)
+ * : The written data will be stored and can be read using the corresponding
+ *   `text_value` attribute in the `lego-sensor` class device.
+
  */
 
 #include <linux/device.h>
@@ -56,7 +61,7 @@
 	container_of(_dev, struct user_lego_sensor_device, dev)
 
 static ssize_t address_show(struct device *dev, struct device_attribute *attr,
-			      char *buf)
+			    char *buf)
 {
 	struct user_lego_sensor_device *sensor = to_user_lego_sensor_device(dev);
 
@@ -67,8 +72,16 @@ static ssize_t text_value_store(struct device *dev, struct device_attribute *att
 			        const char *buf, size_t count)
 {
  	struct user_lego_sensor_device *sensor = to_user_lego_sensor_device(dev);
- 
-	return snprintf( sensor->text_value, USER_LEGO_SENSOR_TEXT_VALUE_SIZE, buf );
+
+	if (count > USER_LEGO_SENSOR_TEXT_VALUE_SIZE)
+		return -EINVAL;
+
+	snprintf(sensor->text_value, USER_LEGO_SENSOR_TEXT_VALUE_SIZE, "%s", buf);
+
+	if (sensor->text_value[count-1] == '\n')
+		(sensor->text_value[count-1] = '\0');
+
+	return count;
 }
 
 static DEVICE_ATTR_RO(address);
@@ -120,7 +133,7 @@ static const struct attribute_group *user_lego_sensor_class_groups[] = {
 const char *user_lego_sensor_get_text_value(void *context) {
 	struct user_lego_sensor_device *sensor = context;
 
-        return sensor->text_value;
+	return sensor->text_value;
 }
  
 static void user_lego_sensor_release(struct device *dev)
@@ -155,7 +168,7 @@ int user_lego_sensor_register(struct user_lego_sensor_device *sensor,
 		 sensor->sensor.address);
 
 	sensor->sensor.context = sensor; 
-        sensor->sensor.get_text_value = user_lego_sensor_get_text_value;
+	sensor->sensor.get_text_value = user_lego_sensor_get_text_value;
 
 	err = register_lego_sensor(&sensor->sensor, &sensor->dev);
 	if (err) {

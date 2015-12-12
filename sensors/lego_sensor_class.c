@@ -124,10 +124,8 @@
  *   you need to divide to get the actual value.
  * .
  * `text_value` (read-only)
- * : Returns a string representing sensor-specific text value. The string
- *   contains space delimited values, is null terminated, and is limited
- *   to PAGE_SIZE-2 bytes to take into account the NULL terminator. We force
- *   a trailing linefeed on the return value.
+ * : Returns a space delimited string representing sensor-specific text values.
+ *   Currently the string is limited to 512 bytes.
  * .
  * ### Events
  * .
