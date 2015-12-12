@@ -15,7 +15,7 @@
 
 /*
  * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) syntas. Use a '.' as a placeholder when blank lines
+ * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
  * or leading whitespace is important for the markdown syntax.
  */
 
@@ -52,35 +52,36 @@
  * related to the actual port at all - use the `address` attribute to find
  * a specific port.
  * .
- * `driver_name` (read-only)
- * : Returns the name of the driver that loaded this device. You can find the
- *   complete list of drivers in the [list of port drivers].
+ * `address`
+ * : (read-only) Returns the name of the port. See individual driver
+ *   documentation for the name that will be returned.
  * .
- * `modes` (read-only)
- * : Returns a space separated list of the available modes of the port.
+ * `driver_name`
+ * : (read-only) Returns the name of the driver that loaded this device. You
+ *   can find the complete list of drivers in the [list of port drivers].
  * .
- * `mode` (read/write)
- * : Reading returns the currently selected mode. Writing sets the mode.
- *   Generally speaking when the mode changes any sensor or motor devices
+ * `modes`
+ * : (read-only) Returns a space separated list of the available modes of the
+ *   port.
+ * .
+ * `mode`
+ * : (read/write) Reading returns the currently selected mode. Writing sets the
+ *   mode. Generally speaking when the mode changes any sensor or motor devices
  *   associated with the port will be removed new ones loaded, however this
  *   this will depend on the individual driver implementing this class.
  * .
- * `address` (read-only)
- * : Returns the name of the port. See individual driver documentation for
- *   the name that will be returned.
+ * `set_device`
+ * : (write-only) For modes that support it, writing the name of a driver will
+ *   cause a new device to be registered for that driver and attached to this
+ *   port. For example, since NXT/Analog sensors cannot be auto-detected, you
+ *   must use this attribute to load the correct driver. Returns `-EOPNOTSUPP`
+ *   if setting a device is not supported.
  * .
- * `set_device`: (write-only)
- * : For modes that support it, writing the name of a driver will cause a new
- *   device to be registered for that driver and attached to this port. For
- *   example, since NXT/Analog sensors cannot be auto-detected, you must use
- *   this attribute to load the correct driver. Returns -EOPNOTSUPP if setting a
- *   device is not supported.
- * .
- * `status`: (read-only)
- * : In most cases, reading status will return the same value as `mode`. In
- *   cases where there is an `auto` mode additional values may be returned,
- *   such as `no-device` or `error`. See individual port driver documentation
- *   for the full list of possible values.
+ * `status`
+ * : (read-only) In most cases, reading status will return the same value as
+ *   `mode`. In cases where there is an `auto` mode additional values may be
+ *   returned, such as `no-device` or `error`. See individual port driver
+ *   documentation for the full list of possible values.
  * .
  * ### Events
  * .

@@ -40,14 +40,15 @@
  * is incremented each time a sensor is loaded (it is not related to which port
  * the sensor is plugged in to).
  * .
- * `bin_data` (write-only)
- * : The written data will be stored and can be read using the corresponding
- *   `bin_data` attribute in the `lego-sensor` class device.
+ * `bin_data`
+ * : (write-only) Writing stores the data which can be read using the
+ *   `bin_data` and `value<N>` attributes in the corresponding `lego-sensor`
+ *    class device.
  * .
- * `text_value` (write-only)
- * : The written data will be stored and can be read using the corresponding
- *   `text_value` attribute in the `lego-sensor` class device. It is currently
- *   limited to 512 bytes in length.
+ * `text_value`
+ * : (write-only) Writing stores the value which can be read using the
+ *  `text_value` attribute in the corresponding `lego-sensor` class device.
+ *   It is currently limited to 512 bytes in length.
  */
 
 #include <linux/device.h>
