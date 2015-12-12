@@ -419,6 +419,10 @@ static int live_allow_link(struct config_item *src, struct config_item *target)
 		if (info->live) {
 			ret = -EBUSY;
 		} else {
+			/* zero out the device since the sensor struct can be reused */
+			memset(&info->sensor.dev, 0, sizeof(struct device));
+			/* same goes for the lego-sensor */
+			memset(&info->sensor.sensor.dev, 0, sizeof(struct device));
 			ret = user_lego_sensor_register(&info->sensor,
 						&info->port_info->port.dev);
 			if (ret == 0)
