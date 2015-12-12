@@ -46,8 +46,8 @@
  * .
  * `text_value` (write-only)
  * : The written data will be stored and can be read using the corresponding
- *   `text_value` attribute in the `lego-sensor` class device.
-
+ *   `text_value` attribute in the `lego-sensor` class device. It is currently
+ *   limited to 512 bytes in length.
  */
 
 #include <linux/device.h>
@@ -79,7 +79,7 @@ static ssize_t text_value_store(struct device *dev, struct device_attribute *att
 	snprintf(sensor->text_value, USER_LEGO_SENSOR_TEXT_VALUE_SIZE, "%s", buf);
 
 	if (sensor->text_value[count-1] == '\n')
-		(sensor->text_value[count-1] = '\0');
+		sensor->text_value[count-1] = '\0';
 
 	return count;
 }

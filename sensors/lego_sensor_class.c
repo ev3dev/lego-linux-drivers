@@ -125,7 +125,6 @@
  * .
  * `text_value` (read-only)
  * : Returns a space delimited string representing sensor-specific text values.
- *   Currently the string is limited to 512 bytes.
  * .
  * ### Events
  * .
