@@ -2,6 +2,7 @@
  * LEGO sensor device class
  *
  * Copyright (C) 2013-2015 David Lechner <david@lechnology.com>
+ * Copyright (C) 2015      Ralph Hempel <rhempel@hempeldesigngroup.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -121,6 +122,9 @@
  *   see how many values there are. Values with N >= num_values will return an
  *   error. The values are fixed point numbers, so check `decimals` to see if
  *   you need to divide to get the actual value.
+ * .
+ * `text_value` (read-only)
+ * : Returns a space delimited string representing sensor-specific text values.
  * .
  * ### Events
  * .
@@ -511,6 +515,24 @@ static ssize_t fw_version_show(struct device *dev, struct device_attribute *attr
 	return snprintf(buf, LEGO_SENSOR_FW_VERSION_SIZE + 2, "%s\n", sensor->fw_version);
 }
 
+static ssize_t text_value_show(struct device *dev, struct device_attribute *attr,
+			      char *buf)
+{
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
+	const char *value;
+ 
+	if (!sensor->get_text_value)
+		return -EOPNOTSUPP;
+ 
+	value = sensor->get_text_value(sensor->context);
+
+	if(IS_ERR(value))
+		return PTR_ERR(value);
+
+	return snprintf(buf, PAGE_SIZE, "%s\n", value);
+}
+
+
 static ssize_t bin_data_read(struct file *file, struct kobject *kobj,
 			     struct bin_attribute *attr,
 			     char *buf, loff_t off, size_t count)
@@ -567,6 +589,7 @@ static DEVICE_ATTR_RO(units);
 static DEVICE_ATTR_RO(decimals);
 static DEVICE_ATTR_RO(num_values);
 static DEVICE_ATTR_RO(bin_data_format);
+static DEVICE_ATTR_RO(text_value);
 /*
  * Technically, it is possible to have 32 8-bit values from UART sensors
  * and >200 8-bit values from I2C sensors, but known UART sensors so far
@@ -596,6 +619,7 @@ static struct attribute *lego_sensor_class_attrs[] = {
 	&dev_attr_decimals.attr,
 	&dev_attr_num_values.attr,
 	&dev_attr_bin_data_format.attr,
+	&dev_attr_text_value.attr,
 	&dev_attr_value0.attr,
 	&dev_attr_value1.attr,
 	&dev_attr_value2.attr,

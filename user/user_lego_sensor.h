@@ -16,9 +16,12 @@
 #include <lego.h>
 #include <lego_sensor_class.h>
 
+#define USER_LEGO_SENSOR_TEXT_VALUE_SIZE 512
+
 struct user_lego_sensor_device {
 	struct lego_sensor_device sensor;
 	struct device dev;
+	char text_value[USER_LEGO_SENSOR_TEXT_VALUE_SIZE+1];
 };
 
 extern int user_lego_sensor_register(struct user_lego_sensor_device *sensor,
