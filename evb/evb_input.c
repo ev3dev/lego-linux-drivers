@@ -58,7 +58,9 @@ static void evb_input_poll(struct input_polled_dev *ipd)
 		return;
 
 	/* For now, we aren't handling simultaneous presses */
-	if (raw_value > MIN(RAW_UP) && raw_value < MAX(RAW_UP))
+	if (likely(!raw_value))
+		new_value = NO_KEY;
+	else if (raw_value > MIN(RAW_UP) && raw_value < MAX(RAW_UP))
 		new_value = KEY_UP;
 	else if (raw_value > MIN(RAW_ENTER) && raw_value < MAX(RAW_ENTER))
 		new_value = KEY_ENTER;
