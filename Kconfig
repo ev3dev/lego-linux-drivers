@@ -146,5 +146,6 @@ source "drivers/lego/wedo/Kconfig"
 
 source "drivers/lego/brickpi/Kconfig"
 source "drivers/lego/pistorms/Kconfig"
+source "drivers/lego/evb/Kconfig"
 
 endif #LEGO_DRIVERS
