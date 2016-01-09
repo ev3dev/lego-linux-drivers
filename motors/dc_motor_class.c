@@ -191,10 +191,10 @@ static void dc_motor_class_ramp_work(struct work_struct *work)
 		motor->duty_cycle = motor->active_params.duty_cycle_sp
 			- motor->ramp_delta_duty_cycle * (int)remaining_ramp_time
 				/ motor->ramp_delta_time;
-		if (motor->duty_cycle > 100)
-			motor->duty_cycle = 100;
-		else if (motor->duty_cycle < -100)
-			motor->duty_cycle = -100;
+		if (motor->duty_cycle > DC_MOTOR_MAX_DUTY_CYCLE)
+			motor->duty_cycle = DC_MOTOR_MAX_DUTY_CYCLE;
+		else if (motor->duty_cycle < -DC_MOTOR_MAX_DUTY_CYCLE)
+			motor->duty_cycle = -DC_MOTOR_MAX_DUTY_CYCLE;
 	} else {
 		motor->duty_cycle = motor->active_params.duty_cycle_sp;
 	}
@@ -346,11 +346,16 @@ static ssize_t duty_cycle_sp_store(struct device *dev,
 				   const char *buf, size_t count)
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
-	int value;
+	int err, duty_cycle;
 
-	if (sscanf(buf, "%d", &value) != 1 || value < -100 || value > 100)
+	err = kstrtoint(buf, 10, &duty_cycle);
+	if (err < 0)
+		return err;
+
+	if (abs(duty_cycle) > DC_MOTOR_MAX_DUTY_CYCLE)
 		return -EINVAL;
-	motor->params.duty_cycle_sp = value;
+
+	motor->params.duty_cycle_sp = duty_cycle;
 
 	/* If we're in run-direct mode, allow the duty_cycle_sp to change */
 

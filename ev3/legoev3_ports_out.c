@@ -1,7 +1,7 @@
 /*
  * Output port driver for LEGO MINDSTORMS EV3
  *
- * Copyright (C) 2013-2014 Ralph Hempel <rhempel@hempeldesigngroup.com>
+ * Copyright (C) 2016 Ralph Hempel <rhempel@hempeldesigngroup.com>
  * Copyright (C) 2013-2015 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -677,16 +677,33 @@ static int ev3_output_port_set_device(void *context, const char *device_name)
 {
 	struct ev3_output_port_data *data = context;
 	struct lego_device *new_motor;
+	struct ev3_motor_platform_data pdata;
 
-	if (data->motor_type != MOTOR_TACHO)
+	switch (data->out_port.mode) {
+	case EV3_OUTPUT_PORT_MODE_AUTO:
+	case EV3_OUTPUT_PORT_MODE_TACHO_MOTOR:
+		if (data->motor_type != MOTOR_TACHO)
+			return -EOPNOTSUPP;
+
+		pdata.tacho_int_gpio = data->gpio[GPIO_PIN5_INT].gpio;
+		pdata.tacho_dir_gpio = data->gpio[GPIO_PIN6_DIR].gpio;
+
+		break;
+	case EV3_OUTPUT_PORT_MODE_DC_MOTOR:
+	case EV3_OUTPUT_PORT_MODE_LED:
+	case EV3_OUTPUT_PORT_MODE_RAW:
 		return -EOPNOTSUPP;
+
+	default:
+		return -EINVAL;
+	}
 
 	lego_device_unregister(data->motor);
 	data->motor = NULL;
 
 	new_motor = lego_device_register(device_name,
 		&ev3_motor_device_types[data->motor_type],
-		&data->out_port, NULL, 0);
+		&data->out_port, &pdata, sizeof(struct ev3_motor_platform_data));
 	if (IS_ERR(new_motor))
 		return PTR_ERR(new_motor);
 
