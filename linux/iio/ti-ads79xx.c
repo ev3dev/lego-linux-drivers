@@ -56,8 +56,8 @@ struct ti_ads79xx_state {
 	 * DMA (thus cache coherency maintenance) requires the
 	 * transfer buffers to live in their own cache lines.
 	 */
-	__be16			rx_buf[ADS79XX_MAX_CHAN] ____cacheline_aligned;
-	__be16			tx_buf[ADS79XX_MAX_CHAN];
+	u16			rx_buf[ADS79XX_MAX_CHAN] ____cacheline_aligned;
+	u16			tx_buf[ADS79XX_MAX_CHAN];
 };
 
 struct ti_ads79xx_chip_info {
@@ -88,13 +88,13 @@ enum ti_ads79xx_id {
 	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),		\
 	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE),	\
 	.address = index,					\
-	.datasheet_name = "CH##index",				\
+	.datasheet_name = "CH"__stringify(index),		\
 	.scan_index = index,					\
 	.scan_type = {						\
 		.sign = 'u',					\
 		.realbits = (bits),				\
 		.storagebits = 16,				\
-		.endianness = IIO_BE,				\
+		.endianness = IIO_CPU,				\
 	},							\
 }
 
@@ -235,7 +235,7 @@ static int ti_ads79xx_update_scan_mode(struct iio_dev *indio_dev,
 	len = 0;
 	for_each_set_bit(i, active_scan_mask, indio_dev->num_channels) {
 		cmd = ADS79XX_CR_WRITE | ADS79XX_CR_CHAN(i) | st->settings;
-		st->tx_buf[len++] = cpu_to_be16(cmd);
+		st->tx_buf[len++] = cmd;
 	}
 
 	/* build spi ring message */
@@ -269,10 +269,10 @@ static irqreturn_t ti_ads79xx_trigger_handler(int irq, void *p)
 	struct iio_poll_func *pf = p;
 	struct iio_dev *indio_dev = pf->indio_dev;
 	struct ti_ads79xx_state *st = iio_priv(indio_dev);
-	int b_sent;
+	int err;
 
-	b_sent = spi_sync(st->spi, &st->ring_msg);
-	if (b_sent)
+	err = spi_sync(st->spi, &st->ring_msg);
+	if (err)
 		goto done;
 
 	iio_push_to_buffers_with_timestamp(indio_dev, st->rx_buf,
@@ -289,13 +289,13 @@ static int ti_ads79xx_scan_direct(struct ti_ads79xx_state *st, unsigned ch)
 	int ret, cmd;
 
 	cmd = ADS79XX_CR_WRITE | ADS79XX_CR_CHAN(ch) | st->settings;
-	st->tx_buf[0] = cpu_to_be16(cmd);
+	st->tx_buf[0] = cmd;
 
 	ret = spi_sync(st->spi, &st->scan_single_msg);
 	if (ret)
 		return ret;
 
-	return be16_to_cpu(st->rx_buf[0]);
+	return st->rx_buf[0];
 }
 
 static int ti_ads79xx_get_range(struct ti_ads79xx_state *st)
@@ -363,6 +363,13 @@ static int ti_ads79xx_probe(struct spi_device *spi)
 	const struct ti_ads79xx_chip_info *info;
 	int ret;
 
+	spi->bits_per_word = 16;
+	ret = spi_setup(spi);
+	if (ret < 0) {
+		dev_err(&spi->dev, "Error in spi setup.\n");
+		return ret;
+	}
+
 	indio_dev = devm_iio_device_alloc(&spi->dev, sizeof(*st));
 	if (indio_dev == NULL)
 		return -ENOMEM;
@@ -406,8 +413,10 @@ static int ti_ads79xx_probe(struct spi_device *spi)
 
 	st->reg = devm_regulator_get(&spi->dev, "refin");
 	if (IS_ERR(st->reg)) {
-		dev_err(&spi->dev, "Failed get get regulator \"refin\".\n");
-		return PTR_ERR(st->reg);
+		ret = PTR_ERR(st->reg);
+		if (ret != -EPROBE_DEFER)
+			dev_err(&spi->dev, "Failed to get regulator \"refin\".\n");
+		return ret;
 	}
 
 	ret = regulator_enable(st->reg);
