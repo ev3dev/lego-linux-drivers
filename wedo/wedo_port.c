@@ -481,6 +481,7 @@ struct wedo_port_data *register_wedo_port(struct usb_interface *interface,
 	snprintf(wpd->port.address, LEGO_NAME_SIZE, "usb%s:wedo%d",
 		 dev_name(&interface->dev), port_num + 1);
 	wpd->port.num_modes = 1;
+	wpd->port.supported_modes = LEGO_PORT_ALL_MODES;
 	wpd->port.mode_info = wedo_port_mode_info;
 	wpd->port.set_mode = wedo_port_set_mode;
 	wpd->port.get_status = wedo_port_get_status;

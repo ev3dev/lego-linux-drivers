@@ -567,6 +567,7 @@ int pistorms_in_ports_register(struct pistorms_data *data)
 		snprintf(in_port->port.address, LEGO_NAME_SIZE, "%sS%d",
 			 data->name, i + 1);
 		in_port->port.num_modes = NUM_PS_IN_PORT_MODES;
+		in_port->port.supported_modes = LEGO_PORT_ALL_MODES;
 		in_port->port.mode_info = pistorms_in_port_mode_info;
 		in_port->port.set_mode = pistorms_in_port_set_mode;
 		in_port->port.set_device = pistorms_in_port_set_device;

@@ -786,6 +786,7 @@ struct lego_port_device
 	data->pwm = pwm;
 
 	data->out_port.num_modes = NUM_EV3_OUTPUT_PORT_MODE;
+	data->out_port.supported_modes = LEGO_PORT_ALL_MODES;
 	data->out_port.mode_info = legoev3_output_port_mode_info;
 	data->out_port.set_mode = ev3_output_port_set_mode;
 	data->out_port.set_device = ev3_output_port_set_device;

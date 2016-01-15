@@ -70,6 +70,7 @@ struct lego_port_ev3_uart_ops {
  * 	to this port device.
  * @num_modes: The number of valid modes.
  * @mode: The current mode.
+ * @supported_modes: Bit flags indicating which modes are supported.
  * @mode_info: Array of mode information.
  * @set_mode: Callback to set the sensor mode.
  * @set_device: Callback to load a device attached to this port.
@@ -93,6 +94,9 @@ struct lego_port_device {
 	const char *port_alias;
 	u8 num_modes;
 	u8 mode;
+	unsigned supported_modes;
+/* Use LEGO_PORT_ALL_MODES to indicate that all modes are supported */
+#define LEGO_PORT_ALL_MODES ((unsigned)(-1))
 	const struct lego_port_mode_info *mode_info;
 	int (*set_mode)(void *context, u8 mode);
 	int (*set_device)(void *context, const char *device_name);

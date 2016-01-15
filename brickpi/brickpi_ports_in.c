@@ -366,9 +366,15 @@ int brickpi_register_in_ports(struct brickpi_channel_data *ch_data,
 		snprintf(port->address, LEGO_NAME_SIZE, "in%d",
 			 ch_data->address * 2 + i - 1);
 		port->num_modes = NUM_BRICKPI_IN_PORT_MODES;
+		port->supported_modes = BIT(BRICKPI_IN_PORT_MODE_NONE)
+				      | BIT(BRICKPI_IN_PORT_MODE_NXT_ANALOG)
+				      | BIT(BRICKPI_IN_PORT_MODE_NXT_COLOR
+				      | BIT(BRICKPI_IN_PORT_MODE_NXT_I2C);
 		/* only firmware version 2 supports EV3 sensors */
-		if (ch_data->fw_version != 2)
-			port->num_modes -= 2;
+		if (ch_data->fw_version >= 2) {
+			port->supported_modes |= BIT(BRICKPI_IN_PORT_MODE_EV3_ANALOG)
+					       | BIT(BRICKPI_IN_PORT_MODE_EV3_UART);
+		}
 		port->mode_info = brickpi_in_port_mode_info;
 		port->set_mode = brickpi_in_port_set_mode;
 		port->set_device = brickpi_in_port_set_device;

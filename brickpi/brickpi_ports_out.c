@@ -306,6 +306,7 @@ int brickpi_register_out_ports(struct brickpi_channel_data *ch_data,
 		snprintf(port->address, LEGO_NAME_SIZE, "%s:out%c",
 			 dev_name(parent), ch_data->address * 2 + i - 2 + 'A');
 		port->num_modes = NUM_BRICKPI_OUT_PORT_MODES;
+		port->supported_modes = LEGO_PORT_ALL_MODES;
 		port->mode_info = brickpi_out_port_mode_info;
 		port->set_mode = brickpi_out_port_set_mode;
 		port->dc_motor_ops = &brickpi_out_port_dc_motor_ops;

@@ -1065,6 +1065,7 @@ struct lego_port_device
 		 pdata->id + 1);
 	data->port.port_alias = pdata->uart_tty;
 	data->port.num_modes = NUM_EV3_INPUT_PORT_MODE;
+	data->port.supported_modes = LEGO_PORT_ALL_MODES;
 	data->port.mode_info = legoev3_input_port_mode_info;
 	data->port.set_mode = ev3_input_port_set_mode;
 	data->port.set_device = ev3_input_port_set_device;
