@@ -112,8 +112,10 @@ static int evb_input_probe(struct platform_device *pdev)
 
 	data->iio = iio_channel_get(&pdev->dev, "voltage");
 	if (IS_ERR(data->iio)) {
-		dev_err(&pdev->dev, "Failed to get iio channel");
-		return PTR_ERR(data->iio);
+		ret = PTR_ERR(data->iio);
+		if (ret != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Failed to get iio channel");
+		return ret;
 	}
 
 	data->last_value = NO_KEY;
