@@ -477,6 +477,7 @@ int ht_nxt_smux_probe_cb(struct nxt_i2c_sensor_data *data)
 		snprintf(ports[i].port.address, LEGO_NAME_SIZE,
 			 "%s:mux%d", data->address, i + 1);
 		ports[i].port.num_modes = NUM_HT_NXT_SMUX_PORT_MODES;
+		ports[i].port.supported_modes = LEGO_PORT_ALL_MODES;
 		ports[i].port.mode_info = ht_nxt_smux_port_mode_info;
 		ports[i].port.set_mode = ht_nxt_smux_port_set_mode;
 		ports[i].port.set_device = ht_nxt_smux_port_set_device;

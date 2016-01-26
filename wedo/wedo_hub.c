@@ -147,8 +147,8 @@ static const struct wedo_hub_sensor_info wedo_hub_sensor_defs[] = {
  * @ctl_buf: The control data buffer
  * @ctl_urb: the urb to write data with
  * @io_lock: lock for I/O operations
- * @output_bits: Control bits sent to hub during output change
  * @status_debounce: Status debounce count after output change
+ * @output_bits: Control bits sent to hub during output change
  * @update_output: Output module requested an output change
  * @output_pending: Control URB has been submitted
  * @io_halt:  IO to the WeDo hub must stop
@@ -168,8 +168,8 @@ struct usb_wedo {
 	unsigned char		*ctl_buf;
 	struct urb		*ctl_urb;
 	spinlock_t		io_lock;
+	unsigned		status_debounce;
 	u8			output_bits;
-	bool			status_debounce;
 	bool			update_output;
 	bool			output_pending;
 	bool			io_halt;

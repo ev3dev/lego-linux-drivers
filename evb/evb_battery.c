@@ -72,6 +72,7 @@ static int evb_battery_probe(struct platform_device *pdev)
 {
 	struct evb_battery *batt;
 	struct power_supply_config psy_cfg = {};
+	int err;
 
 	batt = devm_kzalloc(&pdev->dev, sizeof(*batt), GFP_KERNEL);
 	if (!batt)
@@ -81,8 +82,10 @@ static int evb_battery_probe(struct platform_device *pdev)
 
 	batt->iio = iio_channel_get(&pdev->dev, "voltage");
 	if (IS_ERR(batt->iio)) {
-		dev_err(&pdev->dev, "Failed to get iio channel");
-		return PTR_ERR(batt->iio);
+		err = PTR_ERR(batt->iio);
+		if (err != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Failed to get iio channel.");
+		return err;
 	}
 
 	psy_cfg.of_node		= pdev->dev.of_node;

@@ -40,7 +40,6 @@ Module.symvers
 #
 /tags
 /TAGS
-/linux
 /vmlinux
 /vmlinuz
 /System.map

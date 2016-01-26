@@ -113,24 +113,25 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 	int i, ret;
 
 	for (i = 0; i < port->num_modes; i++) {
-		if (sysfs_streq(buf, port->mode_info[i].name)) {
+		if ((BIT(i) & port->supported_modes)
+		    && sysfs_streq(buf, port->mode_info[i].name))
+		{
 			new_mode = i;
-			break;
+
+			ret = port->set_mode(port->context, i);
+			if (ret < 0)
+				return ret;
+
+			if (port->mode != new_mode) {
+				port->mode = new_mode;
+				kobject_uevent(&dev->kobj, KOBJ_CHANGE);
+			}
+
+			return count;
 		}
 	}
-	if (new_mode == -1)
-		return -EINVAL;
 
-	ret = port->set_mode(port->context, i);
-	if (ret < 0)
-		return ret;
-
-	if (port->mode != new_mode) {
-		port->mode = new_mode;
-		kobject_uevent(&dev->kobj, KOBJ_CHANGE);
-	}
-
-	return count;
+	return -EINVAL;
 }
 
 static ssize_t modes_show(struct device *dev, struct device_attribute *attr,
@@ -140,8 +141,11 @@ static ssize_t modes_show(struct device *dev, struct device_attribute *attr,
 	size_t count = 0;
 	int i;
 
-	for (i = 0; i < port->num_modes; i++)
-		count += sprintf(buf + count, "%s ", port->mode_info[i].name);
+	for (i = 0; i < port->num_modes; i++) {
+		if (BIT(i) & port->supported_modes)
+			count += sprintf(buf + count, "%s ",
+					 port->mode_info[i].name);
+	}
 	buf[count - 1] = '\n';
 
 	return count;

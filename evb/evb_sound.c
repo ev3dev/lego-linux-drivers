@@ -560,14 +560,18 @@ static int evb_sound_probe(struct platform_device *pdev)
 
 	ena_gpio = devm_gpiod_get(&pdev->dev, "enable", GPIOD_OUT_LOW);
 	if (IS_ERR(ena_gpio)) {
-		dev_err(&pdev->dev, "Failed to get gpio!\n");
-		return PTR_ERR(ena_gpio);
+		err = PTR_ERR(ena_gpio);
+		if (err != -EPROBE_DEFER);
+			dev_err(&pdev->dev, "Failed to get gpio!\n");
+		return err;
 	}
 
 	pwm = devm_pwm_get(&pdev->dev, "speaker");
 	if (IS_ERR(pwm)) {
-		dev_err(&pdev->dev, "Failed to get pwm!\n");
-		return PTR_ERR(pwm);
+		err = PTR_ERR(pwm);
+		if (err != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Failed to get pwm!\n");
+		return err;
 	}
 	/* This lets us set the pwm duty cycle in an atomic context */
 	pm_runtime_irq_safe(pwm->chip->dev);

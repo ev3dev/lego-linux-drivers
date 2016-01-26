@@ -231,6 +231,7 @@ int ms_ev3_smux_probe_cb(struct nxt_i2c_sensor_data *data)
 	snprintf(smux->port.address, LEGO_NAME_SIZE, "%s:mux%d",
 		 data->address, ret);
 	smux->port.num_modes = NUM_MS_EV3_SMUX_MODES;
+	smux->port.supported_modes = LEGO_PORT_ALL_MODES;
 	smux->port.mode_info = ms_ev3_smux_port_mode_info;
 	smux->port.set_mode = ms_ev3_smux_set_mode;
 	smux->port.set_device = ms_ev3_smux_set_device;

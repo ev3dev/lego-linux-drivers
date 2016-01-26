@@ -590,6 +590,7 @@ int ms_nxtmmx_register_out_port(struct ms_nxtmmx_data *mmx)
 	port->name = ms_nxtmmx_out_port_type.name;
 	strncpy(port->address, mmx->address, LEGO_NAME_SIZE);
 	port->num_modes = NUM_MS_NXTMMX_OUT_PORT_MODES;
+	port->supported_modes = LEGO_PORT_ALL_MODES;
 	port->mode_info = ms_nxtmmx_out_port_mode_info;
 	port->set_mode = ms_nxtmmx_out_port_set_mode;
 	port->tacho_motor_ops = &ms_nxtmmx_tacho_motor_ops;

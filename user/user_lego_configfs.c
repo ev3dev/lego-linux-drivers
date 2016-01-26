@@ -505,6 +505,7 @@ static struct config_group
 	info->port.name = LEGO_USER_DEVICE_NAME;
 	snprintf(info->port.address, LEGO_NAME_SIZE, "user:%s", name);
 	info->port.num_modes = 1;
+	info->port.supported_modes = LEGO_PORT_ALL_MODES;
 	info->port.mode_info = &info->mode0;
 	info->port.set_mode = port_set_mode;
 	info->port.context = info;

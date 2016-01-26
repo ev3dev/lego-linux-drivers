@@ -704,7 +704,11 @@ static void ev3_uart_handle_rx_data(struct work_struct *work)
 				snprintf(port->mode_info[mode].name,
 				         EV3_UART_MODE_NAME_SIZE + 1, "%s",
 				         message + 2);
-				port->sensor.mode = mode;
+				if (port->sensor.mode != mode) {
+					port->sensor.mode = mode;
+					kobject_uevent(&port->sensor.dev.kobj,
+						       KOBJ_CHANGE);
+				}
 				port->info_flags |= EV3_UART_INFO_FLAG_INFO_NAME;
 				debug_pr("mode %d name:%s\n",
 				       mode, port->sensor.address);
@@ -879,9 +883,11 @@ static void ev3_uart_handle_rx_data(struct work_struct *work)
 				goto err_invalid_state;
 			}
 			if (mode != port->sensor.mode) {
-				if (mode == port->new_mode)
+				if (mode == port->new_mode) {
 					port->sensor.mode = mode;
-				else {
+					kobject_uevent(&port->sensor.dev.kobj,
+						       KOBJ_CHANGE);
+				} else {
 					port->last_err = "Unexpected mode.";
 					goto err_invalid_state;
 				}
