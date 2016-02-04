@@ -303,7 +303,7 @@ int brickpi_register_out_ports(struct brickpi_channel_data *ch_data,
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
 		struct lego_port_device *port = &ch_data->out_port[i].port;
 		port->name = brickpi_out_port_type.name;
-		snprintf(port->address, LEGO_NAME_SIZE, "%s:out%c",
+		snprintf(port->address, LEGO_NAME_SIZE, "%s:M%c",
 			 dev_name(parent), ch_data->address * 2 + i - 2 + 'A');
 		port->num_modes = NUM_BRICKPI_OUT_PORT_MODES;
 		port->supported_modes = LEGO_PORT_ALL_MODES;

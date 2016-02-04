@@ -362,8 +362,8 @@ int brickpi_register_in_ports(struct brickpi_channel_data *ch_data,
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
 		struct lego_port_device *port = &ch_data->in_port[i].port;
 		port->name = brickpi_in_port_type.name;
-		snprintf(port->address, LEGO_NAME_SIZE, "in%d",
-			 ch_data->address * 2 + i - 1);
+		snprintf(port->address, LEGO_NAME_SIZE, "%s:S%d",
+			 dev_name(parent), ch_data->address * 2 + i - 1);
 		port->num_modes = NUM_BRICKPI_IN_PORT_MODES;
 		port->supported_modes = BIT(BRICKPI_IN_PORT_MODE_NONE)
 				      | BIT(BRICKPI_IN_PORT_MODE_NXT_ANALOG)
