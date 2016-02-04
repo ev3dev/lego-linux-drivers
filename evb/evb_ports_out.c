@@ -789,8 +789,8 @@ int evb_output_port_probe(struct platform_device *pdev)
 	pm_runtime_irq_safe(data->pwm->chip->dev);
 
 	data->out_port.name = evb_output_port_type.name;
-	snprintf(data->out_port.address, LEGO_NAME_SIZE, "%s", pdev->dev.of_node
-		 ? pdev->dev.of_node->name : dev_name(&pdev->dev));
+	snprintf(data->out_port.address, LEGO_NAME_SIZE, "%s",
+		 dev_name(&pdev->dev));
 	data->out_port.num_modes = NUM_EV3_OUTPUT_PORT_MODE;
 	data->out_port.supported_modes = LEGO_PORT_ALL_MODES;
 	data->out_port.mode_info = evb_output_port_mode_info;

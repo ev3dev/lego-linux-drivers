@@ -1144,8 +1144,7 @@ static int evb_input_port_probe(struct platform_device *pdev)
 	// data->i2c_pdev_info.size_data	= sizeof(data->i2c_data);
 
 	data->port.name = evb_input_port_type.name;
-	snprintf(data->port.address, LEGO_NAME_SIZE, "%s", pdev->dev.of_node ?
-		 pdev->dev.of_node->name : dev_name(&pdev->dev));
+	snprintf(data->port.address, LEGO_NAME_SIZE, "%s", dev_name(&pdev->dev));
 	/* tty name is optional, so ignoring return value */
 	of_property_read_string(pdev->dev.of_node, "ev3dev,tty-name",
 				&data->port.port_alias);
