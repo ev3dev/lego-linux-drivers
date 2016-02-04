@@ -153,8 +153,6 @@ void brickpi_in_port_unregister_sensor(struct brickpi_in_port_data *in_port)
 	if (in_port->sensor) {
 		lego_device_unregister(in_port->sensor);
 		in_port->sensor = NULL;
-		in_port->sensor_type = BRICKPI_SENSOR_TYPE_FW_VERSION;
-		brickpi_set_sensors(in_port->ch_data);
 	}
 }
 
