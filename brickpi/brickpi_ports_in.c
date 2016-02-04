@@ -13,6 +13,8 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/bitops.h>
+
 #include "brickpi_internal.h"
 #include "../sensors/ev3_analog_sensor.h"
 #include "../sensors/ev3_uart_sensor.h"
@@ -23,7 +25,6 @@ const struct device_type brickpi_in_port_type = {
 	.name   = "brickpi-in-port",
 };
 EXPORT_SYMBOL_GPL(brickpi_in_port_type);
-
 
 static const struct device_type brickpi_in_port_device_types[NUM_BRICKPI_IN_PORT_MODES] = {
 	[BRICKPI_IN_PORT_MODE_NONE] = {
@@ -368,7 +369,7 @@ int brickpi_register_in_ports(struct brickpi_channel_data *ch_data,
 		port->num_modes = NUM_BRICKPI_IN_PORT_MODES;
 		port->supported_modes = BIT(BRICKPI_IN_PORT_MODE_NONE)
 				      | BIT(BRICKPI_IN_PORT_MODE_NXT_ANALOG)
-				      | BIT(BRICKPI_IN_PORT_MODE_NXT_COLOR
+				      | BIT(BRICKPI_IN_PORT_MODE_NXT_COLOR)
 				      | BIT(BRICKPI_IN_PORT_MODE_NXT_I2C);
 		/* only firmware version 2 supports EV3 sensors */
 		if (ch_data->fw_version >= 2) {
