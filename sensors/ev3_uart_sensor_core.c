@@ -66,7 +66,8 @@ static int ev3_uart_sensor_set_mode(void *context, u8 mode)
 	if (port->ev3_uart_ops && port->ev3_uart_ops->set_mode) {
 		int ret;
 
-		ret = port->ev3_uart_ops->set_mode(port->context, mode);
+		ret = port->ev3_uart_ops->set_mode(port->context,
+						   data->info.type_id, mode);
 		if (ret < 0)
 			return ret;
 	} else

@@ -190,7 +190,8 @@ static struct lego_port_ev3_analog_ops ms_ev3_smux_ev3_analog_ops = {
 	.lego_touch_sensor_is_scaled = true,
 };
 
-static int ms_ev3_smux_set_ev3_uart_sensor_mode(void *context, u8 mode)
+static int ms_ev3_smux_set_ev3_uart_sensor_mode(void *context, u8 type_id,
+						u8 mode)
 {
 	struct nxt_i2c_sensor_data *data = context;
 

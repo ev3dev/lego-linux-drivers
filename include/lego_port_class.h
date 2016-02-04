@@ -59,7 +59,7 @@ struct lego_port_ev3_analog_ops {
 };
 
 struct lego_port_ev3_uart_ops {
-	int (* set_mode)(void *context, u8 mode);
+	int (* set_mode)(void *context, u8 type_id, u8 mode);
 };
 
 /**

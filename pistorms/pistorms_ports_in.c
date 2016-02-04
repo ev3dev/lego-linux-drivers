@@ -524,7 +524,8 @@ static struct lego_port_ev3_analog_ops pistorms_ev3_analog_ops = {
 };
 
 
-static int pistorms_in_port_set_ev3_uart_sensor_mode(void *context, u8 mode)
+static int pistorms_in_port_set_ev3_uart_sensor_mode(void *context, u8 type_id,
+						     u8 mode)
 {
 	struct pistorms_in_port_data *in_port = context;
 

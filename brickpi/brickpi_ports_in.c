@@ -333,18 +333,18 @@ int brickpi_in_port_set_i2c_mode(struct lego_device *sensor, u8 set_mode_reg,
 }
 EXPORT_SYMBOL_GPL(brickpi_in_port_set_i2c_mode);
 
-static int brickpi_in_port_set_ev3_uart_sensor_mode(void *context, u8 mode)
+static int brickpi_in_port_set_ev3_uart_sensor_mode(void *context, u8 type_id,
+						    u8 mode)
 {
 	struct brickpi_in_port_data *in_port = context;
-	struct lego_device *sensor = in_port->sensor;
 
-	if (!strncmp(sensor->name, LEGO_EV3_COLOR_NAME, LEGO_NAME_SIZE))
+	if (type_id == ev3_uart_sensor_defs[LEGO_EV3_COLOR].type_id)
 		in_port->sensor_type = BRICKPI_SENSOR_TYPE_EV3_COLOR_M0 + mode;
-	else if (!strncmp(sensor->name, LEGO_EV3_ULTRASONIC_NAME, LEGO_NAME_SIZE))
+	else if (type_id == ev3_uart_sensor_defs[LEGO_EV3_ULTRASONIC].type_id)
 		in_port->sensor_type = BRICKPI_SENSOR_TYPE_EV3_US_M0 + mode;
-	else if (!strncmp(sensor->name, LEGO_EV3_GYRO_NAME, LEGO_NAME_SIZE))
+	else if (type_id == ev3_uart_sensor_defs[LEGO_EV3_GYRO].type_id)
 		in_port->sensor_type = BRICKPI_SENSOR_TYPE_EV3_GYRO_M0 + mode;
-	else if (!strncmp(sensor->name, LEGO_EV3_INFRARED_NAME, LEGO_NAME_SIZE))
+	else if (type_id == ev3_uart_sensor_defs[LEGO_EV3_INFRARED].type_id)
 		in_port->sensor_type = BRICKPI_SENSOR_TYPE_EV3_INFRARED_M0 + mode;
 	else
 		return -EINVAL;
