@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e
+
+if [ -f "../../scripts/checkpatch.pl" ]; then
+    check_patch="../../scripts/checkpatch.pl"
+else
+    if [ ! -f "checkpatch.pl" ]; then
+        wget https://raw.githubusercontent.com/ev3dev/ev3-kernel/ev3dev-jessie/scripts/checkpatch.pl
+        chmod +x checkpatch.pl
+    fi
+    check_patch=./checkpatch.pl
+fi
+
+if [ -z "$TRAVIS_REPO_SLUG" ]; then
+    git diff master | $check_patch --no-tree --no-signoff -
+else
+    curl -i "https://github.com/$TRAVIS_REPO_SLUG/compare/ev3dev:master...$TRAVIS_COMMIT.diff" \
+        | $check_patch --no-tree --no-signoff -
+fi
+
+# fail if git command failed
+exit $PIPESTATUS

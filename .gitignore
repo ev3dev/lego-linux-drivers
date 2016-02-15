@@ -94,3 +94,8 @@ x509.genkey
 
 # Kconfig presets
 all.config
+
+!.travis.yml
+
+# Downloaded by checkpatch.sh
+checkpatch.pl
