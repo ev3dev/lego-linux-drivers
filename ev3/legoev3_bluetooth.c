@@ -37,9 +37,6 @@
 enum legoev3_bluetooth_gpios {
 	LEGOEV3_BT_GPIO_BT_ENA,
 	LEGOEV3_BT_GPIO_BT_CLK_ENA,
-	LEGOEV3_BT_GPIO_PIC_ENA,
-	LEGOEV3_BT_GPIO_PIC_RST,
-	LEGOEV3_BT_GPIO_PIC_CTS,
 	NUM_LEGOEV3_BT_GPIO
 };
 
@@ -121,19 +118,6 @@ static int legoev3_bluetooth_probe(struct platform_device *pdev)
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_CLK_ENA].gpio	= pdata->bt_clk_ena_gpio;
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_CLK_ENA].flags	= GPIOF_IN;
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_CLK_ENA].label	= "bluetooth slow clock enable";
-	/*
-	 * PIC pins are not shown on schematics, but are used for "mode 2"
-	 * in LEGO firmware. Is this for apple device maybe? or is this unused?
-	 */
-	btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].gpio	= pdata->pic_ena_gpio;
-	btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].flags	= GPIOF_OUT_INIT_LOW;
-	btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].label	= "bt pic enable";
-	btdev->gpios[LEGOEV3_BT_GPIO_PIC_RST].gpio	= pdata->pic_rst_gpio;
-	btdev->gpios[LEGOEV3_BT_GPIO_PIC_RST].flags	= GPIOF_OUT_INIT_HIGH;
-	btdev->gpios[LEGOEV3_BT_GPIO_PIC_RST].label	= "bt pic reset";
-	btdev->gpios[LEGOEV3_BT_GPIO_PIC_CTS].gpio	= pdata->pic_cts_gpio;
-	btdev->gpios[LEGOEV3_BT_GPIO_PIC_CTS].flags	= GPIOF_IN;
-	btdev->gpios[LEGOEV3_BT_GPIO_PIC_CTS].label	= "bt pic cts";
 	err = gpio_request_array(btdev->gpios, NUM_LEGOEV3_BT_GPIO);
 	if (err) {
 		dev_err(&pdev->dev, "%s: Failed to request gpios! (%d)\n",
