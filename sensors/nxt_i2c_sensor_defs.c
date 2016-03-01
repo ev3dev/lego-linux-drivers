@@ -248,6 +248,21 @@ static void mi_xg1300l_remove_cb(struct nxt_i2c_sensor_data *data)
 	}
 }
 
+/*
+ * convert raw data of HiTechnic Angle Sensor to degrees
+ */
+static int ht_angle_scale(void *context,
+					struct lego_sensor_mode_info *mode_info,
+					u8 index, long int *value)
+{
+
+	*value = (mode_info->raw_data[index] << 1)
+						+ mode_info->raw_data[index+1];
+
+	return 0;
+}
+
+
 /**
  * nxt_i2c_sensor_defs - Sensor definitions
  *
@@ -984,11 +999,12 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				/**
 				 * @description: Angle
 				 * @units_description: degrees
-				 * @value0: Angle (0 to 180)
+				 * @value0: Angle (0 to 359)
 				 */
 				.name = "ANGLE",
-				.raw_max = 180,
-				.si_max = 180,
+				.si_max = 359,
+				.data_type = LEGO_SENSOR_DATA_U16,
+				.scale = ht_angle_scale,
 				.units = "deg",
 			},
 			[1] = {
@@ -1002,7 +1018,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = INT_MAX,
 				.si_min = INT_MIN,
 				.si_max = INT_MAX,
-				.data_type = LEGO_SENSOR_DATA_S32,
+				.data_type = LEGO_SENSOR_DATA_S32_BE,
 				.figures = 9,
 				.units = "deg",
 			},
@@ -1017,7 +1033,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = SHRT_MAX,
 				.si_min = SHRT_MIN,
 				.si_max = SHRT_MAX,
-				.data_type = LEGO_SENSOR_DATA_S16,
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
 				.units = "RPM",
 			},
 		},
@@ -1029,7 +1045,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.read_data_reg	= 0x44,
 			},
 			[2] = {
-				.read_data_reg	= 0x46,
+				.read_data_reg	= 0x48,
 			},
 		},
 		.num_commands	= 2,
@@ -1047,7 +1063,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * That means disable polling by setting `poll_ms`
 				 * to 0 before sending this command.
 				 *
-				 * @description: Reset accumulated angle and save to EEPROM
+				 * @description: Reset angle and accumulated angle and save to EEPROM
 				 * @name_footnote: [^calibrate]
 				 */
 				.name = "CAL",

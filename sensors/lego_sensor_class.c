@@ -68,6 +68,7 @@
  * .    - `s16`: Signed 16-bit integer (short)
  * .    - `s16_be`: Signed 16-bit integer, big endian
  * .    - `s32`: Signed 32-bit integer (int)
+ * .    - `s32_be`: Signed 32-bit integer, big endian
  * .    - `float`: IEEE 754 32-bit floating point (float)
  * .
  * `command`
@@ -156,6 +157,7 @@ size_t lego_sensor_data_size[NUM_LEGO_SENSOR_DATA_TYPE] = {
 	[LEGO_SENSOR_DATA_S16_BE]	= 2,
 	[LEGO_SENSOR_DATA_S32]		= 4,
 	[LEGO_SENSOR_DATA_U32]		= 4,
+	[LEGO_SENSOR_DATA_S32_BE]	= 4,
 	[LEGO_SENSOR_DATA_FLOAT]	= 4,
 };
 EXPORT_SYMBOL_GPL(lego_sensor_data_size);
@@ -370,13 +372,18 @@ int lego_sensor_default_scale(struct lego_sensor_mode_info *mode_info, u8 index,
 		*value = *(s16 *)(mode_info->raw_data + index * 2);
 		break;
 	case LEGO_SENSOR_DATA_S16_BE:
-		*value = (s16)ntohs(*(u16 *)(mode_info->raw_data + index * 2));
+		*value = (s16)be16_to_cpu(*(u16 *)
+					(mode_info->raw_data + index * 2));
 		break;
 	case LEGO_SENSOR_DATA_U32:
 		*value = *(u32 *)(mode_info->raw_data + index * 4);
 		break;
 	case LEGO_SENSOR_DATA_S32:
 		*value = *(s32 *)(mode_info->raw_data + index * 4);
+		break;
+	case LEGO_SENSOR_DATA_S32_BE:
+		*value = (s32)be32_to_cpu(*(u32 *)
+					(mode_info->raw_data + index * 4));
 		break;
 	case LEGO_SENSOR_DATA_FLOAT:
 		*value = lego_sensor_ftoi(
@@ -387,10 +394,11 @@ int lego_sensor_default_scale(struct lego_sensor_mode_info *mode_info, u8 index,
 		return -ENXIO;
 	}
 
-	if (mode_info->raw_min != mode_info->raw_max) {
+	if (mode_info->raw_min != mode_info->si_min
+			|| mode_info->raw_max != mode_info->si_max) {
 		*value = (*value - mode_info->raw_min)
-			* (mode_info->si_max - mode_info->si_min)
-			/ (mode_info->raw_max - mode_info->raw_min)
+			* ((mode_info->si_max - mode_info->si_min)
+			/ (mode_info->raw_max - mode_info->raw_min))
 			+ mode_info->si_min;
 	}
 
@@ -440,6 +448,8 @@ const char *lego_sensor_bin_data_format_to_str(enum lego_sensor_data_type value)
 		return "u32";
 	case LEGO_SENSOR_DATA_S32:
 		return "s32";
+	case LEGO_SENSOR_DATA_S32_BE:
+		return "s32be";
 	case LEGO_SENSOR_DATA_FLOAT:
 		return "float";
 	default:
