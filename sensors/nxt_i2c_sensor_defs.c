@@ -1103,7 +1103,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = 180,
 				.si_max = 180,
 				.units = "deg",
-				.data_type = LEGO_SENSOR_DATA_S8,
+				.data_type = LEGO_SENSOR_DATA_S16,
 			},
 		},
 		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
