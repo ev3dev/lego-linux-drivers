@@ -13,7 +13,7 @@ else
 fi
 
 if [ -z "$TRAVIS_REPO_SLUG" ]; then
-    git diff origin/master | $check_patch --no-tree --no-signoff -
+    git diff origin/master | $check_patch --no-tree --no-signoff --ignore BAD_SIGN_OFF -
     echo "OK!"
 else
     if [ "$TRAVIS_PULL_REQUEST" = "false" ] && [ "$TRAVIS_BRANCH" = "master" ]; then
