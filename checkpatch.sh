@@ -21,7 +21,7 @@ else
         exit 0
     fi
     curl -i "https://github.com/$TRAVIS_REPO_SLUG/compare/ev3dev:master...$TRAVIS_COMMIT.diff" \
-        | $check_patch --no-tree --no-signoff -
+        | $check_patch --no-tree --no-signoff --ignore BAD_SIGN_OFF -
 fi
 
 # fail if git command failed
