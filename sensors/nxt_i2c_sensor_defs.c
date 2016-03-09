@@ -1108,7 +1108,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		},
 		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
-				.read_data_reg	= 0x42,
+				.read_data_reg	= 0x44,
 			},
 		},
 	},
