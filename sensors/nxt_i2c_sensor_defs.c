@@ -1096,19 +1096,19 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[0] = {
 				/**
 				 * @description: Compass Direction
-				 * @value0: Direction (-180 to 180)
+				 * @value0: Direction (0 to 359)
 				 * @units_description: degrees
 				 */
 				.name = "COMPASS",
-				.raw_max = 180,
-				.si_max = 180,
+				.raw_max = 359,
+				.si_max = 359,
 				.units = "deg",
-				.data_type = LEGO_SENSOR_DATA_S8,
+				.data_type = LEGO_SENSOR_DATA_S16,
 			},
 		},
 		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
-				.read_data_reg	= 0x42,
+				.read_data_reg	= 0x44,
 			},
 		},
 	},
