@@ -69,6 +69,10 @@
 #include "../ev3/legoev3_ports.h"
 #endif
 
+#ifndef I2C_CLASS_LEGOEV3
+#define I2C_CLASS_LEGOEV3 (1<<31)
+#endif
+
 static u16 default_poll_ms = 100;
 module_param(default_poll_ms, ushort, 0644);
 MODULE_PARM_DESC(default_poll_ms, "Polling period in milliseconds.Set to 0 to disable polling.");
