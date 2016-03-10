@@ -22,6 +22,7 @@
 #include <linux/types.h>
 
 #define DC_MOTOR_NAME_SIZE	30
+#define DC_MOTOR_MAX_DUTY_CYCLE	100
 
 enum dc_motor_command {
 	DC_MOTOR_COMMAND_RUN_FOREVER,

@@ -229,8 +229,6 @@ static int ms_nxtmmx_get_state(void *context)
 
 	if (ret & STATUS_FLAG_POWERED)
 		state |= BIT(TM_STATE_RUNNING);
-	if (ret & STATUS_FLAG_RAMPING)
-		state |= BIT(TM_STATE_RAMPING);
 	if (ret & STATUS_FLAG_STALL)
 		state |= BIT(TM_STATE_STALLED);
 
@@ -340,7 +338,6 @@ static int ms_nxtmmx_send_command(void *context,
 			mmx->holding = true;
 		}
 	} else if (command == TM_COMMAND_RESET) {
-		params->speed_regulation = TM_SPEED_REGULATION_ON;
 		command_bytes[0] = COMMAND_FLOAT_STOP(mmx->index);
 		err = i2c_smbus_write_byte_data(mmx->i2c_client,
 			COMMAND_REG, command_bytes[0]);
@@ -355,17 +352,6 @@ static int ms_nxtmmx_send_command(void *context,
 	}
 
 	return 0;
-}
-
-static unsigned ms_nxtmmx_get_speed_regulations(void *context)
-{
-	/*
-	 * This controller only works with speed control enabled - except when
-	 * the Encoder bit is set, in which case it runs at 100% duty cycle.
-	 * So, we don't allow changing speed_regulation and it will return "on"
-	 * when read.
-	 */
-	return BIT(TM_SPEED_REGULATION_ON);
 }
 
 static unsigned ms_nxtmmx_get_stop_commands(void *context)
@@ -525,7 +511,6 @@ struct tacho_motor_ops ms_nxtmmx_tacho_motor_ops = {
 	.get_count_per_rot	= ms_nxtmmx_get_count_per_rot,
 	.get_commands		= ms_nxtmmx_get_commands,
 	.send_command		= ms_nxtmmx_send_command,
-	.get_speed_regulations	= ms_nxtmmx_get_speed_regulations,
 	.get_stop_commands	= ms_nxtmmx_get_stop_commands,
 	.get_speed_Kp		= ms_nxtmmx_get_speed_Kp,
 	.set_speed_Kp		= ms_nxtmmx_set_speed_Kp,
