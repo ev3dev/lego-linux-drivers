@@ -44,9 +44,6 @@
 #include <linux/irq.h>
 #include <linux/interrupt.h>
 #include <linux/random.h>
-#include <linux/platform_data/legoev3.h>
-
-#include <mach/time.h>
 
 #include <lego.h>
 #include <lego_port_class.h>

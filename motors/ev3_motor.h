@@ -60,6 +60,12 @@ struct ev3_motor_info {
 	struct legoev3_motor_info legoev3_info;
 };
 
+/* This needs to go away */
+struct ev3_motor_platform_data {
+	unsigned tacho_int_gpio;
+	unsigned tacho_dir_gpio;
+};
+
 extern const struct ev3_motor_info ev3_motor_defs[];
 
 #endif /* __EV3_MOTOR_H */
