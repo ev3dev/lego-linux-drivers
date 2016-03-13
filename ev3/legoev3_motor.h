@@ -37,17 +37,18 @@ struct legoev3_motor_pid_k {
 
 /**
  * struct legoev3_motor_info - motor parameter data specific to the legoev3
- * 	driver implementation
+ *	driver implementation
  *
  * @samples_for_speed: Array of how many samples to use in the speed calculation
- * 	for a given speed range. Must be a power of two???
+ *	for a given speed range. Must be a power of two???
  * @speed_pid_k: PID constants for speed regulation.
  * @max_us_per_sample: Maximum duration of a single sample in microseconds.
- * 	This number should be 50 * the tacho period at full speed.
- * 	Used for motor stall and direction calculations.
+ *	This number should be 50 * the tacho period at full speed.
+ *	Used for motor stall and direction calculations.
  */
 struct legoev3_motor_info {
 	int samples_for_speed[NUM_LEGOEV3_MOTOR_SPEED_RANGE];
+	struct legoev3_motor_pid_k position_pid_k;
 	struct legoev3_motor_pid_k speed_pid_k;
 	/* TODO: clock_ticks_per_sample needs to be converted to usec */
 	int max_us_per_sample;

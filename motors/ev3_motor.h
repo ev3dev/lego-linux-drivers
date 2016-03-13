@@ -2,6 +2,7 @@
  * LEGO MINDSTORMS NXT/EV3 Motor driver
  *
  * Copyright (C) 2015 David Lechner <david@lechnology.com>
+ * Copyright (C) 2016 Ralph Hempel <rhempel@hempeldesigngroup.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -17,6 +18,7 @@
 #define __EV3_MOTOR_H
 
 #include <dc_motor_class.h>
+#include <tacho_motor_class.h>
 
 #include "../ev3/legoev3_motor.h"
 
@@ -51,6 +53,9 @@ struct ev3_motor_info {
 	const char *name;
 	int max_speed;
 	int count_per_rot;
+	int count_per_m;
+	int full_travel_count;
+	enum tacho_motor_motion motion_type;
 	enum dc_motor_polarity encoder_polarity;
 	struct legoev3_motor_info legoev3_info;
 };

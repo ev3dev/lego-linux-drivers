@@ -193,9 +193,9 @@ static unsigned brickpi_out_port_get_commands(void *context)
 		| BIT(TM_COMMAND_RESET);
 }
 
-static int brickpi_out_port_send_command(void *context,
-					 struct tacho_motor_params *params,
-					 enum tacho_motor_command command)
+static int brickpi_out_port_tacho_send_command(void *context,
+					      struct tacho_motor_params *params,
+					      enum tacho_motor_command command)
 {
 	struct brickpi_out_port_data *data = context;
 
@@ -234,14 +234,6 @@ static int brickpi_out_port_send_command(void *context,
 	return 0;
 }
 
-static unsigned brickpi_out_port_get_speed_regulations(void *context)
-{
-	/*
-	 * The BrickPi firmware does not have speed regulation.
-	 */
-	return BIT(TM_SPEED_REGULATION_OFF);
-}
-
 static unsigned brickpi_out_port_get_stop_commands(void *context)
 {
 	return BIT(TM_STOP_COMMAND_COAST);
@@ -253,8 +245,7 @@ struct tacho_motor_ops brickpi_out_port_tacho_motor_ops = {
 	.get_state		= brickpi_out_port_get_state,
 	.get_count_per_rot	= brickpi_out_port_get_count_per_rot,
 	.get_commands		= brickpi_out_port_get_commands,
-	.send_command		= brickpi_out_port_send_command,
-	.get_speed_regulations	= brickpi_out_port_get_speed_regulations,
+	.send_command		= brickpi_out_port_tacho_send_command,
 	.get_stop_commands	= brickpi_out_port_get_stop_commands,
 };
 
