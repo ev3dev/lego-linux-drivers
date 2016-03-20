@@ -112,6 +112,7 @@ struct tacho_motor_device {
 	const char *driver_name;
 	const char *address;
 	const struct tacho_motor_ops const *ops;
+	const struct ev3_motor_info const *info;
 	void *context;
 	bool supports_encoder_polarity;
 	bool supports_ramping;
@@ -141,16 +142,9 @@ struct tacho_motor_device {
  * @set_position: Sets the current encoder position to the specified value.
  * 	Returns an error instead of setting the value if the motor is running.
  * @get_state: Gets the state flags for the motor.
- * @get_count_per_rot: Gets the number of tacho counts in one full rotation of
- *	the motor (rotation motors only).
- * @get_count_per_m: Gets the number of tacho counts in one meter of
- *      travel for the motor (linear motors only).
- * @get_full_travel_count: Gets the maximum number of tacho counts in the full
- *      travel of the motor (linear motors only).
  * @get_duty_cycle: Gets the current PWM duty cycle being sent to the motor.
  * @set_duty_cycle: Sets the current PWM duty cycle being sent to the motor.
  * @get_speed: Gets the current speed of the motor in tacho counts per second.
- * @get_max_speed: Gets the maximum speed of the motor in tacho counts per second.
  * @get_commands: Gets flags representing the commands that the driver supports.
  * @get_command: Get the active command for the motor.
  * @send_command: Sends an command to the motor controller (makes the motor do
@@ -176,20 +170,15 @@ struct tacho_motor_ops {
 
 	int (*get_state)(void *context);
 
-	int (*get_count_per_rot)(void *context);
-	int (*get_count_per_m)(void *context);
-	int (*get_full_travel_count)(void *context);
 	int (*get_duty_cycle)(void *context, int *duty_cycle);
 	int (*set_duty_cycle)(void *context, int duty_cycle);
 	int (*get_speed)(void *context, int *speed);
 	int (*set_speed)(void *context, int speed);
-	int (*get_max_speed)(void *context, int *max_speed);
 
 	unsigned (*get_commands)(void *context);
 	int (*send_command)(void *context, struct tacho_motor_params *params,
 			    enum tacho_motor_command command);
 	unsigned (*get_stop_commands)(void *context);
-	unsigned (*get_motion_type)(void *context);
 
 	int (*get_speed_Kp)(void *context);
 	int (*set_speed_Kp)(void *context, int k);

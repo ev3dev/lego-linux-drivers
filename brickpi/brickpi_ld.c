@@ -247,7 +247,13 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 	debug_pr("port_size[BRICKPI_PORT_2]: %u\n", port_size[BRICKPI_PORT_2]);
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
 		u64 bits = brickpi_read_rx(data, port_size[i]);
-		s64 position = bits >> 1;
+		/*
+		 * we are ignoring the least significant bit in the position
+		 * so that it matches other platforms. The BrickPi counts both
+		 * the rising and falling edges of the encoders as 2 counts
+		 * whereas other platforms only count this as 1.
+		 */
+		s64 position = bits >> 2;
 		if (bits & 1)
 			position *= -1;
 		ch_data->out_port[i].motor_position = position;

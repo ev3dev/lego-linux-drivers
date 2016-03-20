@@ -248,12 +248,6 @@ static int ms_nxtmmx_get_state(void *context)
 	return state;
 }
 
-static int ms_nxtmmx_get_count_per_rot(void *context)
-{
-	/* Only supports LEGO motors */
-	return 360;
-}
-
 static unsigned ms_nxtmmx_get_commands(void *context)
 {
 	return BIT(TM_COMMAND_RUN_FOREVER) | BIT (TM_COMMAND_RUN_TO_ABS_POS)
@@ -508,7 +502,6 @@ struct tacho_motor_ops ms_nxtmmx_tacho_motor_ops = {
 	.get_position		= ms_nxtmmx_get_position,
 	.set_position		= ms_nxtmmx_set_position,
 	.get_state		= ms_nxtmmx_get_state,
-	.get_count_per_rot	= ms_nxtmmx_get_count_per_rot,
 	.get_commands		= ms_nxtmmx_get_commands,
 	.send_command		= ms_nxtmmx_send_command,
 	.get_stop_commands	= ms_nxtmmx_get_stop_commands,

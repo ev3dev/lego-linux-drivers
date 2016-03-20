@@ -181,11 +181,6 @@ static int brickpi_out_port_get_state(void *context)
 	return state;
 }
 
-static int brickpi_out_port_get_count_per_rot(void *context)
-{
-	return 720;
-}
-
 static unsigned brickpi_out_port_get_commands(void *context)
 {
 	return BIT(TM_COMMAND_RUN_FOREVER) | BIT(TM_COMMAND_RUN_TO_ABS_POS)
@@ -243,7 +238,6 @@ struct tacho_motor_ops brickpi_out_port_tacho_motor_ops = {
 	.get_position		= brickpi_out_port_get_position,
 	.set_position		= brickpi_out_port_set_position,
 	.get_state		= brickpi_out_port_get_state,
-	.get_count_per_rot	= brickpi_out_port_get_count_per_rot,
 	.get_commands		= brickpi_out_port_get_commands,
 	.send_command		= brickpi_out_port_tacho_send_command,
 	.get_stop_commands	= brickpi_out_port_get_stop_commands,

@@ -226,6 +226,8 @@
 #include <dc_motor_class.h>
 #include <tacho_motor_class.h>
 
+#include "ev3_motor.h"
+
 #define RAMP_PERIOD	msecs_to_jiffies(100)
 
 struct tacho_motor_value_names {
@@ -273,7 +275,6 @@ inline struct tacho_motor_device *to_tacho_motor(struct device *dev)
 
 void tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm)
 {
-	int err;
 	unsigned long ramp_sp, now;
 
 	/* Determine if the target and current speed require a
@@ -281,10 +282,7 @@ void tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm)
 	 * to divide the ramp work into two pieces.
 	 */
 
-	err = tm->ops->get_max_speed(tm->context, &tm->ramp_max_speed);
-	if (err < 0)
-		return;
-
+	tm->ramp_max_speed = tm->info->max_speed;
 	tm->ramp_start_speed = tm->ramp_last_speed;
 
 	if (0 > (tm->ramp_start_speed * tm->active_params.speed_sp))
@@ -497,39 +495,24 @@ static ssize_t count_per_rot_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int ret;
 
-	ret = tm->ops->get_count_per_rot(tm->context);
-	if (ret < 0)
-		return ret;
-
-	return sprintf(buf, "%d\n", ret);
+	return sprintf(buf, "%d\n", tm->info->count_per_rot);
 }
 
 static ssize_t count_per_m_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int ret;
 
-	ret = tm->ops->get_count_per_m(tm->context);
-	if (ret < 0)
-		return ret;
-
-	return sprintf(buf, "%d\n", ret);
+	return sprintf(buf, "%d\n", tm->info->count_per_m);
 }
 
 static ssize_t full_travel_count_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int ret;
 
-	ret = tm->ops->get_full_travel_count(tm->context);
-	if (ret < 0)
-		return ret;
-
-	return sprintf(buf, "%d\n", ret);
+	return sprintf(buf, "%d\n", tm->info->full_travel_count);
 }
 
 static ssize_t duty_cycle_show(struct device *dev, struct device_attribute *attr,
@@ -555,13 +538,8 @@ static ssize_t max_speed_show(struct device *dev, struct device_attribute *attr,
 			  char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int err, max_speed;
 
-	err = tm->ops->get_max_speed(tm->context, &max_speed);
-	if (err < 0)
-		return err;
-
-	return sprintf(buf, "%d\n", max_speed);
+	return sprintf(buf, "%d\n", tm->info->max_speed);
 }
 
 static ssize_t speed_show(struct device *dev, struct device_attribute *attr,
@@ -912,17 +890,13 @@ static ssize_t speed_sp_store(struct device *dev, struct device_attribute *attr,
 			      const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int err, speed, max_speed;
+	int err, speed;
 
 	err = kstrtoint(buf, 10, &speed);
 	if (err < 0)
 		return err;
 
-	err = tm->ops->get_max_speed(tm->context, &max_speed);
-	if (err < 0)
-		return err;
-
-	if (abs(speed) > max_speed)
+	if (abs(speed) > tm->info->max_speed)
 		return -EINVAL;
 
 	tm->params.speed_sp = speed;
@@ -1176,13 +1150,13 @@ int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
 {
 	int err;
 
-	if (!tm || !tm->address || !parent)
+	if (!tm || !tm->address || !tm->info || !parent)
 		return -EINVAL;
 
 	tm->dev.release = tacho_motor_release;
 	tm->dev.parent = parent;
 
-	switch (tm->ops->get_motion_type(tm->context)) {
+	switch (tm->info->motion_type) {
 	case TM_MOTION_LINEAR:
 		tacho_motor_class.dev_groups = tacho_motor_linear_groups;
 		dev_set_name(&tm->dev, "linear%d", tacho_motor_class_id++);
