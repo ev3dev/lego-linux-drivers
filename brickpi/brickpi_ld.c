@@ -246,6 +246,7 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 	port_size[BRICKPI_PORT_2] = brickpi_read_rx(data, 5);
 	debug_pr("port_size[BRICKPI_PORT_2]: %u\n", port_size[BRICKPI_PORT_2]);
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
+		struct brickpi_out_port_data *port = &ch_data->out_port[i];
 		u64 bits = brickpi_read_rx(data, port_size[i]);
 		/*
 		 * we are ignoring the least significant bit in the position
@@ -256,23 +257,24 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 		s64 position = bits >> 2;
 		if (bits & 1)
 			position *= -1;
-		ch_data->out_port[i].motor_position = position;
+		port->motor_position = position;
 		debug_pr("motor_position[%d]: %d\n", i, (int)position);
-		if (ch_data->out_port[i].stop_at_target_position) {
-			if (((ch_data->out_port[i].motor_reversed)
-			     && position < (ch_data->out_port[i].target_position))
-			    || (!(ch_data->out_port[i].motor_reversed)
-			     && position > (ch_data->out_port[i].target_position)))
+		if (port->stop_at_target_position) {
+			if ((port->motor_reversed
+			     && position < port->target_position)
+			    || (!port->motor_reversed
+			     && position > port->target_position))
 			{
-				ch_data->out_port[i].motor_enabled = false;
+				port->motor_enabled = false;
 			}
 		}
 	}
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
-		s32 *sensor_values = ch_data->in_port[i].sensor_values;
-		u8 *raw_data = ch_data->in_port[i].port.raw_data;
+		struct brickpi_in_port_data *port = &ch_data->in_port[i];
+		s32 *sensor_values = port->sensor_values;
+		u8 *raw_data = port->port.raw_data;
 
-		switch (ch_data->in_port[i].sensor_type) {
+		switch (port->sensor_type) {
 		case BRICKPI_SENSOR_TYPE_NXT_TOUCH:
 		case BRICKPI_SENSOR_TYPE_NXT_TOUCH_DEBOUNCED:
 			sensor_values[0] = brickpi_read_rx(data, 1);
@@ -291,12 +293,12 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 		case BRICKPI_SENSOR_TYPE_NXT_I2C:
 		case BRICKPI_SENSOR_TYPE_NXT_I2C_9V:
 			sensor_values[0] = brickpi_read_rx(data,
-					ch_data->in_port[i].num_i2c_msg);
-			for (j = 0; j < ch_data->in_port[i].num_i2c_msg; j++) {
+					port->num_i2c_msg);
+			for (j = 0; j < port->num_i2c_msg; j++) {
 				if (sensor_values[0] & (1 << j)) {
 					int k;
 					struct brickpi_i2c_msg_data *msg =
-						&ch_data->in_port[i].i2c_msg[j];
+						&port->i2c_msg[j];
 					for (k = 0; k < msg->read_size; k++) {
 						msg->read_data[k] =
 							brickpi_read_rx(data, 8);
@@ -361,7 +363,7 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 			break;
 		default:
 			/* NXT Analog expects value in mV */
-			if (ch_data->in_port[i].sensor_type <= BRICKPI_SENSOR_TYPE_NXT_ANALOG_MAX)
+			if (port->sensor_type <= BRICKPI_SENSOR_TYPE_NXT_ANALOG_MAX)
 				sensor_values[0] = brickpi_read_rx(data, 10) * 5000 / 1024;
 			else
 				sensor_values[0] = brickpi_read_rx(data, 10);
@@ -372,16 +374,16 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 
 		if (!raw_data)
 			continue;
-		if (ch_data->in_port[i].sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C
-			|| ch_data->in_port[i].sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C_9V)
+		if (port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C
+			|| port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C_9V)
 		{
-			memcpy(raw_data, ch_data->in_port[i].i2c_msg[0].read_data,
-				ch_data->in_port[i].i2c_msg[0].read_size);
+			memcpy(raw_data, port->i2c_msg[0].read_data,
+				port->i2c_msg[0].read_size);
 		} else {
 			memcpy(raw_data, sensor_values,
 			       sizeof(s32) * NUM_BRICKPI_SENSOR_VALUES);
 		}
-		lego_port_call_raw_data_func(&ch_data->in_port[i].port);
+		lego_port_call_raw_data_func(&port->port);
 	}
 	mutex_unlock(&data->tx_mutex);
 
