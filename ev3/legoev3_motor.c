@@ -43,6 +43,7 @@
 #include <linux/gpio.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
+#include <linux/math64.h>
 #include <linux/random.h>
 
 #include <lego.h>
@@ -610,7 +611,7 @@ static void calculate_speed(struct legoev3_motor_data *ev3_tm)
 			diff = ktime_set(0, 1);
 
 		new_speed = USEC_PER_SEC * ev3_tm->num_samples;
-		do_div(new_speed, ktime_to_us(diff));
+		new_speed = div64_s64(new_speed, ktime_to_us(diff));
 
 		if (ev3_tm->run_direction == FORWARD)
 			ev3_tm->speed  = new_speed;
@@ -634,7 +635,7 @@ static void calculate_speed(struct legoev3_motor_data *ev3_tm)
 			ev3_tm->tacho_samples[(diff_idx + TACHO_SAMPLES - ev3_tm->num_samples) % TACHO_SAMPLES]);
 
 		new_speed = USEC_PER_SEC * ev3_tm->num_samples;
-		do_div(new_speed, ktime_to_us(diff));
+		new_speed = div64_s64(new_speed, ktime_to_us(diff));
 
 		if (ev3_tm->run_direction == FORWARD)
 			ev3_tm->speed  = new_speed;
