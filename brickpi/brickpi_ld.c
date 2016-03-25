@@ -1,7 +1,7 @@
 /*
  * Dexter Industries BrickPi driver
  *
- * Copyright (C) 2015 David Lechner <david@lechnology.com>
+ * Copyright (C) 2015-2016 David Lechner <david@lechnology.com>
  *
  * Based on BrickPi.h by:
  *
@@ -61,6 +61,7 @@
 
 /* TODO: Make this a module parameter */
 #define BRICKPI_POLL_MS		10
+#define BRICKPI_SPEED_PERIOD	50
 
 /* tx_buffer offsets */
 #define BRICKPI_TX_ADDR		0
@@ -258,6 +259,7 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 		if (bits & 1)
 			position *= -1;
 		port->motor_position = position;
+		tm_speed_update(&port->speed, position, data->rx_time);
 		debug_pr("motor_position[%d]: %d\n", i, (int)position);
 		if (port->stop_at_target_position) {
 			if ((port->motor_reversed
@@ -398,6 +400,8 @@ static void brickpi_handle_rx_data(struct work_struct *work)
 	u8 size;
 	u8 checksum = 0;
 
+	data->rx_time = ktime_get();
+
 #ifdef DEBUG
 	printk("received: ");
 	for (i = 0; i < data->rx_data_size; i++)
@@ -485,6 +489,12 @@ static void brickpi_init_work(struct work_struct *work)
 				err);
 			return;
 		}
+		tm_speed_init(&ch_data->out_port[BRICKPI_PORT_1].speed,
+			ch_data->out_port[BRICKPI_PORT_1].motor_position,
+			data->rx_time, BRICKPI_SPEED_PERIOD / BRICKPI_POLL_MS);
+		tm_speed_init(&ch_data->out_port[BRICKPI_PORT_2].speed,
+			ch_data->out_port[BRICKPI_PORT_2].motor_position,
+			data->rx_time, BRICKPI_SPEED_PERIOD / BRICKPI_POLL_MS);
 		ch_data->fw_version =
 			ch_data->in_port[BRICKPI_PORT_1].sensor_values[0];
 		debug_pr("address: %d, fw: %d\n", ch_data->address,

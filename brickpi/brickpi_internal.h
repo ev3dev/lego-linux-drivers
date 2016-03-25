@@ -23,12 +23,14 @@
 #define _BRICKPI_INTERNAL_H_
 
 #include <linux/hrtimer.h>
+#include <linux/ktime.h>
 #include <linux/module.h>
 #include <linux/types.h>
 
 #include <lego.h>
 #include <lego_port_class.h>
 #include <lego_sensor_class.h>
+#include <tacho_motor_helper.h>
 
 #include "brickpi.h"
 
@@ -82,6 +84,7 @@ struct brickpi_in_port_data {
  * @ch_data: Pointer to the containing channel.
  * @port: The lego-port class device for each output port.
  * @motor: Pointer to hold device when it is registered.
+ * @speed: Speed handling data.
  * @motor_use_offset:
  * @motor_enable: Tells the motor to run or not.
  * @motor_direction: The motor direction to send to the Arduino.
@@ -98,6 +101,7 @@ struct brickpi_out_port_data {
 	struct brickpi_channel_data *ch_data;
 	struct lego_port_device port;
 	struct lego_device *motor;
+	struct tm_speed speed;
 	bool motor_use_offset;
 	bool motor_enabled;
 	bool motor_reversed;
@@ -144,6 +148,7 @@ struct brickpi_channel_data {
  * @rx_buffer: Array to store the received data.
  * @rx_buffer_head: The index *in bits* of the current position in the rx_buffer.
  * @rx_data_size: Size of the received data.
+ * @rx_time: Timestamp when data was received.
  * @rx_completion: Completion to wait for received data.
  * @rx_data_work: Workqueue item for handling received data.
  * @poll_work: Work for polling.
@@ -162,6 +167,7 @@ struct brickpi_data {
 	u8 rx_buffer[BRICKPI_BUFFER_SIZE];
 	unsigned rx_buffer_head;
 	unsigned rx_data_size;
+	ktime_t rx_time;
 	struct completion rx_completion;
 	struct work_struct rx_data_work;
 	struct work_struct poll_work;
