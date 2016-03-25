@@ -1,5 +1,6 @@
 # Motor classes
-obj-$(CONFIG_LEGO_TACHO_MOTORS)	+= tacho_motor_class.o
+tacho_motor-objs := tacho_motor_class.o tacho_motor_helper.o
+obj-$(CONFIG_LEGO_TACHO_MOTORS)	+= tacho_motor.o
 obj-$(CONFIG_LEGO_SERVO_MOTORS)	+= servo_motor_class.o
 obj-$(CONFIG_LEGO_DC_MOTORS)	+= dc_motor_class.o
 
