@@ -34,6 +34,9 @@
 
 #include "brickpi.h"
 
+#define BRICKPI_DUTY_PCT_TO_RAW(d) ((d) * 255 / 100)
+#define BRICKPI_DUTY_RAW_TO_PCT(d) ((d) * 100 / 255)
+
 /**
  * struct brickpi_i2c_msg_data - Data for a single I2C message
  *

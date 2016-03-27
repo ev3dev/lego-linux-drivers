@@ -125,7 +125,7 @@ static unsigned brickpi_out_port_get_duty_cycle(void *context)
 {
 	struct brickpi_out_port_data *data = context;
 
-	return data->motor_speed * 100 / 255;
+	return BRICKPI_DUTY_RAW_TO_PCT(data->motor_speed);
 }
 
 static int brickpi_out_port_set_duty_cycle(void *context, unsigned duty)
@@ -135,7 +135,7 @@ static int brickpi_out_port_set_duty_cycle(void *context, unsigned duty)
 	if (duty > 100)
 		return -EINVAL;
 
-	data->motor_speed = duty * 255 / 100;
+	data->motor_speed = BRICKPI_DUTY_PCT_TO_RAW(duty);
 
 	return 0;
 }
@@ -204,7 +204,7 @@ static int brickpi_out_port_tacho_send_command(void *context,
 			duty_cycle_sp *= -1;
 			position_sp *= -1;
 		}
-		data->motor_speed = abs(params->duty_cycle_sp) * 255 / 100;
+		data->motor_speed = BRICKPI_DUTY_PCT_TO_RAW(abs(params->duty_cycle_sp));
 		if (IS_POS_CMD(command)) {
 			if (command == TM_COMMAND_RUN_TO_ABS_POS)
 				data->target_position = position_sp - data->motor_offset;
