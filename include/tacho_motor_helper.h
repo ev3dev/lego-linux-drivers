@@ -58,4 +58,41 @@ static int prefix##_get_speed(void *context, int *speed)	\
 	return 0;						\
 }
 
+struct tm_pid {
+	int setpoint;
+	int Kp;
+	int Ki;
+	int Kd;
+	int integral;
+	int prev_error;
+	bool overloaded;
+};
+
+extern void tm_pid_reinit(struct tm_pid *pid);
+extern void tm_pid_init(struct tm_pid *pid, int Kp, int Ki, int Kd);
+extern int tm_pid_update(struct tm_pid *pid, int speed);
+#define tm_pid_is_overloaded(pid) ((pid)->overloaded)
+/*
+ * Use this template to implement tacho_motor_ops.get_{speed,position}_K{p,i.d}.
+ */
+#define TM_PID_GET_FUNC(prefix, suffix, type, field) \
+static int prefix##_get_##suffix(void *context)			\
+{								\
+	struct type *data = context;				\
+								\
+	return data->field;					\
+}
+/*
+ * Use this template to implement tacho_motor_ops.set_{speed,position}_K{p,i.d}
+ */
+#define TM_PID_SET_FUNC(prefix, suffix, type, field) \
+static int prefix##_set_##suffix(void *context, int value)	\
+{								\
+	struct type *data = context;				\
+								\
+	data->field = value;					\
+								\
+	return 0;						\
+}
+
 #endif /* _TACHO_MOTOR_HELPER_H */

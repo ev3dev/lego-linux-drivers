@@ -15,6 +15,7 @@
 
 #include <linux/export.h>
 
+#include <dc_motor_class.h>
 #include <tacho_motor_helper.h>
 
 /*
@@ -71,3 +72,77 @@ void tm_speed_init(struct tm_speed *spd, int pos, ktime_t t, int count)
 	spd->tail = BUFFER_SIZE - count;
 }
 EXPORT_SYMBOL_GPL(tm_speed_init);
+
+
+/*
+ * PID helper:
+ *
+ * This is a generic PID controller for use with motor controllers that do not
+ * have speed or position regulation implemented in hardware.
+ */
+
+/**
+ * tm_pid_update - run one iteration of a PID
+ *
+ * @pid: Pointer to the private data.
+ * @value: The current input (process) value.
+ */
+int tm_pid_update(struct tm_pid *pid, int value)
+{
+	int duty_cycle, error, delta_error;
+
+	/* Discrete PID calculations */
+
+	error = pid->setpoint - value;
+	pid->integral += error;
+	delta_error = pid->prev_error - error;
+	pid->prev_error = error;
+
+	duty_cycle = ((error * pid->Kp) + (pid->integral * pid->Ki)
+		      + (delta_error * pid->Kd)) / 10000;
+
+	/*
+	 * Subtract the value error to avoid integral windup if the resulting
+	 * duty_cycle is more than 100%
+	 */
+	pid->overloaded = abs(duty_cycle) > DC_MOTOR_MAX_DUTY_CYCLE;
+	if (pid->overloaded)
+		pid->integral -= error;
+
+	duty_cycle = min(duty_cycle, DC_MOTOR_MAX_DUTY_CYCLE);
+	duty_cycle = max(duty_cycle, -DC_MOTOR_MAX_DUTY_CYCLE);
+
+	return duty_cycle;
+}
+EXPORT_SYMBOL_GPL(tm_pid_update);
+
+/**
+ * tm_pid_reinit - reset everything except for the PID constants
+ *
+ * @pid: Pointer to the private data struct.
+ */
+void tm_pid_reinit(struct tm_pid *pid)
+{
+	pid->setpoint = 0;
+	pid->integral = 0;
+	pid->prev_error = 0;
+	pid->overloaded = false;
+}
+EXPORT_SYMBOL_GPL(tm_pid_reinit);
+
+/**
+ * tm_pid_init - initialize/reset tm_pid struct.
+ *
+ * @pid: Pointer to the private data struct.
+ * @Kp: PID proportional gain constant.
+ * @Ki: PID proportional gain constant.
+ * @Kd: PID proportional gain constant.
+ */
+void tm_pid_init(struct tm_pid *pid, int Kp, int Ki, int Kd)
+{
+	tm_pid_reinit(pid);
+	pid->Kp = Kp;
+	pid->Ki = Ki;
+	pid->Kd = Kd;
+}
+EXPORT_SYMBOL_GPL(tm_pid_init);
