@@ -435,6 +435,23 @@ static void brickpi_handle_rx_data(struct work_struct *work)
 	complete(&data->rx_completion);
 }
 
+static void brickpi_update_motor(struct brickpi_out_port_data *port)
+{
+	if (port->speed_pid_ena) {
+		int duty_cycle;
+
+		if (port->speed_pid.setpoint == 0) {
+			duty_cycle = 0;
+			tm_pid_reinit(&port->speed_pid);
+		} else
+			duty_cycle = tm_pid_update(&port->speed_pid,
+						tm_speed_get(&port->speed));
+
+		port->motor_speed = BRICKPI_DUTY_PCT_TO_RAW(abs(duty_cycle));
+		port->motor_reversed = duty_cycle < 0;
+	}
+}
+
 static void brickpi_poll_work(struct work_struct *work)
 {
 	struct brickpi_data *data = container_of(work, struct brickpi_data,
@@ -447,6 +464,8 @@ static void brickpi_poll_work(struct work_struct *work)
 	for (i = 0; i < data->num_channels; i++) {
 		struct brickpi_channel_data *ch_data = &data->channel_data[i];
 		if (ch_data->init_ok) {
+			brickpi_update_motor(&ch_data->out_port[BRICKPI_PORT_1]);
+			brickpi_update_motor(&ch_data->out_port[BRICKPI_PORT_2]);
 			err = brickpi_get_values(ch_data);
 			if (err < 0)
 				debug_pr("failed to get values for address %d. (%d)\n",
@@ -463,16 +482,22 @@ static void brickpi_init_work(struct work_struct *work)
 
 	for (i = 0; i < data->num_channels; i++) {
 		struct brickpi_channel_data *ch_data = &data->channel_data[i];
+		struct brickpi_in_port_data *in_port_1 =
+					&ch_data->in_port[BRICKPI_PORT_1];
+		struct brickpi_in_port_data *in_port_2 =
+					&ch_data->in_port[BRICKPI_PORT_2];
+		struct brickpi_out_port_data *out_port_1 =
+					&ch_data->out_port[BRICKPI_PORT_1];
+		struct brickpi_out_port_data *out_port_2 =
+					&ch_data->out_port[BRICKPI_PORT_2];
 
 		ch_data->data = data;
 		// TODO: add module parameter to get addresses
 		ch_data->address = i + 1;
-		ch_data->in_port[BRICKPI_PORT_1].ch_data = ch_data;
-		ch_data->in_port[BRICKPI_PORT_1].sensor_type =
-						BRICKPI_SENSOR_TYPE_FW_VERSION;
-		ch_data->in_port[BRICKPI_PORT_2].ch_data = ch_data;
-		ch_data->in_port[BRICKPI_PORT_2].sensor_type =
-						BRICKPI_SENSOR_TYPE_FW_VERSION;
+		in_port_1->ch_data = ch_data;
+		in_port_1->sensor_type = BRICKPI_SENSOR_TYPE_FW_VERSION;
+		in_port_2->ch_data = ch_data;
+		in_port_2->sensor_type = BRICKPI_SENSOR_TYPE_FW_VERSION;
 		err = brickpi_set_sensors(ch_data);
 		if (err < 0) {
 			dev_err(data->tty->dev,
@@ -480,8 +505,8 @@ static void brickpi_init_work(struct work_struct *work)
 				err);
 			return;
 		}
-		ch_data->out_port[BRICKPI_PORT_1].ch_data = ch_data;
-		ch_data->out_port[BRICKPI_PORT_2].ch_data = ch_data;
+		out_port_1->ch_data = ch_data;
+		out_port_2->ch_data = ch_data;
 		err = brickpi_get_values(ch_data);
 		if (err < 0) {
 			dev_err(data->tty->dev,
@@ -489,14 +514,13 @@ static void brickpi_init_work(struct work_struct *work)
 				err);
 			return;
 		}
-		tm_speed_init(&ch_data->out_port[BRICKPI_PORT_1].speed,
-			ch_data->out_port[BRICKPI_PORT_1].motor_position,
+		tm_speed_init(&out_port_1->speed, out_port_1->motor_position,
 			data->rx_time, BRICKPI_SPEED_PERIOD / BRICKPI_POLL_MS);
-		tm_speed_init(&ch_data->out_port[BRICKPI_PORT_2].speed,
-			ch_data->out_port[BRICKPI_PORT_2].motor_position,
+		tm_speed_init(&out_port_1->speed, out_port_1->motor_position,
 			data->rx_time, BRICKPI_SPEED_PERIOD / BRICKPI_POLL_MS);
-		ch_data->fw_version =
-			ch_data->in_port[BRICKPI_PORT_1].sensor_values[0];
+		brickpi_out_port_reset(out_port_1);
+		brickpi_out_port_reset(out_port_2);
+		ch_data->fw_version = in_port_1->sensor_values[0];
 		debug_pr("address: %d, fw: %d\n", ch_data->address,
 			 ch_data->fw_version);
 

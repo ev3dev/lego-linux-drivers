@@ -170,7 +170,37 @@ static int brickpi_out_port_set_position(void *context, long position)
 	return 0;
 }
 
+static int brickpi_out_port_get_duty_cycle2(void *context, int *duty_cycle)
+{
+	struct brickpi_out_port_data *data = context;
+
+	*duty_cycle = BRICKPI_DUTY_PCT_TO_RAW(data->motor_speed);
+
+	return 0;
+}
+
 TM_SPEED_GET_SPEED_FUNC(brickpi_out_port, brickpi_out_port_data, speed);
+
+static int brickpi_out_port_set_speed(void *context, int speed)
+{
+	struct brickpi_out_port_data *data = context;
+
+	if (data->stop_at_target_position) {
+		speed = abs(speed);
+		if (data->motor_position > data->target_position)
+			speed *= -1;
+	}
+	data->speed_pid.setpoint = speed;
+
+	return 0;
+}
+
+TM_PID_GET_FUNC(brickpi_out_port, speed_Kp, brickpi_out_port_data, speed_pid.Kp);
+TM_PID_SET_FUNC(brickpi_out_port, speed_Kp, brickpi_out_port_data, speed_pid.Kp);
+TM_PID_GET_FUNC(brickpi_out_port, speed_Ki, brickpi_out_port_data, speed_pid.Ki);
+TM_PID_SET_FUNC(brickpi_out_port, speed_Ki, brickpi_out_port_data, speed_pid.Ki);
+TM_PID_GET_FUNC(brickpi_out_port, speed_Kd, brickpi_out_port_data, speed_pid.Kd);
+TM_PID_SET_FUNC(brickpi_out_port, speed_Kd, brickpi_out_port_data, speed_pid.Kd);
 
 static int brickpi_out_port_get_state(void *context)
 {
@@ -181,6 +211,18 @@ static int brickpi_out_port_get_state(void *context)
 		state |= BIT(TM_STATE_RUNNING);
 
 	return state;
+}
+
+void brickpi_out_port_reset(struct brickpi_out_port_data *data)
+{
+	data->speed_pid_ena = false;
+	data->hold_pid_ena = false;
+	data->motor_speed = 0;
+	data->motor_reversed = false;
+	data->motor_enabled = false;
+	data->stop_at_target_position = false;
+	data->motor_offset = -data->motor_position;
+	tm_pid_init(&data->speed_pid, 1000, 60, 0);
 }
 
 static unsigned brickpi_out_port_get_commands(void *context)
@@ -198,13 +240,21 @@ static int brickpi_out_port_tacho_send_command(void *context,
 
 	mutex_lock(&data->ch_data->data->tx_mutex);
 	if (IS_RUN_CMD(command)) {
-		int duty_cycle_sp = params->duty_cycle_sp;
-		int position_sp = params->position_sp;
+		int duty_cycle_sp, position_sp;
+
+		if (command == TM_COMMAND_RUN_DIRECT) {
+			duty_cycle_sp = params->duty_cycle_sp;
+			data->speed_pid_ena = false;
+		} else {
+			duty_cycle_sp = 0;
+			data->speed_pid_ena = true;
+		}
+		position_sp = params->position_sp;
 		if (params->polarity == DC_MOTOR_POLARITY_INVERSED) {
 			duty_cycle_sp *= -1;
 			position_sp *= -1;
 		}
-		data->motor_speed = BRICKPI_DUTY_PCT_TO_RAW(abs(params->duty_cycle_sp));
+		data->motor_speed = BRICKPI_DUTY_PCT_TO_RAW(abs(duty_cycle_sp));
 		if (IS_POS_CMD(command)) {
 			if (command == TM_COMMAND_RUN_TO_ABS_POS)
 				data->target_position = position_sp - data->motor_offset;
@@ -214,17 +264,21 @@ static int brickpi_out_port_tacho_send_command(void *context,
 				(data->target_position < data->motor_position);
 			data->stop_at_target_position = true;
 		} else {
-			data->motor_reversed = (params->duty_cycle_sp < 0);
+			data->motor_reversed = (duty_cycle_sp < 0);
 			data->stop_at_target_position = false;
 		}
+		brickpi_out_port_set_speed(data, params->speed_sp);
 		data->motor_enabled = true;
 	} else {
+		data->speed_pid_ena = false;
 		data->motor_speed = 0;
 		data->motor_reversed = false;
 		data->motor_enabled = false;
 		data->stop_at_target_position = false;
 		if (command == TM_COMMAND_RESET)
-			data->motor_offset = data->motor_position;
+			brickpi_out_port_reset(data);
+		else
+			tm_pid_reinit(&data->speed_pid);
 	}
 	mutex_unlock(&data->ch_data->data->tx_mutex);
 
@@ -239,7 +293,16 @@ static unsigned brickpi_out_port_get_stop_commands(void *context)
 struct tacho_motor_ops brickpi_out_port_tacho_motor_ops = {
 	.get_position		= brickpi_out_port_get_position,
 	.set_position		= brickpi_out_port_set_position,
+	.get_duty_cycle		= brickpi_out_port_get_duty_cycle2,
+	// .set_duty_cycle		= brickpi_out_port_set_duty_cycle2,
 	.get_speed		= brickpi_out_port_get_speed,
+	.set_speed		= brickpi_out_port_set_speed,
+	.get_speed_Kp		= brickpi_out_port_get_speed_Kp,
+	.set_speed_Kp		= brickpi_out_port_set_speed_Kp,
+	.get_speed_Ki		= brickpi_out_port_get_speed_Ki,
+	.set_speed_Ki		= brickpi_out_port_set_speed_Ki,
+	.get_speed_Kd		= brickpi_out_port_get_speed_Kd,
+	.set_speed_Kd		= brickpi_out_port_set_speed_Kd,
 	.get_state		= brickpi_out_port_get_state,
 	.get_commands		= brickpi_out_port_get_commands,
 	.send_command		= brickpi_out_port_tacho_send_command,

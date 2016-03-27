@@ -88,6 +88,8 @@ struct brickpi_in_port_data {
  * @port: The lego-port class device for each output port.
  * @motor: Pointer to hold device when it is registered.
  * @speed: Speed handling data.
+ * @speed_pid: Speed regulation pid data.
+ * @speed_pid_ena: Speed pid enabled flag.
  * @motor_use_offset:
  * @motor_enable: Tells the motor to run or not.
  * @motor_direction: The motor direction to send to the Arduino.
@@ -105,6 +107,8 @@ struct brickpi_out_port_data {
 	struct lego_port_device port;
 	struct lego_device *motor;
 	struct tm_speed speed;
+	struct tm_pid speed_pid;
+	bool speed_pid_ena;
 	bool motor_use_offset;
 	bool motor_enabled;
 	bool motor_reversed;
@@ -188,5 +192,6 @@ void brickpi_unregister_in_ports(struct brickpi_channel_data *ch_data);
 int brickpi_register_out_ports(struct brickpi_channel_data *ch_data,
 			       struct device *parent);
 void brickpi_unregister_out_ports(struct brickpi_channel_data *ch_data);
+void brickpi_out_port_reset(struct brickpi_out_port_data *data);
 
 #endif /* _BRICKPI_INTERNAL_H_ */
