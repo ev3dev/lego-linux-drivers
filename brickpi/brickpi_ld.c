@@ -450,10 +450,8 @@ static void brickpi_update_motor(struct brickpi_out_port_data *port)
 		} else if (port->hold_pid_ena) {
 			duty_cycle = tm_pid_update(&port->hold_pid,
 							port->motor_position);
-		} else {
-			/* TODO: implement run-direct here */
-			duty_cycle = 0;
-		}
+		} else
+			duty_cycle = port->direct_duty_cycle;
 
 		port->motor_speed = BRICKPI_DUTY_PCT_TO_RAW(abs(duty_cycle));
 		port->motor_reversed = duty_cycle < 0;

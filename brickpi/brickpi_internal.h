@@ -103,6 +103,7 @@ struct brickpi_in_port_data {
  * 	value and the kernel position value. Could be sent to the BrickPi, but
  * 	currently just used internally in the kernel.
  * @target_position: The target for run-to-*-pos commands.
+ * @direct_duty_cycle: Duty cycle setpoint used by run-direct command.
  */
 struct brickpi_out_port_data {
 	struct brickpi_channel_data *ch_data;
@@ -121,6 +122,7 @@ struct brickpi_out_port_data {
 	long motor_position;
 	long motor_offset;
 	long target_position;
+	int direct_duty_cycle;
 };
 
 struct brickpi_data;

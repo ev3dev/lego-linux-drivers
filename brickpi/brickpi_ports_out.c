@@ -179,6 +179,15 @@ static int brickpi_out_port_get_duty_cycle2(void *context, int *duty_cycle)
 	return 0;
 }
 
+static int brickpi_out_port_set_duty_cycle2(void *context, int duty_cycle)
+{
+	struct brickpi_out_port_data *data = context;
+
+	data->direct_duty_cycle = duty_cycle;
+
+	return 0;
+}
+
 TM_SPEED_GET_SPEED_FUNC(brickpi_out_port, brickpi_out_port_data, speed);
 
 static int brickpi_out_port_set_speed(void *context, int speed)
@@ -240,8 +249,8 @@ void brickpi_out_port_reset(struct brickpi_out_port_data *data)
 static unsigned brickpi_out_port_get_commands(void *context)
 {
 	return BIT(TM_COMMAND_RUN_FOREVER) | BIT(TM_COMMAND_RUN_TO_ABS_POS)
-		| BIT(TM_COMMAND_RUN_TO_REL_POS) | BIT(TM_COMMAND_STOP)
-		| BIT(TM_COMMAND_RESET);
+		| BIT(TM_COMMAND_RUN_TO_REL_POS) | BIT(TM_COMMAND_RUN_DIRECT)
+		| BIT(TM_COMMAND_STOP) | BIT(TM_COMMAND_RESET);
 }
 
 static int brickpi_out_port_tacho_send_command(void *context,
@@ -256,6 +265,7 @@ static int brickpi_out_port_tacho_send_command(void *context,
 
 		if (command == TM_COMMAND_RUN_DIRECT) {
 			duty_cycle_sp = params->duty_cycle_sp;
+			data->direct_duty_cycle = duty_cycle_sp;
 			data->speed_pid_ena = false;
 		} else {
 			duty_cycle_sp = 0;
@@ -315,7 +325,7 @@ struct tacho_motor_ops brickpi_out_port_tacho_motor_ops = {
 	.get_position		= brickpi_out_port_get_position,
 	.set_position		= brickpi_out_port_set_position,
 	.get_duty_cycle		= brickpi_out_port_get_duty_cycle2,
-	// .set_duty_cycle		= brickpi_out_port_set_duty_cycle2,
+	.set_duty_cycle		= brickpi_out_port_set_duty_cycle2,
 	.get_speed		= brickpi_out_port_get_speed,
 	.set_speed		= brickpi_out_port_set_speed,
 	.get_speed_Kp		= brickpi_out_port_get_speed_Kp,
