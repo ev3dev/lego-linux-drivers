@@ -948,15 +948,17 @@ static int legoev3_motor_get_state(void *context)
 	struct legoev3_motor_data *ev3_tm = context;
 	unsigned state = 0;
 
-	if (ev3_tm->state == STATE_RUNNING)
+	if (ev3_tm->state == STATE_RUNNING) {
 		state |= BIT(TM_STATE_RUNNING);
-	if (ev3_tm->state == STATE_RUNNING && ev3_tm->overloaded)
-		state |= BIT(TM_STATE_OVERLOADED);
-	if (ev3_tm->state == STATE_RUNNING && ev3_tm->stalled)
-		state |= BIT(TM_STATE_STALLED);
-	if (ev3_tm->state == STATE_RUNNING && ev3_tm->ramping)
-		state |= BIT(TM_STATE_RAMPING);
-	if (ev3_tm->state == STATE_STOPPED && ev3_tm->tm.active_params.stop_command == TM_STOP_COMMAND_HOLD)
+		if (ev3_tm->overloaded)
+			state |= BIT(TM_STATE_OVERLOADED);
+		if (ev3_tm->stalled)
+			state |= BIT(TM_STATE_STALLED);
+		if (ev3_tm->ramping)
+			state |= BIT(TM_STATE_RAMPING);
+	}
+	if (ev3_tm->state == STATE_STOPPED
+	    && ev3_tm->tm.active_params.stop_command == TM_STOP_COMMAND_HOLD)
 		state |= BIT(TM_STATE_HOLDING);
 
 	return state;
