@@ -207,8 +207,13 @@ static int brickpi_out_port_get_state(void *context)
 	struct brickpi_out_port_data *data = context;
 	unsigned state = 0;
 
-	if (data->motor_enabled)
+	if (data->motor_enabled) {
 		state |= BIT(TM_STATE_RUNNING);
+		if (tm_pid_is_overloaded(&data->speed_pid))
+			state |= BIT(TM_STATE_OVERLOADED);
+		if (tm_speed_get(&data->speed) == 0)
+			state |= BIT(TM_STATE_STALLED);
+	}
 
 	return state;
 }
