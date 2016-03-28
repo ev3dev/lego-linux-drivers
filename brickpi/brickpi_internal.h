@@ -30,6 +30,7 @@
 #include <lego.h>
 #include <lego_port_class.h>
 #include <lego_sensor_class.h>
+#include <tacho_motor_class.h>
 #include <tacho_motor_helper.h>
 
 #include "brickpi.h"
@@ -87,6 +88,7 @@ struct brickpi_in_port_data {
  * @ch_data: Pointer to the containing channel.
  * @port: The lego-port class device for each output port.
  * @motor: Pointer to hold device when it is registered.
+ * @params: Copy of the active motor parameters.
  * @speed: Speed handling data.
  * @speed_pid: Speed regulation pid data.
  * @hold_pid: Hold position pid data.
@@ -109,6 +111,7 @@ struct brickpi_out_port_data {
 	struct brickpi_channel_data *ch_data;
 	struct lego_port_device port;
 	struct lego_device *motor;
+	struct tacho_motor_params params;
 	struct tm_speed speed;
 	struct tm_pid speed_pid;
 	struct tm_pid hold_pid;
@@ -198,6 +201,7 @@ void brickpi_unregister_in_ports(struct brickpi_channel_data *ch_data);
 int brickpi_register_out_ports(struct brickpi_channel_data *ch_data,
 			       struct device *parent);
 void brickpi_unregister_out_ports(struct brickpi_channel_data *ch_data);
+void brickpi_out_port_do_stop(struct brickpi_out_port_data *data);
 void brickpi_out_port_reset(struct brickpi_out_port_data *data);
 
 #endif /* _BRICKPI_INTERNAL_H_ */

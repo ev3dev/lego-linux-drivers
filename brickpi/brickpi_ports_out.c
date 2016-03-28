@@ -223,14 +223,38 @@ static int brickpi_out_port_get_state(void *context)
 	unsigned state = 0;
 
 	if (data->motor_enabled) {
-		state |= BIT(TM_STATE_RUNNING);
-		if (tm_pid_is_overloaded(&data->speed_pid))
-			state |= BIT(TM_STATE_OVERLOADED);
-		if (tm_speed_get(&data->speed) == 0)
-			state |= BIT(TM_STATE_STALLED);
+		if (data->hold_pid_ena) {
+			state |= BIT(TM_STATE_HOLDING);
+			if (tm_pid_is_overloaded(&data->hold_pid))
+				state |= BIT(TM_STATE_OVERLOADED);
+		} else {
+			state |= BIT(TM_STATE_RUNNING);
+			if (tm_pid_is_overloaded(&data->speed_pid))
+				state |= BIT(TM_STATE_OVERLOADED);
+			if (tm_speed_get(&data->speed) == 0)
+				state |= BIT(TM_STATE_STALLED);
+		}
 	}
 
 	return state;
+}
+
+void brickpi_out_port_do_stop(struct brickpi_out_port_data *data)
+{
+	data->speed_pid_ena = false;
+	if (data->params.stop_command == TM_STOP_COMMAND_HOLD) {
+		data->hold_pid_ena = true;
+		if (data->stop_at_target_position)
+			data->hold_pid.setpoint = data->target_position;
+		else
+			data->hold_pid.setpoint = data->motor_position;
+	} else
+		data->hold_pid_ena = false;
+	data->motor_speed = 0;
+	data->motor_reversed = false;
+	data->motor_enabled = data->hold_pid_ena;
+	data->stop_at_target_position = false;
+	tm_pid_reinit(&data->speed_pid);
 }
 
 void brickpi_out_port_reset(struct brickpi_out_port_data *data)
@@ -258,6 +282,8 @@ static int brickpi_out_port_tacho_send_command(void *context,
 					      enum tacho_motor_command command)
 {
 	struct brickpi_out_port_data *data = context;
+
+	data->params = *params;
 
 	mutex_lock(&data->ch_data->data->tx_mutex);
 	if (IS_RUN_CMD(command)) {
@@ -292,25 +318,11 @@ static int brickpi_out_port_tacho_send_command(void *context,
 		}
 		brickpi_out_port_set_speed(data, params->speed_sp);
 		data->motor_enabled = true;
-	} else {
-		data->speed_pid_ena = false;
-		if (params->stop_command == TM_STOP_COMMAND_HOLD) {
-			data->hold_pid_ena = true;
-			if (data->stop_at_target_position)
-				data->hold_pid.setpoint = data->target_position;
-			else
-				data->hold_pid.setpoint = data->motor_position;
-		} else
-			data->hold_pid_ena = false;
-		data->motor_speed = 0;
-		data->motor_reversed = false;
-		data->motor_enabled = data->hold_pid_ena;
-		data->stop_at_target_position = false;
-		if (command == TM_COMMAND_RESET)
-			brickpi_out_port_reset(data);
-		else
-			tm_pid_reinit(&data->speed_pid);
-	}
+	} else if (command == TM_COMMAND_STOP)
+		brickpi_out_port_do_stop(data);
+	else if (command == TM_COMMAND_RESET)
+		brickpi_out_port_reset(data);
+
 	mutex_unlock(&data->ch_data->data->tx_mutex);
 
 	return 0;

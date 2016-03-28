@@ -267,7 +267,7 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 			    || (!port->motor_reversed
 			     && position > port->target_position))
 			{
-				port->motor_enabled = false;
+				brickpi_out_port_do_stop(port);
 			}
 		}
 	}
