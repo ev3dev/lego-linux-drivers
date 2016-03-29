@@ -59,9 +59,13 @@
 #define N_BRICKPI 28
 #endif
 
-/* TODO: Make this a module parameter */
-#define BRICKPI_POLL_MS		10
-#define BRICKPI_SPEED_PERIOD	50
+/*
+ * This is just about as fast as we can go. Each poll is 2 messages -- 1 to
+ * each channel. Each message takes about 1ms. This leaves 2ms open for sending
+ * commands.
+ */
+#define BRICKPI_POLL_MS		4
+#define BRICKPI_SPEED_PERIOD	20
 
 /* tx_buffer offsets */
 #define BRICKPI_TX_ADDR		0
