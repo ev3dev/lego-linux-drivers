@@ -175,7 +175,8 @@ static int brickpi_in_port_set_device(void *context, const char *name)
 		/* credit: parameter parsing code copied from i2c_core.c */
 		blank = strchr(name, ' ');
 		if (!blank) {
-			dev_err(&in_port->port.dev, "%s: Missing parameters\n",
+			dev_err(&in_port->port.dev, "%s: Missing parameters -"
+				"requires both driver name and I2C address\n",
 				"set_device");
 			return -EINVAL;
 		}
