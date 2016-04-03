@@ -1217,7 +1217,6 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 	ev3_tm->tm.info = &ev3_motor_defs[ldev->entry_id->driver_data];
 	ev3_tm->tm.context = ev3_tm;
 	ev3_tm->tm.supports_encoder_polarity = true;
-	ev3_tm->tm.supports_ramping = true;
 	ev3_tm->pid.speed_Kp = ev3_tm->tm.info->legoev3_info.speed_pid_k.p;
 	ev3_tm->pid.speed_Ki = ev3_tm->tm.info->legoev3_info.speed_pid_k.i;
 	ev3_tm->pid.speed_Kd = ev3_tm->tm.info->legoev3_info.speed_pid_k.d;

@@ -781,7 +781,7 @@ static ssize_t ramp_up_sp_show(struct device *dev, struct device_attribute *attr
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	if (!tm->supports_ramping)
+	if (!tm->ops->set_speed)
 		return -EOPNOTSUPP;
 
 	return sprintf(buf, "%d\n", tm->params.ramp_up_sp);
@@ -793,7 +793,7 @@ static ssize_t ramp_up_sp_store(struct device *dev, struct device_attribute *att
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int err, ms;
 
-	if (!tm->supports_ramping)
+	if (!tm->ops->set_speed)
 		return -EOPNOTSUPP;
 
 	err = kstrtoint(buf, 10, &ms);
@@ -813,7 +813,7 @@ static ssize_t ramp_down_sp_show(struct device *dev,
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	if (!tm->supports_ramping)
+	if (!tm->ops->set_speed)
 		return -EOPNOTSUPP;
 
 	return sprintf(buf, "%d\n", tm->params.ramp_down_sp);
@@ -826,7 +826,7 @@ static ssize_t ramp_down_sp_store(struct device *dev,
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int err, ms;
 
-	if (!tm->supports_ramping)
+	if (!tm->ops->set_speed)
 		return -EOPNOTSUPP;
 
 	err = kstrtoint(buf, 10, &ms);

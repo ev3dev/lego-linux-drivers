@@ -115,7 +115,6 @@ struct tacho_motor_device {
 	const struct ev3_motor_info const *info;
 	void *context;
 	bool supports_encoder_polarity;
-	bool supports_ramping;
 	enum tacho_motor_command command;
 	struct tacho_motor_params params;
 	struct tacho_motor_params active_params;
