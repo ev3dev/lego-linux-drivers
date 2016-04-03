@@ -594,12 +594,64 @@ static ssize_t commands_show(struct device *dev, struct device_attribute *attr,
 	return size;
 }
 
+static int tm_send_command(struct tacho_motor_device *tm,
+			   enum tacho_motor_command cmd)
+{
+	int err;
+
+	if (cmd == TM_COMMAND_RESET)
+		tacho_motor_class_reset(tm);
+
+	tm->active_params = tm->params;
+
+	if (!IS_RUN_CMD(cmd)) {
+		tm->active_params.duty_cycle_sp = 0;
+		tm->active_params.speed_sp = 0;
+	}
+
+	/*
+	 * If we're in run-direct mode, allow the
+	 * duty_cycle_sp to change
+	 */
+	if (cmd == TM_COMMAND_RUN_DIRECT) {
+		err = direct_set_duty_cycle(tm);
+
+		if (err < 0)
+			return err;
+	}
+
+	/*
+	 * The speed setting commands in the lower level motor driver need
+	 * to know the current command so that they can set the speed
+	 * appropriately. When the ramp time is very short, the ramp work may
+	 * run only once. The motor driver will ignore the set_speed unless
+	 * the current command is a RUN_COMMAND.
+	 */
+	err = tm->ops->send_command(tm->context, &tm->active_params, cmd);
+	if (err < 0)
+		return err;
+
+	tm->command = cmd;
+
+	/* The run-direct command does NOT ramp up to speed. */
+	if (IS_RUN_CMD(cmd) && (cmd != TM_COMMAND_RUN_DIRECT))
+		tacho_motor_class_start_motor_ramp(tm);
+
+	cancel_delayed_work_sync(&tm->run_timed_work);
+
+	if (cmd == TM_COMMAND_RUN_TIMED)
+		schedule_delayed_work(&tm->run_timed_work,
+				msecs_to_jiffies(tm->active_params.time_sp));
+
+	return 0;
+}
+
 static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 			     const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	unsigned supported_commands;
-	int i, err;
+	int i;
 
 	supported_commands = get_supported_commands(tm);
 
@@ -608,56 +660,12 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 			continue;
 
 		if (supported_commands & BIT(i)) {
+			int err = tm_send_command(tm, i);
 
-			if (i == TM_COMMAND_RESET)
-				tacho_motor_class_reset(tm);
-
-			tm->active_params = tm->params;
-
-			if (!IS_RUN_CMD(i)) {
-				tm->active_params.duty_cycle_sp = 0;
-				tm->active_params.speed_sp = 0;
-			}
-
-			/* If we're in run-direct mode, allow the
-			 * duty_cycle_sp to change
-			 */
-
-			if (i == TM_COMMAND_RUN_DIRECT) {
-				err = direct_set_duty_cycle(tm);
-
-				if (err < 0)
-					return err;
-			}
-
-			/* The speed setting commands in the lower level motor
-			 * driver need to know the current command so that they
-			 * can set the speed appropriately - when the ramp time
-			 * is very short, the ramp work may run only once - the
-			 * motor driver will ignore the set_speed unless the
-			 * current command is a RUN_COMMAND
-			 */
-
-			err = tm->ops->send_command(tm->context, &tm->active_params, i);
-			if (err < 0)
-				return err;
-
-			tm->command = i;
-
-			/* The run-direct command does NOT ramp up to speed.
-			 */
-
-			if (IS_RUN_CMD(i) && (i != TM_COMMAND_RUN_DIRECT))
-				tacho_motor_class_start_motor_ramp(tm);
-
-			cancel_delayed_work_sync(&tm->run_timed_work);
-
-			if (i == TM_COMMAND_RUN_TIMED)
-				schedule_delayed_work(&tm->run_timed_work,
-					msecs_to_jiffies(tm->active_params.time_sp));
-		return size;
+			return err < 0 ? err : size;
 		}
 	}
+
 	return -EINVAL;
 }
 
