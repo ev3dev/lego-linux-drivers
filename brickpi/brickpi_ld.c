@@ -437,15 +437,23 @@ static void brickpi_handle_rx_data(struct work_struct *work)
 
 static void brickpi_update_motor(struct brickpi_out_port_data *port)
 {
-	if (port->speed_pid_ena) {
+	if (port->motor_enabled) {
 		int duty_cycle;
 
-		if (port->speed_pid.setpoint == 0) {
-			duty_cycle = 0;
-			tm_pid_reinit(&port->speed_pid);
-		} else
-			duty_cycle = tm_pid_update(&port->speed_pid,
+		if (port->speed_pid_ena) {
+			if (port->speed_pid.setpoint == 0) {
+				duty_cycle = 0;
+				tm_pid_reinit(&port->speed_pid);
+			} else
+				duty_cycle = tm_pid_update(&port->speed_pid,
 						tm_speed_get(&port->speed));
+		} else if (port->hold_pid_ena) {
+			duty_cycle = tm_pid_update(&port->hold_pid,
+							port->motor_position);
+		} else {
+			/* TODO: implement run-direct here */
+			duty_cycle = 0;
+		}
 
 		port->motor_speed = BRICKPI_DUTY_PCT_TO_RAW(abs(duty_cycle));
 		port->motor_reversed = duty_cycle < 0;

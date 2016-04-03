@@ -201,6 +201,12 @@ TM_PID_GET_FUNC(brickpi_out_port, speed_Ki, brickpi_out_port_data, speed_pid.Ki)
 TM_PID_SET_FUNC(brickpi_out_port, speed_Ki, brickpi_out_port_data, speed_pid.Ki);
 TM_PID_GET_FUNC(brickpi_out_port, speed_Kd, brickpi_out_port_data, speed_pid.Kd);
 TM_PID_SET_FUNC(brickpi_out_port, speed_Kd, brickpi_out_port_data, speed_pid.Kd);
+TM_PID_GET_FUNC(brickpi_out_port, hold_Kp, brickpi_out_port_data, hold_pid.Kp);
+TM_PID_SET_FUNC(brickpi_out_port, hold_Kp, brickpi_out_port_data, hold_pid.Kp);
+TM_PID_GET_FUNC(brickpi_out_port, hold_Ki, brickpi_out_port_data, hold_pid.Ki);
+TM_PID_SET_FUNC(brickpi_out_port, hold_Ki, brickpi_out_port_data, hold_pid.Ki);
+TM_PID_GET_FUNC(brickpi_out_port, hold_Kd, brickpi_out_port_data, hold_pid.Kd);
+TM_PID_SET_FUNC(brickpi_out_port, hold_Kd, brickpi_out_port_data, hold_pid.Kd);
 
 static int brickpi_out_port_get_state(void *context)
 {
@@ -228,6 +234,7 @@ void brickpi_out_port_reset(struct brickpi_out_port_data *data)
 	data->stop_at_target_position = false;
 	data->motor_offset = -data->motor_position;
 	tm_pid_init(&data->speed_pid, 1000, 60, 0);
+	tm_pid_init(&data->hold_pid, 20000, 0, 0);
 }
 
 static unsigned brickpi_out_port_get_commands(void *context)
@@ -254,6 +261,7 @@ static int brickpi_out_port_tacho_send_command(void *context,
 			duty_cycle_sp = 0;
 			data->speed_pid_ena = true;
 		}
+		data->hold_pid_ena = false;
 		position_sp = params->position_sp;
 		if (params->polarity == DC_MOTOR_POLARITY_INVERSED) {
 			duty_cycle_sp *= -1;
@@ -276,9 +284,17 @@ static int brickpi_out_port_tacho_send_command(void *context,
 		data->motor_enabled = true;
 	} else {
 		data->speed_pid_ena = false;
+		if (params->stop_command == TM_STOP_COMMAND_HOLD) {
+			data->hold_pid_ena = true;
+			if (data->stop_at_target_position)
+				data->hold_pid.setpoint = data->target_position;
+			else
+				data->hold_pid.setpoint = data->motor_position;
+		} else
+			data->hold_pid_ena = false;
 		data->motor_speed = 0;
 		data->motor_reversed = false;
-		data->motor_enabled = false;
+		data->motor_enabled = data->hold_pid_ena;
 		data->stop_at_target_position = false;
 		if (command == TM_COMMAND_RESET)
 			brickpi_out_port_reset(data);
@@ -292,7 +308,7 @@ static int brickpi_out_port_tacho_send_command(void *context,
 
 static unsigned brickpi_out_port_get_stop_commands(void *context)
 {
-	return BIT(TM_STOP_COMMAND_COAST);
+	return BIT(TM_STOP_COMMAND_COAST) | BIT(TM_STOP_COMMAND_HOLD);
 }
 
 struct tacho_motor_ops brickpi_out_port_tacho_motor_ops = {
@@ -308,6 +324,12 @@ struct tacho_motor_ops brickpi_out_port_tacho_motor_ops = {
 	.set_speed_Ki		= brickpi_out_port_set_speed_Ki,
 	.get_speed_Kd		= brickpi_out_port_get_speed_Kd,
 	.set_speed_Kd		= brickpi_out_port_set_speed_Kd,
+	.get_hold_Kp		= brickpi_out_port_get_hold_Kp,
+	.set_hold_Kp		= brickpi_out_port_set_hold_Kp,
+	.get_hold_Ki		= brickpi_out_port_get_hold_Ki,
+	.set_hold_Ki		= brickpi_out_port_set_hold_Ki,
+	.get_hold_Kd		= brickpi_out_port_get_hold_Kd,
+	.set_hold_Kd		= brickpi_out_port_set_hold_Kd,
 	.get_state		= brickpi_out_port_get_state,
 	.get_commands		= brickpi_out_port_get_commands,
 	.send_command		= brickpi_out_port_tacho_send_command,
