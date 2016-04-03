@@ -408,7 +408,7 @@ static int direct_set_duty_cycle(struct tacho_motor_device *tm)
 void tacho_motor_class_reset(struct tacho_motor_device *tm)
 {
 	tm->params.polarity		= DC_MOTOR_POLARITY_NORMAL;
-	tm->params.encoder_polarity	= DC_MOTOR_POLARITY_NORMAL;
+	tm->params.encoder_polarity	= tm->info->encoder_polarity;
 	tm->params.duty_cycle_sp	= 0;
 	tm->params.speed_sp		= 0;
 	tm->params.position_sp		= 0;
