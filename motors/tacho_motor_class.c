@@ -599,6 +599,10 @@ static int tm_send_command(struct tacho_motor_device *tm,
 {
 	int err;
 
+	/* stop any previous async commands */
+	cancel_delayed_work_sync(&tm->run_timed_work);
+	cancel_delayed_work_sync(&tm->ramp_work);
+
 	if (cmd == TM_COMMAND_RESET)
 		tacho_motor_class_reset(tm);
 
@@ -636,8 +640,6 @@ static int tm_send_command(struct tacho_motor_device *tm,
 	/* The run-direct command does NOT ramp up to speed. */
 	if (IS_RUN_CMD(cmd) && (cmd != TM_COMMAND_RUN_DIRECT))
 		tacho_motor_class_start_motor_ramp(tm);
-
-	cancel_delayed_work_sync(&tm->run_timed_work);
 
 	if (cmd == TM_COMMAND_RUN_TIMED)
 		schedule_delayed_work(&tm->run_timed_work,
