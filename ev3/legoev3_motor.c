@@ -830,11 +830,6 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 		update_position(ev3_tm);
 
 	if (ev3_tm->run_command == TM_COMMAND_STOP) {
-		/*
-		 * Add in the irq_tacho for the current move so that we can use
-		 * the value of irq_tacho in the HOLD mode - the current, real
-		 * tacho reading is ALWAYS tacho + irq_tacho!
-		 */
 		if (ev3_tm->tm.active_params.stop_command == TM_STOP_COMMAND_HOLD) {
 			if (IS_POS_CMD(ev3_tm->run_command))
 				ev3_tm->hold_sp = ev3_tm->position_sp;
