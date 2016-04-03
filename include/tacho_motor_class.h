@@ -47,12 +47,6 @@ enum tacho_motor_stop_command {
 	NUM_TM_STOP_COMMAND,
 };
 
-enum tacho_motor_type {
-	TM_TYPE_TACHO,
-	TM_TYPE_MINITACHO,
-	NUM_TM_TYPE,
-};
-
 enum tacho_motor_state
 {
 	TM_STATE_RUNNING,
