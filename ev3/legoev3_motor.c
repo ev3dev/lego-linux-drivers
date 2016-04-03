@@ -382,9 +382,6 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 	ev3_tm->stalled			= 0;
 
 	ev3_tm->run_command		= TM_COMMAND_STOP;
-
-	ev3_tm->tm.params.encoder_polarity = ev3_tm->tm.info->encoder_polarity;
-	ev3_tm->tm.params.polarity	   = DC_MOTOR_POLARITY_NORMAL;
 };
 
 /*
