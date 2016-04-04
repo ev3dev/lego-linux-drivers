@@ -190,7 +190,7 @@ static int brickpi_out_port_run_unregulated(void *context, int duty_cycle)
 
 TM_SPEED_GET_SPEED_FUNC(brickpi_out_port, brickpi_out_port_data, speed);
 
-static int brickpi_out_port_set_speed(void *context, int speed)
+static int brickpi_out_port_run_regulated(void *context, int speed)
 {
 	struct brickpi_out_port_data *data = context;
 
@@ -316,7 +316,7 @@ static int brickpi_out_port_tacho_send_command(void *context,
 			data->motor_reversed = (duty_cycle_sp < 0);
 			data->stop_at_target_position = false;
 		}
-		brickpi_out_port_set_speed(data, params->speed_sp);
+		brickpi_out_port_run_regulated(data, params->speed_sp);
 		data->motor_enabled = true;
 	} else if (command == TM_COMMAND_STOP)
 		brickpi_out_port_do_stop(data);
@@ -339,7 +339,7 @@ struct tacho_motor_ops brickpi_out_port_tacho_motor_ops = {
 	.get_duty_cycle		= brickpi_out_port_get_duty_cycle2,
 	.get_speed		= brickpi_out_port_get_speed,
 	.run_unregulated	= brickpi_out_port_run_unregulated,
-	.set_speed		= brickpi_out_port_set_speed,
+	.run_regulated		= brickpi_out_port_run_regulated,
 	.get_speed_Kp		= brickpi_out_port_get_speed_Kp,
 	.set_speed_Kp		= brickpi_out_port_set_speed_Kp,
 	.get_speed_Ki		= brickpi_out_port_get_speed_Ki,

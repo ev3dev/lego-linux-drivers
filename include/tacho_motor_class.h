@@ -139,6 +139,8 @@ struct tacho_motor_device {
  * @get_speed: Gets the current speed of the motor in tacho counts per second.
  * @run_unregulated: Sends message to the motor controller to run in unregulated
  *	mode with the specified duty cycle.
+ * @run_regulated: Sends message to the motor controller to run in regulated
+ *	mode with the specified speed setpoint.
  * @get_commands: Gets flags representing the commands that the driver supports.
  * @get_command: Get the active command for the motor.
  * @send_command: Sends an command to the motor controller (makes the motor do
@@ -168,7 +170,7 @@ struct tacho_motor_ops {
 	int (*get_speed)(void *context, int *speed);
 
 	int (*run_unregulated)(void *context, int duty_cycle);
-	int (*set_speed)(void *context, int speed);
+	int (*run_regulated)(void *context, int speed);
 
 	unsigned (*get_commands)(void *context);
 	int (*send_command)(void *context, struct tacho_motor_params *params,

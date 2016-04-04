@@ -964,7 +964,7 @@ static int legoev3_motor_get_speed(void *context, int *speed)
 	return 0;
 }
 
-static int legoev3_motor_set_speed(void *context, int speed)
+static int legoev3_motor_run_regulated(void *context, int speed)
 {
 	struct legoev3_motor_data *ev3_tm = context;
 
@@ -1166,7 +1166,7 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 	.get_speed		= legoev3_motor_get_speed,
 
 	.run_unregulated	= legoev3_motor_run_unregulated,
-	.set_speed		= legoev3_motor_set_speed,
+	.run_regulated		= legoev3_motor_run_regulated,
 
 	.get_commands		= legoev3_motor_get_commands,
 	.send_command		= legoev3_motor_send_command,

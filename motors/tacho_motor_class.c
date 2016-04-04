@@ -371,7 +371,7 @@ static void tacho_motor_class_ramp_work(struct work_struct *work)
 	else if (tm->ramp_last_speed < -tm->ramp_max_speed)
 		tm->ramp_last_speed = -tm->ramp_max_speed;
 
-	err = tm->ops->set_speed(tm->context, tm->ramp_last_speed);
+	err = tm->ops->run_regulated(tm->context, tm->ramp_last_speed);
 	WARN_ONCE(err, "Failed to set speed.");
 
 	/*
@@ -791,7 +791,7 @@ static ssize_t ramp_up_sp_show(struct device *dev, struct device_attribute *attr
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	if (!tm->ops->set_speed)
+	if (!tm->ops->run_regulated)
 		return -EOPNOTSUPP;
 
 	return sprintf(buf, "%d\n", tm->params.ramp_up_sp);
@@ -803,7 +803,7 @@ static ssize_t ramp_up_sp_store(struct device *dev, struct device_attribute *att
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int err, ms;
 
-	if (!tm->ops->set_speed)
+	if (!tm->ops->run_regulated)
 		return -EOPNOTSUPP;
 
 	err = kstrtoint(buf, 10, &ms);
@@ -823,7 +823,7 @@ static ssize_t ramp_down_sp_show(struct device *dev,
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	if (!tm->ops->set_speed)
+	if (!tm->ops->run_regulated)
 		return -EOPNOTSUPP;
 
 	return sprintf(buf, "%d\n", tm->params.ramp_down_sp);
@@ -836,7 +836,7 @@ static ssize_t ramp_down_sp_store(struct device *dev,
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int err, ms;
 
-	if (!tm->ops->set_speed)
+	if (!tm->ops->run_regulated)
 		return -EOPNOTSUPP;
 
 	err = kstrtoint(buf, 10, &ms);
