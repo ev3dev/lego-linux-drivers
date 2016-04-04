@@ -141,6 +141,13 @@ struct tacho_motor_device {
  *	mode with the specified duty cycle.
  * @run_regulated: Sends message to the motor controller to run in regulated
  *	mode with the specified speed setpoint.
+ * @run_to_pos: Sends message to the motor controller to run to the specified
+ *	position using speed regulation and do the specified stop action when
+ *	the target position is reached.
+ * @stop: Sends message to the motor controller to stop using the specified
+ *	action.
+ * @reset: Sends message to the motor controller to reset. This will stop the
+ *	motor and reset any motor controller parameters.
  * @get_commands: Gets flags representing the commands that the driver supports.
  * @get_command: Get the active command for the motor.
  * @send_command: Sends an command to the motor controller (makes the motor do
@@ -171,6 +178,10 @@ struct tacho_motor_ops {
 
 	int (*run_unregulated)(void *context, int duty_cycle);
 	int (*run_regulated)(void *context, int speed);
+	int (*run_to_pos)(void *context, int pos, int speed,
+			  enum tacho_motor_stop_command action);
+	int (*stop)(void *context, enum tacho_motor_stop_command action);
+	int (*reset)(void *context);
 
 	unsigned (*get_commands)(void *context);
 	int (*send_command)(void *context, struct tacho_motor_params *params,
