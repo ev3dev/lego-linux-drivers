@@ -179,7 +179,7 @@ static int brickpi_out_port_get_duty_cycle2(void *context, int *duty_cycle)
 	return 0;
 }
 
-static int brickpi_out_port_set_duty_cycle2(void *context, int duty_cycle)
+static int brickpi_out_port_run_unregulated(void *context, int duty_cycle)
 {
 	struct brickpi_out_port_data *data = context;
 
@@ -337,8 +337,8 @@ struct tacho_motor_ops brickpi_out_port_tacho_motor_ops = {
 	.get_position		= brickpi_out_port_get_position,
 	.set_position		= brickpi_out_port_set_position,
 	.get_duty_cycle		= brickpi_out_port_get_duty_cycle2,
-	.set_duty_cycle		= brickpi_out_port_set_duty_cycle2,
 	.get_speed		= brickpi_out_port_get_speed,
+	.run_unregulated	= brickpi_out_port_run_unregulated,
 	.set_speed		= brickpi_out_port_set_speed,
 	.get_speed_Kp		= brickpi_out_port_get_speed_Kp,
 	.set_speed_Kp		= brickpi_out_port_set_speed_Kp,

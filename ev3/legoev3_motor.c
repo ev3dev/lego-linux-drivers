@@ -922,8 +922,7 @@ static int legoev3_motor_get_duty_cycle(void *context,
 	return 0;
 }
 
-static int legoev3_motor_set_duty_cycle(void *context,
-					int duty_cycle)
+static int legoev3_motor_run_unregulated(void *context, int duty_cycle)
 {
 	struct legoev3_motor_data *ev3_tm = context;
 
@@ -1164,8 +1163,9 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 
 	.get_state		= legoev3_motor_get_state,
 	.get_duty_cycle		= legoev3_motor_get_duty_cycle,
-	.set_duty_cycle		= legoev3_motor_set_duty_cycle,
 	.get_speed		= legoev3_motor_get_speed,
+
+	.run_unregulated	= legoev3_motor_run_unregulated,
 	.set_speed		= legoev3_motor_set_speed,
 
 	.get_commands		= legoev3_motor_get_commands,

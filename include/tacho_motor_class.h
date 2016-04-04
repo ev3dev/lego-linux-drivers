@@ -136,8 +136,9 @@ struct tacho_motor_device {
  * 	Returns an error instead of setting the value if the motor is running.
  * @get_state: Gets the state flags for the motor.
  * @get_duty_cycle: Gets the current PWM duty cycle being sent to the motor.
- * @set_duty_cycle: Sets the current PWM duty cycle being sent to the motor.
  * @get_speed: Gets the current speed of the motor in tacho counts per second.
+ * @run_unregulated: Sends message to the motor controller to run in unregulated
+ *	mode with the specified duty cycle.
  * @get_commands: Gets flags representing the commands that the driver supports.
  * @get_command: Get the active command for the motor.
  * @send_command: Sends an command to the motor controller (makes the motor do
@@ -164,8 +165,9 @@ struct tacho_motor_ops {
 	int (*get_state)(void *context);
 
 	int (*get_duty_cycle)(void *context, int *duty_cycle);
-	int (*set_duty_cycle)(void *context, int duty_cycle);
 	int (*get_speed)(void *context, int *speed);
+
+	int (*run_unregulated)(void *context, int duty_cycle);
 	int (*set_speed)(void *context, int speed);
 
 	unsigned (*get_commands)(void *context);

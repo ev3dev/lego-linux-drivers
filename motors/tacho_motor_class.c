@@ -394,8 +394,8 @@ static int direct_set_duty_cycle(struct tacho_motor_device *tm)
 	if (tm->active_params.polarity == DC_MOTOR_POLARITY_INVERSED)
 		tm->active_params.duty_cycle_sp = tm->params.duty_cycle_sp * -1;
 
-	err = tm->ops->set_duty_cycle(tm->context,
-					 tm->active_params.duty_cycle_sp);
+	err = tm->ops->run_unregulated(tm->context,
+				       tm->active_params.duty_cycle_sp);
 
 	WARN_ONCE(err, "Failed to set speed.");
 
