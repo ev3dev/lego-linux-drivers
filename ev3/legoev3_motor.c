@@ -83,6 +83,7 @@ struct legoev3_motor_data {
 	struct work_struct notify_state_change_work;
 	struct work_struct notify_position_ramp_down_work;
 	struct tm_pid speed_pid;
+	struct tm_pid hold_pid;
 
 	ktime_t tacho_samples[TACHO_SAMPLES];
 	unsigned tacho_samples_head;
@@ -95,17 +96,6 @@ struct legoev3_motor_data {
 	int max_us_per_sample;
 
 	int position_sp;
-	int hold_sp;
-
-	struct {
-		int P;
-		int I;
-		int D;
-		int position_Kp;
-		int position_Ki;
-		int position_Kd;
-		int prev_position;
-	} pid;
 
 	enum legoev3_motor_command run_direction;
 	bool run;
@@ -352,16 +342,6 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 	ev3_tm->dir_chg_samples		= 0;
 	ev3_tm->max_us_per_sample	= info->max_us_per_sample;
 
-	ev3_tm->pid.P			= 0;
-	ev3_tm->pid.I			= 0;
-	ev3_tm->pid.D			= 0;
-
-	ev3_tm->pid.prev_position	= 0;
-
-	ev3_tm->pid.position_Kp		= info->position_pid_k.p;
-	ev3_tm->pid.position_Ki		= info->position_pid_k.i;
-	ev3_tm->pid.position_Kd		= info->position_pid_k.d;
-
 	ev3_tm->run_direction		= UNKNOWN;
 	ev3_tm->run			= 0;
 
@@ -377,6 +357,8 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 	ev3_tm->speed_pid_ena		= false;
 	tm_pid_init(&ev3_tm->speed_pid, info->speed_pid_k.p,
 		    info->speed_pid_k.i, info->speed_pid_k.d);
+	tm_pid_init(&ev3_tm->hold_pid, info->position_pid_k.p,
+		    info->position_pid_k.i, info->position_pid_k.d);
 };
 
 /*
@@ -639,48 +621,6 @@ static void calculate_speed(struct legoev3_motor_data *ev3_tm)
 	}
 }
 
-static void regulate_position(struct legoev3_motor_data *ev3_tm)
-{
-	int duty_cycle;
-	int position_error;
-
-	/*
-	 * Make sure that the irq_tacho value has been set to a value that
-	 * represents the current error from the desired position so we can
-	 * drive the motor towards the desired position hold point.
-	 */
-
-	position_error = ev3_tm->hold_sp - ev3_tm->position;
-
-	ev3_tm->pid.P = position_error;
-	ev3_tm->pid.I = ev3_tm->pid.I + position_error;
-	ev3_tm->pid.D = ev3_tm->position - ev3_tm->pid.prev_position;
-
-	ev3_tm->pid.prev_position = ev3_tm->position;
-
-	duty_cycle = ((ev3_tm->pid.P * ev3_tm->pid.position_Kp)
-		 + (ev3_tm->pid.I * ev3_tm->pid.position_Ki)
-		 + (ev3_tm->pid.D * ev3_tm->pid.position_Kd))
-		/ 10000;
-
-	/*
-	 * Subtract the position error to avoid integral windup if the resulting
-	 * duty_cycle is more than 100%
-	 */
-
-	if (DC_MOTOR_MAX_DUTY_CYCLE < abs(duty_cycle)) {
-		ev3_tm->pid.I = ev3_tm->pid.I - position_error;
-		ev3_tm->overloaded = 1;
-	} else {
-		ev3_tm->overloaded = 0;
-	}
-
-	if (ev3_tm->tm.active_params.polarity == DC_MOTOR_POLARITY_INVERSED)
-		duty_cycle = duty_cycle * -1;
-
-	set_duty_cycle(ev3_tm, duty_cycle);
-}
-
 static void update_position(struct legoev3_motor_data *ev3_tm)
 {
 	int rampdown_endpoint;
@@ -760,9 +700,9 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 	if (ev3_tm->run_command == TM_COMMAND_STOP) {
 		if (ev3_tm->tm.active_params.stop_command == TM_STOP_COMMAND_HOLD) {
 			if (IS_POS_CMD(ev3_tm->run_command))
-				ev3_tm->hold_sp = ev3_tm->position_sp;
+				ev3_tm->hold_pid.setpoint = ev3_tm->position_sp;
 			else
-				ev3_tm->hold_sp = ev3_tm->position;
+				ev3_tm->hold_pid.setpoint = ev3_tm->position;
 		}
 
 		/*
@@ -773,10 +713,7 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 		 * we're ramping up slowly
 		 */
 		tm_pid_reinit(&ev3_tm->speed_pid);
-		ev3_tm->pid.P = 0;
-		ev3_tm->pid.I = 0;
-		ev3_tm->pid.D = 0;
-		ev3_tm->pid.prev_position = ev3_tm->position;
+		tm_pid_reinit(&ev3_tm->hold_pid);
 
 		ev3_tm->run = 0;
 	}
@@ -795,8 +732,11 @@ no_run:
 			motor_ops->set_command(context, DC_MOTOR_INTERNAL_COMMAND_COAST);
 		else if (TM_STOP_COMMAND_BRAKE == ev3_tm->tm.active_params.stop_command)
 			motor_ops->set_command(context, DC_MOTOR_INTERNAL_COMMAND_BRAKE);
-		else if (TM_STOP_COMMAND_HOLD == ev3_tm->tm.active_params.stop_command)
-			regulate_position(ev3_tm);
+		else if (TM_STOP_COMMAND_HOLD == ev3_tm->tm.active_params.stop_command) {
+			duty_cycle = tm_pid_update(&ev3_tm->hold_pid,
+						   ev3_tm->position);
+			set_duty_cycle(ev3_tm, duty_cycle);
+		}
 	}
 
 	return HRTIMER_RESTART;
@@ -927,54 +867,12 @@ TM_PID_GET_FUNC(legoev3_motor, speed_Ki, legoev3_motor_data, speed_pid.Ki);
 TM_PID_SET_FUNC(legoev3_motor, speed_Ki, legoev3_motor_data, speed_pid.Ki);
 TM_PID_GET_FUNC(legoev3_motor, speed_Kd, legoev3_motor_data, speed_pid.Kd);
 TM_PID_SET_FUNC(legoev3_motor, speed_Kd, legoev3_motor_data, speed_pid.Kd);
-
-static int legoev3_motor_get_position_Kp(void *context)
-{
-	struct legoev3_motor_data *ev3_tm = context;
-
-	return ev3_tm->pid.position_Kp;
-}
-
-static int legoev3_motor_set_position_Kp(void *context, int k)
-{
-	struct legoev3_motor_data *ev3_tm = context;
-
-	ev3_tm->pid.position_Kp = k;
-
-	return 0;
-}
-
-static int legoev3_motor_get_position_Ki(void *context)
-{
-	struct legoev3_motor_data *ev3_tm = context;
-
-	return ev3_tm->pid.position_Ki;
-}
-
-static int legoev3_motor_set_position_Ki(void *context, int k)
-{
-	struct legoev3_motor_data *ev3_tm = context;
-
-	ev3_tm->pid.position_Ki = k;
-
-	return 0;
-}
-
-static int legoev3_motor_get_position_Kd(void *context)
-{
-	struct legoev3_motor_data *ev3_tm = context;
-
-	return ev3_tm->pid.position_Kd;
-}
-
-static int legoev3_motor_set_position_Kd(void *context, int k)
-{
-	struct legoev3_motor_data *ev3_tm = context;
-
-	ev3_tm->pid.position_Kd = k;
-
-	return 0;
-}
+TM_PID_GET_FUNC(legoev3_motor, position_Kp, legoev3_motor_data, hold_pid.Kp);
+TM_PID_SET_FUNC(legoev3_motor, position_Kp, legoev3_motor_data, hold_pid.Kp);
+TM_PID_GET_FUNC(legoev3_motor, position_Ki, legoev3_motor_data, hold_pid.Ki);
+TM_PID_SET_FUNC(legoev3_motor, position_Ki, legoev3_motor_data, hold_pid.Ki);
+TM_PID_GET_FUNC(legoev3_motor, position_Kd, legoev3_motor_data, hold_pid.Kd);
+TM_PID_SET_FUNC(legoev3_motor, position_Kd, legoev3_motor_data, hold_pid.Kd);
 
 static unsigned legoev3_motor_get_commands(void *context)
 {
@@ -1110,9 +1008,6 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 	ev3_tm->tm.info = &ev3_motor_defs[ldev->entry_id->driver_data];
 	ev3_tm->tm.context = ev3_tm;
 	ev3_tm->tm.supports_encoder_polarity = true;
-	ev3_tm->pid.position_Kp = ev3_tm->tm.info->legoev3_info.position_pid_k.p;
-	ev3_tm->pid.position_Ki = ev3_tm->tm.info->legoev3_info.position_pid_k.i;
-	ev3_tm->pid.position_Kd = ev3_tm->tm.info->legoev3_info.position_pid_k.d;
 
 	dev_set_drvdata(&ldev->dev, ev3_tm);
 
