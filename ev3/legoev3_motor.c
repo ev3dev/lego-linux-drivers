@@ -98,7 +98,6 @@ struct legoev3_motor_data {
 	int position_sp;
 
 	enum legoev3_motor_command run_direction;
-	bool run;
 	bool overloaded;
 	bool stalled;
 	bool ramping;
@@ -110,6 +109,7 @@ struct legoev3_motor_data {
 
 	enum tacho_motor_command run_command;
 	bool speed_pid_ena;
+	bool hold_pid_ena;
 };
 
 static void set_num_samples_for_speed(struct legoev3_motor_data *ev3_tm,
@@ -322,6 +322,47 @@ static void set_duty_cycle(struct legoev3_motor_data *ev3_tm, int duty_cycle)
 	WARN_ONCE(err, "Failed to set pwm duty cycle! (%d)\n", err);
 }
 
+static int legoev3_motor_stop(void *context,
+			      enum tacho_motor_stop_command action)
+{
+	struct legoev3_motor_data *ev3_tm = context;
+	const struct dc_motor_ops *motor_ops = ev3_tm->ldev->port->dc_motor_ops;
+	void *dc_ctx = ev3_tm->ldev->port->context;
+
+	ev3_tm->speed_pid_ena = false;
+	ev3_tm->hold_pid_ena = false;
+	/*
+	 * Reset the PID terms here to avoid having these terms influence the
+	 * motor operation at the beginning of the next sequence. The most
+	 * common issue is having some residual integral value briefly turn
+	 * the motor on hard if we're ramping up slowly.
+	 */
+	tm_pid_reinit(&ev3_tm->speed_pid);
+	tm_pid_reinit(&ev3_tm->hold_pid);
+
+	switch (action) {
+	case TM_STOP_COMMAND_COAST:
+		motor_ops->set_command(dc_ctx, DC_MOTOR_INTERNAL_COMMAND_COAST);
+		break;
+	case TM_STOP_COMMAND_BRAKE:
+		motor_ops->set_command(dc_ctx, DC_MOTOR_INTERNAL_COMMAND_BRAKE);
+		break;
+	case TM_STOP_COMMAND_HOLD:
+		if (IS_POS_CMD(ev3_tm->run_command))
+			ev3_tm->hold_pid.setpoint = ev3_tm->position_sp;
+		else
+			ev3_tm->hold_pid.setpoint = ev3_tm->position;
+		ev3_tm->hold_pid_ena = true;
+		break;
+	default:
+		BUG();
+	}
+
+	ev3_tm->state = STATE_STOPPED;
+
+	return 0;
+}
+
 /**
  * legoev3_motor_reset
  *
@@ -334,6 +375,8 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 {
 	const struct legoev3_motor_info *info = &ev3_tm->tm.info->legoev3_info;
 
+	legoev3_motor_stop(ev3_tm, TM_STOP_COMMAND_COAST);
+
 	memset(ev3_tm->tacho_samples, 0, sizeof(unsigned) * TACHO_SAMPLES);
 
 	ev3_tm->tacho_samples_head	= 0;
@@ -343,18 +386,15 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 	ev3_tm->max_us_per_sample	= info->max_us_per_sample;
 
 	ev3_tm->run_direction		= UNKNOWN;
-	ev3_tm->run			= 0;
 
 	ev3_tm->position_sp		= 0;
 	ev3_tm->position		= 0;
 	ev3_tm->speed			= 0;
 	ev3_tm->duty_cycle		= 0;
-	ev3_tm->state			= STATE_STOPPED;
 	ev3_tm->overloaded		= 0;
 	ev3_tm->stalled			= 0;
 
 	ev3_tm->run_command		= TM_COMMAND_STOP;
-	ev3_tm->speed_pid_ena		= false;
 	tm_pid_init(&ev3_tm->speed_pid, info->speed_pid_k.p,
 		    info->speed_pid_k.i, info->speed_pid_k.d);
 	tm_pid_init(&ev3_tm->hold_pid, info->position_pid_k.p,
@@ -650,7 +690,8 @@ static void update_position(struct legoev3_motor_data *ev3_tm)
 		if (ev3_tm->position >= ev3_tm->position_sp) {
 			schedule_work(&ev3_tm->notify_position_ramp_down_work);
 			ev3_tm->run_command = TM_COMMAND_STOP;
-			ev3_tm->state = STATE_STOPPED;
+			legoev3_motor_stop(ev3_tm,
+					ev3_tm->tm.active_params.stop_command);
 			ev3_tm->ramping = 0;
 		}
 	} else if (ev3_tm->speed_pid.setpoint < 0) {
@@ -662,7 +703,8 @@ static void update_position(struct legoev3_motor_data *ev3_tm)
 		if (ev3_tm->position <= ev3_tm->position_sp) {
 			schedule_work(&ev3_tm->notify_position_ramp_down_work);
 			ev3_tm->run_command = TM_COMMAND_STOP;
-			ev3_tm->state = STATE_STOPPED;
+			legoev3_motor_stop(ev3_tm,
+					ev3_tm->tm.active_params.stop_command);
 			ev3_tm->ramping = 0;
 		}
 	}
@@ -672,8 +714,6 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(timer, struct legoev3_motor_data, timer);
-	const struct dc_motor_ops *motor_ops = ev3_tm->ldev->port->dc_motor_ops;
-	void *context = ev3_tm->ldev->port->context;
 	int duty_cycle = 0;
 
 	hrtimer_forward_now(timer, ktime_set(0, TACHO_MOTOR_POLL_MS * NSEC_PER_MSEC));
@@ -682,9 +722,6 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 
 	calculate_speed(ev3_tm);
 
-	if (0 == ev3_tm->run)
-		goto no_run;
-
 	if (ev3_tm->speed_pid_ena) {
 		if (ev3_tm->speed_pid.setpoint == 0) {
 			duty_cycle = 0;
@@ -692,52 +729,13 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 		} else
 			duty_cycle = tm_pid_update(&ev3_tm->speed_pid,
 						   ev3_tm->speed);
-	}
+	} else if (ev3_tm->hold_pid_ena)
+		duty_cycle = tm_pid_update(&ev3_tm->hold_pid, ev3_tm->position);
 
 	if (IS_POS_CMD(ev3_tm->run_command))
 		update_position(ev3_tm);
 
-	if (ev3_tm->run_command == TM_COMMAND_STOP) {
-		if (ev3_tm->tm.active_params.stop_command == TM_STOP_COMMAND_HOLD) {
-			if (IS_POS_CMD(ev3_tm->run_command))
-				ev3_tm->hold_pid.setpoint = ev3_tm->position_sp;
-			else
-				ev3_tm->hold_pid.setpoint = ev3_tm->position;
-		}
-
-		/*
-		 * Reset the PID terms here to avoid having these terms
-		 * influence the motor operation at the beginning of the
-		 * next sequence. The most common issue is having some
-		 * residual integral value briefly turn the motor on hard if
-		 * we're ramping up slowly
-		 */
-		tm_pid_reinit(&ev3_tm->speed_pid);
-		tm_pid_reinit(&ev3_tm->hold_pid);
-
-		ev3_tm->run = 0;
-	}
-
 	set_duty_cycle(ev3_tm, duty_cycle);
-
-no_run:
-	/*
-	 * Note, we get here even if we're running - so we need to check
-	 * explicitly. These are some special cases to handle changes in the
-	 * brake_mode when the motor is not running!
-	 */
-
-	if (!ev3_tm->run) {
-		if (TM_STOP_COMMAND_COAST == ev3_tm->tm.active_params.stop_command)
-			motor_ops->set_command(context, DC_MOTOR_INTERNAL_COMMAND_COAST);
-		else if (TM_STOP_COMMAND_BRAKE == ev3_tm->tm.active_params.stop_command)
-			motor_ops->set_command(context, DC_MOTOR_INTERNAL_COMMAND_BRAKE);
-		else if (TM_STOP_COMMAND_HOLD == ev3_tm->tm.active_params.stop_command) {
-			duty_cycle = tm_pid_update(&ev3_tm->hold_pid,
-						   ev3_tm->position);
-			set_duty_cycle(ev3_tm, duty_cycle);
-		}
-	}
 
 	return HRTIMER_RESTART;
 }
@@ -821,9 +819,11 @@ static int legoev3_motor_get_state(void *context)
 		if (ev3_tm->ramping)
 			state |= BIT(TM_STATE_RAMPING);
 	}
-	if (ev3_tm->state == STATE_STOPPED
-	    && ev3_tm->tm.active_params.stop_command == TM_STOP_COMMAND_HOLD)
+	if (ev3_tm->hold_pid_ena) {
 		state |= BIT(TM_STATE_HOLDING);
+		if (tm_pid_is_overloaded(&ev3_tm->hold_pid))
+			state |= BIT(TM_STATE_OVERLOADED);
+	}
 
 	return state;
 }
@@ -895,11 +895,13 @@ static int legoev3_motor_send_command(void *context,
 	switch (command) {
 	case TM_COMMAND_RUN_TO_ABS_POS:
 			ev3_tm->speed_pid_ena = true;
+			ev3_tm->hold_pid_ena = false;
 			ev3_tm->position_sp = params->position_sp;
 			ev3_tm->state = STATE_RUNNING;
 			break;
 	case TM_COMMAND_RUN_TO_REL_POS:
 			ev3_tm->speed_pid_ena = true;
+			ev3_tm->hold_pid_ena = false;
 			/* To check the previous command, we MUST be looking
 			 * at ev3_tm->tm.command because that's the previous
 			 * command that the user sent! The ev3_tm->run_command
@@ -916,37 +918,24 @@ static int legoev3_motor_send_command(void *context,
 			break;
 	case TM_COMMAND_RUN_DIRECT:
 			ev3_tm->speed_pid_ena = false;
+			ev3_tm->hold_pid_ena = false;
 			set_duty_cycle(ev3_tm, ev3_tm->duty_cycle);
 			ev3_tm->state = STATE_RUNNING;
 			break;
 	case TM_COMMAND_RUN_FOREVER:
 	case TM_COMMAND_RUN_TIMED:
 			ev3_tm->speed_pid_ena = true;
+			ev3_tm->hold_pid_ena = false;
 			ev3_tm->state = STATE_RUNNING;
 			break;
 	case TM_COMMAND_STOP:
-			ev3_tm->speed_pid_ena = false;
-			ev3_tm->state = STATE_STOPPED;
+			legoev3_motor_stop(ev3_tm, params->stop_command);
 			break;
 	default:
 			return -EOPNOTSUPP;
 	}
 
 	ev3_tm->run_command = command;
-
-	/*
-	 * what's going on here - why is run always set to 1?
-	 *
-	 * the answer is that we check for run == 0 as the first condition
-	 * at the top of the timer callback. If it's set, then the next
-	 * motor state is stop_motor, but it won't be evaluated if run == 0
-	 *
-	 * So we always force the state machine to run once, and count on the
-	 * state machine to dtrt (do the right thing). This avoids setting
-	 * motor duty cycle in weird places
-	 */
-
-	ev3_tm->run = 1;
 
 	return 0;
 }
@@ -961,6 +950,7 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 
 	.run_unregulated	= legoev3_motor_run_unregulated,
 	.run_regulated		= legoev3_motor_run_regulated,
+	.stop			= legoev3_motor_stop,
 
 	.get_commands		= legoev3_motor_get_commands,
 	.send_command		= legoev3_motor_send_command,
