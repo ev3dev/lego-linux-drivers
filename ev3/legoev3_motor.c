@@ -840,16 +840,17 @@ static int legoev3_motor_run_regulated(void *context, int speed)
 {
 	struct legoev3_motor_data *ev3_tm = context;
 
-	if (IS_RUN_CMD(ev3_tm->run_command)) {
-		if (IS_POS_CMD(ev3_tm->run_command)) {
-			if (ev3_tm->position < ev3_tm->position_sp)
-				ev3_tm->speed_pid.setpoint = abs(speed);
-			else
-				ev3_tm->speed_pid.setpoint = abs(speed) * -1;
-		} else {
-			ev3_tm->speed_pid.setpoint = speed;
-		}
+	ev3_tm->speed_pid_ena = true;
+	ev3_tm->hold_pid_ena = false;
+
+	if (IS_POS_CMD(ev3_tm->run_command)) {
+		speed = abs(speed);
+		if (ev3_tm->position > ev3_tm->position_sp)
+			speed *= -1;
 	}
+
+	ev3_tm->speed_pid.setpoint = speed;
+	ev3_tm->state = STATE_RUNNING;
 
 	return 0;
 }
@@ -916,14 +917,10 @@ static int legoev3_motor_send_command(void *context,
 			ev3_tm->state = STATE_RUNNING;
 			break;
 	case TM_COMMAND_RUN_DIRECT:
-			legoev3_motor_run_unregulated(ev3_tm,
-						      params->duty_cycle_sp);
 			break;
 	case TM_COMMAND_RUN_FOREVER:
 	case TM_COMMAND_RUN_TIMED:
-			ev3_tm->speed_pid_ena = true;
-			ev3_tm->hold_pid_ena = false;
-			ev3_tm->state = STATE_RUNNING;
+			legoev3_motor_run_regulated(ev3_tm, ev3_tm->speed);
 			break;
 	case TM_COMMAND_STOP:
 			legoev3_motor_stop(ev3_tm, params->stop_command);
