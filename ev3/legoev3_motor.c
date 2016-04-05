@@ -364,15 +364,13 @@ static int legoev3_motor_stop(void *context,
 }
 
 /**
- * legoev3_motor_reset
+ * legoev3_motor_reset - reinitialize driver to default values.
  *
- * This is the same as initializing a motor - we will set everything
- * to default values, as if it had just been plugged in
- *
- * @ev3_tm: The motor data structure.
+ * @context: The motor data structure.
  */
-static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
+static int legoev3_motor_reset(void *context)
 {
+	struct legoev3_motor_data *ev3_tm = context;
 	const struct legoev3_motor_info *info = &ev3_tm->tm.info->legoev3_info;
 
 	legoev3_motor_stop(ev3_tm, TM_STOP_COMMAND_COAST);
@@ -399,6 +397,8 @@ static void legoev3_motor_reset(struct legoev3_motor_data *ev3_tm)
 		    info->speed_pid_k.i, info->speed_pid_k.d);
 	tm_pid_init(&ev3_tm->hold_pid, info->position_pid_k.p,
 		    info->position_pid_k.i, info->position_pid_k.d);
+
+	return 0;
 };
 
 /*
@@ -951,6 +951,7 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 	.run_unregulated	= legoev3_motor_run_unregulated,
 	.run_regulated		= legoev3_motor_run_regulated,
 	.stop			= legoev3_motor_stop,
+	.reset			= legoev3_motor_reset,
 
 	.get_commands		= legoev3_motor_get_commands,
 	.send_command		= legoev3_motor_send_command,
