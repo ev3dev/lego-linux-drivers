@@ -98,7 +98,6 @@ struct legoev3_motor_data {
 	int position_sp;
 
 	enum legoev3_motor_command run_direction;
-	bool overloaded;
 	bool stalled;
 	bool ramping;
 
@@ -389,7 +388,6 @@ static int legoev3_motor_reset(void *context)
 	ev3_tm->position		= 0;
 	ev3_tm->speed			= 0;
 	ev3_tm->duty_cycle		= 0;
-	ev3_tm->overloaded		= 0;
 	ev3_tm->stalled			= 0;
 
 	ev3_tm->run_command		= TM_COMMAND_STOP;
@@ -811,8 +809,6 @@ static int legoev3_motor_get_state(void *context)
 		state |= BIT(TM_STATE_RUNNING);
 		if (ev3_tm->speed_pid_ena
 		    && tm_pid_is_overloaded(&ev3_tm->speed_pid))
-			state |= BIT(TM_STATE_OVERLOADED);
-		if (ev3_tm->overloaded)
 			state |= BIT(TM_STATE_OVERLOADED);
 		if (ev3_tm->stalled)
 			state |= BIT(TM_STATE_STALLED);
