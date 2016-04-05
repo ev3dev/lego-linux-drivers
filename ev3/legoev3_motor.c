@@ -304,21 +304,24 @@ static void set_duty_cycle(struct legoev3_motor_data *ev3_tm, int duty_cycle)
 	void *context = ev3_tm->ldev->port->context;
 	int err;
 
-	if (duty_cycle > DC_MOTOR_MAX_DUTY_CYCLE)
-		ev3_tm->duty_cycle = DC_MOTOR_MAX_DUTY_CYCLE;
-	else if (duty_cycle < -DC_MOTOR_MAX_DUTY_CYCLE)
-		ev3_tm->duty_cycle = -DC_MOTOR_MAX_DUTY_CYCLE;
+	if (duty_cycle == ev3_tm->duty_cycle)
+		return;
+
+	duty_cycle = min(duty_cycle, DC_MOTOR_MAX_DUTY_CYCLE);
+	duty_cycle = max(duty_cycle, -DC_MOTOR_MAX_DUTY_CYCLE);
+
+	if (duty_cycle > 0)
+		motor_ops->set_command(context,
+				       DC_MOTOR_INTERNAL_COMMAND_RUN_FORWARD);
 	else
-		ev3_tm->duty_cycle = duty_cycle;
+		motor_ops->set_command(context,
+				       DC_MOTOR_INTERNAL_COMMAND_RUN_REVERSE);
 
-	if (ev3_tm->duty_cycle > 0)
-			motor_ops->set_command(context, DC_MOTOR_INTERNAL_COMMAND_RUN_FORWARD);
-	else
-			motor_ops->set_command(context, DC_MOTOR_INTERNAL_COMMAND_RUN_REVERSE);
-
-	err = motor_ops->set_duty_cycle(context, abs(ev3_tm->duty_cycle));
-
+	err = motor_ops->set_duty_cycle(context, abs(duty_cycle));
 	WARN_ONCE(err, "Failed to set pwm duty cycle! (%d)\n", err);
+
+	ev3_tm->duty_cycle = duty_cycle;
+
 }
 
 static int legoev3_motor_stop(void *context,
@@ -792,10 +795,10 @@ static int legoev3_motor_run_unregulated(void *context, int duty_cycle)
 {
 	struct legoev3_motor_data *ev3_tm = context;
 
-	ev3_tm->duty_cycle = duty_cycle;
-
-	if (ev3_tm->run_command == TM_COMMAND_RUN_DIRECT)
-		set_duty_cycle(ev3_tm, ev3_tm->duty_cycle);
+	ev3_tm->speed_pid_ena = false;
+	ev3_tm->hold_pid_ena = false;
+	set_duty_cycle(ev3_tm, ev3_tm->duty_cycle);
+	ev3_tm->state = STATE_RUNNING;
 
 	return 0;
 }
@@ -913,10 +916,8 @@ static int legoev3_motor_send_command(void *context,
 			ev3_tm->state = STATE_RUNNING;
 			break;
 	case TM_COMMAND_RUN_DIRECT:
-			ev3_tm->speed_pid_ena = false;
-			ev3_tm->hold_pid_ena = false;
-			set_duty_cycle(ev3_tm, ev3_tm->duty_cycle);
-			ev3_tm->state = STATE_RUNNING;
+			legoev3_motor_run_unregulated(ev3_tm,
+						      params->duty_cycle_sp);
 			break;
 	case TM_COMMAND_RUN_FOREVER:
 	case TM_COMMAND_RUN_TIMED:
