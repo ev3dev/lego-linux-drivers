@@ -602,9 +602,8 @@ static ssize_t commands_show(struct device *dev, struct device_attribute *attr,
 static int tm_send_command(struct tacho_motor_device *tm,
 			   enum tacho_motor_command cmd)
 {
-	int prev_position_sp, err;
-
-	prev_position_sp = tm->active_params.position_sp;
+	struct tacho_motor_params new_params;
+	int err;
 
 	/* stop any previous async commands */
 	cancel_delayed_work_sync(&tm->run_timed_work);
@@ -613,11 +612,11 @@ static int tm_send_command(struct tacho_motor_device *tm,
 	if (cmd == TM_COMMAND_RESET)
 		tacho_motor_class_reset(tm);
 
-	tm->active_params = tm->params;
+	new_params = tm->params;
 
 	if (!IS_RUN_CMD(cmd)) {
-		tm->active_params.duty_cycle_sp = 0;
-		tm->active_params.speed_sp = 0;
+		new_params.duty_cycle_sp = 0;
+		new_params.speed_sp = 0;
 	}
 
 	if (cmd == TM_COMMAND_RUN_TO_REL_POS) {
@@ -631,13 +630,13 @@ static int tm_send_command(struct tacho_motor_device *tm,
 		 * exactly when the position setpoint is reached.
 		 */
 		if (tm->command == TM_COMMAND_RUN_TO_REL_POS) {
-			tm->active_params.position_sp = prev_position_sp +
+			new_params.position_sp = tm->active_params.position_sp +
 							tm->params.position_sp;
 		} else {
 			long position;
 
 			tm->ops->get_position(tm->context, &position);
-			tm->active_params.position_sp = position +
+			new_params.position_sp = position +
 							tm->params.position_sp;
 		}
 	}
@@ -660,10 +659,11 @@ static int tm_send_command(struct tacho_motor_device *tm,
 	 * run only once. The motor driver will ignore the set_speed unless
 	 * the current command is a RUN_COMMAND.
 	 */
-	err = tm->ops->send_command(tm->context, &tm->active_params, cmd);
+	err = tm->ops->send_command(tm->context, &new_params, cmd);
 	if (err < 0)
 		return err;
 
+	tm->active_params = new_params;
 	tm->command = cmd;
 
 	/* The run-direct command does NOT ramp up to speed. */
@@ -672,7 +672,7 @@ static int tm_send_command(struct tacho_motor_device *tm,
 
 	if (cmd == TM_COMMAND_RUN_TIMED)
 		schedule_delayed_work(&tm->run_timed_work,
-				msecs_to_jiffies(tm->active_params.time_sp));
+				      msecs_to_jiffies(new_params.time_sp));
 
 	return 0;
 }
