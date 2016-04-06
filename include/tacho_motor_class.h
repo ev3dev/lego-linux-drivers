@@ -151,10 +151,6 @@ struct tacho_motor_device {
  *	action.
  * @reset: Sends message to the motor controller to reset. This will stop the
  *	motor and reset any motor controller parameters.
- * @get_commands: Gets flags representing the commands that the driver supports.
- * @get_command: Get the active command for the motor.
- * @send_command: Sends an command to the motor controller (makes the motor do
- * 	something).
  * @get_stop_commands: Gets flags representing the valid stop commands supported
  * 	by the driver.
  * @get_speed_Kp: Gets the current proportional PID constant for the speed PID.
@@ -186,9 +182,6 @@ struct tacho_motor_ops {
 	int (*stop)(void *context, enum tacho_motor_stop_command action);
 	int (*reset)(void *context);
 
-	unsigned (*get_commands)(void *context);
-	int (*send_command)(void *context, struct tacho_motor_params *params,
-			    enum tacho_motor_command command);
 	unsigned (*get_stop_commands)(void *context);
 
 	int (*get_speed_Kp)(void *context);

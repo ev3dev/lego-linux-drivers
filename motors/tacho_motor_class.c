@@ -402,8 +402,6 @@ static int direct_set_duty_cycle(struct tacho_motor_device *tm)
 	err = tm->ops->run_unregulated(tm->context,
 				       tm->active_params.duty_cycle_sp);
 
-	WARN_ONCE(err, "Failed to set speed.");
-
 	return err;
 }
 
@@ -563,18 +561,24 @@ static ssize_t speed_show(struct device *dev, struct device_attribute *attr,
 	return sprintf(buf, "%d\n", speed);
 }
 
-/*
- * Run timed command is implemented in the tacho motor class, so if an implementing
- * driver can run forever and stop, then it can run timed.
- */
-static inline unsigned get_supported_commands(struct tacho_motor_device *tm)
+static unsigned get_supported_commands(struct tacho_motor_device *tm)
 {
-	unsigned supported_commands = tm->ops->get_commands(tm->context);
+	unsigned supported_commands = 0;
 
-	if ((supported_commands & BIT(TM_COMMAND_RUN_FOREVER))
-		&& (supported_commands & BIT(TM_COMMAND_STOP))) {
-		supported_commands |= BIT(TM_COMMAND_RUN_TIMED);
+	if (tm->ops->run_unregulated)
+		supported_commands |= BIT(TM_COMMAND_RUN_DIRECT);
+	if (tm->ops->run_regulated)
+		supported_commands |= BIT(TM_COMMAND_RUN_FOREVER);
+	if (tm->ops->run_to_pos) {
+		supported_commands |= BIT(TM_COMMAND_RUN_TO_ABS_POS);
+		supported_commands |= BIT(TM_COMMAND_RUN_TO_REL_POS);
 	}
+	if (tm->ops->run_regulated && tm->ops->stop)
+		supported_commands |= BIT(TM_COMMAND_RUN_TIMED);
+	if (tm->ops->stop)
+		supported_commands |= BIT(TM_COMMAND_STOP);
+	if (tm->ops->reset)
+		supported_commands |= BIT(TM_COMMAND_RESET);
 
 	return supported_commands;
 }
@@ -604,10 +608,13 @@ static int tm_send_command(struct tacho_motor_device *tm,
 {
 	struct tacho_motor_params new_params;
 	int err;
+	bool ramp = false;
 
 	/* stop any previous async commands */
 	cancel_delayed_work_sync(&tm->run_timed_work);
 	cancel_delayed_work_sync(&tm->ramp_work);
+
+	/* do any extra manipulation of params if needed */
 
 	if (cmd == TM_COMMAND_RESET)
 		tacho_motor_class_reset(tm);
@@ -641,34 +648,57 @@ static int tm_send_command(struct tacho_motor_device *tm,
 		}
 	}
 
-	/*
-	 * If we're in run-direct mode, allow the
-	 * duty_cycle_sp to change
-	 */
-	if (cmd == TM_COMMAND_RUN_DIRECT) {
-		err = direct_set_duty_cycle(tm);
+	/* now actually send the command to the motor controller */
 
-		if (err < 0)
-			return err;
+	switch (cmd) {
+	case TM_COMMAND_RUN_DIRECT:
+		err = tm->ops->run_unregulated(tm->context,
+					       new_params.duty_cycle_sp);
+		break;
+	case TM_COMMAND_RUN_FOREVER:
+	case TM_COMMAND_RUN_TIMED:
+		if (new_params.ramp_up_sp || new_params.ramp_down_sp)
+			ramp = true;
+		else
+			err = tm->ops->run_regulated(tm->context,
+						     new_params.speed_sp);
+		break;
+	case TM_COMMAND_RUN_TO_ABS_POS:
+	case TM_COMMAND_RUN_TO_REL_POS:
+		if (new_params.ramp_up_sp || new_params.ramp_down_sp)
+			ramp = true;
+		else
+			err = tm->ops->run_to_pos(tm->context,
+						  new_params.position_sp,
+						  new_params.speed_sp,
+						  new_params.stop_command);
+		break;
+	case TM_COMMAND_STOP:
+		if (new_params.ramp_up_sp || new_params.ramp_down_sp)
+			ramp = true;
+		else
+			err = tm->ops->stop(tm->context,
+					    new_params.stop_command);
+		break;
+	case TM_COMMAND_RESET:
+		err = tm->ops->reset(tm->context);
+		break;
+	default:
+		BUG();
 	}
-
-	/*
-	 * The speed setting commands in the lower level motor driver need
-	 * to know the current command so that they can set the speed
-	 * appropriately. When the ramp time is very short, the ramp work may
-	 * run only once. The motor driver will ignore the set_speed unless
-	 * the current command is a RUN_COMMAND.
-	 */
-	err = tm->ops->send_command(tm->context, &new_params, cmd);
+	if (ramp) {
+		err = 0;
+		/*
+		 * TODO: this function needs to be modified to make the first
+		 * call to the motor controller and return an error.
+		 */
+		tacho_motor_class_start_motor_ramp(tm);
+	}
 	if (err < 0)
 		return err;
 
 	tm->active_params = new_params;
 	tm->command = cmd;
-
-	/* The run-direct command does NOT ramp up to speed. */
-	if (IS_RUN_CMD(cmd) && (cmd != TM_COMMAND_RUN_DIRECT))
-		tacho_motor_class_start_motor_ramp(tm);
 
 	if (cmd == TM_COMMAND_RUN_TIMED)
 		schedule_delayed_work(&tm->run_timed_work,

@@ -886,45 +886,6 @@ TM_PID_SET_FUNC(legoev3_motor, position_Ki, legoev3_motor_data, hold_pid.Ki);
 TM_PID_GET_FUNC(legoev3_motor, position_Kd, legoev3_motor_data, hold_pid.Kd);
 TM_PID_SET_FUNC(legoev3_motor, position_Kd, legoev3_motor_data, hold_pid.Kd);
 
-static unsigned legoev3_motor_get_commands(void *context)
-{
-	return BIT(TM_COMMAND_RUN_FOREVER) | BIT(TM_COMMAND_RUN_TO_ABS_POS)
-		| BIT(TM_COMMAND_RUN_TO_REL_POS) | BIT(TM_COMMAND_RUN_DIRECT)
-		| BIT(TM_COMMAND_STOP) | BIT(TM_COMMAND_RESET);
-}
-
-static int legoev3_motor_send_command(void *context,
-					struct tacho_motor_params *params,
-					enum tacho_motor_command command)
-{
-	struct legoev3_motor_data *ev3_tm = context;
-
-	if (command == TM_COMMAND_RESET) {
-		legoev3_motor_reset(ev3_tm);
-		return 0;
-	}
-
-	switch (command) {
-	case TM_COMMAND_RUN_TO_ABS_POS:
-			break;
-	case TM_COMMAND_RUN_TO_REL_POS:
-			break;
-	case TM_COMMAND_RUN_DIRECT:
-			break;
-	case TM_COMMAND_RUN_FOREVER:
-	case TM_COMMAND_RUN_TIMED:
-			legoev3_motor_run_regulated(ev3_tm, ev3_tm->speed);
-			break;
-	case TM_COMMAND_STOP:
-			legoev3_motor_stop(ev3_tm, params->stop_command);
-			break;
-	default:
-			return -EOPNOTSUPP;
-	}
-
-	return 0;
-}
-
 static const struct tacho_motor_ops legoev3_motor_ops = {
 	.get_position		= legoev3_motor_get_position,
 	.set_position		= legoev3_motor_set_position,
@@ -938,9 +899,6 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 	.run_to_pos		= legoev3_motor_run_to_pos,
 	.stop			= legoev3_motor_stop,
 	.reset			= legoev3_motor_reset,
-
-	.get_commands		= legoev3_motor_get_commands,
-	.send_command		= legoev3_motor_send_command,
 
 	.get_stop_commands	= legoev3_motor_get_stop_commands,
 
