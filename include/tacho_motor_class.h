@@ -41,6 +41,7 @@ enum tacho_motor_command {
 (((c) == TM_COMMAND_RUN_TO_ABS_POS) || ((c) == TM_COMMAND_RUN_TO_REL_POS))
 #define IS_RUN_CMD(c) \
 (((c) != TM_COMMAND_STOP) && ((c) != TM_COMMAND_RESET))
+#define SUPPORTS_RAMPING(tm) ((tm)->ops->run_regulated || (tm)->ops->run_to_pos)
 
 enum tacho_motor_stop_command {
 	TM_STOP_COMMAND_COAST,
