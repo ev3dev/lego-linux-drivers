@@ -371,7 +371,12 @@ static void tacho_motor_class_ramp_work(struct work_struct *work)
 	else if (tm->ramp_last_speed < -tm->ramp_max_speed)
 		tm->ramp_last_speed = -tm->ramp_max_speed;
 
-	err = tm->ops->run_regulated(tm->context, tm->ramp_last_speed);
+	if (IS_POS_CMD(tm->command))
+		err = tm->ops->run_to_pos(tm->context,
+			tm->active_params.position_sp, tm->ramp_last_speed,
+			tm->active_params.stop_command);
+	else
+		err = tm->ops->run_regulated(tm->context, tm->ramp_last_speed);
 	WARN_ONCE(err, "Failed to set speed.");
 
 	/*
@@ -597,7 +602,9 @@ static ssize_t commands_show(struct device *dev, struct device_attribute *attr,
 static int tm_send_command(struct tacho_motor_device *tm,
 			   enum tacho_motor_command cmd)
 {
-	int err;
+	int prev_position_sp, err;
+
+	prev_position_sp = tm->active_params.position_sp;
 
 	/* stop any previous async commands */
 	cancel_delayed_work_sync(&tm->run_timed_work);
@@ -611,6 +618,28 @@ static int tm_send_command(struct tacho_motor_device *tm,
 	if (!IS_RUN_CMD(cmd)) {
 		tm->active_params.duty_cycle_sp = 0;
 		tm->active_params.speed_sp = 0;
+	}
+
+	if (cmd == TM_COMMAND_RUN_TO_REL_POS) {
+		/*
+		 * To check the previous command, we MUST be looking at
+		 * tm->command because that's the previous command that the
+		 * user sent! If the previous command was also run-to-rel-pos
+		 * then we try to be "smart" about the new setpoint by making
+		 * it relative to the previous setpoint. This will eliminate
+		 * cumulative error due to the motor not holding the position
+		 * exactly when the position setpoint is reached.
+		 */
+		if (tm->command == TM_COMMAND_RUN_TO_REL_POS) {
+			tm->active_params.position_sp = prev_position_sp +
+							tm->params.position_sp;
+		} else {
+			long position;
+
+			tm->ops->get_position(tm->context, &position);
+			tm->active_params.position_sp = position +
+							tm->params.position_sp;
+		}
 	}
 
 	/*

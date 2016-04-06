@@ -105,7 +105,7 @@ struct legoev3_motor_data {
 	int speed;
 	int duty_cycle;
 	enum legoev3_motor_state state;
-
+	enum tacho_motor_stop_command run_to_pos_stop_action;
 	bool run_to_pos_active;
 	bool speed_pid_ena;
 	bool hold_pid_ena;
@@ -330,6 +330,7 @@ static int legoev3_motor_stop(void *context,
 	struct legoev3_motor_data *ev3_tm = context;
 	const struct dc_motor_ops *motor_ops = ev3_tm->ldev->port->dc_motor_ops;
 	void *dc_ctx = ev3_tm->ldev->port->context;
+	bool use_pos_sp_for_hold = ev3_tm->run_to_pos_active;
 
 	ev3_tm->run_to_pos_active = false;
 	ev3_tm->speed_pid_ena = false;
@@ -351,7 +352,7 @@ static int legoev3_motor_stop(void *context,
 		motor_ops->set_command(dc_ctx, DC_MOTOR_INTERNAL_COMMAND_BRAKE);
 		break;
 	case TM_STOP_COMMAND_HOLD:
-		if (ev3_tm->run_to_pos_active)
+		if (use_pos_sp_for_hold)
 			ev3_tm->hold_pid.setpoint = ev3_tm->position_sp;
 		else
 			ev3_tm->hold_pid.setpoint = ev3_tm->position;
@@ -691,7 +692,7 @@ static void update_position(struct legoev3_motor_data *ev3_tm)
 		if (ev3_tm->position >= ev3_tm->position_sp) {
 			schedule_work(&ev3_tm->notify_position_ramp_down_work);
 			legoev3_motor_stop(ev3_tm,
-					ev3_tm->tm.active_params.stop_command);
+					   ev3_tm->run_to_pos_stop_action);
 			ev3_tm->ramping = 0;
 		}
 	} else if (ev3_tm->speed_pid.setpoint < 0) {
@@ -703,7 +704,7 @@ static void update_position(struct legoev3_motor_data *ev3_tm)
 		if (ev3_tm->position <= ev3_tm->position_sp) {
 			schedule_work(&ev3_tm->notify_position_ramp_down_work);
 			legoev3_motor_stop(ev3_tm,
-					ev3_tm->tm.active_params.stop_command);
+					   ev3_tm->run_to_pos_stop_action);
 			ev3_tm->ramping = 0;
 		}
 	}
@@ -717,8 +718,6 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 
 	hrtimer_forward_now(timer, ktime_set(0, TACHO_MOTOR_POLL_MS * NSEC_PER_MSEC));
 
-	/* Continue with the actual calculations */
-
 	calculate_speed(ev3_tm);
 
 	if (ev3_tm->speed_pid_ena) {
@@ -731,10 +730,10 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 	} else if (ev3_tm->hold_pid_ena)
 		duty_cycle = tm_pid_update(&ev3_tm->hold_pid, ev3_tm->position);
 
+	set_duty_cycle(ev3_tm, duty_cycle);
+
 	if (ev3_tm->run_to_pos_active)
 		update_position(ev3_tm);
-
-	set_duty_cycle(ev3_tm, duty_cycle);
 
 	return HRTIMER_RESTART;
 }
@@ -839,21 +838,30 @@ static int legoev3_motor_run_regulated(void *context, int speed)
 {
 	struct legoev3_motor_data *ev3_tm = context;
 
-	/*
-	 * TODO: run_to_pos_active should be unset here but needs to get worked
-	 * out with position ramping
-	 */
-	//ev3_tm->run_to_pos_active = false;
+	ev3_tm->run_to_pos_active = false;
 	ev3_tm->speed_pid_ena = true;
 	ev3_tm->hold_pid_ena = false;
-
-	if (ev3_tm->run_to_pos_active) {
-		speed = abs(speed);
-		if (ev3_tm->position > ev3_tm->position_sp)
-			speed *= -1;
-	}
-
 	ev3_tm->speed_pid.setpoint = speed;
+	ev3_tm->state = STATE_RUNNING;
+
+	return 0;
+}
+
+static int legoev3_motor_run_to_pos(void *context, int pos, int speed,
+				    enum tacho_motor_stop_command stop_action)
+{
+	struct legoev3_motor_data *ev3_tm = context;
+
+	speed = abs(speed);
+	if (ev3_tm->position > pos)
+		speed *= -1;
+
+	ev3_tm->run_to_pos_active = true;
+	ev3_tm->speed_pid_ena = true;
+	ev3_tm->hold_pid_ena = false;
+	ev3_tm->position_sp = pos;
+	ev3_tm->speed_pid.setpoint = speed;
+	ev3_tm->run_to_pos_stop_action = stop_action;
 	ev3_tm->state = STATE_RUNNING;
 
 	return 0;
@@ -898,29 +906,8 @@ static int legoev3_motor_send_command(void *context,
 
 	switch (command) {
 	case TM_COMMAND_RUN_TO_ABS_POS:
-			ev3_tm->run_to_pos_active = true;
-			ev3_tm->speed_pid_ena = true;
-			ev3_tm->hold_pid_ena = false;
-			ev3_tm->position_sp = params->position_sp;
-			ev3_tm->state = STATE_RUNNING;
 			break;
 	case TM_COMMAND_RUN_TO_REL_POS:
-			ev3_tm->run_to_pos_active = true;
-			ev3_tm->speed_pid_ena = true;
-			ev3_tm->hold_pid_ena = false;
-			/* To check the previous command, we MUST be looking
-			 * at ev3_tm->tm.command because that's the previous
-			 * command that the user sent! The ev3_tm->run_command
-			 * is likely to be different since we use
-			 * TM_COMMAND_STOP to stop the motor when running to
-			 * position.
-			 */
-
-			if (ev3_tm->tm.command != TM_COMMAND_RUN_TO_REL_POS)
-				ev3_tm->position_sp = ev3_tm->position + params->position_sp;
-			else
-				ev3_tm->position_sp += params->position_sp;
-			ev3_tm->state = STATE_RUNNING;
 			break;
 	case TM_COMMAND_RUN_DIRECT:
 			break;
@@ -948,6 +935,7 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 
 	.run_unregulated	= legoev3_motor_run_unregulated,
 	.run_regulated		= legoev3_motor_run_regulated,
+	.run_to_pos		= legoev3_motor_run_to_pos,
 	.stop			= legoev3_motor_stop,
 	.reset			= legoev3_motor_reset,
 
