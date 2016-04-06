@@ -37,8 +37,10 @@ enum tacho_motor_command {
 	NUM_TM_COMMAND
 };
 
-#define IS_POS_CMD(command) ((command == TM_COMMAND_RUN_TO_ABS_POS) || (command == TM_COMMAND_RUN_TO_REL_POS))
-#define IS_RUN_CMD(command) ((command != TM_COMMAND_STOP) && (command != TM_COMMAND_RESET))
+#define IS_POS_CMD(c) \
+(((c) == TM_COMMAND_RUN_TO_ABS_POS) || ((c) == TM_COMMAND_RUN_TO_REL_POS))
+#define IS_RUN_CMD(c) \
+(((c) != TM_COMMAND_STOP) && ((c) != TM_COMMAND_RESET))
 
 enum tacho_motor_stop_command {
 	TM_STOP_COMMAND_COAST,
