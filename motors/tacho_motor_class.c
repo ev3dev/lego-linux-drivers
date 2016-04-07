@@ -282,6 +282,8 @@ void tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm)
 	 * to divide the ramp work into two pieces.
 	 */
 
+	if (!tm->ramping)
+		tm->ops->get_speed(tm->context, &tm->ramp_last_speed);
 	tm->ramp_start_speed = tm->ramp_last_speed;
 
 	if (0 > (tm->ramp_start_speed * tm->active_params.speed_sp))
@@ -340,7 +342,7 @@ static void tacho_motor_class_ramp_work(struct work_struct *work)
 		return;
 	} else if (tm->ramp_end_speed == tm->ramp_last_speed) {
 		tacho_motor_class_start_motor_ramp(tm);
-		tm->ramping = 0;
+
 		return;
 	}
 
