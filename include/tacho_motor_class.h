@@ -118,7 +118,6 @@ struct tacho_motor_device {
 	int ramp_start_speed;
 	int ramp_delta_speed;
 	int ramp_end_speed;
-	int ramp_max_speed;
 	int ramp_last_speed;
 	int ramp_delta_time;
 	unsigned long ramp_end_time;

@@ -282,7 +282,6 @@ void tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm)
 	 * to divide the ramp work into two pieces.
 	 */
 
-	tm->ramp_max_speed = tm->info->max_speed;
 	tm->ramp_start_speed = tm->ramp_last_speed;
 
 	if (0 > (tm->ramp_start_speed * tm->active_params.speed_sp))
@@ -302,7 +301,7 @@ void tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm)
 		ramp_sp = msecs_to_jiffies(tm->active_params.ramp_down_sp);
 
 	tm->ramp_delta_time = (ramp_sp * abs(tm->ramp_delta_speed))
-				/ tm->ramp_max_speed;
+				/ tm->info->max_speed;
 
 	/* Set the start time to about half a RAMP_PERIOD in the past so
 	 * that the first expiry starts the motor running at a non-zero
@@ -365,11 +364,6 @@ static void tacho_motor_class_ramp_work(struct work_struct *work)
 		tm->ramp_last_speed = tm->ramp_end_speed;
 		tm->ramping = 0;
 	}
-
-	if (tm->ramp_last_speed > tm->ramp_max_speed)
-		tm->ramp_last_speed = tm->ramp_max_speed;
-	else if (tm->ramp_last_speed < -tm->ramp_max_speed)
-		tm->ramp_last_speed = -tm->ramp_max_speed;
 
 	if (IS_POS_CMD(tm->command))
 		err = tm->ops->run_to_pos(tm->context,
