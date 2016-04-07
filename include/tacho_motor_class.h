@@ -128,6 +128,7 @@ struct tacho_motor_device {
 	struct device dev;
 	struct delayed_work run_timed_work;
 	struct delayed_work ramp_work;
+	struct workqueue_struct *wq;
 };
 
 /**
