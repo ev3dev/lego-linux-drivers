@@ -273,7 +273,8 @@ inline struct tacho_motor_device *to_tacho_motor(struct device *dev)
 	return container_of(dev, struct tacho_motor_device, dev);
 }
 
-void tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm)
+void tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm,
+                                        struct tacho_motor_params *params)
 {
 	unsigned long ramp_sp, now;
 
@@ -286,10 +287,10 @@ void tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm)
 		tm->ops->get_speed(tm->context, &tm->ramp_last_speed);
 	tm->ramp_start_speed = tm->ramp_last_speed;
 
-	if (0 > (tm->ramp_start_speed * tm->active_params.speed_sp))
+	if (0 > (tm->ramp_start_speed * params->speed_sp))
 		tm->ramp_end_speed = 0;
 	else
-		tm->ramp_end_speed = tm->active_params.speed_sp;
+		tm->ramp_end_speed = params->speed_sp;
 
 	tm->ramp_delta_speed = tm->ramp_end_speed - tm->ramp_start_speed;
 
@@ -298,9 +299,9 @@ void tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm)
 	 */
 
 	if (0 <= (tm->ramp_start_speed * tm->ramp_delta_speed))
-		ramp_sp = msecs_to_jiffies(tm->active_params.ramp_up_sp);
+		ramp_sp = msecs_to_jiffies(params->ramp_up_sp);
 	else
-		ramp_sp = msecs_to_jiffies(tm->active_params.ramp_down_sp);
+		ramp_sp = msecs_to_jiffies(params->ramp_down_sp);
 
 	tm->ramp_delta_time = (ramp_sp * abs(tm->ramp_delta_speed))
 				/ tm->info->max_speed;
@@ -341,7 +342,7 @@ static void tacho_motor_class_ramp_work(struct work_struct *work)
 		tm->ramping = 0;
 		return;
 	} else if (tm->ramp_end_speed == tm->ramp_last_speed) {
-		tacho_motor_class_start_motor_ramp(tm);
+		tacho_motor_class_start_motor_ramp(tm, &tm->active_params);
 
 		return;
 	}
@@ -686,7 +687,7 @@ static int tm_send_command(struct tacho_motor_device *tm,
 		 * TODO: this function needs to be modified to make the first
 		 * call to the motor controller and return an error.
 		 */
-		tacho_motor_class_start_motor_ramp(tm);
+		tacho_motor_class_start_motor_ramp(tm, &new_params);
 	}
 	if (err < 0)
 		return err;
@@ -731,7 +732,7 @@ static void tacho_motor_class_run_timed_work(struct work_struct *work)
 
 	if (tm->active_params.ramp_down_sp) {
 		tm->active_params.speed_sp = 0;
-		tacho_motor_class_start_motor_ramp(tm);
+		tacho_motor_class_start_motor_ramp(tm, &tm->active_params);
 	} else
 		tm->ops->stop(tm->context, tm->active_params.stop_command);
 }
