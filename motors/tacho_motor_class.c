@@ -733,8 +733,11 @@ static void tacho_motor_class_run_timed_work(struct work_struct *work)
 	struct tacho_motor_device *tm = container_of(to_delayed_work(work),
 				struct tacho_motor_device, run_timed_work);
 
-	tm->active_params.speed_sp = 0;
-	tacho_motor_class_start_motor_ramp(tm);
+	if (tm->active_params.ramp_down_sp) {
+		tm->active_params.speed_sp = 0;
+		tacho_motor_class_start_motor_ramp(tm);
+	} else
+		tm->ops->stop(tm->context, tm->active_params.stop_command);
 }
 
 static ssize_t stop_commands_show(struct device *dev,
