@@ -327,12 +327,6 @@ static void tacho_motor_class_ramp_work(struct work_struct *work)
 	unsigned long last_ramp_time;
 	int  err;
 
-	if (!IS_RUN_CMD(tm->command)) {
-		tm->ramp_last_speed = 0;
-		tm->ramping = 0;
-		return;
-	}
-
 	/* Check to see if we are running and done ramping, or if we're
 	 * running and have hit the 0 crossover point and need to restart
 	 * the ramp
@@ -340,6 +334,9 @@ static void tacho_motor_class_ramp_work(struct work_struct *work)
 
 	if (tm->active_params.speed_sp == tm->ramp_last_speed) {
 		tm->ramping = 0;
+		if (tm->command == TM_COMMAND_STOP)
+			tm->ops->stop(tm->context,
+				      params->stop_command);
 		return;
 	} else if (tm->ramp_end_speed == tm->ramp_last_speed) {
 		tacho_motor_class_start_motor_ramp(tm, &tm->active_params);
@@ -730,6 +727,7 @@ static void tacho_motor_class_run_timed_work(struct work_struct *work)
 	struct tacho_motor_device *tm = container_of(to_delayed_work(work),
 				struct tacho_motor_device, run_timed_work);
 
+	tm->command = TM_COMMAND_STOP;
 	if (tm->active_params.ramp_down_sp) {
 		tm->active_params.speed_sp = 0;
 		tacho_motor_class_start_motor_ramp(tm, &tm->active_params);
