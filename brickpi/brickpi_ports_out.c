@@ -183,7 +183,13 @@ static int brickpi_out_port_run_unregulated(void *context, int duty_cycle)
 {
 	struct brickpi_out_port_data *data = context;
 
+	mutex_lock(&data->ch_data->data->tx_mutex);
+	data->speed_pid_ena = false;
+	data->hold_pid_ena = false;
+	data->stop_at_target_position = false;
 	data->direct_duty_cycle = duty_cycle;
+	data->motor_enabled = true;
+	mutex_unlock(&data->ch_data->data->tx_mutex);
 
 	return 0;
 }
@@ -194,12 +200,34 @@ static int brickpi_out_port_run_regulated(void *context, int speed)
 {
 	struct brickpi_out_port_data *data = context;
 
-	if (data->stop_at_target_position) {
-		speed = abs(speed);
-		if (data->motor_position > data->target_position)
-			speed *= -1;
-	}
+	mutex_lock(&data->ch_data->data->tx_mutex);
+	data->speed_pid_ena = true;
+	data->hold_pid_ena = false;
+	data->stop_at_target_position = false;
 	data->speed_pid.setpoint = speed;
+	data->motor_enabled = true;
+	mutex_unlock(&data->ch_data->data->tx_mutex);
+
+	return 0;
+}
+
+static int brickpi_out_port_run_to_pos(void *context, int pos, int speed,
+				       enum tacho_motor_stop_command stop_action)
+{
+	struct brickpi_out_port_data *data = context;
+
+	mutex_lock(&data->ch_data->data->tx_mutex);
+	speed = abs(speed);
+	if (data->motor_position > pos)
+		speed *= -1;
+	data->speed_pid_ena = true;
+	data->hold_pid_ena = false;
+	data->stop_at_target_position = true;
+	data->speed_pid.setpoint = speed;
+	data->target_position = pos - data->motor_offset;
+	data->stop_action = stop_action;
+	data->motor_enabled = true;
+	mutex_unlock(&data->ch_data->data->tx_mutex);
 
 	return 0;
 }
@@ -239,10 +267,10 @@ static int brickpi_out_port_get_state(void *context)
 	return state;
 }
 
-void brickpi_out_port_do_stop(struct brickpi_out_port_data *data)
+void _brickpi_out_port_stop(struct brickpi_out_port_data *data)
 {
 	data->speed_pid_ena = false;
-	if (data->params.stop_command == TM_STOP_COMMAND_HOLD) {
+	if (data->stop_action == TM_STOP_COMMAND_HOLD) {
 		data->hold_pid_ena = true;
 		if (data->stop_at_target_position)
 			data->hold_pid.setpoint = data->target_position;
@@ -257,7 +285,20 @@ void brickpi_out_port_do_stop(struct brickpi_out_port_data *data)
 	tm_pid_reinit(&data->speed_pid);
 }
 
-void brickpi_out_port_reset(struct brickpi_out_port_data *data)
+static int brickpi_out_port_stop(void *context,
+				 enum tacho_motor_stop_command stop_action)
+{
+	struct brickpi_out_port_data *data = context;
+
+	mutex_lock(&data->ch_data->data->tx_mutex);
+	data->stop_action = stop_action;
+	_brickpi_out_port_stop(data);
+	mutex_unlock(&data->ch_data->data->tx_mutex);
+
+	return 0;
+}
+
+void _brickpi_out_port_reset(struct brickpi_out_port_data *data)
 {
 	data->speed_pid_ena = false;
 	data->hold_pid_ena = false;
@@ -270,63 +311,17 @@ void brickpi_out_port_reset(struct brickpi_out_port_data *data)
 	tm_pid_init(&data->hold_pid, 20000, 0, 0);
 }
 
-static unsigned brickpi_out_port_get_commands(void *context)
-{
-	return BIT(TM_COMMAND_RUN_FOREVER) | BIT(TM_COMMAND_RUN_TO_ABS_POS)
-		| BIT(TM_COMMAND_RUN_TO_REL_POS) | BIT(TM_COMMAND_RUN_DIRECT)
-		| BIT(TM_COMMAND_STOP) | BIT(TM_COMMAND_RESET);
-}
-
-static int brickpi_out_port_tacho_send_command(void *context,
-					      struct tacho_motor_params *params,
-					      enum tacho_motor_command command)
+static int brickpi_out_port_reset(void *context)
 {
 	struct brickpi_out_port_data *data = context;
 
-	data->params = *params;
-
 	mutex_lock(&data->ch_data->data->tx_mutex);
-	if (IS_RUN_CMD(command)) {
-		int duty_cycle_sp, position_sp;
-
-		if (command == TM_COMMAND_RUN_DIRECT) {
-			duty_cycle_sp = params->duty_cycle_sp;
-			data->direct_duty_cycle = duty_cycle_sp;
-			data->speed_pid_ena = false;
-		} else {
-			duty_cycle_sp = 0;
-			data->speed_pid_ena = true;
-		}
-		data->hold_pid_ena = false;
-		position_sp = params->position_sp;
-		if (params->polarity == DC_MOTOR_POLARITY_INVERSED) {
-			duty_cycle_sp *= -1;
-			position_sp *= -1;
-		}
-		data->motor_speed = BRICKPI_DUTY_PCT_TO_RAW(abs(duty_cycle_sp));
-		if (IS_POS_CMD(command)) {
-			if (command == TM_COMMAND_RUN_TO_ABS_POS)
-				data->target_position = position_sp - data->motor_offset;
-			else if (command == TM_COMMAND_RUN_TO_REL_POS)
-				data->target_position = position_sp + data->motor_position;
-			data->motor_reversed =
-				(data->target_position < data->motor_position);
-			data->stop_at_target_position = true;
-		} else {
-			data->motor_reversed = (duty_cycle_sp < 0);
-			data->stop_at_target_position = false;
-		}
-		brickpi_out_port_run_regulated(data, params->speed_sp);
-		data->motor_enabled = true;
-	} else if (command == TM_COMMAND_STOP)
-		brickpi_out_port_do_stop(data);
-	else if (command == TM_COMMAND_RESET)
-		brickpi_out_port_reset(data);
-
+	_brickpi_out_port_reset(data);
 	mutex_unlock(&data->ch_data->data->tx_mutex);
 
 	return 0;
 }
+
 
 static unsigned brickpi_out_port_get_stop_commands(void *context)
 {
@@ -340,6 +335,9 @@ struct tacho_motor_ops brickpi_out_port_tacho_motor_ops = {
 	.get_speed		= brickpi_out_port_get_speed,
 	.run_unregulated	= brickpi_out_port_run_unregulated,
 	.run_regulated		= brickpi_out_port_run_regulated,
+	.run_to_pos		= brickpi_out_port_run_to_pos,
+	.stop			= brickpi_out_port_stop,
+	.reset			= brickpi_out_port_reset,
 	.get_speed_Kp		= brickpi_out_port_get_speed_Kp,
 	.set_speed_Kp		= brickpi_out_port_set_speed_Kp,
 	.get_speed_Ki		= brickpi_out_port_get_speed_Ki,
@@ -353,8 +351,6 @@ struct tacho_motor_ops brickpi_out_port_tacho_motor_ops = {
 	.get_hold_Kd		= brickpi_out_port_get_hold_Kd,
 	.set_hold_Kd		= brickpi_out_port_set_hold_Kd,
 	.get_state		= brickpi_out_port_get_state,
-	.get_commands		= brickpi_out_port_get_commands,
-	.send_command		= brickpi_out_port_tacho_send_command,
 	.get_stop_commands	= brickpi_out_port_get_stop_commands,
 };
 

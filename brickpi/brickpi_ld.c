@@ -271,7 +271,7 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 			    || (!port->motor_reversed
 			     && position > port->target_position))
 			{
-				brickpi_out_port_do_stop(port);
+				_brickpi_out_port_stop(port);
 			}
 		}
 	}
@@ -528,8 +528,8 @@ static void brickpi_init_work(struct work_struct *work)
 			data->rx_time, BRICKPI_SPEED_PERIOD / BRICKPI_POLL_MS);
 		tm_speed_init(&out_port_1->speed, out_port_1->motor_position,
 			data->rx_time, BRICKPI_SPEED_PERIOD / BRICKPI_POLL_MS);
-		brickpi_out_port_reset(out_port_1);
-		brickpi_out_port_reset(out_port_2);
+		_brickpi_out_port_reset(out_port_1);
+		_brickpi_out_port_reset(out_port_2);
 		ch_data->fw_version = in_port_1->sensor_values[0];
 		debug_pr("address: %d, fw: %d\n", ch_data->address,
 			 ch_data->fw_version);
