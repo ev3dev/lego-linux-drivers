@@ -394,20 +394,6 @@ static int tm_do_one_ramp_step(struct tacho_motor_device *tm,
 	return 0;
 }
 
-static int direct_set_duty_cycle(struct tacho_motor_device *tm)
-{
-	int err = 0;
-
-	tm->active_params.duty_cycle_sp = tm->params.duty_cycle_sp;
-	if (tm->active_params.polarity == DC_MOTOR_POLARITY_INVERSED)
-		tm->active_params.duty_cycle_sp = tm->params.duty_cycle_sp * -1;
-
-	err = tm->ops->run_unregulated(tm->context,
-				       tm->active_params.duty_cycle_sp);
-
-	return err;
-}
-
 /*
  * Set all parameters to the default values.
  */
@@ -934,16 +920,15 @@ static ssize_t duty_cycle_sp_store(struct device *dev,
 		|| duty_cycle > DC_MOTOR_MAX_DUTY_CYCLE)
 		return -EINVAL;
 
-	tm->params.duty_cycle_sp = duty_cycle;
-
 	/* If we're in run-direct mode, allow the duty_cycle_sp to change */
-
 	if (tm->command == TM_COMMAND_RUN_DIRECT) {
-		err = direct_set_duty_cycle(tm);
-
+		err = tm->ops->run_unregulated(tm->context, duty_cycle);
 		if (err < 0)
 			return err;
+		tm->active_params.duty_cycle_sp = duty_cycle;
 	}
+
+	tm->params.duty_cycle_sp = duty_cycle;
 
 	return size;
 }
