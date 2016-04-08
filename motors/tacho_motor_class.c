@@ -273,8 +273,11 @@ inline struct tacho_motor_device *to_tacho_motor(struct device *dev)
 	return container_of(dev, struct tacho_motor_device, dev);
 }
 
-void tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm,
-                                        struct tacho_motor_params *params)
+static int tm_do_one_ramp_step(struct tacho_motor_device *tm,
+			       struct tacho_motor_params *params);
+
+static int tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm,
+					      struct tacho_motor_params *params)
 {
 	unsigned long ramp_sp, now;
 
@@ -315,34 +318,40 @@ void tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm,
 	tm->ramp_end_time = now + tm->ramp_delta_time;
 	tm->last_ramp_work_time = now;
 	tm->ramping = 1;
-	queue_delayed_work(tm->wq, &tm->ramp_work, 0);
+
+	return tm_do_one_ramp_step(tm, params);
 }
 
 static void tacho_motor_class_ramp_work(struct work_struct *work)
 {
-	struct tacho_motor_device *tm =
-		container_of(to_delayed_work(work), struct tacho_motor_device,
-				ramp_work);
+	struct tacho_motor_device *tm = container_of(to_delayed_work(work),
+					struct tacho_motor_device, ramp_work);
+	int err;
+
+	err = tm_do_one_ramp_step(tm, &tm->active_params);
+	WARN_ONCE(err, "Ramp failed.");
+}
+
+static int tm_do_one_ramp_step(struct tacho_motor_device *tm,
+			       struct tacho_motor_params *params)
+{
 	unsigned long remaining_ramp_time = 0;
 	unsigned long last_ramp_time;
-	int  err;
+	int err;
 
 	/* Check to see if we are running and done ramping, or if we're
 	 * running and have hit the 0 crossover point and need to restart
 	 * the ramp
 	 */
 
-	if (tm->active_params.speed_sp == tm->ramp_last_speed) {
+	if (params->speed_sp == tm->ramp_last_speed) {
 		tm->ramping = 0;
 		if (tm->command == TM_COMMAND_STOP)
-			tm->ops->stop(tm->context,
-				      params->stop_command);
-		return;
-	} else if (tm->ramp_end_speed == tm->ramp_last_speed) {
-		tacho_motor_class_start_motor_ramp(tm, &tm->active_params);
-
-		return;
-	}
+			return tm->ops->stop(tm->context,
+					     params->stop_command);
+		return 0;
+	} else if (tm->ramp_end_speed == tm->ramp_last_speed)
+		return tacho_motor_class_start_motor_ramp(tm, params);
 
 	/*
 	 * If we haven't reached the end of the ramp yet, set the speed
@@ -366,12 +375,12 @@ static void tacho_motor_class_ramp_work(struct work_struct *work)
 	}
 
 	if (IS_POS_CMD(tm->command))
-		err = tm->ops->run_to_pos(tm->context,
-			tm->active_params.position_sp, tm->ramp_last_speed,
-			tm->active_params.stop_command);
+		err = tm->ops->run_to_pos(tm->context, params->position_sp,
+			tm->ramp_last_speed, params->stop_command);
 	else
 		err = tm->ops->run_regulated(tm->context, tm->ramp_last_speed);
-	WARN_ONCE(err, "Failed to set speed.");
+	if (err)
+		return err;
 
 	/*
 	 * Measure how long it took since the last call to ramp_work and
@@ -381,6 +390,8 @@ static void tacho_motor_class_ramp_work(struct work_struct *work)
 	tm->last_ramp_work_time = jiffies;
 	queue_delayed_work(tm->wq, &tm->ramp_work, last_ramp_time >= RAMP_PERIOD
 		? 0 : RAMP_PERIOD - last_ramp_time);
+
+	return 0;
 }
 
 static int direct_set_duty_cycle(struct tacho_motor_device *tm)
@@ -678,14 +689,8 @@ static int tm_send_command(struct tacho_motor_device *tm,
 	default:
 		BUG();
 	}
-	if (ramp) {
-		err = 0;
-		/*
-		 * TODO: this function needs to be modified to make the first
-		 * call to the motor controller and return an error.
-		 */
-		tacho_motor_class_start_motor_ramp(tm, &new_params);
-	}
+	if (ramp)
+		err = tacho_motor_class_start_motor_ramp(tm, &new_params);
 	if (err < 0)
 		return err;
 
