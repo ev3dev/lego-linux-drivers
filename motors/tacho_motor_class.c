@@ -317,7 +317,7 @@ static int tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm,
 	now = jiffies - RAMP_PERIOD/2;
 	tm->ramp_end_time = now + tm->ramp_delta_time;
 	tm->last_ramp_work_time = now;
-	tm->ramping = 1;
+	tm->ramping = true;
 
 	return tm_do_one_ramp_step(tm, params);
 }
@@ -345,7 +345,7 @@ static int tm_do_one_ramp_step(struct tacho_motor_device *tm,
 	 */
 
 	if (params->speed_sp == tm->ramp_last_speed) {
-		tm->ramping = 0;
+		tm->ramping = false;
 		if (tm->command == TM_COMMAND_STOP)
 			return tm->ops->stop(tm->context,
 					     params->stop_command);
@@ -371,7 +371,7 @@ static int tm_do_one_ramp_step(struct tacho_motor_device *tm,
 				/ tm->ramp_delta_time);
 	} else {
 		tm->ramp_last_speed = tm->ramp_end_speed;
-		tm->ramping = 0;
+		tm->ramping = false;
 	}
 
 	if (IS_POS_CMD(tm->command))
