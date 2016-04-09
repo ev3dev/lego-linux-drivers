@@ -50,7 +50,7 @@ enum ev3_uart_sensor_types {
  * @num_view_modes: Number of modes that return a single value.
  */
 struct ev3_uart_sensor_info {
-	const char* name;
+	const char *name;
 	unsigned type_id;
 	struct lego_sensor_mode_info mode_info[LEGO_SENSOR_MODE_MAX + 1];
 	int num_modes;

@@ -124,25 +124,25 @@
 
 #define RAMP_PERIOD	msecs_to_jiffies(100)
 
-const char* dc_motor_command_names[] = {
+const char *dc_motor_command_names[] = {
 	[DC_MOTOR_COMMAND_RUN_FOREVER]	= "run-forever",
 	[DC_MOTOR_COMMAND_RUN_TIMED]	= "run-timed",
 	[DC_MOTOR_COMMAND_RUN_DIRECT]	= "run-direct",
 	[DC_MOTOR_COMMAND_STOP]		= "stop",
 };
 
-const char* dc_motor_stop_action_names[] = {
+const char *dc_motor_stop_action_names[] = {
 	[DC_MOTOR_STOP_ACTION_COAST]	= "coast",
 	[DC_MOTOR_STOP_ACTION_BRAKE]	= "brake",
 };
 
-const char* dc_motor_polarity_values[] = {
+const char *dc_motor_polarity_values[] = {
 	[DC_MOTOR_POLARITY_NORMAL]	= "normal",
 	[DC_MOTOR_POLARITY_INVERSED]	= "inversed",
 };
 EXPORT_SYMBOL_GPL(dc_motor_polarity_values);
 
-const char* dc_motor_state_names[] = {
+const char *dc_motor_state_names[] = {
 	[DC_MOTOR_STATE_RUNNING]	= "running",
 	[DC_MOTOR_STATE_RAMPING]	= "ramping",
 };

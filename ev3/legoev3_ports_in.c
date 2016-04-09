@@ -254,7 +254,7 @@ enum sensor_type {
 	NUM_SENSOR_TYPE
 };
 
-static const char* ev3_input_port_state_names[] = {
+static const char * const ev3_input_port_state_names[] = {
 	[SENSOR_NONE]		= "no-sensor",
 	[SENSOR_NXT_ANALOG]	= "nxt-analog",
 	[SENSOR_NXT_COLOR]	= "nxt-color",
@@ -278,7 +278,7 @@ enum ev3_input_port_mode {
 
 struct ev3_input_port_mode_name {
 	enum ev3_input_port_mode mode;
-	const char* name;
+	const char *name;
 };
 
 /*

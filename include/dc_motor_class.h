@@ -95,10 +95,10 @@ struct dc_motor_params {
  * @set_duty_cycle: Sets the duty cycle. Returns 0 on success or negative error.
  */
 struct dc_motor_ops {
-	unsigned (*get_supported_commands)(void* context);
-	unsigned (*get_supported_stop_actions)(void* context);
-	enum dc_motor_internal_command (*get_command)(void* context);
-	int (*set_command)(void* context, enum dc_motor_internal_command);
+	unsigned (*get_supported_commands)(void *context);
+	unsigned (*get_supported_stop_actions)(void *context);
+	enum dc_motor_internal_command (*get_command)(void *context);
+	int (*set_command)(void *context, enum dc_motor_internal_command);
 	unsigned (*get_duty_cycle)(void *context);
 	int (*set_duty_cycle)(void *context, unsigned duty_cycle);
 };

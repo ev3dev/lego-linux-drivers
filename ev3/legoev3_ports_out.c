@@ -206,7 +206,7 @@ static const struct device_type ev3_motor_device_types[] = {
 	}
 };
 
-static const char *ev3_output_port_status_names[] = {
+static const char * const ev3_output_port_status_names[] = {
 	[MOTOR_NONE]	= "no-motor",
 	[MOTOR_TACHO]	= legoev3_output_port_mode_info[MOTOR_TACHO].name,
 	[MOTOR_DC]	= legoev3_output_port_mode_info[MOTOR_DC].name,
@@ -282,13 +282,13 @@ int ev3_output_port_set_direction_gpios(struct ev3_output_port_data *data)
 	return 0;
 }
 
-static unsigned ev3_ouput_port_get_supported_commands(void* context)
+static unsigned ev3_ouput_port_get_supported_commands(void *context)
 {
 	return BIT(DC_MOTOR_COMMAND_RUN_FOREVER) | BIT(DC_MOTOR_COMMAND_RUN_DIRECT)
 		| BIT(DC_MOTOR_COMMAND_STOP);
 }
 
-static unsigned ev3_ouput_port_get_supported_stop_actions(void* context)
+static unsigned ev3_ouput_port_get_supported_stop_actions(void *context)
 {
 	return BIT(DC_MOTOR_STOP_ACTION_COAST) | BIT(DC_MOTOR_STOP_ACTION_BRAKE);
 }

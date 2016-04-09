@@ -87,7 +87,7 @@ static const struct lego_port_mode_info ms_ev3_smux_port_mode_info[] = {
 	},
 };
 
-static const char *ms_ev3_smux_uart_sensor_names[] = {
+static const char * const ms_ev3_smux_uart_sensor_names[] = {
 	LEGO_EV3_COLOR_NAME,
 	LEGO_EV3_ULTRASONIC_NAME,
 	LEGO_EV3_GYRO_NAME,
@@ -95,12 +95,12 @@ static const char *ms_ev3_smux_uart_sensor_names[] = {
 	NULL
 };
 
-static const char *ms_ev3_smux_analog_sensor_names[] = {
+static const char * const ms_ev3_smux_analog_sensor_names[] = {
 	LEGO_EV3_TOUCH_SENSOR_NAME,
 	NULL
 };
 
-static const char **ms_ev3_smux_sensor_names[] = {
+static const char * const *ms_ev3_smux_sensor_names[] = {
 	[MS_EV3_SMUX_MODE_UART] = ms_ev3_smux_uart_sensor_names,
 	[MS_EV3_SMUX_MODE_ANALOG] = ms_ev3_smux_analog_sensor_names,
 };
@@ -124,13 +124,15 @@ static const struct device_type ms_ev3_smux_device_type[] = {
 	},
 };
 
-static int ms_ev3_smux_set_device(void* context, const char* name)
+static int ms_ev3_smux_set_device(void *context, const char *name)
 {
 	struct nxt_i2c_sensor_data *data = context;
 	struct ms_ev3_smux_data *smux = data->callback_data;
 	struct lego_device *new_sensor;
-	const char **match_name = ms_ev3_smux_sensor_names[smux->port.mode];
+	const char * const *match_name;
 
+
+	match_name = ms_ev3_smux_sensor_names[smux->port.mode];
 	while (*match_name) {
 		if (!strcmp(name, *match_name))
 			break;

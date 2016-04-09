@@ -44,10 +44,10 @@ enum servo_motor_polarity {
  * 	negative error.
  */
 struct servo_motor_ops {
-	int (*get_position)(void* context);
-	int (*set_position)(void* context, int position_sp);
-	int (*get_rate)(void* context);
-	int (*set_rate)(void* context, unsigned rate);
+	int (*get_position)(void *context);
+	int (*set_position)(void *context, int position_sp);
+	int (*get_rate)(void *context);
+	int (*set_rate)(void *context, unsigned rate);
 };
 
 /**

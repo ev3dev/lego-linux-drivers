@@ -62,24 +62,24 @@ static void wedo_motor_update_output(struct wedo_motor_data *wmd)
 	wedo_port_update_output(wmd->wpd, output);
 }
 
-static unsigned wedo_motor_get_supported_commands(void* context)
+static unsigned wedo_motor_get_supported_commands(void *context)
 {
 	return BIT(DC_MOTOR_COMMAND_RUN_FOREVER) | BIT(DC_MOTOR_COMMAND_RUN_DIRECT) | BIT(DC_MOTOR_COMMAND_STOP);
 }
 
-static unsigned wedo_motor_get_supported_stop_actions(void* context)
+static unsigned wedo_motor_get_supported_stop_actions(void *context)
 {
 	return BIT(DC_MOTOR_STOP_ACTION_COAST) | BIT(DC_MOTOR_STOP_ACTION_BRAKE);
 }
 
-static enum dc_motor_internal_command wedo_motor_get_command(void* context)
+static enum dc_motor_internal_command wedo_motor_get_command(void *context)
 {
 	struct wedo_motor_data *wmd = context;
 
 	return wmd->command;
 }
 
-static int wedo_motor_set_command(void* context,
+static int wedo_motor_set_command(void *context,
 				  enum dc_motor_internal_command command)
 {
 	struct wedo_motor_data *wmd = context;

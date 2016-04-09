@@ -124,7 +124,8 @@ ms_nxtmmx_out_port_device_types[NUM_MS_NXTMMX_OUT_PORT_MODES] = {
 	},
 };
 
-static const char *ms_nxtmmx_out_port_default_driver[NUM_MS_NXTMMX_OUT_PORT_MODES] = {
+static const char * const
+ms_nxtmmx_out_port_default_driver[NUM_MS_NXTMMX_OUT_PORT_MODES] = {
 	[MS_NXTMMX_OUT_PORT_MODE_TACHO_MOTOR]	= "lego-nxt-motor",
 };
 

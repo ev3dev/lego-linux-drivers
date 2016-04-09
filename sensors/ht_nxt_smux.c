@@ -104,7 +104,7 @@ static u8 ht_nxt_smux_i2c_data_reg[] = {
 	[HT_NXT_SMUX_CH4] = HT_NXT_SMUX_CH4_I2C_DATA_REG,
 };
 
-static const char* ht_nxt_smux_supported_i2c_sensor_names[] = {
+static const char * const ht_nxt_smux_supported_i2c_sensor_names[] = {
 	[HT_NXT_SMUX_SENSOR_ANALOG]		= NULL,
 	[HT_NXT_SMUX_SENSOR_LEGO_ULTRASONIC]	= LEGO_NXT_ULTRASONIC_SENSOR_NAME,
 	[HT_NXT_SMUX_SENSOR_HT_COMPASS]		= HT_NXT_COMPASS_SENSOR_NAME,
@@ -267,7 +267,7 @@ void ht_nxt_smux_port_detect_sensor(struct ht_nxt_smux_port_data *data)
 {
 	int config_reg = ht_nxt_smux_config_reg[data->channel];
 	int ret;
-	const char* name = NULL;
+	const char *name = NULL;
 
 	ht_nxt_smux_unregister_sensor(data);
 

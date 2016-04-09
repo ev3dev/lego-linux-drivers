@@ -37,7 +37,8 @@ brickpi_out_port_device_types[NUM_BRICKPI_OUT_PORT_MODES] = {
 	},
 };
 
-static const char *brickpi_out_port_default_driver[NUM_BRICKPI_OUT_PORT_MODES] = {
+static const char * const
+brickpi_out_port_default_driver[NUM_BRICKPI_OUT_PORT_MODES] = {
 	[BRICKPI_OUT_PORT_MODE_TACHO_MOTOR]	= "lego-nxt-motor",
 	[BRICKPI_OUT_PORT_MODE_DC_MOTOR]	= "rcx-motor",
 	[BRICKPI_OUT_PORT_MODE_LED] 		= "rcx-led",
@@ -76,12 +77,12 @@ static const struct lego_port_mode_info brickpi_out_port_mode_info[NUM_BRICKPI_O
 	},
 };
 
-static unsigned brickpi_out_port_get_supported_commands(void* context)
+static unsigned brickpi_out_port_get_supported_commands(void *context)
 {
 	return BIT(DC_MOTOR_COMMAND_RUN_FOREVER) | BIT(DC_MOTOR_COMMAND_STOP);
 }
 
-static unsigned brickpi_out_port_get_supported_stop_actions(void* context)
+static unsigned brickpi_out_port_get_supported_stop_actions(void *context)
 {
 	return BIT(DC_MOTOR_STOP_ACTION_COAST);
 }

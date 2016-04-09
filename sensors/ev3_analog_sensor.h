@@ -26,7 +26,7 @@
  * @num_modes: Number of valid elements in the mode_info array.
  */
 struct ev3_analog_sensor_info {
-	const char* name;
+	const char *name;
 	struct lego_sensor_mode_info mode_info[LEGO_SENSOR_MODE_MAX + 1];
 	int num_modes;
 };
