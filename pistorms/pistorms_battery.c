@@ -37,15 +37,6 @@ static int pistorms_battery_get_property(struct power_supply *psy,
 	int ret = 0;
 
 	switch (prop) {
-	case POWER_SUPPLY_PROP_STATUS:
-		val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
-		break;
-	case POWER_SUPPLY_PROP_PRESENT:
-		val->intval = 1;
-		break;
-	case POWER_SUPPLY_PROP_TECHNOLOGY:
-		val->intval = POWER_SUPPLY_TECHNOLOGY_UNKNOWN;
-		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		ret = i2c_smbus_read_byte_data(bat->client, PISTORMS_BATTERY_REG);
 		if (WARN_ONCE(ret < 0, "Failed to read voltage"))
@@ -64,9 +55,6 @@ static int pistorms_battery_get_property(struct power_supply *psy,
 }
 
 static enum power_supply_property pistorms_battery_props[] = {
-	POWER_SUPPLY_PROP_STATUS,
-	POWER_SUPPLY_PROP_PRESENT,
-	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_SCOPE,
 };
