@@ -25,7 +25,7 @@
 #define WRITE_SIZE		8
 #define ENCODER_SIZE		4
 
-#define WRITE_REG(idx)		(0x42 + WRITE_SIZE * idx)
+#define WRITE_REG(idx)		(0x42 + WRITE_SIZE * (idx))
 #define WRITE_ENCODER_TARGET	0
 #define WRITE_SPEED		4
 #define WRITE_TIME		5
@@ -39,9 +39,9 @@
  * code is shared with both modules. Just a few register addresses are different.
  */
 
-#define READ_ENCODER_POS_REG(idx)	(0x52 + ENCODER_SIZE * idx)
-#define READ_STATUS_REG(idx)		(0x5A + idx)
-#define READ_TASKS_REG(idx)		(0x5C + idx)
+#define READ_ENCODER_POS_REG(idx)	(0x52 + ENCODER_SIZE * (idx))
+#define READ_STATUS_REG(idx)		(0x5A + (idx))
+#define READ_TASKS_REG(idx)		(0x5C + (idx))
 
 #define ENCODER_PID_KP_REG	0x5E
 #define ENCODER_PID_KI_REG	0x50
@@ -53,9 +53,9 @@
 
 #else
 
-#define READ_ENCODER_POS_REG(idx)	(0x62 + ENCODER_SIZE * idx)
-#define READ_STATUS_REG(idx)		(0x72 + idx)
-#define READ_TASKS_REG(idx)		(0x76 + idx)
+#define READ_ENCODER_POS_REG(idx)	(0x62 + ENCODER_SIZE * (idx))
+#define READ_STATUS_REG(idx)		(0x72 + (idx))
+#define READ_TASKS_REG(idx)		(0x76 + (idx))
 
 #define ENCODER_PID_KP_REG	0x7A
 #define ENCODER_PID_KI_REG	0x7C
@@ -71,11 +71,11 @@
 
 #define COMMAND_RESET_ALL		'R'
 #define COMMAND_SYNC_START		'S'
-#define COMMAND_FLOAT_STOP(idx)		('a' + idx)
+#define COMMAND_FLOAT_STOP(idx)		('a' + (idx))
 #define COMMAND_SYNC_FLOAT_STOP		'c'
-#define COMMAND_BRAKE_STOP(idx)		('A' + idx)
+#define COMMAND_BRAKE_STOP(idx)		('A' + (idx))
 #define COMMAND_SYNC_BRAKE_STOP		'C'
-#define COMMAND_RESET_ENCODER(idx)	('r' + idx)
+#define COMMAND_RESET_ENCODER(idx)	('r' + (idx))
 
 #define CMD_FLAG_SPEED_CTRL	BIT(0)
 #define CMD_FLAG_RAMP		BIT(1)
@@ -87,7 +87,8 @@
 #define CMD_FLAG_GO		BIT(7)
 
 /* special value used when stop command is "hold" */
-#define CMD_FLAGS_STOP_HOLD (CMD_FLAG_SPEED_CTRL | CMD_FLAG_ENCODER_CTRL | CMD_FLAG_HOLD | CMD_FLAG_GO)
+#define CMD_FLAGS_STOP_HOLD \
+(CMD_FLAG_SPEED_CTRL | CMD_FLAG_ENCODER_CTRL | CMD_FLAG_HOLD | CMD_FLAG_GO)
 
 #define STATUS_FLAG_SPEED_CTRL	BIT(0)
 #define STATUS_FLAG_RAMPING	BIT(1)
