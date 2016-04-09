@@ -81,7 +81,7 @@ static int brickpi_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		ret = brickpi_battery_read16(bat->client);
-		if (ret < 0)
+		if (WARN_ONCE(ret < 0, "Failed to read voltage"))
 			break;
 		/*
 		 * Converting to microvolts. The chip has a 3.3V reference and
@@ -96,7 +96,8 @@ static int brickpi_battery_get_property(struct power_supply *psy,
 		ret = -EINVAL;
 		break;
 	}
-	return ret;
+
+	return 0;
 }
 
 static enum power_supply_property brickpi_battery_props[] = {
