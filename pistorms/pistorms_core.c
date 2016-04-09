@@ -52,11 +52,37 @@
 #define PISTORMS_BANK_A_ADDR	0x1a
 #define PISTORMS_BANK_B_ADDR	0x1b
 
+static int _pistorms_detect(struct i2c_client *client)
+{
+	char vendor_id[NXT_I2C_ID_STR_LEN + 1] = { 0 };
+	char product_id[NXT_I2C_ID_STR_LEN + 1] = { 0 };
+	int ret;
+
+	ret = i2c_smbus_read_i2c_block_data(client, NXT_I2C_VEND_ID_REG,
+					    NXT_I2C_ID_STR_LEN, vendor_id);
+	if (ret < 0 || strcmp(vendor_id, "mndsnsrs"))
+		return -ENODEV;
+
+	ret = i2c_smbus_read_i2c_block_data(client, NXT_I2C_PROD_ID_REG,
+					    NXT_I2C_ID_STR_LEN, product_id);
+	if (ret < 0 || strcmp(product_id, "PiStorms"))
+		return -ENODEV;
+
+	return 0;
+}
+
 static int pistorms_probe(struct i2c_client *client,
 			  const struct i2c_device_id *id)
 {
 	struct pistorms_data *data;
 	int ret;
+
+	ret = _pistorms_detect(client);
+	if (ret) {
+		dev_err(&client->dev, "PiStorms not found at 0x%02x\n",
+			client->addr);
+		return ret;
+	}
 
 	data = kzalloc(sizeof(struct pistorms_data), GFP_KERNEL);
 	if (!data)
@@ -126,19 +152,11 @@ static int pistorms_remove(struct i2c_client *client)
 static int pistorms_detect(struct i2c_client *client,
 			   struct i2c_board_info *info)
 {
-	char vendor_id[NXT_I2C_ID_STR_LEN + 1] = { 0 };
-	char product_id[NXT_I2C_ID_STR_LEN + 1] = { 0 };
 	int ret;
 
-	ret = i2c_smbus_read_i2c_block_data(client, NXT_I2C_VEND_ID_REG,
-					    NXT_I2C_ID_STR_LEN, vendor_id);
-	if (ret < 0 || strcmp(vendor_id, "mndsnsrs"))
-		return -ENODEV;
-
-	ret = i2c_smbus_read_i2c_block_data(client, NXT_I2C_PROD_ID_REG,
-					    NXT_I2C_ID_STR_LEN, product_id);
-	if (ret < 0 || strcmp(vendor_id, "PiStorms"))
-		return -ENODEV;
+	ret = _pistorms_detect(client);
+	if (ret)
+		return ret;
 
 	strcpy(info->type, "pistorms");
 
