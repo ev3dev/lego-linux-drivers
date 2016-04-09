@@ -44,7 +44,7 @@
 #define READ_TASKS_REG(idx)		(0x5C + (idx))
 
 #define ENCODER_PID_KP_REG	0x5E
-#define ENCODER_PID_KI_REG	0x50
+#define ENCODER_PID_KI_REG	0x60
 #define ENCODER_PID_KD_REG	0x62
 
 #define SPEED_PID_KP_REG	0x64
