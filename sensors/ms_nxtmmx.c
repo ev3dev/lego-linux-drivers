@@ -86,7 +86,7 @@
 #define CMD_FLAG_TIMED		BIT(6)
 #define CMD_FLAG_GO		BIT(7)
 
-/* special value used when stop command is "hold" */
+/* special value used when stop action is "hold" */
 #define CMD_FLAGS_STOP_HOLD \
 (CMD_FLAG_SPEED_CTRL | CMD_FLAG_ENCODER_CTRL | CMD_FLAG_HOLD | CMD_FLAG_GO)
 
@@ -279,7 +279,7 @@ static int ms_nxtmmx_run_regulated(void *context, int speed)
 }
 
 static int ms_nxtmmx_run_to_pos(void *context, int pos, int speed,
-				enum tacho_motor_stop_command stop_action)
+				enum tm_stop_action stop_action)
 {
 	struct ms_nxtmmx_data *mmx = context;
 	u8 command_bytes[WRITE_SIZE];
@@ -296,9 +296,9 @@ static int ms_nxtmmx_run_to_pos(void *context, int pos, int speed,
 
 	command_flags = CMD_FLAG_SPEED_CTRL | CMD_FLAG_ENCODER_CTRL
 			| CMD_FLAG_RAMP;
-	if (stop_action == TM_STOP_COMMAND_HOLD)
+	if (stop_action == TM_STOP_ACTION_HOLD)
 		command_flags |= CMD_FLAG_HOLD;
-	if (stop_action == TM_STOP_COMMAND_BRAKE)
+	if (stop_action == TM_STOP_ACTION_BRAKE)
 		command_flags |= CMD_FLAG_BRAKE;
 	command_flags |= CMD_FLAG_GO;
 
@@ -316,13 +316,13 @@ static int ms_nxtmmx_run_to_pos(void *context, int pos, int speed,
 	return 0;
 }
 
-static int ms_nxtmmx_stop(void *context, enum tacho_motor_stop_command action)
+static int ms_nxtmmx_stop(void *context, enum tm_stop_action action)
 {
 	struct ms_nxtmmx_data *mmx = context;
 	u8 command_bytes[WRITE_SIZE];
 	int err;
 
-	command_bytes[0] = (action == TM_STOP_COMMAND_COAST)
+	command_bytes[0] = (action == TM_STOP_ACTION_COAST)
 		? COMMAND_FLOAT_STOP(mmx->index)
 		: COMMAND_BRAKE_STOP(mmx->index);
 
@@ -333,7 +333,7 @@ static int ms_nxtmmx_stop(void *context, enum tacho_motor_stop_command action)
 
 	mmx->holding = false;
 
-	if (action == TM_STOP_COMMAND_HOLD) {
+	if (action == TM_STOP_ACTION_HOLD) {
 		/*
 		 * Hold only happens when encoder mode is enabled, so
 		 * we have to issue a run command to tell it to run to
@@ -381,10 +381,10 @@ static int ms_nxtmmx_reset(void *context)
 	return 0;
 }
 
-static unsigned ms_nxtmmx_get_stop_commands(void *context)
+static unsigned ms_nxtmmx_get_stop_actions(void *context)
 {
-	return BIT(TM_STOP_COMMAND_COAST) | BIT(TM_STOP_COMMAND_BRAKE) |
-		BIT(TM_STOP_COMMAND_HOLD);
+	return BIT(TM_STOP_ACTION_COAST) | BIT(TM_STOP_ACTION_BRAKE) |
+		BIT(TM_STOP_ACTION_HOLD);
 }
 
 static int ms_nxtmmx_get_speed_Kp(void *context)
@@ -539,7 +539,7 @@ struct tacho_motor_ops ms_nxtmmx_tacho_motor_ops = {
 	.run_to_pos		= ms_nxtmmx_run_to_pos,
 	.stop			= ms_nxtmmx_stop,
 	.reset			= ms_nxtmmx_reset,
-	.get_stop_commands	= ms_nxtmmx_get_stop_commands,
+	.get_stop_actions	= ms_nxtmmx_get_stop_actions,
 	.get_speed_Kp		= ms_nxtmmx_get_speed_Kp,
 	.set_speed_Kp		= ms_nxtmmx_set_speed_Kp,
 	.get_speed_Ki		= ms_nxtmmx_get_speed_Ki,

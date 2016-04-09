@@ -81,9 +81,9 @@ static unsigned brickpi_out_port_get_supported_commands(void* context)
 	return BIT(DC_MOTOR_COMMAND_RUN_FOREVER) | BIT(DC_MOTOR_COMMAND_STOP);
 }
 
-static unsigned brickpi_out_port_get_supported_stop_commands(void* context)
+static unsigned brickpi_out_port_get_supported_stop_actions(void* context)
 {
-	return BIT(DC_MOTOR_STOP_COMMAND_COAST);
+	return BIT(DC_MOTOR_STOP_ACTION_COAST);
 }
 
 static enum dc_motor_internal_command brickpi_out_port_get_command(void *context)
@@ -142,7 +142,7 @@ static int brickpi_out_port_set_duty_cycle(void *context, unsigned duty)
 
 static struct dc_motor_ops brickpi_out_port_dc_motor_ops = {
 	.get_supported_commands	= brickpi_out_port_get_supported_commands,
-	.get_supported_stop_commands = brickpi_out_port_get_supported_stop_commands,
+	.get_supported_stop_actions = brickpi_out_port_get_supported_stop_actions,
 	.get_command		= brickpi_out_port_get_command,
 	.set_command		= brickpi_out_port_set_command,
 	.set_duty_cycle		= brickpi_out_port_set_duty_cycle,
@@ -212,7 +212,7 @@ static int brickpi_out_port_run_regulated(void *context, int speed)
 }
 
 static int brickpi_out_port_run_to_pos(void *context, int pos, int speed,
-				       enum tacho_motor_stop_command stop_action)
+				       enum tm_stop_action stop_action)
 {
 	struct brickpi_out_port_data *data = context;
 
@@ -270,7 +270,7 @@ static int brickpi_out_port_get_state(void *context)
 void _brickpi_out_port_stop(struct brickpi_out_port_data *data)
 {
 	data->speed_pid_ena = false;
-	if (data->stop_action == TM_STOP_COMMAND_HOLD) {
+	if (data->stop_action == TM_STOP_ACTION_HOLD) {
 		data->hold_pid_ena = true;
 		if (data->stop_at_target_position)
 			data->hold_pid.setpoint = data->target_position;
@@ -285,8 +285,7 @@ void _brickpi_out_port_stop(struct brickpi_out_port_data *data)
 	tm_pid_reinit(&data->speed_pid);
 }
 
-static int brickpi_out_port_stop(void *context,
-				 enum tacho_motor_stop_command stop_action)
+static int brickpi_out_port_stop(void *context, enum tm_stop_action stop_action)
 {
 	struct brickpi_out_port_data *data = context;
 
@@ -323,9 +322,9 @@ static int brickpi_out_port_reset(void *context)
 }
 
 
-static unsigned brickpi_out_port_get_stop_commands(void *context)
+static unsigned brickpi_out_port_get_stop_actions(void *context)
 {
-	return BIT(TM_STOP_COMMAND_COAST) | BIT(TM_STOP_COMMAND_HOLD);
+	return BIT(TM_STOP_ACTION_COAST) | BIT(TM_STOP_ACTION_HOLD);
 }
 
 struct tacho_motor_ops brickpi_out_port_tacho_motor_ops = {
@@ -351,7 +350,7 @@ struct tacho_motor_ops brickpi_out_port_tacho_motor_ops = {
 	.get_hold_Kd		= brickpi_out_port_get_hold_Kd,
 	.set_hold_Kd		= brickpi_out_port_set_hold_Kd,
 	.get_state		= brickpi_out_port_get_state,
-	.get_stop_commands	= brickpi_out_port_get_stop_commands,
+	.get_stop_actions	= brickpi_out_port_get_stop_actions,
 };
 
 int brickpi_out_port_register_motor(struct brickpi_out_port_data *out_port,

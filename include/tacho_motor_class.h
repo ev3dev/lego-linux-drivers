@@ -44,11 +44,11 @@ enum tacho_motor_command {
 #define SUPPORTS_RAMPING(tm) \
 (((tm)->ops->run_regulated || (tm)->ops->run_to_pos) && (tm)->ops->get_speed)
 
-enum tacho_motor_stop_command {
-	TM_STOP_COMMAND_COAST,
-	TM_STOP_COMMAND_BRAKE,
-	TM_STOP_COMMAND_HOLD,
-	NUM_TM_STOP_COMMAND,
+enum tm_stop_action {
+	TM_STOP_ACTION_COAST,
+	TM_STOP_ACTION_BRAKE,
+	TM_STOP_ACTION_HOLD,
+	NUM_TM_STOP_ACTION,
 };
 
 enum tacho_motor_state
@@ -84,7 +84,7 @@ struct tacho_motor_ops;
  * @ time_sp: The time in milliseconds used by the run-timed command.
  * @ ramp_up_sp: In milliseconds.
  * @ ramp_down_sp: In milliseconds.
- * @stop_command: What to do for stop command or when run command ends.
+ * @stop_action: What to do for stop command or when run command ends.
  */
 struct tacho_motor_params {
 	enum dc_motor_polarity polarity;
@@ -95,7 +95,7 @@ struct tacho_motor_params {
 	int time_sp;
 	int ramp_up_sp;
 	int ramp_down_sp;
-	enum tacho_motor_stop_command stop_command;
+	enum tm_stop_action stop_action;
 };
 
 /**
@@ -152,7 +152,7 @@ struct tacho_motor_device {
  *	action.
  * @reset: Sends message to the motor controller to reset. This will stop the
  *	motor and reset any motor controller parameters.
- * @get_stop_commands: Gets flags representing the valid stop commands supported
+ * @get_stop_actions: Gets flags representing the valid stop actions supported
  * 	by the driver.
  * @get_speed_Kp: Gets the current proportional PID constant for the speed PID.
  * @set_speed_Kp: Sets the current proportional PID constant for the speed PID.
@@ -179,11 +179,11 @@ struct tacho_motor_ops {
 	int (*run_unregulated)(void *context, int duty_cycle);
 	int (*run_regulated)(void *context, int speed);
 	int (*run_to_pos)(void *context, int pos, int speed,
-			  enum tacho_motor_stop_command action);
-	int (*stop)(void *context, enum tacho_motor_stop_command action);
+			  enum tm_stop_action action);
+	int (*stop)(void *context, enum tm_stop_action action);
 	int (*reset)(void *context);
 
-	unsigned (*get_stop_commands)(void *context);
+	unsigned (*get_stop_actions)(void *context);
 
 	int (*get_speed_Kp)(void *context);
 	int (*set_speed_Kp)(void *context, int k);

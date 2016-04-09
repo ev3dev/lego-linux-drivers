@@ -125,7 +125,7 @@ struct brickpi_out_port_data {
 	long motor_offset;
 	long target_position;
 	int direct_duty_cycle;
-	enum tacho_motor_stop_command stop_action;
+	enum tm_stop_action stop_action;
 };
 
 struct brickpi_data;

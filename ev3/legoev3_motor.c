@@ -105,7 +105,7 @@ struct legoev3_motor_data {
 	int speed;
 	int duty_cycle;
 	enum legoev3_motor_state state;
-	enum tacho_motor_stop_command run_to_pos_stop_action;
+	enum tm_stop_action run_to_pos_stop_action;
 	bool run_to_pos_active;
 	bool speed_pid_ena;
 	bool hold_pid_ena;
@@ -324,8 +324,7 @@ static void set_duty_cycle(struct legoev3_motor_data *ev3_tm, int duty_cycle)
 
 }
 
-static int legoev3_motor_stop(void *context,
-			      enum tacho_motor_stop_command action)
+static int legoev3_motor_stop(void *context, enum tm_stop_action action)
 {
 	struct legoev3_motor_data *ev3_tm = context;
 	const struct dc_motor_ops *motor_ops = ev3_tm->ldev->port->dc_motor_ops;
@@ -345,13 +344,13 @@ static int legoev3_motor_stop(void *context,
 	tm_pid_reinit(&ev3_tm->hold_pid);
 
 	switch (action) {
-	case TM_STOP_COMMAND_COAST:
+	case TM_STOP_ACTION_COAST:
 		motor_ops->set_command(dc_ctx, DC_MOTOR_INTERNAL_COMMAND_COAST);
 		break;
-	case TM_STOP_COMMAND_BRAKE:
+	case TM_STOP_ACTION_BRAKE:
 		motor_ops->set_command(dc_ctx, DC_MOTOR_INTERNAL_COMMAND_BRAKE);
 		break;
-	case TM_STOP_COMMAND_HOLD:
+	case TM_STOP_ACTION_HOLD:
 		if (use_pos_sp_for_hold)
 			ev3_tm->hold_pid.setpoint = ev3_tm->position_sp;
 		else
@@ -377,7 +376,7 @@ static int legoev3_motor_reset(void *context)
 	struct legoev3_motor_data *ev3_tm = context;
 	const struct legoev3_motor_info *info = &ev3_tm->tm.info->legoev3_info;
 
-	legoev3_motor_stop(ev3_tm, TM_STOP_COMMAND_COAST);
+	legoev3_motor_stop(ev3_tm, TM_STOP_ACTION_COAST);
 
 	memset(ev3_tm->tacho_samples, 0, sizeof(unsigned) * TACHO_SAMPLES);
 
@@ -848,7 +847,7 @@ static int legoev3_motor_run_regulated(void *context, int speed)
 }
 
 static int legoev3_motor_run_to_pos(void *context, int pos, int speed,
-				    enum tacho_motor_stop_command stop_action)
+				    enum tm_stop_action stop_action)
 {
 	struct legoev3_motor_data *ev3_tm = context;
 
@@ -867,10 +866,10 @@ static int legoev3_motor_run_to_pos(void *context, int pos, int speed,
 	return 0;
 }
 
-static unsigned legoev3_motor_get_stop_commands(void *context)
+static unsigned legoev3_motor_get_stop_actions(void *context)
 {
-	return BIT(TM_STOP_COMMAND_COAST) | BIT(TM_STOP_COMMAND_BRAKE) |
-		BIT(TM_STOP_COMMAND_HOLD);
+	return BIT(TM_STOP_ACTION_COAST) | BIT(TM_STOP_ACTION_BRAKE) |
+		BIT(TM_STOP_ACTION_HOLD);
 }
 
 TM_PID_GET_FUNC(legoev3_motor, speed_Kp, legoev3_motor_data, speed_pid.Kp);
@@ -900,7 +899,7 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 	.stop			= legoev3_motor_stop,
 	.reset			= legoev3_motor_reset,
 
-	.get_stop_commands	= legoev3_motor_get_stop_commands,
+	.get_stop_actions	= legoev3_motor_get_stop_actions,
 
 	.get_speed_Kp		= legoev3_motor_get_speed_Kp,
 	.set_speed_Kp		= legoev3_motor_set_speed_Kp,

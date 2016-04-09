@@ -67,9 +67,9 @@ static unsigned wedo_motor_get_supported_commands(void* context)
 	return BIT(DC_MOTOR_COMMAND_RUN_FOREVER) | BIT(DC_MOTOR_COMMAND_RUN_DIRECT) | BIT(DC_MOTOR_COMMAND_STOP);
 }
 
-static unsigned wedo_motor_get_supported_stop_commands(void* context)
+static unsigned wedo_motor_get_supported_stop_actions(void* context)
 {
-	return BIT(DC_MOTOR_STOP_COMMAND_COAST) | BIT(DC_MOTOR_STOP_COMMAND_BRAKE);
+	return BIT(DC_MOTOR_STOP_ACTION_COAST) | BIT(DC_MOTOR_STOP_ACTION_BRAKE);
 }
 
 static enum dc_motor_internal_command wedo_motor_get_command(void* context)
@@ -118,7 +118,7 @@ static int wedo_motor_set_duty_cycle(void *context, unsigned duty_cycle)
 
 const struct dc_motor_ops wedo_motor_ops = {
 	.get_supported_commands	= wedo_motor_get_supported_commands,
-	.get_supported_stop_commands = wedo_motor_get_supported_stop_commands,
+	.get_supported_stop_actions = wedo_motor_get_supported_stop_actions,
 	.get_command		= wedo_motor_get_command,
 	.set_command		= wedo_motor_set_command,
 	.get_duty_cycle		= wedo_motor_get_duty_cycle,
