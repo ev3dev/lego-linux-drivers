@@ -1,7 +1,7 @@
 /*
  * mindsensors.com Motor Multiplexer device driver
  *
- * Copyright (C) 2015 David Lechner <david@lechnology.com>
+ * Copyright (C) 2015-2016 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -51,9 +51,6 @@
 #define SPEED_PID_KI_REG	0x66
 #define SPEED_PID_KD_REG	0x68
 
-/* Motor rotation on PiStorms is backwards from standard rotation */
-#define NXTMMX_POLARITY_INVERSED DC_MOTOR_POLARITY_NORMAL
-
 #else
 
 #define READ_ENCODER_POS_REG(idx)	(0x62 + ENCODER_SIZE * idx)
@@ -67,8 +64,6 @@
 #define SPEED_PID_KP_REG	0x80
 #define SPEED_PID_KI_REG	0x82
 #define SPEED_PID_KD_REG	0x84
-
-#define NXTMMX_POLARITY_INVERSED DC_MOTOR_POLARITY_INVERSED
 
 #endif
 
@@ -164,13 +159,16 @@ static const struct lego_port_mode_info ms_nxtmmx_out_port_mode_info[NUM_MS_NXTM
 static inline int ms_nxtmmx_scale_speed(int speed)
 {
 	int scaled = abs(speed);
+
 	if (scaled <= 50)
 		scaled = 0;
 	else
 		scaled -= 50;
 	scaled /= 8;
+	scaled = min(100, scaled);
 	if (speed < 0)
 		scaled *= -1;
+
 	return scaled;
 }
 
@@ -185,7 +183,11 @@ static int ms_nxtmmx_get_position(void *context, long *position)
 	if (err < 0)
 		return err;
 
-	*position = le32_to_cpup((int *)bytes);
+	*position = le32_to_cpup((__le32 *)bytes);
+#ifdef PISTORMS_NXTMMX
+	/* Motor rotation on PiStorms is backwards from standard rotation */
+	*position *= -1;
+#endif
 
 	return 0;
 }
@@ -248,102 +250,132 @@ static int ms_nxtmmx_get_state(void *context)
 	return state;
 }
 
-static unsigned ms_nxtmmx_get_commands(void *context)
-{
-	return BIT(TM_COMMAND_RUN_FOREVER) | BIT (TM_COMMAND_RUN_TO_ABS_POS)
-		| BIT(TM_COMMAND_RUN_TO_REL_POS)
-		| BIT(TM_COMMAND_STOP) | BIT(TM_COMMAND_RESET);
-}
-
-static int ms_nxtmmx_send_command(void *context,
-				  struct tacho_motor_params *params,
-				  enum tacho_motor_command command)
+static int ms_nxtmmx_run_regulated(void *context, int speed)
 {
 	struct ms_nxtmmx_data *mmx = context;
+	u8 command_bytes[WRITE_SIZE] = { 0 };
+	u8 command_flags;
 	int err;
+
+#ifdef PISTORMS_NXTMMX
+	/* Motor rotation on PiStorms is backwards from standard rotation */
+	speed *= -1;
+#endif
+	command_flags = CMD_FLAG_SPEED_CTRL | CMD_FLAG_RAMP;
+	command_flags |= CMD_FLAG_GO;
+
+	command_bytes[WRITE_SPEED] = ms_nxtmmx_scale_speed(speed);
+	command_bytes[WRITE_COMMAND_A] = command_flags;
+
+	err = i2c_smbus_write_i2c_block_data(mmx->i2c_client,
+			WRITE_REG(mmx->index), WRITE_SIZE, command_bytes);
+	if (err < 0)
+		return err;
+
+	mmx->holding = false;
+
+	return 0;
+}
+
+static int ms_nxtmmx_run_to_pos(void *context, int pos, int speed,
+				enum tacho_motor_stop_command stop_action)
+{
+	struct ms_nxtmmx_data *mmx = context;
 	u8 command_bytes[WRITE_SIZE];
+	u8 command_flags;
+	int err;
 
-	if (IS_RUN_CMD(command)) {
-		u8 command_flags = CMD_FLAG_SPEED_CTRL;
+#ifdef PISTORMS_NXTMMX
+	/* Motor rotation on PiStorms is backwards from standard rotation */
+	pos *= -1;
+	speed *= -1;
+#endif
+	*(__le32 *)command_bytes = cpu_to_le32(pos);
+	command_bytes[WRITE_SPEED] = ms_nxtmmx_scale_speed(speed);
 
-		/* fill in the setpoints with the correct polarity */
-		*(int *)command_bytes = cpu_to_le32(params->position_sp);
-		command_bytes[WRITE_SPEED] = ms_nxtmmx_scale_speed(params->speed_sp);
-		if (params->polarity == NXTMMX_POLARITY_INVERSED) {
-			*(int *)command_bytes *= -1;
-			command_bytes[WRITE_SPEED] *= -1;
-		}
+	command_flags = CMD_FLAG_SPEED_CTRL | CMD_FLAG_ENCODER_CTRL
+			| CMD_FLAG_RAMP;
+	if (stop_action == TM_STOP_COMMAND_HOLD)
+		command_flags |= CMD_FLAG_HOLD;
+	if (stop_action == TM_STOP_COMMAND_BRAKE)
+		command_flags |= CMD_FLAG_BRAKE;
+	command_flags |= CMD_FLAG_GO;
 
-		/* set the appropriate command flags based on the run command */
+	command_bytes[WRITE_TIME] = 0;
+	command_bytes[WRITE_COMMAND_B] = 0;
+	command_bytes[WRITE_COMMAND_A] = command_flags;
 
-		if (IS_POS_CMD(command))
-			command_flags |= CMD_FLAG_ENCODER_CTRL;
+	err = i2c_smbus_write_i2c_block_data(mmx->i2c_client,
+			WRITE_REG(mmx->index), WRITE_SIZE, command_bytes);
+	if (err < 0)
+		return err;
 
-		if (command == TM_COMMAND_RUN_TO_REL_POS)
-			command_flags |= CMD_FLAG_RELATIVE;
+	mmx->holding = false;
 
-		/* set bits for stop command */
+	return 0;
+}
 
-		if (params->stop_command == TM_STOP_COMMAND_HOLD)
-			command_flags |= CMD_FLAG_HOLD;
+static int ms_nxtmmx_stop(void *context, enum tacho_motor_stop_command action)
+{
+	struct ms_nxtmmx_data *mmx = context;
+	u8 command_bytes[WRITE_SIZE];
+	int err;
 
-		if (params->stop_command == TM_STOP_COMMAND_BRAKE)
-			command_flags |= CMD_FLAG_BRAKE;
+	command_bytes[0] = (action == TM_STOP_COMMAND_COAST)
+		? COMMAND_FLOAT_STOP(mmx->index)
+		: COMMAND_BRAKE_STOP(mmx->index);
 
-		command_flags |= CMD_FLAG_GO;
+	err = i2c_smbus_write_byte_data(mmx->i2c_client,
+		COMMAND_REG, command_bytes[0]);
+	if (err < 0)
+		return err;
 
-		command_bytes[WRITE_TIME] = 0; /* never use timed mode */
+	mmx->holding = false;
+
+	if (action == TM_STOP_COMMAND_HOLD) {
+		/*
+		 * Hold only happens when encoder mode is enabled, so
+		 * we have to issue a run command to tell it to run to
+		 * the current position so that it will hold that position.
+		 */
+		err = i2c_smbus_read_i2c_block_data(mmx->i2c_client,
+			READ_ENCODER_POS_REG(mmx->index), ENCODER_SIZE,
+			command_bytes);
+		if (err < 0)
+			return err;
+
+		command_bytes[WRITE_SPEED] = 100;
+		command_bytes[WRITE_TIME] = 0;
 		command_bytes[WRITE_COMMAND_B] = 0;
-		command_bytes[WRITE_COMMAND_A] = command_flags;
-
-		/* then write to the individual motor register to GO! */
+		command_bytes[WRITE_COMMAND_A] = CMD_FLAGS_STOP_HOLD;
 
 		err = i2c_smbus_write_i2c_block_data(mmx->i2c_client,
 			WRITE_REG(mmx->index), WRITE_SIZE, command_bytes);
 		if (err < 0)
 			return err;
-		mmx->holding = false;
-	} else if (command == TM_COMMAND_STOP) {
-		command_bytes[0] = (params->stop_command == TM_STOP_COMMAND_COAST)
-			? COMMAND_FLOAT_STOP(mmx->index) : COMMAND_BRAKE_STOP(mmx->index);
-		err = i2c_smbus_write_byte_data(mmx->i2c_client,
-			COMMAND_REG, command_bytes[0]);
-		if (err < 0)
-			return err;
-		mmx->holding = false;
-		if (params->stop_command == TM_STOP_COMMAND_HOLD) {
-			/*
-			 * Hold only happens when encoder mode is enabled, so
-			 * we have to issue a run command to tell it to run to
-			 * the current position so that it will hold that position.
-			 */
-			err = i2c_smbus_read_i2c_block_data(mmx->i2c_client,
-				READ_ENCODER_POS_REG(mmx->index), ENCODER_SIZE, command_bytes);
-			if (err < 0)
-				return err;
-			command_bytes[WRITE_SPEED] = 100;
-			command_bytes[WRITE_TIME] = 0;
-			command_bytes[WRITE_COMMAND_B] = 0;
-			command_bytes[WRITE_COMMAND_A] = CMD_FLAGS_STOP_HOLD;
-			err = i2c_smbus_write_i2c_block_data(mmx->i2c_client,
-				WRITE_REG(mmx->index), WRITE_SIZE, command_bytes);
-			if (err < 0)
-				return err;
-			mmx->holding = true;
-		}
-	} else if (command == TM_COMMAND_RESET) {
-		command_bytes[0] = COMMAND_FLOAT_STOP(mmx->index);
-		err = i2c_smbus_write_byte_data(mmx->i2c_client,
-			COMMAND_REG, command_bytes[0]);
-		if (err < 0)
-			return err;
-		command_bytes[0] = COMMAND_RESET_ENCODER(mmx->index);
-		err = i2c_smbus_write_byte_data(mmx->i2c_client,
-			COMMAND_REG, command_bytes[0]);
-		if (err < 0)
-			return err;
-		mmx->holding = false;
+
+		mmx->holding = true;
 	}
+
+	return 0;
+}
+
+static int ms_nxtmmx_reset(void *context)
+{
+	struct ms_nxtmmx_data *mmx = context;
+	int err;
+
+	err = i2c_smbus_write_byte_data(mmx->i2c_client, COMMAND_REG,
+					COMMAND_FLOAT_STOP(mmx->index));
+	if (err < 0)
+		return err;
+
+	err = i2c_smbus_write_byte_data(mmx->i2c_client, COMMAND_REG,
+					COMMAND_RESET_ENCODER(mmx->index));
+	if (err < 0)
+		return err;
+
+	mmx->holding = false;
 
 	return 0;
 }
@@ -502,8 +534,10 @@ struct tacho_motor_ops ms_nxtmmx_tacho_motor_ops = {
 	.get_position		= ms_nxtmmx_get_position,
 	.set_position		= ms_nxtmmx_set_position,
 	.get_state		= ms_nxtmmx_get_state,
-	.get_commands		= ms_nxtmmx_get_commands,
-	.send_command		= ms_nxtmmx_send_command,
+	.run_regulated		= ms_nxtmmx_run_regulated,
+	.run_to_pos		= ms_nxtmmx_run_to_pos,
+	.stop			= ms_nxtmmx_stop,
+	.reset			= ms_nxtmmx_reset,
 	.get_stop_commands	= ms_nxtmmx_get_stop_commands,
 	.get_speed_Kp		= ms_nxtmmx_get_speed_Kp,
 	.set_speed_Kp		= ms_nxtmmx_set_speed_Kp,
