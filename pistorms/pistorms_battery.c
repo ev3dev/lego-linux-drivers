@@ -39,7 +39,7 @@ static int pistorms_battery_get_property(struct power_supply *psy,
 	switch (prop) {
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		ret = i2c_smbus_read_byte_data(bat->client, PISTORMS_BATTERY_REG);
-		if (WARN_ONCE(ret < 0, "Failed to read voltage"))
+		if (WARN_ONCE(ret < 0, "Failed to read voltage (%d)\n", ret))
 			break;
 		val->intval = ret * 40000; /* convert to microvolts */
 		break;
@@ -47,8 +47,7 @@ static int pistorms_battery_get_property(struct power_supply *psy,
 		val->intval = POWER_SUPPLY_SCOPE_SYSTEM;
 		break;
 	default:
-		ret = -EINVAL;
-		break;
+		return -EINVAL;
 	}
 
 	return 0;

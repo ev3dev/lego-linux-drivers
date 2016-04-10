@@ -127,13 +127,13 @@ static int legoev3_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		ret = legoev3_battery_get_voltage(bat);
-		if (ret < 0)
+		if (WARN_ONCE(ret < 0, "Failed to get voltage (%d)\n", ret))
 			break;
 		val->intval = ret;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		ret = legoev3_battery_get_current(bat);
-		if (ret < 0)
+		if (WARN_ONCE(ret < 0, "Failed to get current (%d)\n", ret))
 			break;
 		val->intval = ret;
 		break;
@@ -147,10 +147,10 @@ static int legoev3_battery_get_property(struct power_supply *psy,
 		val->intval = POWER_SUPPLY_SCOPE_SYSTEM;
 		break;
 	default:
-		ret = -EINVAL;
-		break;
+		return -EINVAL;
 	}
-	return ret;
+
+	return 0;
 }
 
 static enum power_supply_property legoev3_battery_props[] = {

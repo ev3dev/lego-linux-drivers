@@ -72,7 +72,7 @@ static int brickpi_battery_get_property(struct power_supply *psy,
 	switch (prop) {
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		ret = brickpi_battery_read16(bat->client);
-		if (WARN_ONCE(ret < 0, "Failed to read voltage"))
+		if (WARN_ONCE(ret < 0, "Failed to read voltage (%d)\n", ret))
 			break;
 		/*
 		 * Converting to microvolts. The chip has a 3.3V reference and
@@ -84,8 +84,7 @@ static int brickpi_battery_get_property(struct power_supply *psy,
 		val->intval = POWER_SUPPLY_SCOPE_SYSTEM;
 		break;
 	default:
-		ret = -EINVAL;
-		break;
+		return -EINVAL;
 	}
 
 	return 0;
