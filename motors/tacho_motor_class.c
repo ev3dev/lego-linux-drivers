@@ -98,13 +98,6 @@
  *   current value. Units are in percent. Valid values are -100 to 100. A
  *   negative value causes the motor to rotate in reverse.
  * .
- * `encoder_polarity`
- * : (read/write) Sets the polarity of the rotary encoder. This is an advanced
- *   feature to use motors that send inverted encoder signals to the EV3. This
- *   should be set correctly by the driver of a device. It You only need to
- *   change this value if you are using a unsupported device. Valid values are
- *   `normal` and `inversed`.
- * .
  * `polarity`
  * : (read/write) Sets the polarity of the motor. Valid values are:
  * .
@@ -400,7 +393,6 @@ static int tm_do_one_ramp_step(struct tacho_motor_device *tm,
 void tacho_motor_class_reset(struct tacho_motor_device *tm)
 {
 	tm->params.polarity		= DC_MOTOR_POLARITY_NORMAL;
-	tm->params.encoder_polarity	= tm->info->encoder_polarity;
 	tm->params.duty_cycle_sp	= 0;
 	tm->params.speed_sp		= 0;
 	tm->params.position_sp		= 0;
@@ -804,34 +796,6 @@ static ssize_t polarity_store(struct device *dev, struct device_attribute *attr,
 	return -EINVAL;
 }
 
-static ssize_t encoder_polarity_show(struct device *dev,
-				     struct device_attribute *attr, char *buf)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-
-	return sprintf(buf, "%s\n", dc_motor_polarity_values[tm->params.encoder_polarity]);
-}
-
-static ssize_t encoder_polarity_store(struct device *dev,
-				      struct device_attribute *attr,
-				      const char *buf, size_t size)
-{
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	unsigned i;
-
-	if (!tm->supports_encoder_polarity)
-		return -EOPNOTSUPP;
-
-	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++) {
-		if (sysfs_streq(buf, dc_motor_polarity_values[i])) {
-			tm->params.encoder_polarity = i;
-			return size;
-		}
-	}
-
-	return -EINVAL;
-}
-
 static ssize_t ramp_up_sp_show(struct device *dev, struct device_attribute *attr,
 			       char *buf)
 {
@@ -1037,7 +1001,6 @@ static DEVICE_ATTR_WO(command);
 static DEVICE_ATTR_RO(stop_actions);
 static DEVICE_ATTR_RW(stop_action);
 static DEVICE_ATTR_RW(polarity);
-static DEVICE_ATTR_RW(encoder_polarity);
 static DEVICE_ATTR_RW(ramp_up_sp);
 static DEVICE_ATTR_RW(ramp_down_sp);
 
@@ -1058,7 +1021,6 @@ static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_stop_actions.attr,
 	&dev_attr_stop_action.attr,
 	&dev_attr_polarity.attr,
-	&dev_attr_encoder_polarity.attr,
 	&dev_attr_ramp_up_sp.attr,
 	&dev_attr_ramp_down_sp.attr,
 	NULL

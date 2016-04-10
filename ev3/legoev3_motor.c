@@ -240,34 +240,11 @@ static irqreturn_t tacho_motor_isr(int irq, void *id)
 		 * Update the tacho count and motor direction for low
 		 * speed, taking advantage of the fact that if state and
 		 * dir match, then the motor is turning FORWARD!
-		 *
-		 * We also look after the polarity_mode and encoder_mode
-		 * here as follows:
-		 *
-		 * polarity_mode | encoder_mode | next_direction
-		 * --------------+--------------+---------------
-		 * normal        | normal       | normal
-		 * normal        | inverted     | inverted
-		 * inverted      | normal       | inverted
-		 * inverted      | inverted     | normal
-		 *
-		 * Yes, this could be compressed into a clever set of
-		 * conditionals that results in only two assignments, or
-		 * a lookup table, but it's clearer to write nested if
-		 * statements in this case - it looks a lot more like the
-		 * truth table
 		 */
-		if (ev3_tm->tm.active_params.polarity == DC_MOTOR_POLARITY_NORMAL) {
-			if (ev3_tm->tm.active_params.encoder_polarity == DC_MOTOR_POLARITY_NORMAL)
-				next_direction = (int_state == dir_state) ? FORWARD : REVERSE;
-			else
-				next_direction = (int_state == dir_state) ? REVERSE : FORWARD;
-		} else {
-			if (ev3_tm->tm.active_params.encoder_polarity == DC_MOTOR_POLARITY_NORMAL)
-				next_direction = (int_state == dir_state) ? REVERSE : FORWARD;
-			else
-				next_direction = (int_state == dir_state) ? FORWARD : REVERSE;
-		}
+		if (ev3_tm->tm.info->encoder_polarity == DC_MOTOR_POLARITY_NORMAL)
+			next_direction = (int_state == dir_state) ? FORWARD : REVERSE;
+		else
+			next_direction = (int_state == dir_state) ? REVERSE : FORWARD;
 
 		/*
 		 * If the saved and next direction states
@@ -941,7 +918,6 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 	ev3_tm->tm.ops = &legoev3_motor_ops;
 	ev3_tm->tm.info = &ev3_motor_defs[ldev->entry_id->driver_data];
 	ev3_tm->tm.context = ev3_tm;
-	ev3_tm->tm.supports_encoder_polarity = true;
 
 	dev_set_drvdata(&ldev->dev, ev3_tm);
 

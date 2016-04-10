@@ -77,7 +77,6 @@ struct tacho_motor_ops;
  * not have to keep track of them twice.
  *
  * @ polarity: Indicates the positive direction of the motor.
- * @ encoder_polarity: Indicates the positive direction of the shaft encoder.
  * @ duty_cycle_sp: Used only for the run-direct command.
  * @ speed_sp: Used for all run commands except run-direct.
  * @ position_sp: Used by run-to-*-pos commands.
@@ -88,7 +87,6 @@ struct tacho_motor_ops;
  */
 struct tacho_motor_params {
 	enum dc_motor_polarity polarity;
-	enum dc_motor_polarity encoder_polarity;
 	int duty_cycle_sp;
 	int speed_sp;
 	int position_sp;
@@ -112,7 +110,6 @@ struct tacho_motor_device {
 	const struct tacho_motor_ops const *ops;
 	const struct ev3_motor_info const *info;
 	void *context;
-	bool supports_encoder_polarity;
 	enum tacho_motor_command command;
 	struct tacho_motor_params params;
 	struct tacho_motor_params active_params;
