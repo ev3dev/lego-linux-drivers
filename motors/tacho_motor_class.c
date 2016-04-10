@@ -1,8 +1,8 @@
 /*
  * Tacho motor device class
  *
- * Copyright (C) 2016 Ralph Hempel <rhempel@hempeldesigngroup.com>
- * Copyright (C) 2015 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2014,2016 Ralph Hempel <rhempel@hempeldesigngroup.com>
+ * Copyright (C) 2015-2016 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -44,19 +44,19 @@
  * .    - `run-forever`: Causes the motor to run until another command is sent.
  * .    - `run-to-abs-pos`: Runs the motor to an absolute position specified by
  * .      `position_sp` and then stops the motor using the command specified in
- * .      `stop_command`.
+ * .      `stop_action`.
  * .    - `run-to-rel-pos`: Runs the motor to a position relative to the current
  * .      `position` value. The new position will be current `position` +
  * .      `position_sp`. When the new position is reached, the motor will stop
- * .       using the command specified by `stop_command`.
+ * .       using the command specified by `stop_action`.
  * .    - `run-timed`: Run the motor for the amount of time specified in
  * .      `time_sp` and then stops the motor using the command specified by
- * .      `stop_command`.
+ * .      `stop_action`.
  * .    - `run-direct`: Runs the motor using the duty cycle specified by
  * .      `duty_cycle_sp`. Unlike other run commands, changing `duty_cycle_sp`
  * .       while running *will* take effect immediately.
  * .    - `stop`: Stop any of the run commands before they are complete using
- * .      the command specified by `stop_command`.
+ * .      the command specified by `stop_action`.
  * .    - `reset`: Resets all of the motor parameter attributes to their default
  * .       values. This will also have the effect of stopping the motor.
  * .
@@ -192,9 +192,9 @@
  * .    - `overloaded`: The motor is turning, but cannot reach its `speed_sp`.
  * .    - `stalled`: The motor is not turning when it should be.
  * .
- * `stop_command`
- * : (read/write) Reading returns the current stop command. Writing sets the
- *   stop command. The value determines the motors behavior when `command` is
+ * `stop_action`
+ * : (read/write) Reading returns the current stop action. Writing sets the
+ *   stop action. The value determines the motors behavior when `command` is
  *   set to `stop`. Possible values are:
  * .
  * .    - `coast`: Removes power from the motor. The motor will freely coast to
@@ -207,11 +207,11 @@
  * .       If an external force tries to turn the motor, the motor will "push
  * .       back" to maintain its position.
  * .
- * .    Not all commands may be supported. Read `stop_commands` to get the
- * .    commands available for a particular driver.
+ * .    Not all actions may be supported. Read `stop_actions` to get the
+ * .    actions available for a particular driver.
  * .
- * `stop_commands`
- * : (read-only) Returns a space-separated list of stop modes supported by the
+ * `stop_actions`
+ * : (read-only) Returns a space-separated list of stop actions supported by the
  *   motor controller.
  * .
  * `time_sp`
@@ -226,6 +226,8 @@
 #include <dc_motor_class.h>
 #include <tacho_motor_class.h>
 
+#include "ev3_motor.h"
+
 #define RAMP_PERIOD	msecs_to_jiffies(100)
 
 struct tacho_motor_value_names {
@@ -233,10 +235,10 @@ struct tacho_motor_value_names {
 };
 
 static struct tacho_motor_value_names
-tacho_motor_stop_command_names[NUM_TM_STOP_COMMAND] = {
-	[TM_STOP_COMMAND_COAST]     =  { "coast" },
-	[TM_STOP_COMMAND_BRAKE]     =  { "brake" },
-	[TM_STOP_COMMAND_HOLD]      =  { "hold" },
+tm_stop_action_names[NUM_TM_STOP_ACTION] = {
+	[TM_STOP_ACTION_COAST]     =  { "coast" },
+	[TM_STOP_ACTION_BRAKE]     =  { "brake" },
+	[TM_STOP_ACTION_HOLD]      =  { "hold" },
 };
 
 static struct tacho_motor_value_names
@@ -271,9 +273,12 @@ inline struct tacho_motor_device *to_tacho_motor(struct device *dev)
 	return container_of(dev, struct tacho_motor_device, dev);
 }
 
-void tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm)
+static int tm_do_one_ramp_step(struct tacho_motor_device *tm,
+			       struct tacho_motor_params *params);
+
+static int tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm,
+					      struct tacho_motor_params *params)
 {
-	int err;
 	unsigned long ramp_sp, now;
 
 	/* Determine if the target and current speed require a
@@ -281,16 +286,14 @@ void tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm)
 	 * to divide the ramp work into two pieces.
 	 */
 
-	err = tm->ops->get_max_speed(tm->context, &tm->ramp_max_speed);
-	if (err < 0)
-		return;
-
+	if (!tm->ramping)
+		tm->ops->get_speed(tm->context, &tm->ramp_last_speed);
 	tm->ramp_start_speed = tm->ramp_last_speed;
 
-	if (0 > (tm->ramp_start_speed * tm->active_params.speed_sp))
+	if (0 > (tm->ramp_start_speed * params->speed_sp))
 		tm->ramp_end_speed = 0;
 	else
-		tm->ramp_end_speed = tm->active_params.speed_sp;
+		tm->ramp_end_speed = params->speed_sp;
 
 	tm->ramp_delta_speed = tm->ramp_end_speed - tm->ramp_start_speed;
 
@@ -299,12 +302,12 @@ void tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm)
 	 */
 
 	if (0 <= (tm->ramp_start_speed * tm->ramp_delta_speed))
-		ramp_sp = msecs_to_jiffies(tm->active_params.ramp_up_sp);
+		ramp_sp = msecs_to_jiffies(params->ramp_up_sp);
 	else
-		ramp_sp = msecs_to_jiffies(tm->active_params.ramp_down_sp);
+		ramp_sp = msecs_to_jiffies(params->ramp_down_sp);
 
 	tm->ramp_delta_time = (ramp_sp * abs(tm->ramp_delta_speed))
-				/ tm->ramp_max_speed;
+				/ tm->info->max_speed;
 
 	/* Set the start time to about half a RAMP_PERIOD in the past so
 	 * that the first expiry starts the motor running at a non-zero
@@ -314,38 +317,41 @@ void tacho_motor_class_start_motor_ramp(struct tacho_motor_device *tm)
 	now = jiffies - RAMP_PERIOD/2;
 	tm->ramp_end_time = now + tm->ramp_delta_time;
 	tm->last_ramp_work_time = now;
-	tm->ramping = 1;
-	schedule_delayed_work(&tm->ramp_work, 0);
+	tm->ramping = true;
+
+	return tm_do_one_ramp_step(tm, params);
 }
 
 static void tacho_motor_class_ramp_work(struct work_struct *work)
 {
-	struct tacho_motor_device *tm =
-		container_of(to_delayed_work(work), struct tacho_motor_device,
-				ramp_work);
+	struct tacho_motor_device *tm = container_of(to_delayed_work(work),
+					struct tacho_motor_device, ramp_work);
+	int err;
+
+	err = tm_do_one_ramp_step(tm, &tm->active_params);
+	WARN_ONCE(err, "Ramp failed.");
+}
+
+static int tm_do_one_ramp_step(struct tacho_motor_device *tm,
+			       struct tacho_motor_params *params)
+{
 	unsigned long remaining_ramp_time = 0;
 	unsigned long last_ramp_time;
-	int  err;
-
-	if (!IS_RUN_CMD(tm->command)) {
-		tm->ramp_last_speed = 0;
-		tm->ramping = 0;
-		return;
-	}
+	int err;
 
 	/* Check to see if we are running and done ramping, or if we're
 	 * running and have hit the 0 crossover point and need to restart
 	 * the ramp
 	 */
 
-	if (tm->active_params.speed_sp == tm->ramp_last_speed) {
-		tm->ramping = 0;
-		return;
-	} else if (tm->ramp_end_speed == tm->ramp_last_speed) {
-		tacho_motor_class_start_motor_ramp(tm);
-		tm->ramping = 0;
-		return;
-	}
+	if (params->speed_sp == tm->ramp_last_speed) {
+		tm->ramping = false;
+		if (tm->command == TM_COMMAND_STOP)
+			return tm->ops->stop(tm->context,
+					     params->stop_action);
+		return 0;
+	} else if (tm->ramp_end_speed == tm->ramp_last_speed)
+		return tacho_motor_class_start_motor_ramp(tm, params);
 
 	/*
 	 * If we haven't reached the end of the ramp yet, set the speed
@@ -365,16 +371,16 @@ static void tacho_motor_class_ramp_work(struct work_struct *work)
 				/ tm->ramp_delta_time);
 	} else {
 		tm->ramp_last_speed = tm->ramp_end_speed;
-		tm->ramping = 0;
+		tm->ramping = false;
 	}
 
-	if (tm->ramp_last_speed > tm->ramp_max_speed)
-		tm->ramp_last_speed = tm->ramp_max_speed;
-	else if (tm->ramp_last_speed < -tm->ramp_max_speed)
-		tm->ramp_last_speed = -tm->ramp_max_speed;
-
-	err = tm->ops->set_speed(tm->context, tm->ramp_last_speed);
-	WARN_ONCE(err, "Failed to set speed.");
+	if (IS_POS_CMD(tm->command))
+		err = tm->ops->run_to_pos(tm->context, params->position_sp,
+			tm->ramp_last_speed, params->stop_action);
+	else
+		err = tm->ops->run_regulated(tm->context, tm->ramp_last_speed);
+	if (err)
+		return err;
 
 	/*
 	 * Measure how long it took since the last call to ramp_work and
@@ -382,26 +388,10 @@ static void tacho_motor_class_ramp_work(struct work_struct *work)
 	 */
 	last_ramp_time = jiffies - tm->last_ramp_work_time;
 	tm->last_ramp_work_time = jiffies;
-	schedule_delayed_work(&tm->ramp_work,
-		last_ramp_time >= RAMP_PERIOD
-					? 0
-					: RAMP_PERIOD - last_ramp_time);
-}
+	queue_delayed_work(tm->wq, &tm->ramp_work, last_ramp_time >= RAMP_PERIOD
+		? 0 : RAMP_PERIOD - last_ramp_time);
 
-static int direct_set_duty_cycle(struct tacho_motor_device *tm)
-{
-	int err = 0;
-
-	tm->active_params.duty_cycle_sp = tm->params.duty_cycle_sp;
-	if (tm->active_params.polarity == DC_MOTOR_POLARITY_INVERSED)
-		tm->active_params.duty_cycle_sp = tm->params.duty_cycle_sp * -1;
-
-	err = tm->ops->set_duty_cycle(tm->context,
-					 tm->active_params.duty_cycle_sp);
-
-	WARN_ONCE(err, "Failed to set speed.");
-
-	return err;
+	return 0;
 }
 
 /*
@@ -410,14 +400,14 @@ static int direct_set_duty_cycle(struct tacho_motor_device *tm)
 void tacho_motor_class_reset(struct tacho_motor_device *tm)
 {
 	tm->params.polarity		= DC_MOTOR_POLARITY_NORMAL;
-	tm->params.encoder_polarity	= DC_MOTOR_POLARITY_NORMAL;
+	tm->params.encoder_polarity	= tm->info->encoder_polarity;
 	tm->params.duty_cycle_sp	= 0;
 	tm->params.speed_sp		= 0;
 	tm->params.position_sp		= 0;
 	tm->params.time_sp		= 0;
 	tm->params.ramp_up_sp		= 0;
 	tm->params.ramp_down_sp		= 0;
-	tm->params.stop_command		= TM_STOP_COMMAND_COAST;
+	tm->params.stop_action		= TM_STOP_ACTION_COAST;
 }
 
 static ssize_t address_show(struct device *dev, struct device_attribute *attr,
@@ -497,39 +487,24 @@ static ssize_t count_per_rot_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int ret;
 
-	ret = tm->ops->get_count_per_rot(tm->context);
-	if (ret < 0)
-		return ret;
-
-	return sprintf(buf, "%d\n", ret);
+	return sprintf(buf, "%d\n", tm->info->count_per_rot);
 }
 
 static ssize_t count_per_m_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int ret;
 
-	ret = tm->ops->get_count_per_m(tm->context);
-	if (ret < 0)
-		return ret;
-
-	return sprintf(buf, "%d\n", ret);
+	return sprintf(buf, "%d\n", tm->info->count_per_m);
 }
 
 static ssize_t full_travel_count_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int ret;
 
-	ret = tm->ops->get_full_travel_count(tm->context);
-	if (ret < 0)
-		return ret;
-
-	return sprintf(buf, "%d\n", ret);
+	return sprintf(buf, "%d\n", tm->info->full_travel_count);
 }
 
 static ssize_t duty_cycle_show(struct device *dev, struct device_attribute *attr,
@@ -555,13 +530,8 @@ static ssize_t max_speed_show(struct device *dev, struct device_attribute *attr,
 			  char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int err, max_speed;
 
-	err = tm->ops->get_max_speed(tm->context, &max_speed);
-	if (err < 0)
-		return err;
-
-	return sprintf(buf, "%d\n", max_speed);
+	return sprintf(buf, "%d\n", tm->info->max_speed);
 }
 
 static ssize_t speed_show(struct device *dev, struct device_attribute *attr,
@@ -580,18 +550,24 @@ static ssize_t speed_show(struct device *dev, struct device_attribute *attr,
 	return sprintf(buf, "%d\n", speed);
 }
 
-/*
- * Run timed command is implemented in the tacho motor class, so if an implementing
- * driver can run forever and stop, then it can run timed.
- */
-static inline unsigned get_supported_commands(struct tacho_motor_device *tm)
+static unsigned get_supported_commands(struct tacho_motor_device *tm)
 {
-	unsigned supported_commands = tm->ops->get_commands(tm->context);
+	unsigned supported_commands = 0;
 
-	if ((supported_commands & BIT(TM_COMMAND_RUN_FOREVER))
-		&& (supported_commands & BIT(TM_COMMAND_STOP))) {
-		supported_commands |= BIT(TM_COMMAND_RUN_TIMED);
+	if (tm->ops->run_unregulated)
+		supported_commands |= BIT(TM_COMMAND_RUN_DIRECT);
+	if (tm->ops->run_regulated)
+		supported_commands |= BIT(TM_COMMAND_RUN_FOREVER);
+	if (tm->ops->run_to_pos) {
+		supported_commands |= BIT(TM_COMMAND_RUN_TO_ABS_POS);
+		supported_commands |= BIT(TM_COMMAND_RUN_TO_REL_POS);
 	}
+	if (tm->ops->run_regulated && tm->ops->stop)
+		supported_commands |= BIT(TM_COMMAND_RUN_TIMED);
+	if (tm->ops->stop)
+		supported_commands |= BIT(TM_COMMAND_STOP);
+	if (tm->ops->reset)
+		supported_commands |= BIT(TM_COMMAND_RESET);
 
 	return supported_commands;
 }
@@ -616,12 +592,110 @@ static ssize_t commands_show(struct device *dev, struct device_attribute *attr,
 	return size;
 }
 
+static int tm_send_command(struct tacho_motor_device *tm,
+			   enum tacho_motor_command cmd)
+{
+	struct tacho_motor_params new_params;
+	int err;
+	bool ramp = false;
+
+	/* stop any previous async commands */
+	cancel_delayed_work_sync(&tm->run_timed_work);
+	cancel_delayed_work_sync(&tm->ramp_work);
+
+	/* do any extra manipulation of params if needed */
+
+	if (cmd == TM_COMMAND_RESET)
+		tacho_motor_class_reset(tm);
+
+	new_params = tm->params;
+
+	if (!IS_RUN_CMD(cmd)) {
+		new_params.duty_cycle_sp = 0;
+		new_params.speed_sp = 0;
+	}
+
+	if (cmd == TM_COMMAND_RUN_TO_REL_POS) {
+		/*
+		 * To check the previous command, we MUST be looking at
+		 * tm->command because that's the previous command that the
+		 * user sent! If the previous command was also run-to-rel-pos
+		 * then we try to be "smart" about the new setpoint by making
+		 * it relative to the previous setpoint. This will eliminate
+		 * cumulative error due to the motor not holding the position
+		 * exactly when the position setpoint is reached.
+		 */
+		if (tm->command == TM_COMMAND_RUN_TO_REL_POS) {
+			new_params.position_sp = tm->active_params.position_sp +
+							tm->params.position_sp;
+		} else {
+			long position;
+
+			tm->ops->get_position(tm->context, &position);
+			new_params.position_sp = position +
+							tm->params.position_sp;
+		}
+	}
+
+	/* now actually send the command to the motor controller */
+
+	switch (cmd) {
+	case TM_COMMAND_RUN_DIRECT:
+		err = tm->ops->run_unregulated(tm->context,
+					       new_params.duty_cycle_sp);
+		break;
+	case TM_COMMAND_RUN_FOREVER:
+	case TM_COMMAND_RUN_TIMED:
+		if (new_params.ramp_up_sp || new_params.ramp_down_sp)
+			ramp = true;
+		else
+			err = tm->ops->run_regulated(tm->context,
+						     new_params.speed_sp);
+		break;
+	case TM_COMMAND_RUN_TO_ABS_POS:
+	case TM_COMMAND_RUN_TO_REL_POS:
+		if (new_params.ramp_up_sp || new_params.ramp_down_sp)
+			ramp = true;
+		else
+			err = tm->ops->run_to_pos(tm->context,
+						  new_params.position_sp,
+						  new_params.speed_sp,
+						  new_params.stop_action);
+		break;
+	case TM_COMMAND_STOP:
+		if (new_params.ramp_up_sp || new_params.ramp_down_sp)
+			ramp = true;
+		else
+			err = tm->ops->stop(tm->context,
+					    new_params.stop_action);
+		break;
+	case TM_COMMAND_RESET:
+		err = tm->ops->reset(tm->context);
+		break;
+	default:
+		BUG();
+	}
+	if (ramp)
+		err = tacho_motor_class_start_motor_ramp(tm, &new_params);
+	if (err < 0)
+		return err;
+
+	tm->active_params = new_params;
+	tm->command = cmd;
+
+	if (cmd == TM_COMMAND_RUN_TIMED)
+		queue_delayed_work(tm->wq, &tm->run_timed_work,
+				   msecs_to_jiffies(new_params.time_sp));
+
+	return 0;
+}
+
 static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 			     const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	unsigned supported_commands;
-	int i, err;
+	int i;
 
 	supported_commands = get_supported_commands(tm);
 
@@ -630,56 +704,12 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 			continue;
 
 		if (supported_commands & BIT(i)) {
+			int err = tm_send_command(tm, i);
 
-			if (i == TM_COMMAND_RESET)
-				tacho_motor_class_reset(tm);
-
-			tm->active_params = tm->params;
-
-			if (!IS_RUN_CMD(i)) {
-				tm->active_params.duty_cycle_sp = 0;
-				tm->active_params.speed_sp = 0;
-			}
-
-			/* If we're in run-direct mode, allow the
-			 * duty_cycle_sp to change
-			 */
-
-			if (i == TM_COMMAND_RUN_DIRECT) {
-				err = direct_set_duty_cycle(tm);
-
-				if (err < 0)
-					return err;
-			}
-
-			/* The speed setting commands in the lower level motor
-			 * driver need to know the current command so that they
-			 * can set the speed appropriately - when the ramp time
-			 * is very short, the ramp work may run only once - the
-			 * motor driver will ignore the set_speed unless the
-			 * current command is a RUN_COMMAND
-			 */
-
-			err = tm->ops->send_command(tm->context, &tm->active_params, i);
-			if (err < 0)
-				return err;
-
-			tm->command = i;
-
-			/* The run-direct command does NOT ramp up to speed.
-			 */
-
-			if (IS_RUN_CMD(i) && (i != TM_COMMAND_RUN_DIRECT))
-				tacho_motor_class_start_motor_ramp(tm);
-
-			cancel_delayed_work_sync(&tm->run_timed_work);
-
-			if (i == TM_COMMAND_RUN_TIMED)
-				schedule_delayed_work(&tm->run_timed_work,
-					msecs_to_jiffies(tm->active_params.time_sp));
-		return size;
+			return err < 0 ? err : size;
 		}
 	}
+
 	return -EINVAL;
 }
 
@@ -688,11 +718,15 @@ static void tacho_motor_class_run_timed_work(struct work_struct *work)
 	struct tacho_motor_device *tm = container_of(to_delayed_work(work),
 				struct tacho_motor_device, run_timed_work);
 
-	tm->active_params.speed_sp = 0;
-	tacho_motor_class_start_motor_ramp(tm);
+	tm->command = TM_COMMAND_STOP;
+	if (tm->active_params.ramp_down_sp) {
+		tm->active_params.speed_sp = 0;
+		tacho_motor_class_start_motor_ramp(tm, &tm->active_params);
+	} else
+		tm->ops->stop(tm->context, tm->active_params.stop_action);
 }
 
-static ssize_t stop_commands_show(struct device *dev,
+static ssize_t stop_actions_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
@@ -700,12 +734,12 @@ static ssize_t stop_commands_show(struct device *dev,
 	int i;
 	int size = 0;
 
-	commands = tm->ops->get_stop_commands(tm->context);
+	commands = tm->ops->get_stop_actions(tm->context);
 
-	for (i = 0; i < NUM_TM_STOP_COMMAND; i++) {
+	for (i = 0; i < NUM_TM_STOP_ACTION; i++) {
 		if (commands & BIT(i)) {
 			size += sprintf(buf + size, "%s ",
-				tacho_motor_stop_command_names[i].name);
+				tm_stop_action_names[i].name);
 		}
 	}
 
@@ -714,34 +748,34 @@ static ssize_t stop_commands_show(struct device *dev,
 	return size;
 }
 
-static ssize_t stop_command_show(struct device *dev,
+static ssize_t stop_action_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
 	return sprintf(buf, "%s\n",
-		tacho_motor_stop_command_names[tm->params.stop_command].name);
+		       tm_stop_action_names[tm->params.stop_action].name);
 }
 
-static ssize_t stop_command_store(struct device *dev,
+static ssize_t stop_action_store(struct device *dev,
 				  struct device_attribute *attr,
 				  const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	unsigned i;
 
-	for (i = 0; i < NUM_TM_STOP_COMMAND; i++) {
-		if (sysfs_streq(buf, tacho_motor_stop_command_names[i].name))
+	for (i = 0; i < NUM_TM_STOP_ACTION; i++) {
+		if (sysfs_streq(buf, tm_stop_action_names[i].name))
 			break;
 	}
 
-	if (i >= NUM_TM_STOP_COMMAND)
+	if (i >= NUM_TM_STOP_ACTION)
 		return -EINVAL;
 
-	if (!(BIT(i) & tm->ops->get_stop_commands(tm->context)))
+	if (!(BIT(i) & tm->ops->get_stop_actions(tm->context)))
 		return -EINVAL;
 
-	tm->params.stop_command = i;
+	tm->params.stop_action = i;
 
 	return size;
 }
@@ -803,7 +837,7 @@ static ssize_t ramp_up_sp_show(struct device *dev, struct device_attribute *attr
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	if (!tm->supports_ramping)
+	if (!SUPPORTS_RAMPING(tm))
 		return -EOPNOTSUPP;
 
 	return sprintf(buf, "%d\n", tm->params.ramp_up_sp);
@@ -815,7 +849,7 @@ static ssize_t ramp_up_sp_store(struct device *dev, struct device_attribute *att
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int err, ms;
 
-	if (!tm->supports_ramping)
+	if (!SUPPORTS_RAMPING(tm))
 		return -EOPNOTSUPP;
 
 	err = kstrtoint(buf, 10, &ms);
@@ -835,7 +869,7 @@ static ssize_t ramp_down_sp_show(struct device *dev,
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	if (!tm->supports_ramping)
+	if (!SUPPORTS_RAMPING(tm))
 		return -EOPNOTSUPP;
 
 	return sprintf(buf, "%d\n", tm->params.ramp_down_sp);
@@ -848,7 +882,7 @@ static ssize_t ramp_down_sp_store(struct device *dev,
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 	int err, ms;
 
-	if (!tm->supports_ramping)
+	if (!SUPPORTS_RAMPING(tm))
 		return -EOPNOTSUPP;
 
 	err = kstrtoint(buf, 10, &ms);
@@ -886,16 +920,15 @@ static ssize_t duty_cycle_sp_store(struct device *dev,
 		|| duty_cycle > DC_MOTOR_MAX_DUTY_CYCLE)
 		return -EINVAL;
 
-	tm->params.duty_cycle_sp = duty_cycle;
-
 	/* If we're in run-direct mode, allow the duty_cycle_sp to change */
-
 	if (tm->command == TM_COMMAND_RUN_DIRECT) {
-		err = direct_set_duty_cycle(tm);
-
+		err = tm->ops->run_unregulated(tm->context, duty_cycle);
 		if (err < 0)
 			return err;
+		tm->active_params.duty_cycle_sp = duty_cycle;
 	}
+
+	tm->params.duty_cycle_sp = duty_cycle;
 
 	return size;
 }
@@ -912,17 +945,13 @@ static ssize_t speed_sp_store(struct device *dev, struct device_attribute *attr,
 			      const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int err, speed, max_speed;
+	int err, speed;
 
 	err = kstrtoint(buf, 10, &speed);
 	if (err < 0)
 		return err;
 
-	err = tm->ops->get_max_speed(tm->context, &max_speed);
-	if (err < 0)
-		return err;
-
-	if (abs(speed) > max_speed)
+	if (abs(speed) > tm->info->max_speed)
 		return -EINVAL;
 
 	tm->params.speed_sp = speed;
@@ -1005,8 +1034,8 @@ static DEVICE_ATTR_RW(time_sp);
 static DEVICE_ATTR_RW(position_sp);
 static DEVICE_ATTR_RO(commands);
 static DEVICE_ATTR_WO(command);
-static DEVICE_ATTR_RO(stop_commands);
-static DEVICE_ATTR_RW(stop_command);
+static DEVICE_ATTR_RO(stop_actions);
+static DEVICE_ATTR_RW(stop_action);
 static DEVICE_ATTR_RW(polarity);
 static DEVICE_ATTR_RW(encoder_polarity);
 static DEVICE_ATTR_RW(ramp_up_sp);
@@ -1026,8 +1055,8 @@ static struct attribute *tacho_motor_class_attrs[] = {
 	&dev_attr_position_sp.attr,
 	&dev_attr_commands.attr,
 	&dev_attr_command.attr,
-	&dev_attr_stop_commands.attr,
-	&dev_attr_stop_command.attr,
+	&dev_attr_stop_actions.attr,
+	&dev_attr_stop_action.attr,
 	&dev_attr_polarity.attr,
 	&dev_attr_encoder_polarity.attr,
 	&dev_attr_ramp_up_sp.attr,
@@ -1176,13 +1205,17 @@ int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
 {
 	int err;
 
-	if (!tm || !tm->address || !parent)
+	if (!tm || !tm->address || !tm->info || !parent)
 		return -EINVAL;
+
+	tm->wq = create_singlethread_workqueue("tacho-motor");
+	if (!tm->wq)
+		return -ENOMEM;
 
 	tm->dev.release = tacho_motor_release;
 	tm->dev.parent = parent;
 
-	switch (tm->ops->get_motion_type(tm->context)) {
+	switch (tm->info->motion_type) {
 	case TM_MOTION_LINEAR:
 		tacho_motor_class.dev_groups = tacho_motor_linear_groups;
 		dev_set_name(&tm->dev, "linear%d", tacho_motor_class_id++);
@@ -1193,6 +1226,7 @@ int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
 		break;
 	default:
 		dev_err(&tm->dev, "unhandled motion type\n");
+		destroy_workqueue(tm->wq);
 		return -EINVAL;
 	}
 
@@ -1204,9 +1238,10 @@ int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
 	INIT_DELAYED_WORK(&tm->run_timed_work, tacho_motor_class_run_timed_work);
 
 	err = device_register(&tm->dev);
-
-	if (err)
+	if (err) {
+		destroy_workqueue(tm->wq);
 		return err;
+	}
 
 	dev_info(&tm->dev, "Registered '%s' on '%s'.\n", tm->driver_name,
 		 tm->address);
@@ -1221,6 +1256,7 @@ void unregister_tacho_motor(struct tacho_motor_device *tm)
 		 tm->address);
 	cancel_delayed_work_sync(&tm->run_timed_work);
 	cancel_delayed_work_sync(&tm->ramp_work);
+	destroy_workqueue(tm->wq);
 	device_unregister(&tm->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_tacho_motor);

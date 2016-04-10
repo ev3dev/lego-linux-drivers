@@ -1,7 +1,7 @@
 /*
  * Battery driver for Dexter Industries BrickPi+
  *
- * Copyright (c) 2015 David Lechner <david@lechnology.com>
+ * Copyright (c) 2015-2016 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -70,18 +70,9 @@ static int brickpi_battery_get_property(struct power_supply *psy,
 	int ret = 0;
 
 	switch (prop) {
-	case POWER_SUPPLY_PROP_STATUS:
-		val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
-		break;
-	case POWER_SUPPLY_PROP_PRESENT:
-		val->intval = 1;
-		break;
-	case POWER_SUPPLY_PROP_TECHNOLOGY:
-		val->intval = POWER_SUPPLY_TECHNOLOGY_UNKNOWN;
-		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		ret = brickpi_battery_read16(bat->client);
-		if (ret < 0)
+		if (WARN_ONCE(ret < 0, "Failed to read voltage"))
 			break;
 		/*
 		 * Converting to microvolts. The chip has a 3.3V reference and
@@ -96,13 +87,11 @@ static int brickpi_battery_get_property(struct power_supply *psy,
 		ret = -EINVAL;
 		break;
 	}
-	return ret;
+
+	return 0;
 }
 
 static enum power_supply_property brickpi_battery_props[] = {
-	POWER_SUPPLY_PROP_STATUS,
-	POWER_SUPPLY_PROP_PRESENT,
-	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_SCOPE,
 };

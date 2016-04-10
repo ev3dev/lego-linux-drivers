@@ -152,7 +152,7 @@ printk("received ch %u: %u\n", channel, val);
 	data->msg_busy = false;
 }
 
-static void evb_analog_msg_complete(void* context)
+static void evb_analog_msg_complete(void *context)
 {
 	struct evb_analog_data *data = context;
 

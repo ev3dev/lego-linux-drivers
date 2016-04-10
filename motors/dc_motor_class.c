@@ -44,12 +44,12 @@
  * .    - `run-forever`: Causes the motor to run until another command is sent.
  * .    - `run-timed`: Runs the motor for the amount of time specified in
  * .      `time_sp` and then stops the motor using the command specified by
- * .      `stop_command`.
+ * .      `stop_action`.
  * .    - `run-direct`: Runs the motor at the duty cycle specified by
  * .      `duty_cycle_sp`. Unlike other run commands, changing `duty_cycle_sp`
  * .      while running *will* take effect immediately.
  * .    - `stop`: Stops any of the run commands before they are complete using
- * .      the command specified by `stop_command`.
+ * .      the command specified by `stop_action`.
  * .
  * .    Not all commands may be supported. Read `commands` to find out which
  * .    commands are supported for a particular driver.
@@ -87,18 +87,18 @@
  * .    - `ramping`: Indicates that the motor has not yet reached the
  * .      `duty_cycle_sp`.
  * .
- * `stop_command`
- * : (write-only) Sets the stop command that will be used when the motor stops.
+ * `stop_action`
+ * : (write-only) Sets the stop action that will be used when the motor stops.
  *   Possible values are:
  * .
  * .    - `coast`: Causes the motor to coast to a stop by floating the outputs.
  * .    - `brake`: Causes the motor to stop more quickly by shorting the outputs.
  * .
- * .    Not all values may be supported. Read `stop_commands` to find out which
- * .    commands are supported for a particular driver.
+ * .    Not all values may be supported. Read `stop_actions` to find out which
+ * .    actions are supported for a particular driver.
  * .
- * `stop_commands`
- * : (read-only) Gets a space separated list of supported stop commands.
+ * `stop_actions`
+ * : (read-only) Gets a space separated list of supported stop actions.
  * .
  * `ramp_down_sp`
  * : (read/write) Sets the time in milliseconds that it take the motor to ramp
@@ -124,25 +124,25 @@
 
 #define RAMP_PERIOD	msecs_to_jiffies(100)
 
-const char* dc_motor_command_names[] = {
+const char *dc_motor_command_names[] = {
 	[DC_MOTOR_COMMAND_RUN_FOREVER]	= "run-forever",
 	[DC_MOTOR_COMMAND_RUN_TIMED]	= "run-timed",
 	[DC_MOTOR_COMMAND_RUN_DIRECT]	= "run-direct",
 	[DC_MOTOR_COMMAND_STOP]		= "stop",
 };
 
-const char* dc_motor_stop_command_names[] = {
-	[DC_MOTOR_STOP_COMMAND_COAST]	= "coast",
-	[DC_MOTOR_STOP_COMMAND_BRAKE]	= "brake",
+const char *dc_motor_stop_action_names[] = {
+	[DC_MOTOR_STOP_ACTION_COAST]	= "coast",
+	[DC_MOTOR_STOP_ACTION_BRAKE]	= "brake",
 };
 
-const char* dc_motor_polarity_values[] = {
+const char *dc_motor_polarity_values[] = {
 	[DC_MOTOR_POLARITY_NORMAL]	= "normal",
 	[DC_MOTOR_POLARITY_INVERSED]	= "inversed",
 };
 EXPORT_SYMBOL_GPL(dc_motor_polarity_values);
 
-const char* dc_motor_state_names[] = {
+const char *dc_motor_state_names[] = {
 	[DC_MOTOR_STATE_RUNNING]	= "running",
 	[DC_MOTOR_STATE_RAMPING]	= "ramping",
 };
@@ -208,7 +208,7 @@ static void dc_motor_class_ramp_work(struct work_struct *work)
 				: DC_MOTOR_INTERNAL_COMMAND_RUN_REVERSE;
 	} else {
 		internal_command =
-			(motor->active_params.stop_command == DC_MOTOR_STOP_COMMAND_BRAKE)
+			(motor->active_params.stop_action == DC_MOTOR_STOP_ACTION_BRAKE)
 			? DC_MOTOR_INTERNAL_COMMAND_BRAKE
 			: DC_MOTOR_INTERNAL_COMMAND_COAST;
 	}
@@ -452,7 +452,7 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 	return -EINVAL;
 }
 
-static ssize_t stop_commands_show(struct device *dev,
+static ssize_t stop_actions_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
@@ -460,11 +460,11 @@ static ssize_t stop_commands_show(struct device *dev,
 	int i;
 	int count = 0;
 
-	supported_commands = motor->ops->get_supported_stop_commands(motor->context);
-	for (i = 0; i < NUM_DC_MOTOR_STOP_COMMANDS; i++) {
+	supported_commands = motor->ops->get_supported_stop_actions(motor->context);
+	for (i = 0; i < NUM_DC_MOTOR_STOP_ACTIONS; i++) {
 		if (supported_commands & BIT(i))
 			count += sprintf(buf + count, "%s ",
-				dc_motor_stop_command_names[i]);
+				dc_motor_stop_action_names[i]);
 	}
 
 	if (count == 0)
@@ -474,7 +474,7 @@ static ssize_t stop_commands_show(struct device *dev,
 	return count;
 }
 
-static ssize_t stop_command_store(struct device *dev,
+static ssize_t stop_action_store(struct device *dev,
 				  struct device_attribute *attr,
 				  const char *buf, size_t count)
 {
@@ -482,12 +482,12 @@ static ssize_t stop_command_store(struct device *dev,
 	unsigned supported_commands;
 	int i;
 
-	supported_commands = motor->ops->get_supported_stop_commands(motor->context);
-	for (i = 0; i < NUM_DC_MOTOR_STOP_COMMANDS; i++) {
-		if (!sysfs_streq(buf, dc_motor_stop_command_names[i]))
+	supported_commands = motor->ops->get_supported_stop_actions(motor->context);
+	for (i = 0; i < NUM_DC_MOTOR_STOP_ACTIONS; i++) {
+		if (!sysfs_streq(buf, dc_motor_stop_action_names[i]))
 			continue;
 		if (supported_commands & BIT(i)) {
-			motor->params.stop_command = i;
+			motor->params.stop_action = i;
 			return count;
 		}
 
@@ -559,8 +559,8 @@ static DEVICE_ATTR_RW(duty_cycle_sp);
 static DEVICE_ATTR_RO(duty_cycle);
 static DEVICE_ATTR_RO(commands);
 static DEVICE_ATTR_WO(command);
-static DEVICE_ATTR_RO(stop_commands);
-static DEVICE_ATTR_WO(stop_command);
+static DEVICE_ATTR_RO(stop_actions);
+static DEVICE_ATTR_WO(stop_action);
 static DEVICE_ATTR_RO(state);
 static DEVICE_ATTR_RW(time_sp);
 
@@ -574,8 +574,8 @@ static struct attribute *dc_motor_class_attrs[] = {
 	&dev_attr_duty_cycle.attr,
 	&dev_attr_commands.attr,
 	&dev_attr_command.attr,
-	&dev_attr_stop_commands.attr,
-	&dev_attr_stop_command.attr,
+	&dev_attr_stop_actions.attr,
+	&dev_attr_stop_action.attr,
 	&dev_attr_state.attr,
 	&dev_attr_time_sp.attr,
 	NULL

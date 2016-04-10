@@ -153,7 +153,7 @@ struct legoev3_analog_device {
 	u16 nxt_color_raw_data[NUM_EV3_PORT_IN][NUM_NXT_COLOR_READ_STATE];
 };
 
-static void legoev3_analog_read_one_msg_complete(void* context)
+static void legoev3_analog_read_one_msg_complete(void *context)
 {
 	struct legoev3_analog_device *alg = context;
 	u16 val;
@@ -180,7 +180,7 @@ static void legoev3_analog_read_one_msg_complete(void* context)
 	alg->msg_busy = false;
 }
 
-static void legoev3_analog_read_all_msg_complete(void* context)
+static void legoev3_analog_read_all_msg_complete(void *context)
 {
 	struct legoev3_analog_device *alg = context;
 	int i = ADS7957_NUM_CHANNELS;

@@ -206,7 +206,7 @@ static const struct device_type ev3_motor_device_types[] = {
 	}
 };
 
-static const char *ev3_output_port_status_names[] = {
+static const char * const ev3_output_port_status_names[] = {
 	[MOTOR_NONE]	= "no-motor",
 	[MOTOR_TACHO]	= legoev3_output_port_mode_info[MOTOR_TACHO].name,
 	[MOTOR_DC]	= legoev3_output_port_mode_info[MOTOR_DC].name,
@@ -282,15 +282,15 @@ int ev3_output_port_set_direction_gpios(struct ev3_output_port_data *data)
 	return 0;
 }
 
-static unsigned ev3_ouput_port_get_supported_commands(void* context)
+static unsigned ev3_ouput_port_get_supported_commands(void *context)
 {
 	return BIT(DC_MOTOR_COMMAND_RUN_FOREVER) | BIT(DC_MOTOR_COMMAND_RUN_DIRECT)
 		| BIT(DC_MOTOR_COMMAND_STOP);
 }
 
-static unsigned ev3_ouput_port_get_supported_stop_commands(void* context)
+static unsigned ev3_ouput_port_get_supported_stop_actions(void *context)
 {
-	return BIT(DC_MOTOR_STOP_COMMAND_COAST) | BIT(DC_MOTOR_STOP_COMMAND_BRAKE);
+	return BIT(DC_MOTOR_STOP_ACTION_COAST) | BIT(DC_MOTOR_STOP_ACTION_BRAKE);
 }
 
 static enum dc_motor_internal_command ev3_output_port_get_command(void *context)
@@ -335,7 +335,7 @@ static int ev3_output_port_set_duty_cycle(void *context, unsigned duty)
 
 static struct dc_motor_ops ev3_output_port_motor_ops = {
 	.get_supported_commands	= ev3_ouput_port_get_supported_commands,
-	.get_supported_stop_commands = ev3_ouput_port_get_supported_stop_commands,
+	.get_supported_stop_actions = ev3_ouput_port_get_supported_stop_actions,
 	.get_command		= ev3_output_port_get_command,
 	.set_command		= ev3_output_port_set_command,
 	.set_duty_cycle		= ev3_output_port_set_duty_cycle,

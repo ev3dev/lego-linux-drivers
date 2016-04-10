@@ -49,10 +49,10 @@ enum dc_motor_internal_command {
 #define IS_DC_MOTOR_INTERNAL_RUN_COMMAND(cmd) \
 	(cmd == DC_MOTOR_INTERNAL_COMMAND_RUN_FORWARD || cmd == DC_MOTOR_INTERNAL_COMMAND_RUN_REVERSE)
 
-enum dc_motor_stop_command {
-	DC_MOTOR_STOP_COMMAND_COAST,
-	DC_MOTOR_STOP_COMMAND_BRAKE,
-	NUM_DC_MOTOR_STOP_COMMANDS
+enum dc_motor_stop_action {
+	DC_MOTOR_STOP_ACTION_COAST,
+	DC_MOTOR_STOP_ACTION_BRAKE,
+	NUM_DC_MOTOR_STOP_ACTIONS
 };
 
 enum dc_motor_polarity {
@@ -74,7 +74,7 @@ enum dc_motor_state {
  * @polarity: Indicates which direction is the positive direction of rotation.
  * @ramp_up_sp: The time to ramp up from 0 to 100% in milliseconds.
  * @ramp_down_sp: The time to ramp down from 100 to 0% in milliseconds.
- * @stop_command: Indicates the behavior when the stop command is sent.
+ * @stop_action: Indicates the behavior when the stop command is sent.
  * @time_sp: The time in milliseconds used by the run-timed command.
  */
 struct dc_motor_params {
@@ -82,23 +82,23 @@ struct dc_motor_params {
 	enum dc_motor_polarity polarity;
 	int ramp_up_sp;
 	int ramp_down_sp;
-	enum dc_motor_stop_command stop_command;
+	enum dc_motor_stop_action stop_action;
 	int time_sp;
 };
 
 /**
  * @get_supported_commands: Return the supported commands as bit flags.
- * @get_supported_stop_commands: Return the supported stop commands as bit flags.
+ * @get_supported_stop_actions: Return the supported stop actions as bit flags.
  * @get_command: Get the active command for the motor.
  * @set_command: Set the command for the motor. Returns 0 on success or negative error.
  * @get_duty_cycle: Gets the current duty cycle in percent.
  * @set_duty_cycle: Sets the duty cycle. Returns 0 on success or negative error.
  */
 struct dc_motor_ops {
-	unsigned (*get_supported_commands)(void* context);
-	unsigned (*get_supported_stop_commands)(void* context);
-	enum dc_motor_internal_command (*get_command)(void* context);
-	int (*set_command)(void* context, enum dc_motor_internal_command);
+	unsigned (*get_supported_commands)(void *context);
+	unsigned (*get_supported_stop_actions)(void *context);
+	enum dc_motor_internal_command (*get_command)(void *context);
+	int (*set_command)(void *context, enum dc_motor_internal_command);
 	unsigned (*get_duty_cycle)(void *context);
 	int (*set_duty_cycle)(void *context, unsigned duty_cycle);
 };

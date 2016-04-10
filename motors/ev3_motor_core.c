@@ -38,6 +38,11 @@ static int ev3_motor_probe(struct lego_device *ldev)
 		return -EINVAL;
 	}
 
+	if (!ldev->entry_id) {
+		dev_err(&ldev->dev, "Driver not specified.");
+		return -EINVAL;
+	}
+
 	data = kzalloc(sizeof(struct ev3_motor_data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
@@ -45,6 +50,7 @@ static int ev3_motor_probe(struct lego_device *ldev)
 	data->tm.driver_name = ldev->name;
 	data->tm.address = ldev->port->address;
 	data->tm.ops = ldev->port->tacho_motor_ops;
+	data->tm.info = &ev3_motor_defs[ldev->entry_id->driver_data];
 	data->tm.context = ldev->port->context;
 
 	dev_set_drvdata(&ldev->dev, data);

@@ -34,7 +34,7 @@ struct ms_8ch_servo_data {
 	struct servo_motor_device servo;
 };
 
-static int ms_8ch_servo_get_position(void* context)
+static int ms_8ch_servo_get_position(void *context)
 {
 	struct ms_8ch_servo_data *servo = context;
 	struct i2c_client *client = servo->sensor->client;
@@ -42,7 +42,7 @@ static int ms_8ch_servo_get_position(void* context)
 	return i2c_smbus_read_word_data(client, 0x42 + servo->id * 2);
 }
 
-static int ms_8ch_servo_set_position(void* context, int value)
+static int ms_8ch_servo_set_position(void *context, int value)
 {
 	struct ms_8ch_servo_data *servo = context;
 	struct i2c_client *client = servo->sensor->client;
@@ -50,7 +50,7 @@ static int ms_8ch_servo_set_position(void* context, int value)
 	return i2c_smbus_write_word_data(client, 0x42 + servo->id * 2, value);
 }
 
-static int ms_8ch_servo_get_rate(void* context)
+static int ms_8ch_servo_get_rate(void *context)
 {
 	struct ms_8ch_servo_data *servo = context;
 	struct i2c_client *client = servo->sensor->client;
@@ -65,7 +65,7 @@ static int ms_8ch_servo_get_rate(void* context)
 	return 24000 / ret;
 }
 
-static int ms_8ch_servo_set_rate(void* context, unsigned value)
+static int ms_8ch_servo_set_rate(void *context, unsigned value)
 {
 	struct ms_8ch_servo_data *servo = context;
 	struct i2c_client *client = servo->sensor->client;

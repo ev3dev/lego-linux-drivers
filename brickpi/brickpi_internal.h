@@ -23,14 +23,20 @@
 #define _BRICKPI_INTERNAL_H_
 
 #include <linux/hrtimer.h>
+#include <linux/ktime.h>
 #include <linux/module.h>
 #include <linux/types.h>
 
 #include <lego.h>
 #include <lego_port_class.h>
 #include <lego_sensor_class.h>
+#include <tacho_motor_class.h>
+#include <tacho_motor_helper.h>
 
 #include "brickpi.h"
+
+#define BRICKPI_DUTY_PCT_TO_RAW(d) ((d) * 255 / 100)
+#define BRICKPI_DUTY_RAW_TO_PCT(d) ((d) * 100 / 255)
 
 /**
  * struct brickpi_i2c_msg_data - Data for a single I2C message
@@ -82,6 +88,11 @@ struct brickpi_in_port_data {
  * @ch_data: Pointer to the containing channel.
  * @port: The lego-port class device for each output port.
  * @motor: Pointer to hold device when it is registered.
+ * @speed: Speed handling data.
+ * @speed_pid: Speed regulation pid data.
+ * @hold_pid: Hold position pid data.
+ * @speed_pid_ena: Speed pid enabled flag.
+ * @hold_pid_ena: Hold position pid enabled flag.
  * @motor_use_offset:
  * @motor_enable: Tells the motor to run or not.
  * @motor_direction: The motor direction to send to the Arduino.
@@ -93,11 +104,18 @@ struct brickpi_in_port_data {
  * 	value and the kernel position value. Could be sent to the BrickPi, but
  * 	currently just used internally in the kernel.
  * @target_position: The target for run-to-*-pos commands.
+ * @direct_duty_cycle: Duty cycle setpoint used by run-direct command.
+ * @stop_action: Action to take when motor is stopped.
  */
 struct brickpi_out_port_data {
 	struct brickpi_channel_data *ch_data;
 	struct lego_port_device port;
 	struct lego_device *motor;
+	struct tm_speed speed;
+	struct tm_pid speed_pid;
+	struct tm_pid hold_pid;
+	bool speed_pid_ena;
+	bool hold_pid_ena;
 	bool motor_use_offset;
 	bool motor_enabled;
 	bool motor_reversed;
@@ -106,6 +124,8 @@ struct brickpi_out_port_data {
 	long motor_position;
 	long motor_offset;
 	long target_position;
+	int direct_duty_cycle;
+	enum tm_stop_action stop_action;
 };
 
 struct brickpi_data;
@@ -144,6 +164,7 @@ struct brickpi_channel_data {
  * @rx_buffer: Array to store the received data.
  * @rx_buffer_head: The index *in bits* of the current position in the rx_buffer.
  * @rx_data_size: Size of the received data.
+ * @rx_time: Timestamp when data was received.
  * @rx_completion: Completion to wait for received data.
  * @rx_data_work: Workqueue item for handling received data.
  * @poll_work: Work for polling.
@@ -162,6 +183,7 @@ struct brickpi_data {
 	u8 rx_buffer[BRICKPI_BUFFER_SIZE];
 	unsigned rx_buffer_head;
 	unsigned rx_data_size;
+	ktime_t rx_time;
 	struct completion rx_completion;
 	struct work_struct rx_data_work;
 	struct work_struct poll_work;
@@ -179,5 +201,8 @@ void brickpi_unregister_in_ports(struct brickpi_channel_data *ch_data);
 int brickpi_register_out_ports(struct brickpi_channel_data *ch_data,
 			       struct device *parent);
 void brickpi_unregister_out_ports(struct brickpi_channel_data *ch_data);
+
+void _brickpi_out_port_stop(struct brickpi_out_port_data *data);
+void _brickpi_out_port_reset(struct brickpi_out_port_data *data);
 
 #endif /* _BRICKPI_INTERNAL_H_ */

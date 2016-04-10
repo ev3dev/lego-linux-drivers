@@ -31,7 +31,7 @@ enum pistorms_leds {
 	PISTORMS_NUM_LEDS
 };
 
-static const char *pistorms_led_color_names[PISTORMS_NUM_LEDS] = {
+static const char * const pistorms_led_color_names[PISTORMS_NUM_LEDS] = {
 	[PISTORMS_RED_LED]	= "red",
 	[PISTORMS_GREEN_LED]	= "green",
 	[PISTORMS_BLUE_LED]	= "blue",
@@ -108,7 +108,7 @@ static void pistorms_led_cleanup(struct pistorms_led_group *group)
 }
 
 static int pistorms_led_add(struct device *dev, struct pistorms_led_group *group,
-                            const char* parent_name)
+			    const char *parent_name)
 {
 	int index = group->num_leds;
 	struct pistorms_led_data *led_data = &group->leds[index];

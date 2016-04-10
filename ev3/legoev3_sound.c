@@ -328,7 +328,7 @@ static void snd_legoev3_call_pcm_elapsed(unsigned long data)
 	}
 }
 
-static void snd_legoev3_period_elapsed(void* data)
+static void snd_legoev3_period_elapsed(void *data)
 {
 	struct snd_legoev3 *chip = data;
 

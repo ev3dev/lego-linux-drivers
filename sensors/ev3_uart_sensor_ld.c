@@ -1,7 +1,7 @@
 /*
  * LEGO MINDSTORMS EV3 UART Sensor tty line discipline
  *
- * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014,2016 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -81,7 +81,7 @@
 #define EV3_UART_MAX_MESSAGE_SIZE	(EV3_UART_MAX_DATA_SIZE + 2)
 
 #define EV3_UART_MSG_TYPE_MASK		0xC0
-#define EV3_UART_CMD_SIZE(byte)		(1 << ((byte >> 3) & 0x7))
+#define EV3_UART_CMD_SIZE(byte)		(1 << (((byte) >> 3) & 0x7))
 #define EV3_UART_MSG_CMD_MASK		0x07
 #define EV3_UART_MAX_DATA_ERR		6
 
@@ -180,6 +180,7 @@ enum ev3_uart_info_flags {
  * @tty: Pointer to the tty device that the sensor is connected to
  * @in_port: The input port device associated with this tty.
  * @sensor: The lego-sensor class structure for the sensor.
+ * @wq: Workqueue for exclusive use by this driver.
  * @rx_data_work: Workqueue item for handling received data.
  * @send_ack_work: Used to send ACK after a delay.
  * @change_bitrate_work: Used to change the baud rate after a delay.
@@ -220,6 +221,7 @@ struct ev3_uart_port_data {
 	struct tty_struct *tty;
 	struct lego_port_device *in_port;
 	struct lego_sensor_device sensor;
+	struct workqueue_struct *wq;
 	struct work_struct rx_data_work;
 	struct delayed_work send_ack_work;
 	struct work_struct change_bitrate_work;
@@ -310,9 +312,8 @@ int ev3_uart_set_mode(void *context, const u8 mode)
 	if (!completion_done(&port->set_mode_completion))
 		return -EBUSY;
 
-	data[0] = ev3_uart_set_msg_hdr(EV3_UART_MSG_TYPE_CMD,
-					   data_size - 2,
-					   EV3_UART_CMD_SELECT);
+	data[0] = ev3_uart_set_msg_hdr(EV3_UART_MSG_TYPE_CMD, data_size - 2,
+				       EV3_UART_CMD_SELECT);
 	data[1] = mode;
 	data[2] = 0xFF ^ data[0] ^ data[1];
 
@@ -362,7 +363,7 @@ static ssize_t ev3_uart_direct_write(void *context, char *data, loff_t off,
 	else
 		size = 32;
 	uart_data[0] = ev3_uart_set_msg_hdr(EV3_UART_MSG_TYPE_CMD, size,
-						EV3_UART_CMD_WRITE);
+					    EV3_UART_CMD_WRITE);
 	data[size + 1] = 0xFF;
 	for (i = 0; i <= size; i++)
 		uart_data[size + 1] ^= uart_data[i];
@@ -387,9 +388,8 @@ int ev3_uart_match_input_port(struct device *dev, const void *data)
 
 static void ev3_uart_send_ack(struct work_struct *work)
 {
-	struct delayed_work *dwork = to_delayed_work(work);
-	struct ev3_uart_port_data *port =
-		container_of(dwork, struct ev3_uart_port_data, send_ack_work);
+	struct ev3_uart_port_data *port = container_of(to_delayed_work(work),
+				struct ev3_uart_port_data, send_ack_work);
 	int err;
 
 	ev3_uart_write_byte(port->tty, EV3_UART_SYS_ACK);
@@ -407,20 +407,18 @@ static void ev3_uart_send_ack(struct work_struct *work)
 				port->tty->name);
 			return;
 		}
-	} else {
+	} else
 		dev_err(port->tty->dev, "Reconnected due to: %s\n",
 			port->last_err);
-	}
 
 	mdelay(4);
-	schedule_work(&port->change_bitrate_work);
+	queue_work(port->wq, &port->change_bitrate_work);
 }
 
 static void ev3_uart_change_bitrate(struct work_struct *work)
 {
-	struct ev3_uart_port_data *port =
-		container_of(work, struct ev3_uart_port_data,
-			     change_bitrate_work);
+	struct ev3_uart_port_data *port = container_of(work,
+				struct ev3_uart_port_data, change_bitrate_work);
 	struct ktermios old_termios = port->tty->termios;
 
 	tty_wait_until_sent(port->tty, 0);
@@ -431,7 +429,7 @@ static void ev3_uart_change_bitrate(struct work_struct *work)
 	up_write(&port->tty->termios_rwsem);
 	if (port->info_done) {
 		hrtimer_start(&port->keep_alive_timer, ktime_set(0, 1000000),
-							HRTIMER_MODE_REL);
+			      HRTIMER_MODE_REL);
 		/* restore the previous user-selected mode */
 		if (port->sensor.mode != port->requested_mode)
 			ev3_uart_set_mode(port->tty, port->requested_mode);
@@ -448,8 +446,8 @@ static void ev3_uart_send_keep_alive(unsigned long data)
 
 enum hrtimer_restart ev3_uart_keep_alive_timer_callback(struct hrtimer *timer)
 {
-	struct ev3_uart_port_data *port =
-		container_of(timer, struct ev3_uart_port_data, keep_alive_timer);
+	struct ev3_uart_port_data *port = container_of(timer,
+				struct ev3_uart_port_data, keep_alive_timer);
 
 	if (!port->synced || !port->info_done)
 		return HRTIMER_NORESTART;
@@ -462,7 +460,7 @@ enum hrtimer_restart ev3_uart_keep_alive_timer_callback(struct hrtimer *timer)
 		if (port->num_data_err > EV3_UART_MAX_DATA_ERR) {
 			port->synced = 0;
 			port->new_baud_rate = EV3_UART_SPEED_MIN;
-			schedule_work(&port->change_bitrate_work);
+			queue_work(port->wq, &port->change_bitrate_work);
 			return HRTIMER_NORESTART;
 		}
 	}
@@ -630,8 +628,8 @@ static void ev3_uart_handle_rx_data(struct work_struct *work)
 					port->last_err = "Did not receive all required INFO.";
 					goto err_invalid_state;
 				}
-				schedule_delayed_work(&port->send_ack_work,
-						      msecs_to_jiffies(EV3_UART_SEND_ACK_DELAY));
+				queue_delayed_work(port->wq, &port->send_ack_work,
+						   msecs_to_jiffies(EV3_UART_SEND_ACK_DELAY));
 				port->info_done = 1;
 				return;
 			}
@@ -909,7 +907,7 @@ err_bad_data_msg_checksum:
 err_invalid_state:
 	port->synced = 0;
 	port->new_baud_rate = EV3_UART_SPEED_MIN;
-	schedule_work(&port->change_bitrate_work);
+	queue_work(port->wq, &port->change_bitrate_work);
 }
 
 static int ev3_uart_open(struct tty_struct *tty)
@@ -921,6 +919,12 @@ static int ev3_uart_open(struct tty_struct *tty)
 	port = kzalloc(sizeof(struct ev3_uart_port_data), GFP_KERNEL);
 	if (!port)
 		return -ENOMEM;
+
+	port->wq = create_singlethread_workqueue("ev3-uart");
+	if (!port->wq) {
+		kfree(port);
+		return -ENOMEM;
+	}
 
 	port->tty = tty;
 	port->new_baud_rate = EV3_UART_SPEED_MIN;
@@ -947,7 +951,8 @@ static int ev3_uart_open(struct tty_struct *tty)
 	INIT_WORK(&port->rx_data_work, ev3_uart_handle_rx_data);
 	INIT_DELAYED_WORK(&port->send_ack_work, ev3_uart_send_ack);
 	INIT_WORK(&port->change_bitrate_work, ev3_uart_change_bitrate);
-	hrtimer_init(&port->keep_alive_timer, HRTIMER_BASE_MONOTONIC, HRTIMER_MODE_REL);
+	hrtimer_init(&port->keep_alive_timer, HRTIMER_BASE_MONOTONIC,
+		     HRTIMER_MODE_REL);
 	port->keep_alive_timer.function = ev3_uart_keep_alive_timer_callback;
 	tasklet_init(&port->keep_alive_tasklet, ev3_uart_send_keep_alive,
 		     (unsigned long)tty);
@@ -1007,12 +1012,12 @@ static void ev3_uart_close(struct tty_struct *tty)
 	cancel_work_sync(&port->change_bitrate_work);
 	hrtimer_cancel(&port->keep_alive_timer);
 	tasklet_kill(&port->keep_alive_tasklet);
-	if (port->sensor.context) {
+	if (port->sensor.context)
 		unregister_lego_sensor(&port->sensor);
-	}
 	if (port->in_port)
 		put_device(&port->in_port->dev);
 	tty->disc_data = NULL;
+	destroy_workqueue(port->wq);
 	kfree(port);
 }
 
@@ -1045,7 +1050,7 @@ static void ev3_uart_receive_buf(struct tty_struct *tty,
 		cb->head += count;
 	}
 
-	schedule_work(&port->rx_data_work);
+	queue_work(port->wq, &port->rx_data_work);
 }
 
 static void ev3_uart_write_wakeup(struct tty_struct *tty)

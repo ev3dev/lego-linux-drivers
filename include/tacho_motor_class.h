@@ -1,8 +1,8 @@
 /*
  * Tacho motor device class
  *
- * Copyright (C) 2016 Ralph Hempel <rhempel@hempeldesigngroup.com>
- * Copyright (C) 2015 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2014,2016 Ralph Hempel <rhempel@hempeldesigngroup.com>
+ * Copyright (C) 2015-2016 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -37,20 +37,18 @@ enum tacho_motor_command {
 	NUM_TM_COMMAND
 };
 
-#define IS_POS_CMD(command) ((command == TM_COMMAND_RUN_TO_ABS_POS) || (command == TM_COMMAND_RUN_TO_REL_POS))
-#define IS_RUN_CMD(command) ((command != TM_COMMAND_STOP) && (command != TM_COMMAND_RESET))
+#define IS_POS_CMD(c) \
+(((c) == TM_COMMAND_RUN_TO_ABS_POS) || ((c) == TM_COMMAND_RUN_TO_REL_POS))
+#define IS_RUN_CMD(c) \
+(((c) != TM_COMMAND_STOP) && ((c) != TM_COMMAND_RESET))
+#define SUPPORTS_RAMPING(tm) \
+(((tm)->ops->run_regulated || (tm)->ops->run_to_pos) && (tm)->ops->get_speed)
 
-enum tacho_motor_stop_command {
-	TM_STOP_COMMAND_COAST,
-	TM_STOP_COMMAND_BRAKE,
-	TM_STOP_COMMAND_HOLD,
-	NUM_TM_STOP_COMMAND,
-};
-
-enum tacho_motor_type {
-	TM_TYPE_TACHO,
-	TM_TYPE_MINITACHO,
-	NUM_TM_TYPE,
+enum tm_stop_action {
+	TM_STOP_ACTION_COAST,
+	TM_STOP_ACTION_BRAKE,
+	TM_STOP_ACTION_HOLD,
+	NUM_TM_STOP_ACTION,
 };
 
 enum tacho_motor_state
@@ -86,7 +84,7 @@ struct tacho_motor_ops;
  * @ time_sp: The time in milliseconds used by the run-timed command.
  * @ ramp_up_sp: In milliseconds.
  * @ ramp_down_sp: In milliseconds.
- * @stop_command: What to do for stop command or when run command ends.
+ * @stop_action: What to do for stop command or when run command ends.
  */
 struct tacho_motor_params {
 	enum dc_motor_polarity polarity;
@@ -97,7 +95,7 @@ struct tacho_motor_params {
 	int time_sp;
 	int ramp_up_sp;
 	int ramp_down_sp;
-	enum tacho_motor_stop_command stop_command;
+	enum tm_stop_action stop_action;
 };
 
 /**
@@ -112,16 +110,15 @@ struct tacho_motor_device {
 	const char *driver_name;
 	const char *address;
 	const struct tacho_motor_ops const *ops;
+	const struct ev3_motor_info const *info;
 	void *context;
 	bool supports_encoder_polarity;
-	bool supports_ramping;
 	enum tacho_motor_command command;
 	struct tacho_motor_params params;
 	struct tacho_motor_params active_params;
 	int ramp_start_speed;
 	int ramp_delta_speed;
 	int ramp_end_speed;
-	int ramp_max_speed;
 	int ramp_last_speed;
 	int ramp_delta_time;
 	unsigned long ramp_end_time;
@@ -131,6 +128,7 @@ struct tacho_motor_device {
 	struct device dev;
 	struct delayed_work run_timed_work;
 	struct delayed_work ramp_work;
+	struct workqueue_struct *wq;
 };
 
 /**
@@ -141,21 +139,20 @@ struct tacho_motor_device {
  * @set_position: Sets the current encoder position to the specified value.
  * 	Returns an error instead of setting the value if the motor is running.
  * @get_state: Gets the state flags for the motor.
- * @get_count_per_rot: Gets the number of tacho counts in one full rotation of
- *	the motor (rotation motors only).
- * @get_count_per_m: Gets the number of tacho counts in one meter of
- *      travel for the motor (linear motors only).
- * @get_full_travel_count: Gets the maximum number of tacho counts in the full
- *      travel of the motor (linear motors only).
  * @get_duty_cycle: Gets the current PWM duty cycle being sent to the motor.
- * @set_duty_cycle: Sets the current PWM duty cycle being sent to the motor.
  * @get_speed: Gets the current speed of the motor in tacho counts per second.
- * @get_max_speed: Gets the maximum speed of the motor in tacho counts per second.
- * @get_commands: Gets flags representing the commands that the driver supports.
- * @get_command: Get the active command for the motor.
- * @send_command: Sends an command to the motor controller (makes the motor do
- * 	something).
- * @get_stop_commands: Gets flags representing the valid stop commands supported
+ * @run_unregulated: Sends message to the motor controller to run in unregulated
+ *	mode with the specified duty cycle.
+ * @run_regulated: Sends message to the motor controller to run in regulated
+ *	mode with the specified speed setpoint.
+ * @run_to_pos: Sends message to the motor controller to run to the specified
+ *	position using speed regulation and do the specified stop action when
+ *	the target position is reached.
+ * @stop: Sends message to the motor controller to stop using the specified
+ *	action.
+ * @reset: Sends message to the motor controller to reset. This will stop the
+ *	motor and reset any motor controller parameters.
+ * @get_stop_actions: Gets flags representing the valid stop actions supported
  * 	by the driver.
  * @get_speed_Kp: Gets the current proportional PID constant for the speed PID.
  * @set_speed_Kp: Sets the current proportional PID constant for the speed PID.
@@ -176,20 +173,17 @@ struct tacho_motor_ops {
 
 	int (*get_state)(void *context);
 
-	int (*get_count_per_rot)(void *context);
-	int (*get_count_per_m)(void *context);
-	int (*get_full_travel_count)(void *context);
 	int (*get_duty_cycle)(void *context, int *duty_cycle);
-	int (*set_duty_cycle)(void *context, int duty_cycle);
 	int (*get_speed)(void *context, int *speed);
-	int (*set_speed)(void *context, int speed);
-	int (*get_max_speed)(void *context, int *max_speed);
 
-	unsigned (*get_commands)(void *context);
-	int (*send_command)(void *context, struct tacho_motor_params *params,
-			    enum tacho_motor_command command);
-	unsigned (*get_stop_commands)(void *context);
-	unsigned (*get_motion_type)(void *context);
+	int (*run_unregulated)(void *context, int duty_cycle);
+	int (*run_regulated)(void *context, int speed);
+	int (*run_to_pos)(void *context, int pos, int speed,
+			  enum tm_stop_action action);
+	int (*stop)(void *context, enum tm_stop_action action);
+	int (*reset)(void *context);
+
+	unsigned (*get_stop_actions)(void *context);
 
 	int (*get_speed_Kp)(void *context);
 	int (*set_speed_Kp)(void *context, int k);

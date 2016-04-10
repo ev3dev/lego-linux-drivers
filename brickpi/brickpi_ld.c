@@ -1,7 +1,7 @@
 /*
  * Dexter Industries BrickPi driver
  *
- * Copyright (C) 2015 David Lechner <david@lechnology.com>
+ * Copyright (C) 2015-2016 David Lechner <david@lechnology.com>
  *
  * Based on BrickPi.h by:
  *
@@ -59,8 +59,13 @@
 #define N_BRICKPI 28
 #endif
 
-/* TODO: Make this a module parameter */
-#define BRICKPI_POLL_MS		10
+/*
+ * This is just about as fast as we can go. Each poll is 2 messages -- 1 to
+ * each channel. Each message takes about 1ms. This leaves 2ms open for sending
+ * commands.
+ */
+#define BRICKPI_POLL_MS		4
+#define BRICKPI_SPEED_PERIOD	20
 
 /* tx_buffer offsets */
 #define BRICKPI_TX_ADDR		0
@@ -246,27 +251,36 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 	port_size[BRICKPI_PORT_2] = brickpi_read_rx(data, 5);
 	debug_pr("port_size[BRICKPI_PORT_2]: %u\n", port_size[BRICKPI_PORT_2]);
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
+		struct brickpi_out_port_data *port = &ch_data->out_port[i];
 		u64 bits = brickpi_read_rx(data, port_size[i]);
-		s64 position = bits >> 1;
+		/*
+		 * we are ignoring the least significant bit in the position
+		 * so that it matches other platforms. The BrickPi counts both
+		 * the rising and falling edges of the encoders as 2 counts
+		 * whereas other platforms only count this as 1.
+		 */
+		s64 position = bits >> 2;
 		if (bits & 1)
 			position *= -1;
-		ch_data->out_port[i].motor_position = position;
+		port->motor_position = position;
+		tm_speed_update(&port->speed, position, data->rx_time);
 		debug_pr("motor_position[%d]: %d\n", i, (int)position);
-		if (ch_data->out_port[i].stop_at_target_position) {
-			if (((ch_data->out_port[i].motor_reversed)
-			     && position < (ch_data->out_port[i].target_position))
-			    || (!(ch_data->out_port[i].motor_reversed)
-			     && position > (ch_data->out_port[i].target_position)))
+		if (port->stop_at_target_position) {
+			if ((port->motor_reversed
+			     && position < port->target_position)
+			    || (!port->motor_reversed
+			     && position > port->target_position))
 			{
-				ch_data->out_port[i].motor_enabled = false;
+				_brickpi_out_port_stop(port);
 			}
 		}
 	}
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
-		s32 *sensor_values = ch_data->in_port[i].sensor_values;
-		u8 *raw_data = ch_data->in_port[i].port.raw_data;
+		struct brickpi_in_port_data *port = &ch_data->in_port[i];
+		s32 *sensor_values = port->sensor_values;
+		u8 *raw_data = port->port.raw_data;
 
-		switch (ch_data->in_port[i].sensor_type) {
+		switch (port->sensor_type) {
 		case BRICKPI_SENSOR_TYPE_NXT_TOUCH:
 		case BRICKPI_SENSOR_TYPE_NXT_TOUCH_DEBOUNCED:
 			sensor_values[0] = brickpi_read_rx(data, 1);
@@ -285,12 +299,12 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 		case BRICKPI_SENSOR_TYPE_NXT_I2C:
 		case BRICKPI_SENSOR_TYPE_NXT_I2C_9V:
 			sensor_values[0] = brickpi_read_rx(data,
-					ch_data->in_port[i].num_i2c_msg);
-			for (j = 0; j < ch_data->in_port[i].num_i2c_msg; j++) {
+					port->num_i2c_msg);
+			for (j = 0; j < port->num_i2c_msg; j++) {
 				if (sensor_values[0] & (1 << j)) {
 					int k;
 					struct brickpi_i2c_msg_data *msg =
-						&ch_data->in_port[i].i2c_msg[j];
+						&port->i2c_msg[j];
 					for (k = 0; k < msg->read_size; k++) {
 						msg->read_data[k] =
 							brickpi_read_rx(data, 8);
@@ -355,7 +369,7 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 			break;
 		default:
 			/* NXT Analog expects value in mV */
-			if (ch_data->in_port[i].sensor_type <= BRICKPI_SENSOR_TYPE_NXT_ANALOG_MAX)
+			if (port->sensor_type <= BRICKPI_SENSOR_TYPE_NXT_ANALOG_MAX)
 				sensor_values[0] = brickpi_read_rx(data, 10) * 5000 / 1024;
 			else
 				sensor_values[0] = brickpi_read_rx(data, 10);
@@ -366,16 +380,16 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 
 		if (!raw_data)
 			continue;
-		if (ch_data->in_port[i].sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C
-			|| ch_data->in_port[i].sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C_9V)
+		if (port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C
+			|| port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C_9V)
 		{
-			memcpy(raw_data, ch_data->in_port[i].i2c_msg[0].read_data,
-				ch_data->in_port[i].i2c_msg[0].read_size);
+			memcpy(raw_data, port->i2c_msg[0].read_data,
+				port->i2c_msg[0].read_size);
 		} else {
 			memcpy(raw_data, sensor_values,
 			       sizeof(s32) * NUM_BRICKPI_SENSOR_VALUES);
 		}
-		lego_port_call_raw_data_func(&ch_data->in_port[i].port);
+		lego_port_call_raw_data_func(&port->port);
 	}
 	mutex_unlock(&data->tx_mutex);
 
@@ -389,6 +403,8 @@ static void brickpi_handle_rx_data(struct work_struct *work)
 	int i;
 	u8 size;
 	u8 checksum = 0;
+
+	data->rx_time = ktime_get();
 
 #ifdef DEBUG
 	printk("received: ");
@@ -423,6 +439,29 @@ static void brickpi_handle_rx_data(struct work_struct *work)
 	complete(&data->rx_completion);
 }
 
+static void brickpi_update_motor(struct brickpi_out_port_data *port)
+{
+	if (port->motor_enabled) {
+		int duty_cycle;
+
+		if (port->speed_pid_ena) {
+			if (port->speed_pid.setpoint == 0) {
+				duty_cycle = 0;
+				tm_pid_reinit(&port->speed_pid);
+			} else
+				duty_cycle = tm_pid_update(&port->speed_pid,
+						tm_speed_get(&port->speed));
+		} else if (port->hold_pid_ena) {
+			duty_cycle = tm_pid_update(&port->hold_pid,
+							port->motor_position);
+		} else
+			duty_cycle = port->direct_duty_cycle;
+
+		port->motor_speed = BRICKPI_DUTY_PCT_TO_RAW(abs(duty_cycle));
+		port->motor_reversed = duty_cycle < 0;
+	}
+}
+
 static void brickpi_poll_work(struct work_struct *work)
 {
 	struct brickpi_data *data = container_of(work, struct brickpi_data,
@@ -435,6 +474,8 @@ static void brickpi_poll_work(struct work_struct *work)
 	for (i = 0; i < data->num_channels; i++) {
 		struct brickpi_channel_data *ch_data = &data->channel_data[i];
 		if (ch_data->init_ok) {
+			brickpi_update_motor(&ch_data->out_port[BRICKPI_PORT_1]);
+			brickpi_update_motor(&ch_data->out_port[BRICKPI_PORT_2]);
 			err = brickpi_get_values(ch_data);
 			if (err < 0)
 				debug_pr("failed to get values for address %d. (%d)\n",
@@ -451,16 +492,22 @@ static void brickpi_init_work(struct work_struct *work)
 
 	for (i = 0; i < data->num_channels; i++) {
 		struct brickpi_channel_data *ch_data = &data->channel_data[i];
+		struct brickpi_in_port_data *in_port_1 =
+					&ch_data->in_port[BRICKPI_PORT_1];
+		struct brickpi_in_port_data *in_port_2 =
+					&ch_data->in_port[BRICKPI_PORT_2];
+		struct brickpi_out_port_data *out_port_1 =
+					&ch_data->out_port[BRICKPI_PORT_1];
+		struct brickpi_out_port_data *out_port_2 =
+					&ch_data->out_port[BRICKPI_PORT_2];
 
 		ch_data->data = data;
 		// TODO: add module parameter to get addresses
 		ch_data->address = i + 1;
-		ch_data->in_port[BRICKPI_PORT_1].ch_data = ch_data;
-		ch_data->in_port[BRICKPI_PORT_1].sensor_type =
-						BRICKPI_SENSOR_TYPE_FW_VERSION;
-		ch_data->in_port[BRICKPI_PORT_2].ch_data = ch_data;
-		ch_data->in_port[BRICKPI_PORT_2].sensor_type =
-						BRICKPI_SENSOR_TYPE_FW_VERSION;
+		in_port_1->ch_data = ch_data;
+		in_port_1->sensor_type = BRICKPI_SENSOR_TYPE_FW_VERSION;
+		in_port_2->ch_data = ch_data;
+		in_port_2->sensor_type = BRICKPI_SENSOR_TYPE_FW_VERSION;
 		err = brickpi_set_sensors(ch_data);
 		if (err < 0) {
 			dev_err(data->tty->dev,
@@ -468,8 +515,8 @@ static void brickpi_init_work(struct work_struct *work)
 				err);
 			return;
 		}
-		ch_data->out_port[BRICKPI_PORT_1].ch_data = ch_data;
-		ch_data->out_port[BRICKPI_PORT_2].ch_data = ch_data;
+		out_port_1->ch_data = ch_data;
+		out_port_2->ch_data = ch_data;
 		err = brickpi_get_values(ch_data);
 		if (err < 0) {
 			dev_err(data->tty->dev,
@@ -477,8 +524,13 @@ static void brickpi_init_work(struct work_struct *work)
 				err);
 			return;
 		}
-		ch_data->fw_version =
-			ch_data->in_port[BRICKPI_PORT_1].sensor_values[0];
+		tm_speed_init(&out_port_1->speed, out_port_1->motor_position,
+			data->rx_time, BRICKPI_SPEED_PERIOD / BRICKPI_POLL_MS);
+		tm_speed_init(&out_port_1->speed, out_port_1->motor_position,
+			data->rx_time, BRICKPI_SPEED_PERIOD / BRICKPI_POLL_MS);
+		_brickpi_out_port_reset(out_port_1);
+		_brickpi_out_port_reset(out_port_2);
+		ch_data->fw_version = in_port_1->sensor_values[0];
 		debug_pr("address: %d, fw: %d\n", ch_data->address,
 			 ch_data->fw_version);
 
