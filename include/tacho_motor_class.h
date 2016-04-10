@@ -76,7 +76,6 @@ struct tacho_motor_ops;
  * maintained by the tacho-motor class so that each implementing driver does
  * not have to keep track of them twice.
  *
- * @ polarity: Indicates the positive direction of the motor.
  * @ duty_cycle_sp: Used only for the run-direct command.
  * @ speed_sp: Used for all run commands except run-direct.
  * @ position_sp: Used by run-to-*-pos commands.
@@ -86,7 +85,6 @@ struct tacho_motor_ops;
  * @stop_action: What to do for stop command or when run command ends.
  */
 struct tacho_motor_params {
-	enum dc_motor_polarity polarity;
 	int duty_cycle_sp;
 	int speed_sp;
 	int position_sp;
@@ -121,6 +119,7 @@ struct tacho_motor_device {
 	unsigned long ramp_end_time;
 	unsigned long last_ramp_work_time;
 	bool ramping;
+	enum dc_motor_polarity polarity;
 	/* private */
 	struct device dev;
 	struct delayed_work run_timed_work;

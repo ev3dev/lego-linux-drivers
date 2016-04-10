@@ -392,7 +392,7 @@ static int tm_do_one_ramp_step(struct tacho_motor_device *tm,
  */
 void tacho_motor_class_reset(struct tacho_motor_device *tm)
 {
-	tm->params.polarity		= DC_MOTOR_POLARITY_NORMAL;
+	tm->polarity			= DC_MOTOR_POLARITY_NORMAL;
 	tm->params.duty_cycle_sp	= 0;
 	tm->params.speed_sp		= 0;
 	tm->params.position_sp		= 0;
@@ -429,6 +429,9 @@ static ssize_t position_show(struct device *dev, struct device_attribute *attr,
 	if (err < 0)
 		return err;
 
+	if (tm->polarity == DC_MOTOR_POLARITY_INVERSED)
+		position *= -1;
+
 	return sprintf(buf, "%ld\n", position);
 }
 
@@ -441,6 +444,9 @@ ssize_t position_store(struct device *dev, struct device_attribute *attr,
 	err = kstrtoint(buf, 10, &position);
 	if (err < 0)
 		return err;
+
+	if (tm->polarity == DC_MOTOR_POLARITY_INVERSED)
+		position *= -1;
 
 	err = tm->ops->set_position(tm->context, position);
 	if (err < 0)
@@ -512,7 +518,7 @@ static ssize_t duty_cycle_show(struct device *dev, struct device_attribute *attr
 	if (err)
 		return err;
 
-	if (tm->active_params.polarity == DC_MOTOR_POLARITY_INVERSED)
+	if (tm->polarity == DC_MOTOR_POLARITY_INVERSED)
 		duty_cycle *= -1;
 
 	return sprintf(buf, "%d\n", duty_cycle);
@@ -538,6 +544,9 @@ static ssize_t speed_show(struct device *dev, struct device_attribute *attr,
 	err = tm->ops->get_speed(tm->context, &speed);
 	if (err < 0)
 		return err;
+
+	if (tm->polarity == DC_MOTOR_POLARITY_INVERSED)
+		speed *= -1;
 
 	return sprintf(buf, "%d\n", speed);
 }
@@ -777,7 +786,7 @@ static ssize_t polarity_show(struct device *dev, struct device_attribute *attr,
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return sprintf(buf, "%s\n", dc_motor_polarity_values[tm->params.polarity]);
+	return sprintf(buf, "%s\n", dc_motor_polarity_values[tm->polarity]);
 }
 
 static ssize_t polarity_store(struct device *dev, struct device_attribute *attr,
@@ -788,7 +797,7 @@ static ssize_t polarity_store(struct device *dev, struct device_attribute *attr,
 
 	for (i = 0; i < NUM_DC_MOTOR_POLARITY; i++) {
 		if (sysfs_streq(buf, dc_motor_polarity_values[i])) {
-			tm->params.polarity = i;
+			tm->polarity = i;
 			return size;
 		}
 	}
@@ -865,8 +874,12 @@ static ssize_t duty_cycle_sp_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int duty_cycle = tm->params.duty_cycle_sp;
 
-	return sprintf(buf, "%d\n", tm->params.duty_cycle_sp);
+	if (tm->polarity == DC_MOTOR_POLARITY_INVERSED)
+		duty_cycle *= -1;
+
+	return sprintf(buf, "%d\n", duty_cycle);
 }
 
 static ssize_t duty_cycle_sp_store(struct device *dev,
@@ -883,6 +896,9 @@ static ssize_t duty_cycle_sp_store(struct device *dev,
 	if (duty_cycle < -DC_MOTOR_MAX_DUTY_CYCLE
 		|| duty_cycle > DC_MOTOR_MAX_DUTY_CYCLE)
 		return -EINVAL;
+
+	if (tm->polarity == DC_MOTOR_POLARITY_INVERSED)
+		duty_cycle *= -1;
 
 	/* If we're in run-direct mode, allow the duty_cycle_sp to change */
 	if (tm->command == TM_COMMAND_RUN_DIRECT) {
@@ -901,8 +917,12 @@ static ssize_t speed_sp_show(struct device *dev, struct device_attribute *attr,
 			     char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int speed = tm->params.speed_sp;
 
-	return sprintf(buf, "%d\n", tm->params.speed_sp);
+	if (tm->polarity == DC_MOTOR_POLARITY_INVERSED)
+		speed *=-1;
+
+	return sprintf(buf, "%d\n", speed);
 }
 
 static ssize_t speed_sp_store(struct device *dev, struct device_attribute *attr,
@@ -917,6 +937,9 @@ static ssize_t speed_sp_store(struct device *dev, struct device_attribute *attr,
 
 	if (abs(speed) > tm->info->max_speed)
 		return -EINVAL;
+
+	if (tm->polarity == DC_MOTOR_POLARITY_INVERSED)
+		speed *=-1;
 
 	tm->params.speed_sp = speed;
 
@@ -956,8 +979,12 @@ static ssize_t position_sp_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int position = tm->params.position_sp;
 
-	return sprintf(buf, "%d\n", tm->params.position_sp);
+	if (tm->polarity == DC_MOTOR_POLARITY_INVERSED)
+		position *=-1;
+
+	return sprintf(buf, "%d\n", position);
 }
 
 static ssize_t position_sp_store(struct device *dev,
@@ -976,6 +1003,9 @@ static ssize_t position_sp_store(struct device *dev,
 	err = kstrtol(buf, 10, &position);
 	if (err < 0)
 		return err;
+
+	if (tm->polarity == DC_MOTOR_POLARITY_INVERSED)
+		position *=-1;
 
 	tm->params.position_sp = position;
 
