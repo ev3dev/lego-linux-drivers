@@ -35,7 +35,6 @@ enum legoev3_battery_gpio {
  * struct legoev3_battery
  * @psy: power supply class data structure
  * @alg: pointer to A/DC device
- * @status: charging/discharging
  * @technology: li-ion or unknown (alkaline/NiMH/etc.)
  * @gpio: gpios for battery type switch and A/DC input
  * @max_V: max design voltage for given battery technology
@@ -44,7 +43,6 @@ enum legoev3_battery_gpio {
 struct legoev3_battery {
 	struct power_supply psy;
 	struct legoev3_analog_device *alg;
-	int status;
 	int technology;
 	struct gpio gpio[NUM_LEGOEV3_BATTERY_GPIO];
 	int max_V;
@@ -73,9 +71,6 @@ static int legoev3_battery_get_property(struct power_supply *psy,
 		container_of(psy, struct legoev3_battery, psy);
 
 	switch (prop) {
-	case POWER_SUPPLY_PROP_STATUS:
-		val->intval = bat->status;
-		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = bat->technology;
 		break;
@@ -108,7 +103,6 @@ static int legoev3_battery_get_property(struct power_supply *psy,
 }
 
 static enum power_supply_property legoev3_battery_props[] = {
-	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
 	POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN,
@@ -142,7 +136,6 @@ static int legoev3_battery_probe(struct platform_device *pdev)
 		goto no_analog_device;
 	}
 
-	bat->status = POWER_SUPPLY_STATUS_DISCHARGING;
 	bat->psy.name = "legoev3-battery";
 	bat->psy.type = POWER_SUPPLY_TYPE_BATTERY;
 	bat->psy.properties = legoev3_battery_props;
