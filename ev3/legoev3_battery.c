@@ -125,15 +125,13 @@ static int legoev3_battery_probe(struct platform_device *pdev)
 	pdata = pdev->dev.platform_data;
 	if (!pdata) {
 		dev_err(&pdev->dev, "Platform data is required!\n");
-		ret = -EINVAL;
-		goto no_platform_data;
+		return -EINVAL;
 	}
 
 	bat->alg = get_legoev3_analog();
 	if (IS_ERR(bat->alg)) {
 		dev_err(&pdev->dev, "could not get analog device!\n");
-		ret = PTR_ERR(bat->alg);
-		goto no_analog_device;
+		return PTR_ERR(bat->alg);
 	}
 
 	bat->psy.name = "legoev3-battery";
@@ -182,9 +180,7 @@ gpio_get_value_fail:
 	gpio_free_array(bat->gpio, NUM_LEGOEV3_BATTERY_GPIO);
 gpio_request_gpio_request_array:
 	put_legoev3_analog(bat->alg);
-no_analog_device:
-no_platform_data:
-	devm_kfree(&pdev->dev, bat);
+
 	return ret;
 }
 
@@ -197,6 +193,7 @@ static int legoev3_battery_remove(struct platform_device *pdev)
 	gpio_set_value(bat->gpio[LEGOEV3_BATTERY_GPIO_ADC].gpio, 0);
 	gpio_free_array(bat->gpio, NUM_LEGOEV3_BATTERY_GPIO);
 	put_legoev3_analog(bat->alg);
+
 	return 0;
 }
 
