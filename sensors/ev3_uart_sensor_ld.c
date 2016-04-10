@@ -1,7 +1,7 @@
 /*
  * LEGO MINDSTORMS EV3 UART Sensor tty line discipline
  *
- * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014,2016 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -180,6 +180,7 @@ enum ev3_uart_info_flags {
  * @tty: Pointer to the tty device that the sensor is connected to
  * @in_port: The input port device associated with this tty.
  * @sensor: The lego-sensor class structure for the sensor.
+ * @wq: Workqueue for exclusive use by this driver.
  * @rx_data_work: Workqueue item for handling received data.
  * @send_ack_work: Used to send ACK after a delay.
  * @change_bitrate_work: Used to change the baud rate after a delay.
@@ -220,6 +221,7 @@ struct ev3_uart_port_data {
 	struct tty_struct *tty;
 	struct lego_port_device *in_port;
 	struct lego_sensor_device sensor;
+	struct workqueue_struct *wq;
 	struct work_struct rx_data_work;
 	struct delayed_work send_ack_work;
 	struct work_struct change_bitrate_work;
@@ -413,7 +415,7 @@ static void ev3_uart_send_ack(struct work_struct *work)
 	}
 
 	mdelay(4);
-	schedule_work(&port->change_bitrate_work);
+	queue_work(port->wq, &port->change_bitrate_work);
 }
 
 static void ev3_uart_change_bitrate(struct work_struct *work)
@@ -462,7 +464,7 @@ enum hrtimer_restart ev3_uart_keep_alive_timer_callback(struct hrtimer *timer)
 		if (port->num_data_err > EV3_UART_MAX_DATA_ERR) {
 			port->synced = 0;
 			port->new_baud_rate = EV3_UART_SPEED_MIN;
-			schedule_work(&port->change_bitrate_work);
+			queue_work(port->wq, &port->change_bitrate_work);
 			return HRTIMER_NORESTART;
 		}
 	}
@@ -630,8 +632,8 @@ static void ev3_uart_handle_rx_data(struct work_struct *work)
 					port->last_err = "Did not receive all required INFO.";
 					goto err_invalid_state;
 				}
-				schedule_delayed_work(&port->send_ack_work,
-						      msecs_to_jiffies(EV3_UART_SEND_ACK_DELAY));
+				queue_delayed_work(port->wq, &port->send_ack_work,
+						   msecs_to_jiffies(EV3_UART_SEND_ACK_DELAY));
 				port->info_done = 1;
 				return;
 			}
@@ -909,7 +911,7 @@ err_bad_data_msg_checksum:
 err_invalid_state:
 	port->synced = 0;
 	port->new_baud_rate = EV3_UART_SPEED_MIN;
-	schedule_work(&port->change_bitrate_work);
+	queue_work(port->wq, &port->change_bitrate_work);
 }
 
 static int ev3_uart_open(struct tty_struct *tty)
@@ -921,6 +923,12 @@ static int ev3_uart_open(struct tty_struct *tty)
 	port = kzalloc(sizeof(struct ev3_uart_port_data), GFP_KERNEL);
 	if (!port)
 		return -ENOMEM;
+
+	port->wq = create_singlethread_workqueue("ev3-uart");
+	if (!port->wq) {
+		kfree(port);
+		return -ENOMEM;
+	}
 
 	port->tty = tty;
 	port->new_baud_rate = EV3_UART_SPEED_MIN;
@@ -1013,6 +1021,7 @@ static void ev3_uart_close(struct tty_struct *tty)
 	if (port->in_port)
 		put_device(&port->in_port->dev);
 	tty->disc_data = NULL;
+	destroy_workqueue(port->wq);
 	kfree(port);
 }
 
@@ -1045,7 +1054,7 @@ static void ev3_uart_receive_buf(struct tty_struct *tty,
 		cb->head += count;
 	}
 
-	schedule_work(&port->rx_data_work);
+	queue_work(port->wq, &port->rx_data_work);
 }
 
 static void ev3_uart_write_wakeup(struct tty_struct *tty)
