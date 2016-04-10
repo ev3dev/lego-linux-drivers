@@ -81,7 +81,7 @@
 #define EV3_UART_MAX_MESSAGE_SIZE	(EV3_UART_MAX_DATA_SIZE + 2)
 
 #define EV3_UART_MSG_TYPE_MASK		0xC0
-#define EV3_UART_CMD_SIZE(byte)		(1 << ((byte >> 3) & 0x7))
+#define EV3_UART_CMD_SIZE(byte)		(1 << (((byte) >> 3) & 0x7))
 #define EV3_UART_MSG_CMD_MASK		0x07
 #define EV3_UART_MAX_DATA_ERR		6
 
@@ -312,9 +312,8 @@ int ev3_uart_set_mode(void *context, const u8 mode)
 	if (!completion_done(&port->set_mode_completion))
 		return -EBUSY;
 
-	data[0] = ev3_uart_set_msg_hdr(EV3_UART_MSG_TYPE_CMD,
-					   data_size - 2,
-					   EV3_UART_CMD_SELECT);
+	data[0] = ev3_uart_set_msg_hdr(EV3_UART_MSG_TYPE_CMD, data_size - 2,
+				       EV3_UART_CMD_SELECT);
 	data[1] = mode;
 	data[2] = 0xFF ^ data[0] ^ data[1];
 
@@ -364,7 +363,7 @@ static ssize_t ev3_uart_direct_write(void *context, char *data, loff_t off,
 	else
 		size = 32;
 	uart_data[0] = ev3_uart_set_msg_hdr(EV3_UART_MSG_TYPE_CMD, size,
-						EV3_UART_CMD_WRITE);
+					    EV3_UART_CMD_WRITE);
 	data[size + 1] = 0xFF;
 	for (i = 0; i <= size; i++)
 		uart_data[size + 1] ^= uart_data[i];
@@ -389,9 +388,8 @@ int ev3_uart_match_input_port(struct device *dev, const void *data)
 
 static void ev3_uart_send_ack(struct work_struct *work)
 {
-	struct delayed_work *dwork = to_delayed_work(work);
-	struct ev3_uart_port_data *port =
-		container_of(dwork, struct ev3_uart_port_data, send_ack_work);
+	struct ev3_uart_port_data *port = container_of(to_delayed_work(work),
+				struct ev3_uart_port_data, send_ack_work);
 	int err;
 
 	ev3_uart_write_byte(port->tty, EV3_UART_SYS_ACK);
@@ -409,10 +407,9 @@ static void ev3_uart_send_ack(struct work_struct *work)
 				port->tty->name);
 			return;
 		}
-	} else {
+	} else
 		dev_err(port->tty->dev, "Reconnected due to: %s\n",
 			port->last_err);
-	}
 
 	mdelay(4);
 	queue_work(port->wq, &port->change_bitrate_work);
@@ -420,9 +417,8 @@ static void ev3_uart_send_ack(struct work_struct *work)
 
 static void ev3_uart_change_bitrate(struct work_struct *work)
 {
-	struct ev3_uart_port_data *port =
-		container_of(work, struct ev3_uart_port_data,
-			     change_bitrate_work);
+	struct ev3_uart_port_data *port = container_of(work,
+				struct ev3_uart_port_data, change_bitrate_work);
 	struct ktermios old_termios = port->tty->termios;
 
 	tty_wait_until_sent(port->tty, 0);
@@ -433,7 +429,7 @@ static void ev3_uart_change_bitrate(struct work_struct *work)
 	up_write(&port->tty->termios_rwsem);
 	if (port->info_done) {
 		hrtimer_start(&port->keep_alive_timer, ktime_set(0, 1000000),
-							HRTIMER_MODE_REL);
+			      HRTIMER_MODE_REL);
 		/* restore the previous user-selected mode */
 		if (port->sensor.mode != port->requested_mode)
 			ev3_uart_set_mode(port->tty, port->requested_mode);
@@ -450,8 +446,8 @@ static void ev3_uart_send_keep_alive(unsigned long data)
 
 enum hrtimer_restart ev3_uart_keep_alive_timer_callback(struct hrtimer *timer)
 {
-	struct ev3_uart_port_data *port =
-		container_of(timer, struct ev3_uart_port_data, keep_alive_timer);
+	struct ev3_uart_port_data *port = container_of(timer,
+				struct ev3_uart_port_data, keep_alive_timer);
 
 	if (!port->synced || !port->info_done)
 		return HRTIMER_NORESTART;
@@ -955,7 +951,8 @@ static int ev3_uart_open(struct tty_struct *tty)
 	INIT_WORK(&port->rx_data_work, ev3_uart_handle_rx_data);
 	INIT_DELAYED_WORK(&port->send_ack_work, ev3_uart_send_ack);
 	INIT_WORK(&port->change_bitrate_work, ev3_uart_change_bitrate);
-	hrtimer_init(&port->keep_alive_timer, HRTIMER_BASE_MONOTONIC, HRTIMER_MODE_REL);
+	hrtimer_init(&port->keep_alive_timer, HRTIMER_BASE_MONOTONIC,
+		     HRTIMER_MODE_REL);
 	port->keep_alive_timer.function = ev3_uart_keep_alive_timer_callback;
 	tasklet_init(&port->keep_alive_tasklet, ev3_uart_send_keep_alive,
 		     (unsigned long)tty);
@@ -1015,9 +1012,8 @@ static void ev3_uart_close(struct tty_struct *tty)
 	cancel_work_sync(&port->change_bitrate_work);
 	hrtimer_cancel(&port->keep_alive_timer);
 	tasklet_kill(&port->keep_alive_tasklet);
-	if (port->sensor.context) {
+	if (port->sensor.context)
 		unregister_lego_sensor(&port->sensor);
-	}
 	if (port->in_port)
 		put_device(&port->in_port->dev);
 	tty->disc_data = NULL;
