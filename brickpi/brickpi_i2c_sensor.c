@@ -39,8 +39,8 @@
  * the [lego-sensor class] which is where the useful stuff is. Follow the link
  * for more information.
  * .
- * [brickpi]: /docs/drivers/brickpi
- * [brickpi-in-port]: /docs/ports/brickpi-port
+ * [brickpi]: /docs/drivers/brickpi-ld
+ * [brickpi-in-port]: /docs/ports/brickpi-in-port
  * [list of supported sensors]: /docs/sensors#supported-sensors
  * [lego-sensor class]: ../lego-sensor-class
  */

@@ -318,7 +318,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 9846
 		 * @vendor_part_name: NXT Ultrasonic Sensor
-		 * @vendor_website: http://www.lego.com/en-us/mindstorms/downloads/software/nxt-hdk/
+		 * @vendor_website: http://shop.lego.com/en-US/Ultrasonic-Sensor-9846
 		 * @default_address: 0x01
 		 */
 		.name		= LEGO_NXT_ULTRASONIC_SENSOR_NAME,
@@ -2747,7 +2747,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		/**
 		 * @vendor_name: Charmed Labs
 		 * @vendor_part_name: Pixy (CMUcam5) for LEGO
-		 * @vendor_website: http://charmedlabs.com/default/pixy-cmucam5-for-lego/
+		 * @vendor_website: http://charmedlabs.com/default/pixy-lego/
 		 * @default_address: 0x01
 		 */
 		/* based on https://github.com/charmedlabs/pixy/blob/master/src/device/main_m4/src/serial.cpp */

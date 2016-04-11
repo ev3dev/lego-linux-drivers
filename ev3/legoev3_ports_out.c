@@ -132,7 +132,7 @@ static const struct lego_port_mode_info legoev3_output_port_mode_info[] = {
 		 * EV3 Large Motor (`lego-ev3-l-motor`). You can change
 		 * the driver using the `set_device` attribute.
 		 * ^
-		 * [tacho-motor]: /docs/drivers/tacho-motor
+		 * [tacho-motor]: /docs/drivers/tacho-motor-class
 		 *
 		 * @description: Load the [tacho-motor] device.
 		 * @name_footnote: [^tacho-motor-mode]
@@ -146,7 +146,7 @@ static const struct lego_port_mode_info legoev3_output_port_mode_info[] = {
 		 * motor. By 'plain', we mean the motor is just a motor without
 		 * any feedback.
 		 * ^
-		 * [dc-motor]: /docs/drivers/dc-motor
+		 * [dc-motor]: /docs/drivers/dc-motor-class
 		 *
 		 * @description: Load the [dc-motor] device.
 		 * @name_footnote: [^dc-motor-mode]
@@ -159,7 +159,7 @@ static const struct lego_port_mode_info legoev3_output_port_mode_info[] = {
 		 * Power Functions LEDs or any other LED connected to pins 1
 		 * and 2 of the output port.
 		 * ^
-		 * [led]: /docs/drivers/led
+		 * [led]: /docs/drivers/rcx-led
 		 *
 		 * @description: Load the [led] device.
 		 * @name_footnote: [^led-mode]

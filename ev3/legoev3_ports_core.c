@@ -59,8 +59,8 @@
  *   device and gpios used by the port free to be controlled directly or used
  *   by other drivers.
  * .
- * [legoev3-input-port]: docs/ports/legoev3-input-port
- * [legoev3-output-port]: docs/ports/legoev3-output-port
+ * [legoev3-input-port]: /docs/ports/legoev3-input-port
+ * [legoev3-output-port]: /docs/ports/legoev3-output-port
  */
 
 #include <linux/device.h>

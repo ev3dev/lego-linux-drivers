@@ -34,7 +34,7 @@
  * mode. It is not automatically detected.
  * .
  * [dc-motor]: ../dc-motor-class
- * [legoev3-output-port]: docs/ports/legoev3-output-port
+ * [legoev3-output-port]: /docs/ports/legoev3-output-port
  */
 
 #include <linux/device.h>

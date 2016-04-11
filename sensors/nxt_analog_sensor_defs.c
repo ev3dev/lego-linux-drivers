@@ -168,7 +168,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 9843
 		 * @vendor_part_name: NXT Touch Sensor
-		 * @vendor_website: http://www.lego.com/en-us/mindstorms/downloads/software/nxt-hdk/
+		 * @vendor_website: http://shop.lego.com/en-US/Touch-Sensor-9843
 		 */
 		.name = LEGO_NXT_TOUCH_SENSOR_NAME,
 		.num_modes = 1,
@@ -197,7 +197,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 9844
 		 * @vendor_part_name: NXT Light Sensor
-		 * @vendor_website: http://www.lego.com/en-us/mindstorms/downloads/software/nxt-hdk/
+		 * @vendor_website: http://shop.lego.com/en-US/Light-Sensor-9844
 		 */
 		.name = LEGO_NXT_LIGHT_SENSOR_NAME,
 		.num_modes = 2,
@@ -249,7 +249,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 9845
 		 * @vendor_part_name: NXT Sound Sensor
-		 * @vendor_website: http://www.lego.com/en-us/mindstorms/downloads/software/nxt-hdk/
+		 * @vendor_website: http://shop.lego.com/en-US/Sound-Sensor-9845
 		 */
 		.name = LEGO_NXT_SOUND_SENSOR_NAME,
 		.num_modes = 2,

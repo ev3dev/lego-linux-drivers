@@ -45,7 +45,7 @@
  * [ht-nxt-smux]: /docs/sensors/hitechnic-nxt-sensor-multiplexer
  * [ht-nxt-smux-port]: /docs/ports/ht-nxt-smux-port
  * [list of supported sensors]: /docs/sensors#supported-sensors
- * [lego-sensor class]: ../lego-sensor-class
+ * [lego-sensor class]: /docs/drivers/lego-sensor-class
  */
 
 #include <linux/device.h>

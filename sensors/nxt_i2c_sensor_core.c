@@ -47,8 +47,8 @@
  * `/sys/bus/i2c/drivers/nxt-i2c-sensor/`. However, these drivers provide a
  * [lego-sensor device], which is where all the really useful attributes are.
  * .
- * [supported sensors]: ../#supported-sensors
- * [lego-sensor device]: ../lego-sensor-class
+ * [supported sensors]: /docs/sensors#supported-sensors
+ * [lego-sensor device]: /docs/drivers/lego-sensor-class
  */
 
 #include <linux/device.h>

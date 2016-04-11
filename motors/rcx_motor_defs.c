@@ -28,7 +28,7 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 70823
 		 * @vendor_part_name: Motor 9V Micromotor
-		 * @vendor_website: http://www.bricklink.com/catalogItem.asp?P=2986
+		 * @vendor_website: https://rebrickable.com/parts/2986
 		 */
 		.name			= "rcx-motor",
 	},
@@ -37,7 +37,7 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 43362
 		 * @vendor_part_name: Motor 9V Mini-motor, newer lighter weight
-		 * @vendor_website: http://www.bricklink.com/catalogItem.asp?P=43362c01
+		 * @vendor_website: http://rebrickable.com/parts/43362c01
 		 */
 		.name			= "rcx-motor",
 	},
@@ -46,7 +46,7 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 71427
 		 * @vendor_part_name: Motor 9V Mini-motor, older heavier weight
-		 * @vendor_website: http://www.bricklink.com/catalogItem.asp?P=71427c01
+		 * @vendor_website: http://rebrickable.com/parts/71427c01
 		 */
 		.name			= "rcx-motor",
 	},
@@ -55,7 +55,7 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 47154
 		 * @vendor_part_name: Technic Motor 9V Geared 
-		 * @vendor_website: http://alpha.bricklink.com/pages/clone/catalogitem.page?P=47154c01
+		 * @vendor_website: http://rebrickable.com/parts/44486c02
 		 */
 		.name			= "rcx-motor",
 	},
@@ -64,7 +64,7 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 74569
 		 * @vendor_part_name: Technic Motor 9V
-		 * @vendor_website: http://www.bricklink.com/catalogItem.asp?P=2838c01
+		 * @vendor_website: http://rebrickable.com/parts/2838c01
 		 */
 		.name			= "rcx-motor",
 	},
@@ -109,7 +109,7 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 88002
 		 * @vendor_part_name: Power Functions Train Motor
-		 * @vendor_website: http://shop.lego.com/en-US/Power-Functions-Train-Motor-88002
+		 * @vendor_website: http://shop.lego.com/en-US/LEGO-Power-Functions-Train-Motor-88002
 		 */
 		.name			= "rcx-motor",
 	},
