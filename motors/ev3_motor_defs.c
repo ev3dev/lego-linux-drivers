@@ -45,7 +45,7 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		 * @vendor_website: http://shop.lego.com/en-US/Interactive-Servo-Motor-9842
 		 */
 		.name			= LEGO_NXT_MOTOR_NAME,
-		.max_speed		= ((170 * 360)/60),
+		.max_speed		= 1020,
 		.count_per_rot		= 360,
 		.motion_type		= TM_MOTION_ROTATION,
 		.legoev3_info		= {
@@ -63,7 +63,7 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		 * @vendor_website: http://shop.lego.com/en-US/EV3-Large-Servo-Motor-45502
 		 */
 		.name			= LEGO_EV3_LARGE_MOTOR_NAME,
-		.max_speed		= ((175 * 360)/60),
+		.max_speed		= 1050,
 		.count_per_rot		= 360,
 		.motion_type		= TM_MOTION_ROTATION,
 		.legoev3_info		= {
@@ -81,7 +81,7 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		 * @vendor_website: http://shop.lego.com/en-US/EV3-Medium-Servo-Motor-45503
 		 */
 		.name			= LEGO_EV3_MEDIUM_MOTOR_NAME,
-		.max_speed		= ((260 * 360)/60),
+		.max_speed		= 1560,
 		.count_per_rot		= 360,
 		.motion_type		= TM_MOTION_ROTATION,
 		.legoev3_info		= {
