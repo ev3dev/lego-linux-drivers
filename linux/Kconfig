@@ -1,5 +1,5 @@
 
-config IIO_HRTIMER_TRIGGER
+config IIO_HRTIMER_TRIGGER_EV3DEV
   tristate "High resolution timer trigger"
   help
     Provides a frequency based IIO trigger using high resolution
@@ -8,7 +8,7 @@ config IIO_HRTIMER_TRIGGER
     To compile this driver as a module, choose M here: the
     module will be called iio-trig-hrtimer.
 
-config TI_ADS79XX
+config TI_ADS79XX_EV3DEV
     tristate "Texas Instruments ADS795X/ADS796X ADC driver"
     depends on SPI
     select IIO_BUFFER
