@@ -51,7 +51,7 @@ const struct other_sensor_info lm75_defs[] = {
 		 * @vendor_part_number: 9749
 		 * @vendor_part_name: NXT Temperature Sensor
 		 * @vendor_website: http://education.lego.com/en-us/lego-education-product-database/mindstorms/9749-nxt-temperature-sensor/
-		 * @device_class: [hwmon](http://www.lm-sensors.org/) [^usage]
+		 * @device_class: [hwmon](https://wiki.archlinux.org/index.php/Lm_sensors) [^usage]
 		 * @default_address: 0x4C
 		 * @default_address_footnote: [^addresses]
 		 */
@@ -129,7 +129,7 @@ const struct other_sensor_info pcf8591_defs[] = {
 		 * @vendor_part_number: PCF8591-Nx
 		 * @vendor_part_name: Sensor building kit for NXT with PCF8591 IC
 		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=92
-		 * @device_class: [hwmon](http://www.lm-sensors.org/) [^usage]
+		 * @device_class: [hwmon](https://wiki.archlinux.org/index.php/Lm_sensors) [^usage]
 		 * @default_address: 0x48
 		 * @default_address_footnote: [^addresses]
 		 */
