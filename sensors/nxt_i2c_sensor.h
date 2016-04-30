@@ -147,6 +147,7 @@ enum nxt_i2c_sensor_type {
 	MS_NXTMMX,
 	MS_NXTCAM,
 	MS_PIXYADAPTER,
+	MS_PPS58_NX,
 	MI_CRUIZCORE_XG1300L,
 	PX_PIXY,
 	NUM_NXT_I2C_SENSORS
@@ -181,6 +182,7 @@ enum nxt_i2c_sensor_type {
 #define MS_NXTMMX_NAME				"ms-nxtmmx"
 #define MS_NXTCAM_NAME				"ms-nxtcam"
 #define MS_PIXYADAPTER_NAME			"ms-pixy-adapter"
+#define MS_PPS58_NX_NAME			"ms-pps58-nx"
 #define MI_CRUIZCORE_XG1300L_NAME		"mi-xg1300l"
 #define PX_PIXY_NAME				"pixy-lego"
 
@@ -211,6 +213,7 @@ enum nxt_i2c_sensor_type {
 	LEGO_DEVICE_ID(MS_NXTMMX),				\
 	LEGO_DEVICE_ID(MS_NXTCAM),				\
 	LEGO_DEVICE_ID(MS_PIXYADAPTER),				\
+	LEGO_DEVICE_ID(MS_PPS58_NX),				\
 	LEGO_DEVICE_ID(MI_CRUIZCORE_XG1300L),			\
 	LEGO_DEVICE_ID(PX_PIXY),				\
 	{ }
