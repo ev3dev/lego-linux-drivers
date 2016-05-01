@@ -771,7 +771,7 @@ static int legoev3_motor_run_unregulated(void *context, int duty_cycle)
 	ev3_tm->run_to_pos_active = false;
 	ev3_tm->speed_pid_ena = false;
 	ev3_tm->hold_pid_ena = false;
-	set_duty_cycle(ev3_tm, ev3_tm->duty_cycle);
+	set_duty_cycle(ev3_tm, duty_cycle);
 	ev3_tm->state = STATE_RUNNING;
 
 	return 0;
