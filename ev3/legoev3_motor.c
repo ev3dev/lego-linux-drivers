@@ -690,7 +690,7 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 {
 	struct legoev3_motor_data *ev3_tm =
 			container_of(timer, struct legoev3_motor_data, timer);
-	int duty_cycle = 0;
+	int duty_cycle = ev3_tm->duty_cycle;
 
 	hrtimer_forward_now(timer, ktime_set(0, TACHO_MOTOR_POLL_MS * NSEC_PER_MSEC));
 
