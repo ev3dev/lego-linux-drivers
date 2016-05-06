@@ -41,7 +41,8 @@ enum legoev3_battery_gpio {
  * @min_V: min design voltage for given battery technology
  */
 struct legoev3_battery {
-	struct power_supply psy;
+	struct power_supply_desc desc;
+	struct power_supply *psy;
 	struct legoev3_analog_device *alg;
 	int technology;
 	struct gpio gpio[NUM_LEGOEV3_BATTERY_GPIO];
@@ -68,7 +69,7 @@ static int legoev3_battery_get_property(struct power_supply *psy,
 {
 	int ret = 0;
 	struct legoev3_battery *bat =
-		container_of(psy, struct legoev3_battery, psy);
+		container_of(psy->desc, struct legoev3_battery, desc);
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
@@ -134,12 +135,12 @@ static int legoev3_battery_probe(struct platform_device *pdev)
 		return PTR_ERR(bat->alg);
 	}
 
-	bat->psy.name = "legoev3-battery";
-	bat->psy.type = POWER_SUPPLY_TYPE_BATTERY;
-	bat->psy.properties = legoev3_battery_props;
-	bat->psy.num_properties = ARRAY_SIZE(legoev3_battery_props);
-	bat->psy.get_property = legoev3_battery_get_property;
-	bat->psy.use_for_apm = 1;
+	bat->desc.name = "legoev3-battery";
+	bat->desc.type = POWER_SUPPLY_TYPE_BATTERY;
+	bat->desc.properties = legoev3_battery_props;
+	bat->desc.num_properties = ARRAY_SIZE(legoev3_battery_props);
+	bat->desc.get_property = legoev3_battery_get_property;
+	bat->desc.use_for_apm = 1;
 
 	bat->gpio[LEGOEV3_BATTERY_GPIO_ADC].gpio = pdata->batt_adc_gpio;
 	bat->gpio[LEGOEV3_BATTERY_GPIO_ADC].flags = GPIOF_OUT_INIT_HIGH;
@@ -166,15 +167,18 @@ static int legoev3_battery_probe(struct platform_device *pdev)
 		bat->min_V = 7100000;
 	}
 
-	ret = power_supply_register(&pdev->dev, &bat->psy);
-	if (ret)
-		goto power_supply_register_fail;
-
 	platform_set_drvdata(pdev, bat);
+
+	bat->psy = devm_power_supply_register(&pdev->dev, &bat->desc, NULL);
+	if (IS_ERR(bat->psy)) {
+		ret = PTR_ERR(bat->psy);
+		goto power_supply_register_fail;
+	}
 
 	return 0;
 
 power_supply_register_fail:
+	platform_set_drvdata(pdev, NULL);
 gpio_get_value_fail:
 	gpio_set_value(bat->gpio[LEGOEV3_BATTERY_GPIO_ADC].gpio, 0);
 	gpio_free_array(bat->gpio, NUM_LEGOEV3_BATTERY_GPIO);
@@ -189,7 +193,6 @@ static int legoev3_battery_remove(struct platform_device *pdev)
 	struct legoev3_battery *bat= platform_get_drvdata(pdev);
 
 	platform_set_drvdata(pdev, NULL);
-	power_supply_unregister(&bat->psy);
 	gpio_set_value(bat->gpio[LEGOEV3_BATTERY_GPIO_ADC].gpio, 0);
 	gpio_free_array(bat->gpio, NUM_LEGOEV3_BATTERY_GPIO);
 	put_legoev3_analog(bat->alg);
