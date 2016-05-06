@@ -645,8 +645,8 @@ static ssize_t snd_legoev3_show_mode(struct device *dev,
 }
 
 static DEVICE_ATTR(mode,   0444, snd_legoev3_show_mode,   NULL);
-static DEVICE_ATTR(tone,   0666, snd_legoev3_show_tone,   snd_legoev3_store_tone);
-static DEVICE_ATTR(volume, 0666, snd_legoev3_show_volume, snd_legoev3_store_volume);
+static DEVICE_ATTR(tone,   0644, snd_legoev3_show_tone,   snd_legoev3_store_tone);
+static DEVICE_ATTR(volume, 0644, snd_legoev3_show_volume, snd_legoev3_store_volume);
 
 static struct attribute *snd_legoev3_attrs[] = {
     &dev_attr_mode.attr
