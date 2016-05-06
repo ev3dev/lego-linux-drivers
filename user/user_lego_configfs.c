@@ -114,8 +114,6 @@ struct port_info {
 	struct mutex lock;
 };
 
-CONFIGFS_ATTR_STRUCT(port_info);
-
 struct sensor_info {
 	char driver_name[LEGO_NAME_SIZE];
 	char address[LEGO_NAME_SIZE];
@@ -127,15 +125,7 @@ struct sensor_info {
 	bool live;
 };
 
-CONFIGFS_ATTR_STRUCT(sensor_info);
-
 struct device *lego_user_cfs_parent;
-
-#define LEGO_USER_SENSOR_INFO_ATTR(_name)			\
-struct sensor_info_attribute sensor_info_attr_##_name =		\
-	__CONFIGFS_ATTR(_name, S_IRUGO | S_IWUSR | S_IWGRP,	\
-			sensor_info_##_name##_show,		\
-			sensor_info_##_name##_store)
 
 static inline struct sensor_info *to_sensor_info(struct config_item *item)
 {
@@ -150,17 +140,14 @@ static void sensor_info_release(struct config_item *item)
 	kfree(info);
 }
 
-CONFIGFS_ATTR_OPS(sensor_info);
-
 static struct configfs_item_operations sensor_info_ops = {
 	.release		= sensor_info_release,
-	.show_attribute		= sensor_info_attr_show,
-	.store_attribute	= sensor_info_attr_store,
 };
 
 static ssize_t
-sensor_info_bin_data_format_show(struct sensor_info *info, char *page)
+sensor_info_bin_data_format_show(struct config_item *item, char *page)
 {
+	struct sensor_info *info = to_sensor_info(item);
 	const char *value = lego_sensor_bin_data_format_to_str(
 							info->mode0.data_type);
 
@@ -171,9 +158,10 @@ sensor_info_bin_data_format_show(struct sensor_info *info, char *page)
 }
 
 static ssize_t
-sensor_info_bin_data_format_store(struct sensor_info *info, const char *page,
+sensor_info_bin_data_format_store(struct config_item *item, const char *page,
 				  size_t len)
 {
+	struct sensor_info *info = to_sensor_info(item);
 	int ret;
 
 	if (info->live)
@@ -189,15 +177,18 @@ sensor_info_bin_data_format_store(struct sensor_info *info, const char *page,
 }
 
 static ssize_t
-sensor_info_decimals_show(struct sensor_info *info, char *page)
+sensor_info_decimals_show(struct config_item *item, char *page)
 {
+	struct sensor_info *info = to_sensor_info(item);
+
 	return sprintf(page, "%d\n", info->mode0.decimals);
 }
 
 static ssize_t
-sensor_info_decimals_store(struct sensor_info *info, const char *page,
+sensor_info_decimals_store(struct config_item *item, const char *page,
 			   size_t len)
 {
+	struct sensor_info *info = to_sensor_info(item);
 	unsigned int value;
 
 	if (info->live)
@@ -212,15 +203,18 @@ sensor_info_decimals_store(struct sensor_info *info, const char *page,
 }
 
 static ssize_t
-sensor_info_num_values_show(struct sensor_info *info, char *page)
+sensor_info_num_values_show(struct config_item *item, char *page)
 {
+	struct sensor_info *info = to_sensor_info(item);
+
 	return sprintf(page, "%d\n", info->mode0.num_values);
 }
 
 static ssize_t
-sensor_info_num_values_store(struct sensor_info *info, const char *page,
+sensor_info_num_values_store(struct config_item *item, const char *page,
 			     size_t len)
 {
+	struct sensor_info *info = to_sensor_info(item);
 	unsigned int value;
 
 	if (info->live)
@@ -236,14 +230,17 @@ sensor_info_num_values_store(struct sensor_info *info, const char *page,
 }
 
 static ssize_t
-sensor_info_units_show(struct sensor_info *info, char *page)
+sensor_info_units_show(struct config_item *item, char *page)
 {
+	struct sensor_info *info = to_sensor_info(item);
+
 	return sprintf(page, "%s\n", info->mode0.units);
 }
 
 static ssize_t
-sensor_info_units_store(struct sensor_info *info, const char *page, size_t len)
+sensor_info_units_store(struct config_item *item, const char *page, size_t len)
 {
+	struct sensor_info *info = to_sensor_info(item);
 	char *value;
 
 	if (info->live)
@@ -263,15 +260,18 @@ sensor_info_units_store(struct sensor_info *info, const char *page, size_t len)
 }
 
 static ssize_t
-sensor_info_driver_name_show(struct sensor_info *info, char *page)
+sensor_info_driver_name_show(struct config_item *item, char *page)
 {
+	struct sensor_info *info = to_sensor_info(item);
+
 	return sprintf(page, "%s\n", info->driver_name);
 }
 
 static ssize_t
-sensor_info_driver_name_store(struct sensor_info *info, const char *page,
+sensor_info_driver_name_store(struct config_item *item, const char *page,
 			      size_t len)
 {
+	struct sensor_info *info = to_sensor_info(item);
 	char *value;
 
 	if (info->live)
@@ -291,15 +291,18 @@ sensor_info_driver_name_store(struct sensor_info *info, const char *page,
 }
 
 static ssize_t
-sensor_info_fw_version_show(struct sensor_info *info, char *page)
+sensor_info_fw_version_show(struct config_item *item, char *page)
 {
+	struct sensor_info *info = to_sensor_info(item);
+
 	return sprintf(page, "%s\n", info->sensor.sensor.fw_version);
 }
 
 static ssize_t
-sensor_info_fw_version_store(struct sensor_info *info, const char *page,
+sensor_info_fw_version_store(struct config_item *item, const char *page,
 			     size_t len)
 {
+	struct sensor_info *info = to_sensor_info(item);
 	char *value;
 
 	if (info->live)
@@ -322,22 +325,22 @@ sensor_info_fw_version_store(struct sensor_info *info, const char *page,
  * TODO: if we ever support more than one mode, these attributes need to be
  * defined per mode.
  */
-static LEGO_USER_SENSOR_INFO_ATTR(bin_data_format);
-static LEGO_USER_SENSOR_INFO_ATTR(decimals);
-static LEGO_USER_SENSOR_INFO_ATTR(num_values);
-static LEGO_USER_SENSOR_INFO_ATTR(units);
+CONFIGFS_ATTR(sensor_info_, bin_data_format);
+CONFIGFS_ATTR(sensor_info_, decimals);
+CONFIGFS_ATTR(sensor_info_, num_values);
+CONFIGFS_ATTR(sensor_info_, units);
 
 /* These attributes are common for all modes */
-static LEGO_USER_SENSOR_INFO_ATTR(driver_name);
-static LEGO_USER_SENSOR_INFO_ATTR(fw_version);
+CONFIGFS_ATTR(sensor_info_, driver_name);
+CONFIGFS_ATTR(sensor_info_, fw_version);
 
 static struct configfs_attribute *sensor_info_attrs[] = {
-	&sensor_info_attr_bin_data_format.attr,
-	&sensor_info_attr_decimals.attr,
-	&sensor_info_attr_num_values.attr,
-	&sensor_info_attr_units.attr,
-	&sensor_info_attr_driver_name.attr,
-	&sensor_info_attr_fw_version.attr,
+	&sensor_info_attr_bin_data_format,
+	&sensor_info_attr_decimals,
+	&sensor_info_attr_num_values,
+	&sensor_info_attr_units,
+	&sensor_info_attr_driver_name,
+	&sensor_info_attr_fw_version,
 	NULL
 };
 
@@ -469,12 +472,8 @@ static void port_info_release(struct config_item *item)
 	kfree(info);
 }
 
-CONFIGFS_ATTR_OPS(port_info);
-
 static struct configfs_item_operations port_info_ops = {
 	.release		= port_info_release,
-	.show_attribute		= port_info_attr_show,
-	.store_attribute	= port_info_attr_store,
 };
 
 static struct config_item_type port_info_type = {
