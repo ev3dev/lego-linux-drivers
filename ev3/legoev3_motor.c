@@ -111,6 +111,8 @@ struct legoev3_motor_data {
 	bool hold_pid_ena;
 };
 
+static DEFINE_SPINLOCK(lock);
+
 static void set_num_samples_for_speed(struct legoev3_motor_data *ev3_tm,
 				      int speed)
 {
@@ -307,6 +309,9 @@ static int legoev3_motor_stop(void *context, enum tm_stop_action action)
 	const struct dc_motor_ops *motor_ops = ev3_tm->ldev->port->dc_motor_ops;
 	void *dc_ctx = ev3_tm->ldev->port->context;
 	bool use_pos_sp_for_hold = ev3_tm->run_to_pos_active;
+	unsigned long flags;
+
+	spin_lock_irqsave(&lock, flags);
 
 	ev3_tm->run_to_pos_active = false;
 	ev3_tm->speed_pid_ena = false;
@@ -340,6 +345,8 @@ static int legoev3_motor_stop(void *context, enum tm_stop_action action)
 
 	ev3_tm->state = STATE_STOPPED;
 
+	spin_unlock_irqrestore(&lock, flags);
+
 	return 0;
 }
 
@@ -352,8 +359,11 @@ static int legoev3_motor_reset(void *context)
 {
 	struct legoev3_motor_data *ev3_tm = context;
 	const struct legoev3_motor_info *info = &ev3_tm->tm.info->legoev3_info;
+	unsigned long flags;
 
 	legoev3_motor_stop(ev3_tm, TM_STOP_ACTION_COAST);
+
+	spin_lock_irqsave(&lock, flags);
 
 	memset(ev3_tm->tacho_samples, 0, sizeof(unsigned) * TACHO_SAMPLES);
 
@@ -375,6 +385,8 @@ static int legoev3_motor_reset(void *context)
 		    info->speed_pid_k.i, info->speed_pid_k.d);
 	tm_pid_init(&ev3_tm->hold_pid, info->position_pid_k.p,
 		    info->position_pid_k.i, info->position_pid_k.d);
+
+	spin_unlock_irqrestore(&lock, flags);
 
 	return 0;
 };
@@ -767,12 +779,17 @@ static int legoev3_motor_get_duty_cycle(void *context,
 static int legoev3_motor_run_unregulated(void *context, int duty_cycle)
 {
 	struct legoev3_motor_data *ev3_tm = context;
+	unsigned long flags;
+
+	spin_lock_irqsave(&lock, flags);
 
 	ev3_tm->run_to_pos_active = false;
 	ev3_tm->speed_pid_ena = false;
 	ev3_tm->hold_pid_ena = false;
 	set_duty_cycle(ev3_tm, duty_cycle);
 	ev3_tm->state = STATE_RUNNING;
+
+	spin_unlock_irqrestore(&lock, flags);
 
 	return 0;
 }
@@ -813,12 +830,17 @@ static int legoev3_motor_get_speed(void *context, int *speed)
 static int legoev3_motor_run_regulated(void *context, int speed)
 {
 	struct legoev3_motor_data *ev3_tm = context;
+	unsigned long flags;
+
+	spin_lock_irqsave(&lock, flags);
 
 	ev3_tm->run_to_pos_active = false;
 	ev3_tm->speed_pid_ena = true;
 	ev3_tm->hold_pid_ena = false;
 	ev3_tm->speed_pid.setpoint = speed;
 	ev3_tm->state = STATE_RUNNING;
+
+	spin_unlock_irqrestore(&lock, flags);
 
 	return 0;
 }
@@ -827,6 +849,9 @@ static int legoev3_motor_run_to_pos(void *context, int pos, int speed,
 				    enum tm_stop_action stop_action)
 {
 	struct legoev3_motor_data *ev3_tm = context;
+	unsigned long flags;
+
+	spin_lock_irqsave(&lock, flags);
 
 	speed = abs(speed);
 	if (ev3_tm->position > pos)
@@ -839,6 +864,8 @@ static int legoev3_motor_run_to_pos(void *context, int pos, int speed,
 	ev3_tm->speed_pid.setpoint = speed;
 	ev3_tm->run_to_pos_stop_action = stop_action;
 	ev3_tm->state = STATE_RUNNING;
+
+	spin_unlock_irqrestore(&lock, flags);
 
 	return 0;
 }
