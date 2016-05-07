@@ -381,8 +381,10 @@ static int tm_do_one_ramp_step(struct tacho_motor_device *tm,
 	 */
 	last_ramp_time = jiffies - tm->last_ramp_work_time;
 	tm->last_ramp_work_time = jiffies;
-	queue_delayed_work(tm->wq, &tm->ramp_work, last_ramp_time >= RAMP_PERIOD
-		? 0 : RAMP_PERIOD - last_ramp_time);
+	schedule_delayed_work(&tm->ramp_work,
+		last_ramp_time >= RAMP_PERIOD
+					? 0
+					: RAMP_PERIOD - last_ramp_time);
 
 	return 0;
 }
@@ -685,8 +687,8 @@ static int tm_send_command(struct tacho_motor_device *tm,
 	tm->command = cmd;
 
 	if (cmd == TM_COMMAND_RUN_TIMED)
-		queue_delayed_work(tm->wq, &tm->run_timed_work,
-				   msecs_to_jiffies(new_params.time_sp));
+		schedule_delayed_work(&tm->run_timed_work,
+				      msecs_to_jiffies(new_params.time_sp));
 
 	return 0;
 }
@@ -1200,10 +1202,6 @@ int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
 	if (!tm || !tm->address || !tm->info || !parent)
 		return -EINVAL;
 
-	tm->wq = create_singlethread_workqueue("tacho-motor");
-	if (!tm->wq)
-		return -ENOMEM;
-
 	tm->dev.release = tacho_motor_release;
 	tm->dev.parent = parent;
 
@@ -1218,7 +1216,6 @@ int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
 		break;
 	default:
 		dev_err(&tm->dev, "unhandled motion type\n");
-		destroy_workqueue(tm->wq);
 		return -EINVAL;
 	}
 
@@ -1230,10 +1227,9 @@ int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
 	INIT_DELAYED_WORK(&tm->run_timed_work, tacho_motor_class_run_timed_work);
 
 	err = device_register(&tm->dev);
-	if (err) {
-		destroy_workqueue(tm->wq);
+
+	if (err)
 		return err;
-	}
 
 	dev_info(&tm->dev, "Registered '%s' on '%s'.\n", tm->driver_name,
 		 tm->address);
@@ -1248,7 +1244,6 @@ void unregister_tacho_motor(struct tacho_motor_device *tm)
 		 tm->address);
 	cancel_delayed_work_sync(&tm->run_timed_work);
 	cancel_delayed_work_sync(&tm->ramp_work);
-	destroy_workqueue(tm->wq);
 	device_unregister(&tm->dev);
 }
 EXPORT_SYMBOL_GPL(unregister_tacho_motor);
