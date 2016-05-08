@@ -122,7 +122,7 @@ static int legoev3_bluetooth_probe(struct platform_device *pdev)
 	if (err) {
 		dev_err(&pdev->dev, "%s: Failed to request gpios! (%d)\n",
 			__func__, err);
-		goto err_gpio_request_array;
+		return err;
 	}
 
 	pwm = pwm_get(&pdev->dev, NULL);
@@ -163,8 +163,6 @@ err_pwm_config:
 	pwm_put(pwm);
 err_pwm_request_byname:
 	gpio_free_array(btdev->gpios, NUM_LEGOEV3_BT_GPIO);
-err_gpio_request_array:
-	kfree(btdev);
 
 	return err;
 }
