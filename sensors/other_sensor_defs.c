@@ -25,40 +25,6 @@
  * parser can be found in the ev3dev-kpkg repository.
  */
 
-const struct other_sensor_info lm75_defs[] = {
-	[LEGO_NXT_TEMPERATURE_SENSOR] = {
-		/**
-		 * [^addresses]: Valid addresses are 0x48..0x4F (configurable via input pins)
-		 * [^usage]: Sample usage:
-		 *
-		 * Register I2C device:
-		 *
-		 * <pre><code>echo tmp275 0x4C > /sys/bus/i2c/devices/i2c-<port+2>/new_device
-		 * </code></pre>
-		 *
-		 * Finding device class node:
-		 *
-		 * <pre><code>for chip in $(find /sys/class/hwmon -name hwmon*)
-		 * do
-		 *     if [[ "$(cat $chip/device/name)" == "tmp275" ]]
-		 *     then
-		 *         # do whatever
-		 *     fi
-		 * done
-		 * </code></pre>
-		 *
-		 * @vendor_name: LEGO
-		 * @vendor_part_number: 9749
-		 * @vendor_part_name: NXT Temperature Sensor
-		 * @vendor_website: http://education.lego.com/en-us/lego-education-product-database/mindstorms/9749-nxt-temperature-sensor/
-		 * @device_class: [hwmon](https://wiki.archlinux.org/index.php/Lm_sensors) [^usage]
-		 * @default_address: 0x4C
-		 * @default_address_footnote: [^addresses]
-		 */
-		.name		= "tmp275",
-	},
-};
-
 const struct other_sensor_info gpio_pcf857xr_defs[] = {
 	[MS_SENSOR_KIT_PFC8574] = {
 		/**

@@ -125,6 +125,7 @@ struct nxt_i2c_sensor_info {
 
 enum nxt_i2c_sensor_type {
 	LEGO_NXT_ULTRASONIC_SENSOR,
+	LEGO_NXT_TEMPERATURE_SENSOR,
 	LEGO_POWER_STORAGE_SENSOR,
 	HT_NXT_PIR_SENSOR,
 	HT_NXT_BAROMETRIC_SENSOR,
@@ -158,6 +159,7 @@ enum nxt_i2c_sensor_type {
  * termination, so no more than 18 chars here!
  */
 #define LEGO_NXT_ULTRASONIC_SENSOR_NAME		"lego-nxt-us"
+#define LEGO_NXT_TEMPERATURE_SENSOR_NAME	"lego-nxt-temp"
 #define LEGO_POWER_STORAGE_SENSOR_NAME		"lego-power-storage"
 #define HT_NXT_PIR_SENSOR_NAME			"ht-nxt-pir"
 #define HT_NXT_BAROMETRIC_SENSOR_NAME		"ht-nxt-barometric"
@@ -191,6 +193,7 @@ enum nxt_i2c_sensor_type {
  */
 #define NXT_I2C_SENSOR_ID_TABLE_DATA				\
 	LEGO_DEVICE_ID(LEGO_NXT_ULTRASONIC_SENSOR),		\
+	LEGO_DEVICE_ID(LEGO_NXT_TEMPERATURE_SENSOR),		\
 	LEGO_DEVICE_ID(LEGO_POWER_STORAGE_SENSOR),		\
 	LEGO_DEVICE_ID(HT_NXT_PIR_SENSOR),			\
 	LEGO_DEVICE_ID(HT_NXT_BAROMETRIC_SENSOR),		\

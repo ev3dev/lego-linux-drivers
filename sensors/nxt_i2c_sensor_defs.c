@@ -446,6 +446,63 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
+	[LEGO_NXT_TEMPERATURE_SENSOR] = {
+		/**
+		 * @vendor_name: LEGO
+		 * @vendor_part_number: 9749
+		 * @vendor_part_name: MINDSTORMS Temperature Sensor
+		 * @vendor_website: https://education.lego.com/en-us/products/mindstorms-temperature-sensor/9749
+		 * @default_address: 0x4C
+		 */
+		.name		= LEGO_NXT_TEMPERATURE_SENSOR_NAME,
+		.vendor_id	= "LEGO",
+		.product_id	= "Temp.",
+		.num_modes	= 2,
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
+			[0] = {
+				/**
+				 * @description: Continuous measurement
+				 * @value0: Temperature (-55.0 to 128.0)
+				 * @units_description: °C
+				 */
+				.name	= "NXT-TEMP-C",
+				.units	= "C",
+				.raw_min = -14080,
+				.raw_max = 32767,
+				.si_min = -550,
+				.si_max = 1280,
+				.decimals = 1,
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
+			},
+			[1] = {
+				/**
+				 * @description: Continuous measurement
+				 * @value0: Temperature (-67.0 to 262.4)
+				 * @units_description: °F
+				 */
+				.name	= "NXT-TEMP-F",
+				.units	= "F",
+				.raw_min = -14080,
+				.raw_max = 32767,
+				.si_min = -670,
+				.si_max = 2624,
+				.decimals = 1,
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
+			}
+		},
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
+			[0] = {
+				.set_mode_reg	= 0x01,
+				.set_mode_data	= 0x60,
+				.read_data_reg	= 0x00,
+			},
+			[1] = {
+				.set_mode_reg	= 0x01,
+				.set_mode_data	= 0x60,
+				.read_data_reg	= 0x00,
+			},
+		},
+	},
 	[LEGO_POWER_STORAGE_SENSOR] = {
 		/**
 		 * @vendor_name: LEGO
