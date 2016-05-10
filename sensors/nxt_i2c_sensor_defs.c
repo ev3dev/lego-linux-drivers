@@ -2630,7 +2630,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[0] = {
 				/**
 				 * @description: Raw sensor value
-				 * @value0: Pressure
+				 * @value0: Pressure (0 to 400,000 Pa)
 				 * @unit_description: Pascals
 				 */
 				.name = "RAW",
@@ -2640,7 +2640,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[1] = {
 				/**
 				 * @description: Absolute pressure (PSI)
-				 * @value0: Pressure
+				 * @value0: Pressure (0 to 58 PSI)
 				 * @units_description: Pounds per square inch
 				 */
 				.name = "ABS-PSI",
@@ -2650,7 +2650,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[2] = {
 				/**
 				 * @description: Absolute pressure (millibar)
-				 * @value0: Pressure
+				 * @value0: Pressure (0 to 4000 millibar)
 				 * @units_description: millibar
 				 */
 				.name = "ABS-MBAR",
@@ -2660,7 +2660,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[3] = {
 				/**
 				 * @description: Absolute pressure (kPa)
-				 * @value0: Pressure
+				 * @value0: Pressure (0 to 400 kPa)
 				 * @units_description: kilopascals
 				 */
 				.name = "ABS-KPA",
@@ -2670,7 +2670,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[4] = {
 				/**
 				 * @description: Gauge pressure (PSI)
-				 * @value0: Pressure
+				 * @value0: Pressure (0 to 58 PSI minus the reference pressure)
 				 * @units_description: Pounds per square inch
 				 */
 				.name = "REL-PSI",
@@ -2680,7 +2680,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[5] = {
 				/**
 				 * @description: Gauge pressure (millibar)
-				 * @value0: Pressure
+				 * @value0: Pressure (0 to 4000 millibar minus the reference pressure)
 				 * @units_description: millibar
 				 */
 				.name = "REL-MBAR",
@@ -2690,7 +2690,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[6] = {
 				/**
 				 * @description: Gauge pressure (kPa)
-				 * @value0: Pressure
+				 * @value0: Pressure (0 to 400 kPa minus the reference pressure)
 				 * @units_description: kilopascals
 				 */
 				.name = "REL-KPA",
