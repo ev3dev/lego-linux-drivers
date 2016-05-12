@@ -74,7 +74,7 @@
  * : (write-only) For modes that support it, writing the name of a driver will
  *   cause a new device to be registered for that driver and attached to this
  *   port. For example, since NXT/Analog sensors cannot be auto-detected, you
- *   must use this attribute to load the correct driver. Returns `-EOPNOTSUPP`
+ *   must use this attribute to load the correct driver (as also the I2C address). Returns `-EOPNOTSUPP`
  *   if setting a device is not supported.
  * .
  * `status`
