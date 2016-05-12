@@ -356,6 +356,28 @@ static int nxt_i2c_sensor_remove(struct i2c_client *client)
 
 static struct i2c_device_id nxt_i2c_sensor_id_table[];
 
+
+static int nxt_i2c_sensor_detect_lego_temp(struct i2c_client *client)
+{
+	int ret;
+
+	/*
+	 * Try to set the sensor to 12-bit mode.
+	 */
+	ret = i2c_smbus_write_byte_data(client, 0x01, 0x60);
+	if (ret)
+		return ret;
+
+	/*
+	 * Confirm this is a NXT Temperature Sensor.
+	 */
+	ret = i2c_smbus_read_byte_data(client, 0x01);
+	if (ret < 0 || ret != 0x60)
+		return -ENODEV;
+
+	return 0;
+}
+
 static int nxt_i2c_sensor_detect(struct i2c_client *client,
 				 struct i2c_board_info *info)
 {
@@ -375,6 +397,28 @@ static int nxt_i2c_sensor_detect(struct i2c_client *client,
 		info->platform_data = &apdata->sensor_platform_data;
 	}
 #endif
+
+	/*
+	 * NXT Temperature sensor detection is handled here.
+	 *
+	 * The LEGO Temparature sensor does not conform to the LEGO I2C
+	 * specification and so cannot be handled by the normal auto-detection
+	 * code. However, it is a LEGO-brand sensor that is supported by the
+	 * Mindstorms software, so it is treated here as a special case.
+	 *
+	 * We try to detect the tempearature sensor at address 0x4c, but fall
+	 * through to the standard path in the case that there is a device
+	 * there that does not match expectation in case the address is being
+	 * used by another device.
+	 */
+	if (client->addr == 0x4c) {
+		ret = nxt_i2c_sensor_detect_lego_temp(client);
+		if (ret == 0) {
+			snprintf(info->type, I2C_NAME_SIZE, "%s",
+				LEGO_NXT_TEMPERATURE_SENSOR_NAME);
+			return 0;
+		}
+	}
 
 	/*
 	 * Some sensors can fall asleep during boot, so we try reading twice
@@ -426,8 +470,8 @@ struct i2c_driver nxt_i2c_sensor_driver = {
 	.remove		= nxt_i2c_sensor_remove,
 	.class		= I2C_CLASS_LEGOEV3,
 	.detect		= nxt_i2c_sensor_detect,
-	.address_list	= I2C_ADDRS(0x01, 0x02, 0x03, 0x08, 0x0A, 0x0c, 0x11, 0x18,
-				    0x50, 0x51, 0x52, 0x58),
+	.address_list	= I2C_ADDRS(0x01, 0x02, 0x03, 0x08, 0x0a, 0x0c, 0x11, 0x18,
+				    0x4c, 0x50, 0x51, 0x52, 0x58),
 };
 module_i2c_driver(nxt_i2c_sensor_driver);
 EXPORT_SYMBOL_GPL(nxt_i2c_sensor_driver);
