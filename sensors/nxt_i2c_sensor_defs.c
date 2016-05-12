@@ -513,7 +513,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 */
 		.name		= LEGO_POWER_STORAGE_SENSOR_NAME,
 		.vendor_id	= "LEGO",
-		.product_id	= "", /* LMS2012 fakes this with "Store." */
+		.product_id	= "Store",
 		.num_modes	= 8,
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
@@ -527,7 +527,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = 10000,
 				.si_max = 10000,
 				.decimals = 3,
-				.data_type = LEGO_SENSOR_DATA_S16_BE,
+				.data_type = LEGO_SENSOR_DATA_S16,
 			},
 			[1] = {
 				/**
@@ -540,7 +540,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = 10000,
 				.si_max = 10000,
 				.decimals = 3,
-				.data_type = LEGO_SENSOR_DATA_S16_BE,
+				.data_type = LEGO_SENSOR_DATA_S16,
 			},
 			[2] = {
 				/**
@@ -553,7 +553,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = 10000,
 				.si_max = 10000,
 				.decimals = 3,
-				.data_type = LEGO_SENSOR_DATA_S16_BE,
+				.data_type = LEGO_SENSOR_DATA_S16,
 			},
 			[3] = {
 				/**
@@ -566,7 +566,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = 10000,
 				.si_max = 10000,
 				.decimals = 3,
-				.data_type = LEGO_SENSOR_DATA_S16_BE,
+				.data_type = LEGO_SENSOR_DATA_S16,
 			},
 			[4] = {
 				/**
@@ -578,7 +578,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.units = "J",
 				.raw_max = 100,
 				.si_max = 100,
-				.data_type = LEGO_SENSOR_DATA_S16_BE,
+				.data_type = LEGO_SENSOR_DATA_S16,
 			},
 			[5] = {
 				/**
@@ -591,7 +591,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = 10000,
 				.si_max = 10000,
 				.decimals = 3,
-				.data_type = LEGO_SENSOR_DATA_S16_BE,
+				.data_type = LEGO_SENSOR_DATA_S16,
 			},
 			[6] = {
 				/**
@@ -604,7 +604,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.raw_max = 10000,
 				.si_max = 10000,
 				.decimals = 3,
-				.data_type = LEGO_SENSOR_DATA_S16_BE,
+				.data_type = LEGO_SENSOR_DATA_S16,
 			},
 			[7] = {
 				/**
@@ -622,7 +622,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.si_max = 10000,
 				.decimals = 3,
 				.data_sets = 7,
-				.data_type = LEGO_SENSOR_DATA_S16_BE,
+				.data_type = LEGO_SENSOR_DATA_S16,
 			},
 		},
 		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
