@@ -462,7 +462,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[0] = {
 				/**
 				 * @description: Continuous measurement
-				 * @value0: Temperature (-55.0 to 128.0)
+				 * @value0: Temperature (-550 to 1280)
 				 * @units_description: °C
 				 */
 				.name	= "NXT-TEMP-C",
@@ -477,7 +477,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[1] = {
 				/**
 				 * @description: Continuous measurement
-				 * @value0: Temperature (-67.0 to 262.4)
+				 * @value0: Temperature (-670 to 2624)
 				 * @units_description: °F
 				 */
 				.name	= "NXT-TEMP-F",
