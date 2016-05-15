@@ -356,6 +356,22 @@ static int nxt_i2c_sensor_remove(struct i2c_client *client)
 
 static struct i2c_device_id nxt_i2c_sensor_id_table[];
 
+static int nxt_i2c_sensor_detect_lego_power(struct i2c_client *client)
+{
+	int ret;
+
+	/*
+	 * Confirm there is a device that satisfies the LMS2012 checks.
+	 */
+	ret = i2c_smbus_read_byte_data(client, 0x08);
+	if (ret != 0)
+		return -ENODEV;
+	ret = i2c_smbus_read_byte_data(client, 0x10);
+	if (ret != 0)
+		return -ENODEV;
+
+	return 0;
+}
 
 static int nxt_i2c_sensor_detect_lego_temp(struct i2c_client *client)
 {
@@ -399,19 +415,28 @@ static int nxt_i2c_sensor_detect(struct i2c_client *client,
 #endif
 
 	/*
-	 * NXT Temperature sensor detection is handled here.
+	 * NXT Power Storage and Temperature sensor detection are handled here.
 	 *
-	 * The LEGO Temparature sensor does not conform to the LEGO I2C
-	 * specification and so cannot be handled by the normal auto-detection
-	 * code. However, it is a LEGO-brand sensor that is supported by the
-	 * Mindstorms software, so it is treated here as a special case.
+	 * These sensors do not conform to the LEGO I2C specification and so
+	 * cannot be handled by the normal auto-detection code. However, they
+	 * are LEGO-brand sensors that are supported by the Mindstorms software,
+	 * and so are treated here as special cases.
 	 *
-	 * We try to detect the tempearature sensor at address 0x4c, but fall
-	 * through to the standard path in the case that there is a device
-	 * there that does not match expectation in case the address is being
-	 * used by another device.
+	 * We try to detect the sensors at addresses 0x02 and 0x4c, but fall
+	 * through to the standard path when there is a device there that
+	 * does not match expectation in case the address is being used by
+	 * another device.
 	 */
-	if (client->addr == 0x4c) {
+	switch (client->addr) {
+	case 0x02:
+		ret = nxt_i2c_sensor_detect_lego_power(client);
+		if (ret == 0) {
+			snprintf(info->type, I2C_NAME_SIZE, "%s",
+				LEGO_POWER_STORAGE_SENSOR_NAME);
+			return 0;
+		}
+		break;
+	case 0x4c:
 		ret = nxt_i2c_sensor_detect_lego_temp(client);
 		if (ret == 0) {
 			snprintf(info->type, I2C_NAME_SIZE, "%s",
