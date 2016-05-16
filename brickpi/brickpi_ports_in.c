@@ -90,8 +90,11 @@ static const struct lego_port_mode_info brickpi_in_port_mode_info[NUM_BRICKPI_IN
 	[BRICKPI_IN_PORT_MODE_NXT_I2C] = {
 		/**
 		 * [^nxt-i2c-mode]: No sensors are loaded by default. You must
-		 * manually specify the sensor that is connected by using the
-		 * `set_device` attribute.
+		 * manually specify the sensor that is connected and its address
+		 * by using the `set_device` attribute. This is equivalent to
+		 * [manually loading] I2C devices.
+		 * ^
+		 * [manually loading]: /docs/sensors/using-i2c-sensors/#manually-loading-devices
 		 *
 		 * @description: NXT/I2C sensor
 		 * @name_footnote: [^nxt-i2c-mode]
