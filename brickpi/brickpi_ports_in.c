@@ -94,9 +94,11 @@ static const struct lego_port_mode_info brickpi_in_port_mode_info[NUM_BRICKPI_IN
 		 * by using the `set_device` attribute. This is equivalent to
 		 * [manually loading] I2C devices. The sensor port address will
 		 * be the BrickPi port address with ":i2c" and the decimal I2C
-		 * address appended. 
+		 * address appended. The [BrickPi I2C sensor page] has information
+		 * regarding the use of sensors connected to a brickpi-in-port.
 		 * ^
 		 * [manually loading]: /docs/sensors/using-i2c-sensors/#manually-loading-devices
+		 * [BrickPi I2C sensor]: /docs/drivers/brickpi-i2c-sensor/
 		 *
 		 * @description: NXT/I2C sensor
 		 * @name_footnote: [^nxt-i2c-mode]
