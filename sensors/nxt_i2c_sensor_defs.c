@@ -508,7 +508,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 9668
 		 * @vendor_part_name: Energy Display
-		 * @vendor_website: http://education.lego.com/en-us/lego-education-product-database/machines-and-mechanisms/9668-energy-display
+		 * @vendor_website: https://education.lego.com/en-us/products/energy-display/9668
 		 * @default_address: 0x02
 		 */
 		.name		= LEGO_POWER_STORAGE_SENSOR_NAME,
