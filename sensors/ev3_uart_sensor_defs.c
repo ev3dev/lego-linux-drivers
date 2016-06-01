@@ -253,7 +253,8 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				 * be reset by changing to a different mode and changing back.
 				 *
 				 * [^angle-overflow]: If you spin around too many times
-				 * in GYRO-ANG or GYRO-G&A mode, it will overflow (e.g. 32767 + 1 to -32768).
+				 * in GYRO-ANG or GYRO-G&A mode, it will get stuck at 32767
+				 * or overflow through -32768 depending on version.
 				 *
 				 * [^direction]: Clockwise is positive when looking at the side
 				 * of the sensor with the arrows.
