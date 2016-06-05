@@ -397,8 +397,8 @@ static void ev3_uart_send_ack(struct work_struct *work)
 		if (err < 0) {
 			port->sensor.context = NULL;
 			if (port->in_port) {
-				port->in_port = NULL;
 				put_device(&port->in_port->dev);
+				port->in_port = NULL;
 			}
 			dev_err(port->tty->dev,
 				"Could not register UART sensor on tty %s",
