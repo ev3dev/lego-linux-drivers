@@ -390,6 +390,9 @@ static void ev3_uart_send_ack(struct work_struct *work)
 				struct ev3_uart_port_data, send_ack_work);
 	int err;
 
+	if (port->closing)
+		return;
+
 	ev3_uart_write_byte(port->tty, EV3_UART_SYS_ACK);
 	if (!port->sensor.context && port->type_id <= EV3_UART_TYPE_MAX) {
 		port->sensor.context = port->tty;
