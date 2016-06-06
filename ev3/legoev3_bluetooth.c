@@ -127,10 +127,12 @@ static int legoev3_bluetooth_probe(struct platform_device *pdev)
 
 	pwm = pwm_get(&pdev->dev, NULL);
 	if (IS_ERR(pwm)) {
-		dev_err(&pdev->dev, "%s: Could not get pwm! (%ld)\n",
-			__func__, PTR_ERR(pwm));
 		err = PTR_ERR(pwm);
-		goto err_pwm_request_byname;
+		if (err != -EPROBE_DEFER) {
+			dev_err(&pdev->dev, "%s: Could not get pwm! (%ld)\n",
+				__func__, PTR_ERR(pwm));
+		}
+		goto err_pwm_get;
 	}
 	err = pwm_config(pwm, SLOW_CLOCK_PERIOD_NS / 2, SLOW_CLOCK_PERIOD_NS);
 	if (err) {
@@ -161,7 +163,7 @@ err_sysfs_create_group:
 err_pwm_start:
 err_pwm_config:
 	pwm_put(pwm);
-err_pwm_request_byname:
+err_pwm_get:
 	gpio_free_array(btdev->gpios, NUM_LEGOEV3_BT_GPIO);
 
 	return err;
