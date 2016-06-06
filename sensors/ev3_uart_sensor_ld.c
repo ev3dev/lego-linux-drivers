@@ -1,7 +1,7 @@
 /*
  * LEGO MINDSTORMS EV3 UART Sensor tty line discipline
  *
- * Copyright (C) 2014 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014-2016 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -474,7 +474,7 @@ static void ev3_uart_handle_rx_data(struct work_struct *work)
 	struct ev3_uart_port_data *port =
 		container_of(work, struct ev3_uart_port_data, rx_data_work);
 	struct circ_buf *cb = &port->circ_buf;
-	u8 message[EV3_UART_MAX_MESSAGE_SIZE + 2];
+	u8 message[EV3_UART_MAX_MESSAGE_SIZE];
 	int count = CIRC_CNT(cb->head, cb->tail, EV3_UART_BUFFER_SIZE);
 	int i, speed, size_to_end;
 	u8 cmd, cmd2, type, mode, msg_type, msg_size, chksum;
@@ -555,6 +555,11 @@ static void ev3_uart_handle_rx_data(struct work_struct *work)
 			continue;
 		}
 		msg_size = ev3_uart_msg_size((u8)cb->buf[cb->tail]);
+		debug_pr ("msg_size: %u", msg_size);
+		if (msg_size > EV3_UART_MAX_MESSAGE_SIZE) {
+			port->last_err = "Bad message size";
+			goto err_invalid_state;
+		}
 		if (msg_size > count)
 			break;
 		size_to_end = CIRC_CNT_TO_END(cb->head, cb->tail, EV3_UART_BUFFER_SIZE);
@@ -575,10 +580,6 @@ static void ev3_uart_handle_rx_data(struct work_struct *work)
 			printk("0x%02x ", message[i]);
 		printk(" (%d)\n", msg_size);
 #endif
-		if (msg_size > EV3_UART_MAX_MESSAGE_SIZE) {
-			port->last_err = "Bad message size.";
-			goto err_invalid_state;
-		}
 		msg_type = message[0] & EV3_UART_MSG_TYPE_MASK;
 		cmd = message[0] & EV3_UART_MSG_CMD_MASK;
 		mode = cmd;
