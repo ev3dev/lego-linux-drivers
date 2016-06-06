@@ -29,8 +29,8 @@
  * writing the device name and address to `set_device`. You can use any one of
  * the sensors that has the `nxt-i2c-sensor` module from the [list of supported
  * sensors]. Not all functionality of a sensor may be supported when connected
- * to a [brickpi-in-port]. For these, you should use input port 5 on the
- * BrickPi instead.
+ * to a [brickpi-in-port]. For these, you should use [brickpi-in-port-5] on the
+ * BrickPi (not on BrickPi+).
  * .
  * ### sysfs attributes
  * .
@@ -41,6 +41,7 @@
  * .
  * [brickpi]: /docs/drivers/brickpi-ld
  * [brickpi-in-port]: /docs/ports/brickpi-in-port
+ * [brickpi-in-port-5]: /docs/ports/brickpi-in-port-5
  * [list of supported sensors]: /docs/sensors#supported-sensors
  * [lego-sensor class]: ../lego-sensor-class
  */
