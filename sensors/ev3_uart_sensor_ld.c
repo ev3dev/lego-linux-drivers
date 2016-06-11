@@ -1034,8 +1034,12 @@ static void ev3_uart_receive_buf(struct tty_struct *tty,
 	if (port->closing)
 		return;
 
-	if (count > CIRC_SPACE(cb->head, cb->tail, EV3_UART_BUFFER_SIZE))
+	if (count > CIRC_SPACE(cb->head, cb->tail, EV3_UART_BUFFER_SIZE)) {
+		printk_ratelimited(KERN_ERR
+				   "%s: buffer overrun\n", dev_name(tty->dev));
+		schedule_work(&port->rx_data_work);
 		return;
+	}
 
 	size = CIRC_SPACE_TO_END(cb->head, cb->tail, EV3_UART_BUFFER_SIZE);
 	if (count > size) {
