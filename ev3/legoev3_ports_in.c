@@ -18,6 +18,7 @@
 #include <linux/module.h>
 #include <linux/workqueue.h>
 #include <linux/gpio.h>
+#include <linux/i2c.h>
 #include <linux/platform_device.h>
 #include <linux/platform_data/legoev3.h>
 
@@ -269,6 +270,7 @@ enum ev3_input_port_mode {
 	EV3_INPUT_PORT_MODE_NXT_ANALOG,
 	EV3_INPUT_PORT_MODE_NXT_COLOR,
 	EV3_INPUT_PORT_MODE_NXT_I2C,
+	EV3_INPUT_PORT_MODE_OTHER_I2C,
 	EV3_INPUT_PORT_MODE_EV3_ANALOG,
 	EV3_INPUT_PORT_MODE_EV3_UART,
 	EV3_INPUT_PORT_MODE_OTHER_UART,
@@ -338,6 +340,12 @@ static const struct lego_port_mode_info legoev3_input_port_mode_info[] = {
 		 * @description: Configure for I2C communications and load the [nxt-i2c-host] device.
 		 */
 		.name	= "nxt-i2c",
+	},
+	[EV3_INPUT_PORT_MODE_OTHER_I2C] ={
+		/**
+		 * @description: Configure for I2C communications but do probe for NXT sensors.
+		 */
+		.name	= "other-i2c",
 	},
 	[EV3_INPUT_PORT_MODE_EV3_ANALOG] = {
 		/**
@@ -527,7 +535,8 @@ static void ev3_input_port_ev3_analog_cb(void *context)
 		data->port.notify_raw_data_func(data->port.notify_raw_data_context);
 }
 
-int ev3_input_port_register_i2c(struct ev3_input_port_data *data)
+int ev3_input_port_register_i2c(struct ev3_input_port_data *data,
+				unsigned int class)
 {
 	struct platform_device *pdev;
 	int err;
@@ -539,6 +548,7 @@ int ev3_input_port_register_i2c(struct ev3_input_port_data *data)
 		goto davinci_cfg_reg_fail;
 	}
 	data->i2c_pdev_info.parent = &data->port.dev;
+	data->i2c_data.class = class;
 	pdev = platform_device_register_full(&data->i2c_pdev_info);
 	if (IS_ERR(pdev)) {
 		dev_err(&data->port.dev, "Could not register i2c device.\n");
@@ -622,12 +632,12 @@ void ev3_input_port_register_sensor(struct work_struct *work)
 	case SENSOR_NXT_I2C:
 		/* Give the sensor time to boot */
 		msleep(1000);
-		ev3_input_port_register_i2c(data);
+		ev3_input_port_register_i2c(data, I2C_CLASS_LEGOEV3);
 		/*
 		 * I2C sensors are handled by the i2c stack, so we are just
 		 * registering a fake device here so that it doesn't break
 		 * the automatic detection.
-		 * */
+		 */
 		break;
 	case SENSOR_EV3_UART:
 		ev3_input_port_enable_uart(data);
@@ -910,6 +920,8 @@ static int ev3_input_port_set_mode(void *context, u8 mode)
 	hrtimer_cancel(&data->timer);
 	cancel_work_sync(&data->work);
 
+	if (data->port.mode == EV3_INPUT_PORT_MODE_OTHER_I2C)
+		ev3_input_port_unregister_i2c(data);
 	if (data->port.mode == EV3_INPUT_PORT_MODE_OTHER_UART)
 		ev3_input_port_disable_uart(data);
 	if (data->port.mode == EV3_INPUT_PORT_MODE_RAW)
@@ -937,6 +949,11 @@ static int ev3_input_port_set_mode(void *context, u8 mode)
 		data->sensor_type = SENSOR_NXT_I2C;
 		data->sensor_type_id = SENSOR_TYPE_ID_NXT_I2C;
 		ev3_input_port_register_sensor(&data->work);
+		break;
+	case EV3_INPUT_PORT_MODE_OTHER_I2C:
+		data->sensor_type = SENSOR_NONE;
+		data->sensor_type_id = SENSOR_TYPE_ID_UNKNOWN;
+		ev3_input_port_register_i2c(data, 0);
 		break;
 	case EV3_INPUT_PORT_MODE_EV3_ANALOG:
 		data->sensor_type = SENSOR_EV3_ANALOG;
@@ -1054,6 +1071,7 @@ struct lego_port_device
 	data->i2c_data.sda_pin	= pdata->pin6_gpio;
 	data->i2c_data.scl_pin	= pdata->i2c_clk_gpio;
 	data->i2c_data.port_id	= pdata->id;
+	/* data->i2c_data.class is dynamically set */
 
 	data->i2c_pdev_info.name	= "i2c-legoev3";
 	data->i2c_pdev_info.id		= pdata->i2c_dev_id;

@@ -24,12 +24,14 @@
  * 	We can use the other pin 5 gpio on the input port since we know
  * 	it is not being used as long as we are using I2C.
  * @port_id: The input port identifier.
+ * @class: The I2C adapter class.
  */
 struct i2c_legoev3_platform_data {
 	struct nxt_i2c_sensor_platform_data sensor_platform_data;
 	unsigned int sda_pin;
 	unsigned int scl_pin;
 	enum legoev3_input_port_id port_id;
+	unsigned int class;
 };
 
 extern const struct i2c_algorithm i2c_legoev3_algo;
