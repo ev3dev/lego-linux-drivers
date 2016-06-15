@@ -2982,7 +2982,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.name		= PX_PIXY_NAME,
 		.vendor_id	= "Pixy",
 		.product_id	= "Pixy",
-		.num_modes	= 10,
+		.num_modes	= 8,
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
@@ -3081,28 +3081,6 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.name		= "SIG7",
 				.data_sets	= 5,
 			},
-			[8] = {
-				/**
-				 * @description: Color code
-				 * @value0: Count
-				 * @value1: X
-				 * @value2: Y
-				 * @value3: Width
-				 * @value4: Height
-				 * @value5: Angle
-				 */
-				.name		= "COL-CODE",
-				.data_sets	= 6,
-			},
-			[9] = {
-				/**
-				 * @description: Angle
-				 * @description_footnote: [^angle]
-				 * @value0: Angle
-				 */
-				.name		= "ANGLE",
-				.data_sets	= 1,
-			},
 		},
 		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
@@ -3128,12 +3106,6 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[7] = {
 				.read_data_reg	= 0x57,
-			},
-			[8] = {
-				.read_data_reg	= 0x58,
-			},
-			[9] = {
-				.read_data_reg	= 0x60,
 			},
 		},
 	},
