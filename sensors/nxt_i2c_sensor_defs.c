@@ -2986,8 +2986,6 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
-				 * [^angle]: Angle information is only available for color codes, otherwise the value is 0.
-				 *
 				 * @description: All
 				 * @value0: Signature low byte
 				 * @value1: Signature high byte
@@ -2995,11 +2993,9 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value3: Y
 				 * @value4: Width
 				 * @value5: Height
-				 * @value6: Angle
-				 * @value6_footnote: [^angle]
 				 */
 				.name		= "ALL",
-				.data_sets	= 7,
+				.data_sets	= 6,
 			},
 			[1] = {
 				/**
