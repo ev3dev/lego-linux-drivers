@@ -450,7 +450,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		/**
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 9749
-		 * @vendor_part_name: MINDSTORMS Temperature Sensor
+		 * @vendor_part_name: NXT Temperature Sensor
 		 * @vendor_website: https://education.lego.com/en-us/products/mindstorms-temperature-sensor/9749
 		 * @default_address: 0x4C
 		 */
