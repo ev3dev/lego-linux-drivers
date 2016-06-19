@@ -647,7 +647,7 @@ static void ev3_uart_handle_rx_data(struct work_struct *work)
 					port->last_err = "Received duplicate modes INFO.";
 					goto err_invalid_state;
 				}
-				if (!cmd2 || cmd2 > EV3_UART_MODE_MAX) {
+				if (cmd2 > EV3_UART_MODE_MAX) {
 					port->last_err = "Number of modes is out of range.";
 					goto err_invalid_state;
 				}
