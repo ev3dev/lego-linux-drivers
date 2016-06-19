@@ -558,7 +558,7 @@ static void ev3_uart_handle_rx_data(struct work_struct *work)
 			continue;
 		}
 		msg_size = ev3_uart_msg_size((u8)cb->buf[cb->tail]);
-		debug_pr ("msg_size: %u\n", msg_size);
+		debug_pr("msg_size: %u\n", msg_size);
 		if (msg_size > EV3_UART_MAX_MESSAGE_SIZE) {
 			debug_pr("header: 0x%02x\n", (u8)cb->buf[cb->tail]);
 			port->last_err = "Bad message size";
