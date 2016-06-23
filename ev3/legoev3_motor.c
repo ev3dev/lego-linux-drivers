@@ -668,8 +668,8 @@ static void update_position(struct legoev3_motor_data *ev3_tm)
 	rampdown_endpoint = ev3_tm->position
 			  + ((ev3_tm->speed * rampdown_time) / (2*MSEC_PER_SEC));
 
-	new_speed_sp = (2*MSEC_PER_SEC * (ev3_tm->position_sp - ev3_tm->position)
-				/ (1 + rampdown_time));
+	new_speed_sp = (2*MSEC_PER_SEC * (ev3_tm->position_sp - ev3_tm->position))
+				/ (1 + rampdown_time);
 
 	if (ev3_tm->speed_pid.setpoint > 0) {
 		if (rampdown_endpoint > ev3_tm->position_sp) {
