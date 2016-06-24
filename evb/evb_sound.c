@@ -266,7 +266,7 @@ static enum hrtimer_restart evb_sound_pcm_timer_callback(struct hrtimer *timer)
 	}
 
 	/* Stop playback if there is no more data. */
-	if (chip->pcm_callback_count > snd_pcm_playback_hw_avail(runtime)) {
+	if (!snd_pcm_playback_hw_avail(runtime)) {
 		tasklet_schedule(&chip->pcm_period_tasklet);
 		return HRTIMER_NORESTART;
 	}
@@ -371,8 +371,6 @@ evb_sound_pcm_pointer(struct snd_pcm_substream *substream)
 	struct evb_sound *chip = snd_pcm_substream_chip(substream);
 
 	return bytes_to_frames(substream->runtime, chip->pcm_playback_ptr);
-
-	return 0;
 }
 
 static struct snd_pcm_ops evb_sound_playback_ops = {
