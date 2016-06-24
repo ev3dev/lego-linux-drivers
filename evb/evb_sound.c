@@ -371,8 +371,6 @@ evb_sound_pcm_pointer(struct snd_pcm_substream *substream)
 	struct evb_sound *chip = snd_pcm_substream_chip(substream);
 
 	return bytes_to_frames(substream->runtime, chip->pcm_playback_ptr);
-
-	return 0;
 }
 
 static struct snd_pcm_ops evb_sound_playback_ops = {
