@@ -136,8 +136,8 @@ struct lego_sensor_device {
 
 #define to_lego_sensor_device(_dev) container_of(_dev, struct lego_sensor_device, dev)
 
-extern int lego_sensor_ftoi(u32 f, unsigned dp);
-extern u32 lego_sensor_itof(int i, unsigned dp);
+extern s32 lego_sensor_ftoi(u32 f, u8 dp);
+extern u32 lego_sensor_itof(s32 i, u8 dp);
 
 extern int register_lego_sensor(struct lego_sensor_device *, struct device *);
 extern void unregister_lego_sensor(struct lego_sensor_device *);

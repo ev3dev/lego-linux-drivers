@@ -558,9 +558,9 @@ static void ev3_uart_handle_rx_data(struct work_struct *work)
 			continue;
 		}
 		msg_size = ev3_uart_msg_size((u8)cb->buf[cb->tail]);
-		debug_pr ("msg_size: %u", msg_size);
+		debug_pr("msg_size: %u\n", msg_size);
 		if (msg_size > EV3_UART_MAX_MESSAGE_SIZE) {
-			debug_pr("header: 0x%02x", (u8)cb->buf[cb->tail]);
+			debug_pr("header: 0x%02x\n", (u8)cb->buf[cb->tail]);
 			port->last_err = "Bad message size";
 			goto err_invalid_state;
 		}
@@ -647,7 +647,7 @@ static void ev3_uart_handle_rx_data(struct work_struct *work)
 					port->last_err = "Received duplicate modes INFO.";
 					goto err_invalid_state;
 				}
-				if (!cmd2 || cmd2 > EV3_UART_MODE_MAX) {
+				if (cmd2 > EV3_UART_MODE_MAX) {
 					port->last_err = "Number of modes is out of range.";
 					goto err_invalid_state;
 				}
@@ -908,7 +908,7 @@ err_bad_data_msg_checksum:
 	return;
 
 err_invalid_state:
-	debug_pr("invalid state: %s", port->last_err);
+	debug_pr("invalid state: %s\n", port->last_err);
 	port->synced = 0;
 	port->new_baud_rate = EV3_UART_SPEED_MIN;
 	schedule_work(&port->change_bitrate_work);

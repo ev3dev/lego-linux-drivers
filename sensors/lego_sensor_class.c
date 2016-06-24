@@ -172,12 +172,12 @@ EXPORT_SYMBOL_GPL(lego_sensor_data_size);
  * @f: The floating point number.
  * @dp: The number of decimal places in the fixed-point integer.
  */
-int lego_sensor_ftoi(u32 f, unsigned dp)
+s32 lego_sensor_ftoi(u32 f, u8 dp)
 {
-	int s = (f & 0x80000000) ? -1 : 1;
-	unsigned char e = (f & 0x7F800000) >> 23;
-	unsigned long i = f & 0x007FFFFFL;
-	unsigned long m;
+	s32 s = (f & 0x80000000) ? -1 : 1;
+	u8 e = (f & 0x7F800000) >> 23;
+	u64 i = f & 0x007FFFFF;
+	u64 m;
 
 	/* handle special cases for zero, +/- infinity and NaN */
 	if (!e)
@@ -189,12 +189,12 @@ int lego_sensor_ftoi(u32 f, unsigned dp)
 	while (dp--)
 		i *= 10;
 	if (e < 150) {
-		m = i % (1L << (150 - e));
+		div64_u64_rem(i, 1 << (150 - e), &m);
 		i += m >> 1;
 		i >>= 150 - e;
-	}
-	else
+	} else {
 		i <<= e - 150;
+	}
 
 	return s * i;
 }
@@ -205,11 +205,11 @@ EXPORT_SYMBOL_GPL(lego_sensor_ftoi);
  * @i: The fixed-point integer.
  * @dp: The number of decimal places in the fixed-point integer.
  */
-u32 lego_sensor_itof(int i, unsigned dp)
+u32 lego_sensor_itof(s32 i, u8 dp)
 {
-	int s = i < 0 ? -1 : 1;
-	unsigned char e = 127;
-	unsigned long f = i * s;
+	s32 s = i < 0 ? -1 : 1;
+	u8 e = 127;
+	u64 f = i * s;
 
 	/* special case for zero */
 	if (i == 0)
@@ -217,7 +217,7 @@ u32 lego_sensor_itof(int i, unsigned dp)
 
 	f <<= 23;
 	while (dp-- > 0)
-		f /= 10;
+		do_div(f, 10);
 
 	while (f >= (1 << 24)) {
 		f >>= 1;

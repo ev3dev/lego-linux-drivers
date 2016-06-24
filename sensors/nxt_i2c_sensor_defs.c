@@ -450,7 +450,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		/**
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 9749
-		 * @vendor_part_name: MINDSTORMS Temperature Sensor
+		 * @vendor_part_name: NXT Temperature Sensor
 		 * @vendor_website: https://education.lego.com/en-us/products/mindstorms-temperature-sensor/9749
 		 * @default_address: 0x4C
 		 */
@@ -2982,12 +2982,10 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.name		= PX_PIXY_NAME,
 		.vendor_id	= "Pixy",
 		.product_id	= "Pixy",
-		.num_modes	= 10,
+		.num_modes	= 8,
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
-				 * [^angle]: Angle information is only available for color codes, otherwise the value is 0.
-				 *
 				 * @description: All
 				 * @value0: Signature low byte
 				 * @value1: Signature high byte
@@ -2995,11 +2993,9 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value3: Y
 				 * @value4: Width
 				 * @value5: Height
-				 * @value6: Angle
-				 * @value6_footnote: [^angle]
 				 */
 				.name		= "ALL",
-				.data_sets	= 7,
+				.data_sets	= 6,
 			},
 			[1] = {
 				/**
@@ -3085,28 +3081,6 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.name		= "SIG7",
 				.data_sets	= 5,
 			},
-			[8] = {
-				/**
-				 * @description: Color code
-				 * @value0: Count
-				 * @value1: X
-				 * @value2: Y
-				 * @value3: Width
-				 * @value4: Height
-				 * @value5: Angle
-				 */
-				.name		= "COL-CODE",
-				.data_sets	= 6,
-			},
-			[9] = {
-				/**
-				 * @description: Angle
-				 * @description_footnote: [^angle]
-				 * @value0: Angle
-				 */
-				.name		= "ANGLE",
-				.data_sets	= 1,
-			},
 		},
 		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
@@ -3132,12 +3106,6 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[7] = {
 				.read_data_reg	= 0x57,
-			},
-			[8] = {
-				.read_data_reg	= 0x58,
-			},
-			[9] = {
-				.read_data_reg	= 0x60,
 			},
 		},
 	},

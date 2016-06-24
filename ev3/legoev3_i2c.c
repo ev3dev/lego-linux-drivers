@@ -98,7 +98,7 @@ static int i2c_legoev3_probe(struct platform_device *pdev)
 	adata->pdata = pdata;
 
 	adap->owner = THIS_MODULE;
-	adap->class = I2C_CLASS_LEGOEV3;
+	adap->class = pdata->class;
 	adap->algo = &i2c_legoev3_algo;
 	adap->algo_data = adata;
 	adap->timeout = HZ; /* 1 second */
