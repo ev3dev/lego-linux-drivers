@@ -266,7 +266,7 @@ static enum hrtimer_restart evb_sound_pcm_timer_callback(struct hrtimer *timer)
 	}
 
 	/* Stop playback if there is no more data. */
-	if (chip->pcm_callback_count > snd_pcm_playback_hw_avail(runtime)) {
+	if (!snd_pcm_playback_hw_avail(runtime)) {
 		tasklet_schedule(&chip->pcm_period_tasklet);
 		return HRTIMER_NORESTART;
 	}
