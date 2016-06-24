@@ -76,17 +76,11 @@ struct evb_sound {
 	bool			 is_enabled;
 };
 
-#define IS_PCM_BUSY(pcm) \
-	(pcm->streams[0].substream_opened || pcm->streams[1].substream_opened)
-
 /*--- common functions ---*/
 
 static int evb_sound_enable(struct evb_sound *chip)
 {
 	chip->requested_enabled = true;
-	if (chip->is_enabled)
-		return 0;
-
 	cancel_delayed_work(&chip->disable_work);
 	gpiod_set_value(chip->ena_gpio, 1);
 	chip->is_enabled = true;
@@ -137,7 +131,8 @@ static int evb_sound_do_tone(struct evb_sound *chip, int hz)
 {
 	int err;
 
-	if (IS_PCM_BUSY(chip->pcm))
+	/* check if PCM playback is active */
+	if (hrtimer_is_queued(&chip->pcm_timer))
 		return -EBUSY;
 
 	if (hz <= 0) {
@@ -300,9 +295,6 @@ static int evb_sound_pcm_playback_open(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int err;
 
-	if (chip->tone_frequency)
-		return -EBUSY;
-
 	/* start at 50% duty cycle to prevent speaker pop */
 	err = pwm_config(chip->pwm, PCM_PWM_PERIOD / 2, PCM_PWM_PERIOD);
 	if (err < 0)
@@ -354,6 +346,8 @@ static int evb_sound_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
+		if (chip->tone_frequency || hrtimer_is_queued(&chip->pcm_timer))
+			return -EBUSY;
 		evb_sound_enable(chip);
 		chip->pcm_timer_period = ktime_set(0,
 				NSEC_PER_SEC / substream->runtime->rate);
