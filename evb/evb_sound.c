@@ -265,12 +265,6 @@ static enum hrtimer_restart evb_sound_pcm_timer_callback(struct hrtimer *timer)
 		tasklet_schedule(&chip->pcm_period_tasklet);
 	}
 
-	/* Stop playback if there is no more data. */
-	if (!snd_pcm_playback_hw_avail(runtime)) {
-		tasklet_schedule(&chip->pcm_period_tasklet);
-		return HRTIMER_NORESTART;
-	}
-
 	duty = *(short *)(runtime->dma_area + chip->pcm_playback_ptr);
 	/* do volume scaling while value is signed */
 	duty *= chip->pcm_volume;
@@ -279,6 +273,13 @@ static enum hrtimer_restart evb_sound_pcm_timer_callback(struct hrtimer *timer)
 	duty += SHRT_MAX;
 	duty *= pwm->period;
 	duty /= USHRT_MAX;
+
+	/*
+	 * FIXME: Setting the buffer data to 0 here because there is a tendency
+	 * to replay part of a sample at the end of playback. If we can figure
+	 * out how to detect the end of playback, we wouldn't need to do this.
+	 */
+	*(short *)(runtime->dma_area + chip->pcm_playback_ptr) = 0;
 
 	pwm_config(pwm, duty, pwm->period);
 
