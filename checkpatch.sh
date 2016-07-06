@@ -26,7 +26,7 @@ else
     fi
     curl -i "https://github.com/$TRAVIS_REPO_SLUG/compare/ev3dev:master...$TRAVIS_COMMIT.diff" \
         | grep -v '\(^X-Served-By:\|^X-Request-Id:\|^Set-Cookie:\|^Content-Security-Policy:\|^Public-Key-Pins:\)' \
-        | $check_patch --no-tree --no-signoff --ignore BAD_SIGN_OFF -
+        | $check_patch --no-tree --no-signoff --ignore BAD_SIGN_OFF --ignore FILE_PATH_CHANGES -
 fi
 
 # fail if git command failed
