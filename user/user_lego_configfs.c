@@ -1,7 +1,7 @@
 /*
  * User-defined LEGO devices - configfs driver
  *
- * Copyright (C) 2015 David Lechner <david@lechnology.com>
+ * Copyright (C) 2015-2016 David Lechner <david@lechnology.com>
  *
  * Based on configfs.c from usb/gadget
  *
@@ -27,8 +27,8 @@
  * User-defined LEGO devices using configfs
  *
  * This driver provides a [configfs] interface for creating user-defined devices
- * that use the various ev3dev drivers. Currently, only ports and sensors are
- * implemented. Motors and LEDs could be added in the future.
+ * that use the various ev3dev drivers. Currently, only ports, sensors and LEDs
+ * are implemented. Motors could be added in the future.
  * .
  * # Usage
  * .
@@ -99,16 +99,25 @@
 #include <lego_sensor_class.h>
 
 #include "user_lego_sensor.h"
+#include "user_led.h"
 
 #define LEGO_USER_DEVICE_NAME "lego_user_device"
+
+enum group_index {
+	GROUP_INDEX_SENSORS,
+	GROUP_INDEX_LEDS,
+	GROUP_INDEX_LIVE,
+	NUM_GROUP_INDEX
+};
 
 struct port_info {
 	struct config_group group;
 	/* default groups */
 	struct config_group sensors_group;
+	struct config_group uleds_group;
 	struct config_group live_group;
 	/* future default groups may include modes, motors and leds */
-	struct config_group *default_groups[2];
+	struct config_group *default_groups[NUM_GROUP_INDEX];
 	struct lego_port_device port;
 	struct lego_port_mode_info mode0;
 	struct mutex lock;
@@ -121,6 +130,16 @@ struct sensor_info {
 	struct config_group group;
 	struct user_lego_sensor_device sensor;
 	struct lego_sensor_mode_info mode0;
+	struct mutex lock;
+	bool live;
+};
+
+struct uled_info {
+	char name[LEGO_NAME_SIZE];
+	char color[LEGO_NAME_SIZE];
+	struct port_info *port_info;
+	struct config_group group;
+	struct user_led led;
 	struct mutex lock;
 	bool live;
 };
@@ -411,6 +430,141 @@ static struct config_item_type sensors_group_type = {
 	.ct_owner	= THIS_MODULE,
 };
 
+/* User LEDs */
+
+static inline struct uled_info *to_uled_info(struct config_item *item)
+{
+	return container_of(to_config_group(item), struct uled_info, group);
+}
+
+static void uled_info_release(struct config_item *item)
+{
+	struct uled_info *info = to_uled_info(item);
+
+	kfree(info);
+}
+
+static struct configfs_item_operations uled_info_ops = {
+	.release		= uled_info_release,
+};
+
+static ssize_t uled_info_name_show(struct config_item *item, char *page)
+{
+	struct uled_info *info = to_uled_info(item);
+
+	return sprintf(page, "%s\n", info->name);
+}
+
+static ssize_t
+uled_info_name_store(struct config_item *item, const char *page, size_t len)
+{
+	struct uled_info *info = to_uled_info(item);
+	char *value;
+
+	if (info->live)
+		return -EBUSY;
+
+	if (len > LEGO_NAME_SIZE)
+		return -EINVAL;
+
+	value = kstrndup(page, len, GFP_KERNEL);
+	if (!value)
+		return -ENOMEM;
+
+	snprintf(info->name, len, "%s", strim(value));
+	kfree(value);
+
+	return len;
+}
+
+static ssize_t uled_info_color_show(struct config_item *item, char *page)
+{
+	struct uled_info *info = to_uled_info(item);
+
+	return sprintf(page, "%s\n", info->color);
+}
+
+static ssize_t
+uled_info_color_store(struct config_item *item, const char *page, size_t len)
+{
+	struct uled_info *info = to_uled_info(item);
+	char *value;
+
+	if (info->live)
+		return -EBUSY;
+
+	if (len > LEGO_NAME_SIZE)
+		return -EINVAL;
+
+	value = kstrndup(page, len, GFP_KERNEL);
+	if (!value)
+		return -ENOMEM;
+
+	snprintf(info->color, len, "%s", strim(value));
+	kfree(value);
+
+	return len;
+}
+
+CONFIGFS_ATTR(uled_info_, name);
+CONFIGFS_ATTR(uled_info_, color);
+
+static struct configfs_attribute *uled_info_attrs[] = {
+	&uled_info_attr_name,
+	&uled_info_attr_color,
+	NULL
+};
+
+static struct config_item_type uled_info_type = {
+	.ct_item_ops	= &uled_info_ops,
+	.ct_attrs	= uled_info_attrs,
+	.ct_owner	= THIS_MODULE,
+};
+
+static struct config_group
+*uled_make(struct config_group *group, const char *name)
+{
+	struct port_info *port_info =
+			container_of(group, struct port_info, uleds_group);
+	struct uled_info *info;
+
+	info = kzalloc(sizeof(*info), GFP_KERNEL);
+	if (!info)
+		return ERR_PTR(-ENOMEM);
+
+	info->port_info = port_info;
+
+	mutex_init(&info->lock);
+
+	config_group_init_type_name(&info->group, name, &uled_info_type);
+	return &info->group;
+}
+
+static void uled_drop(struct config_group *group, struct config_item *item)
+{
+	struct uled_info *info = to_uled_info(item);
+
+	mutex_lock(&info->lock);
+	if (info->live)
+		user_led_unregister(&info->led);
+	info->live = false;
+	mutex_unlock(&info->lock);
+
+	config_item_put(item);
+}
+
+static struct configfs_group_operations uleds_group_ops = {
+	.make_group	= &uled_make,
+	.drop_item	= &uled_drop,
+};
+
+static struct config_item_type uleds_group_type = {
+	.ct_group_ops	= &uleds_group_ops,
+	.ct_owner	= THIS_MODULE,
+};
+
+/* Ports */
+
 static int live_allow_link(struct config_item *src, struct config_item *target)
 {
 	int ret = -EPERM;
@@ -427,6 +581,21 @@ static int live_allow_link(struct config_item *src, struct config_item *target)
 			/* same goes for the lego-sensor */
 			memset(&info->sensor.sensor.dev, 0, sizeof(struct device));
 			ret = user_lego_sensor_register(&info->sensor,
+						&info->port_info->port.dev);
+			if (ret == 0)
+				info->live = true;
+		}
+		mutex_unlock(&info->lock);
+	} else if (target->ci_type == &uled_info_type) {
+		struct uled_info *info = to_uled_info(target);
+
+		mutex_lock(&info->lock);
+		if (info->live) {
+			ret = -EBUSY;
+		} else {
+			snprintf(info->led.name, USER_LED_NAME_SIZE, "%s:%s:%s",
+				 info->name, info->color, "ev3dev");
+			ret = user_led_register(&info->led,
 						&info->port_info->port.dev);
 			if (ret == 0)
 				info->live = true;
@@ -521,11 +690,14 @@ static struct config_group
 	mutex_init(&info->lock);
 
 	info->group.default_groups = info->default_groups;
-	info->default_groups[0] = &info->sensors_group;
-	info->default_groups[1] = &info->live_group;
+	info->default_groups[GROUP_INDEX_SENSORS] = &info->sensors_group;
+	info->default_groups[GROUP_INDEX_LEDS] = &info->uleds_group;
+	info->default_groups[GROUP_INDEX_LIVE] = &info->live_group;
 	config_group_init_type_name(&info->group, name, &port_info_type);
 	config_group_init_type_name(&info->sensors_group, "sensors",
 				    &sensors_group_type);
+	config_group_init_type_name(&info->uleds_group, "leds",
+				    &uleds_group_type);
 	config_group_init_type_name(&info->live_group, "live", &live_group_type);
 
 	return &info->group;
