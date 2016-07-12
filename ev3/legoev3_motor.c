@@ -1003,8 +1003,8 @@ struct lego_device_id legoev3_motor_driver_id_table[NUM_EV3_MOTOR_ID] = {
 	LEGO_DEVICE_ID(LEGO_NXT_MOTOR),
 	LEGO_DEVICE_ID(LEGO_EV3_LARGE_MOTOR),
 	LEGO_DEVICE_ID(LEGO_EV3_MEDIUM_MOTOR),
-	LEGO_DEVICE_ID(FIRGELLI_L12_EV3_50),
-	LEGO_DEVICE_ID(FIRGELLI_L12_EV3_100),
+	LEGO_DEVICE_ID(ACT_L12_EV3_50),
+	LEGO_DEVICE_ID(ACT_L12_EV3_100),
 };
 
 /* TODO: Make this a bus driver attribute instead so it is present for all drivers on the lego bus */

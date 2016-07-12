@@ -31,16 +31,16 @@ enum ev3_motor_id {
 	LEGO_NXT_MOTOR,
 	LEGO_EV3_LARGE_MOTOR,
 	LEGO_EV3_MEDIUM_MOTOR,
-	FIRGELLI_L12_EV3_50,
-	FIRGELLI_L12_EV3_100,
+	ACT_L12_EV3_50,
+	ACT_L12_EV3_100,
 	NUM_EV3_MOTOR_ID
 };
 
 #define LEGO_NXT_MOTOR_NAME		"lego-nxt-motor"
 #define LEGO_EV3_LARGE_MOTOR_NAME	"lego-ev3-l-motor"
 #define LEGO_EV3_MEDIUM_MOTOR_NAME	"lego-ev3-m-motor"
-#define FIRGELLI_L12_EV3_50_NAME	"fi-l12-ev3-50"
-#define FIRGELLI_L12_EV3_100_NAME	"fi-l12-ev3-100"
+#define ACT_L12_EV3_50_NAME		"act-l12-ev3-50"
+#define ACT_L12_EV3_100_NAME		"act-l12-ev3-100"
 
 /**
  * @name: The driver name.
