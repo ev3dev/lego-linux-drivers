@@ -73,7 +73,7 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 9670
 		 * @vendor_part_name: E-Motor
-		 * @vendor_website: https://education.lego.com/en-us/lego-education-product-database/machines-and-mechanisms/9670-e-motor
+		 * @vendor_website: https://education.lego.com/en-us/products/e-motor/9670
 		 */
 		.name			= "rcx-motor",
 	},
