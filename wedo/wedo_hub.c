@@ -77,7 +77,7 @@ static const struct wedo_hub_sensor_info wedo_hub_sensor_defs[] = {
 		 * @vendor_name: LEGO
 		 * @vendor_part_name: WeDo USB Hub
 		 * @vendor_part_number: 9581
-		 * @vendor_website: https://education.lego.com/en-us/lego-education-product-database/wedo/9581-lego-usb-hub
+		 * @vendor_website: https://education.lego.com/en-us/products/wedo-usb-hub/9581
 		 * @name: wedo-hub
 		 * @num_modes: 1
 		 * @num_commands: 3
