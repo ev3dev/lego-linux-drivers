@@ -42,6 +42,9 @@ static int evb_battery_get_property(struct power_supply *psy,
 		 * 201k/33k voltage divider. So reading in 2677uV increments.
 		 */
 		ret = iio_read_channel_raw(batt->iio, &val->intval);
+		/* We occasionally get this error */
+		if (ret == -EAGAIN)
+			ret = iio_read_channel_raw(batt->iio, &val->intval);
 		/* causes log flooding if we return error */
 		if (WARN_ONCE(ret < 0, "iio_read_channel_raw error (%d)", ret))
 			break;
