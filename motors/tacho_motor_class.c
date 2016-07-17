@@ -678,13 +678,20 @@ static int tm_send_command(struct tacho_motor_device *tm,
 	default:
 		BUG();
 	}
+
+	/* Caution: the tm->command must be set before we start any ramping
+	 *          if we are doing a run_to_*_pos command so that the
+	 *          initial motor motion is correct.
+	 */
+
+	tm->command = cmd;
+
 	if (ramp)
 		err = tacho_motor_class_start_motor_ramp(tm, &new_params);
 	if (err < 0)
 		return err;
 
 	tm->active_params = new_params;
-	tm->command = cmd;
 
 	if (cmd == TM_COMMAND_RUN_TIMED)
 		schedule_delayed_work(&tm->run_timed_work,
