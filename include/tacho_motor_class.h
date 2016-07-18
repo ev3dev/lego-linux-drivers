@@ -91,6 +91,7 @@ struct tacho_motor_params {
 	int time_sp;
 	int ramp_up_sp;
 	int ramp_down_sp;
+	enum tacho_motor_command command;
 	enum tm_stop_action stop_action;
 };
 
@@ -108,7 +109,6 @@ struct tacho_motor_device {
 	const struct tacho_motor_ops const *ops;
 	const struct ev3_motor_info const *info;
 	void *context;
-	enum tacho_motor_command command;
 	struct tacho_motor_params params;
 	struct tacho_motor_params active_params;
 	int ramp_start_speed;
