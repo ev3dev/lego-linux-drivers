@@ -629,12 +629,14 @@ static int tm_send_command(struct tacho_motor_device *tm,
 	if (cmd == TM_COMMAND_RUN_TO_REL_POS) {
 		/*
 		 * To check the previous command, we MUST be looking at
-		 * tm->params.command because that's the previous command that the
-		 * user sent! If the previous command was also run-to-rel-pos
-		 * then we try to be "smart" about the new setpoint by making
-		 * it relative to the previous setpoint. This will eliminate
-		 * cumulative error due to the motor not holding the position
-		 * exactly when the position setpoint is reached.
+		 * tm->params.command because that's the previous command that
+		 * the user sent! If the previous command was also
+		 * run-to-rel-pos then we try to be "smart" about the new
+		 * setpoint by making it relative to the previous setpoint.
+		 *
+		 * This will eliminate cumulative error due to the motor not
+		 * holding the position exactly when the position setpoint
+		 * is reached.
 		 */
 		if (tm->params.command == TM_COMMAND_RUN_TO_REL_POS) {
 			new_params.position_sp = tm->active_params.position_sp +
