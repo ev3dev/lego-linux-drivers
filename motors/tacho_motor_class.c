@@ -339,7 +339,7 @@ static int tm_do_one_ramp_step(struct tacho_motor_device *tm,
 
 	if (params->speed_sp == tm->ramp_last_speed) {
 		tm->ramping = false;
-		if (tm->command == TM_COMMAND_STOP)
+		if (params->command == TM_COMMAND_STOP)
 			return tm->ops->stop(tm->context,
 					     params->stop_action);
 		return 0;
@@ -367,7 +367,7 @@ static int tm_do_one_ramp_step(struct tacho_motor_device *tm,
 		tm->ramping = false;
 	}
 
-	if (IS_POS_CMD(tm->command))
+	if (IS_POS_CMD(params->command))
 		err = tm->ops->run_to_pos(tm->context, params->position_sp,
 			tm->ramp_last_speed, params->stop_action);
 	else
@@ -613,6 +613,14 @@ static int tm_send_command(struct tacho_motor_device *tm,
 
 	new_params = tm->params;
 
+	/* Caution: The new_params.command must be set here to avoid
+	 *          race conditions when doing any ramping if the
+	 *          ramp_up time is calculated to be a very small
+	 *          value.
+	 */
+
+	new_params.command = cmd;
+
 	if (!IS_RUN_CMD(cmd)) {
 		new_params.duty_cycle_sp = 0;
 		new_params.speed_sp = 0;
@@ -621,14 +629,16 @@ static int tm_send_command(struct tacho_motor_device *tm,
 	if (cmd == TM_COMMAND_RUN_TO_REL_POS) {
 		/*
 		 * To check the previous command, we MUST be looking at
-		 * tm->command because that's the previous command that the
-		 * user sent! If the previous command was also run-to-rel-pos
-		 * then we try to be "smart" about the new setpoint by making
-		 * it relative to the previous setpoint. This will eliminate
-		 * cumulative error due to the motor not holding the position
-		 * exactly when the position setpoint is reached.
+		 * tm->params.command because that's the previous command that
+		 * the user sent! If the previous command was also
+		 * run-to-rel-pos then we try to be "smart" about the new
+		 * setpoint by making it relative to the previous setpoint.
+		 *
+		 * This will eliminate cumulative error due to the motor not
+		 * holding the position exactly when the position setpoint
+		 * is reached.
 		 */
-		if (tm->command == TM_COMMAND_RUN_TO_REL_POS) {
+		if (tm->params.command == TM_COMMAND_RUN_TO_REL_POS) {
 			new_params.position_sp = tm->active_params.position_sp +
 							tm->params.position_sp;
 		} else {
@@ -678,13 +688,13 @@ static int tm_send_command(struct tacho_motor_device *tm,
 	default:
 		BUG();
 	}
+
 	if (ramp)
 		err = tacho_motor_class_start_motor_ramp(tm, &new_params);
 	if (err < 0)
 		return err;
 
 	tm->active_params = new_params;
-	tm->command = cmd;
 
 	if (cmd == TM_COMMAND_RUN_TIMED)
 		schedule_delayed_work(&tm->run_timed_work,
@@ -721,7 +731,8 @@ static void tacho_motor_class_run_timed_work(struct work_struct *work)
 	struct tacho_motor_device *tm = container_of(to_delayed_work(work),
 				struct tacho_motor_device, run_timed_work);
 
-	tm->command = TM_COMMAND_STOP;
+	tm->active_params.command = TM_COMMAND_STOP;
+
 	if (tm->active_params.ramp_down_sp) {
 		tm->active_params.speed_sp = 0;
 		tacho_motor_class_start_motor_ramp(tm, &tm->active_params);
@@ -903,7 +914,7 @@ static ssize_t duty_cycle_sp_store(struct device *dev,
 		duty_cycle *= -1;
 
 	/* If we're in run-direct mode, allow the duty_cycle_sp to change */
-	if (tm->command == TM_COMMAND_RUN_DIRECT) {
+	if (tm->active_params.command == TM_COMMAND_RUN_DIRECT) {
 		err = tm->ops->run_unregulated(tm->context, duty_cycle);
 		if (err < 0)
 			return err;
