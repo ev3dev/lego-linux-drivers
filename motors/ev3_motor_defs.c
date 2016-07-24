@@ -96,7 +96,7 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		 * @vendor_name: Actuonix
 		 * @vendor_part_number: L12-EV3-50
 		 * @vendor_part_name: L12 EV3 50mm
-		 * @vendor_website: http://store.firgelli.com/product_p/l12-ev3-50.htm
+		 * @vendor_website: http://www.actuonix.com/product_p/l12-ev3-50.htm
 		 */
 		.name			= ACT_L12_EV3_50_NAME,
 		.max_speed		= 24,
