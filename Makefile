@@ -13,3 +13,4 @@ obj-y	+= user/
 obj-y	+= wedo/
 
 obj-y	+= linux/
+obj-y	+= lms2012/

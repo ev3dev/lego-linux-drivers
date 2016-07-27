@@ -142,6 +142,12 @@ config LEGO_USER_DEVICES
 	help
 	  Select Y to enable support for user-defined devices.
 
+config LMS2012_COMPAT
+	tristate "lms2012 compatibility"
+	default y
+	help
+	  Select Y to enable lms2012 compatibility drivers.
+
 source "drivers/lego/wedo/Kconfig"
 
 source "drivers/lego/brickpi/Kconfig"
