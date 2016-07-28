@@ -1740,6 +1740,8 @@ static int ModuleInit(void)
 	Device1Init();
 	Device3Init();
 
+	pr_info("d_analog registered\n");
+
 	return 0;
 }
 
@@ -1747,6 +1749,8 @@ static void ModuleExit(void)
 {
 	Device3Exit();
 	Device1Exit();
+
+	pr_info("d_analog removed\n");
 }
 
 module_init(ModuleInit);
