@@ -37,6 +37,7 @@
 #ifndef   LMS2012_H_
 #define   LMS2012_H_
 
+#include <linux/clk.h>
 #include <linux/gpio/consumer.h>
 
 //        BASIC DATA TYPES
@@ -63,6 +64,8 @@ typedef   FLOAT                 DATAF;  //!< VM Type for 4 byte floating point v
 #define   OUTPUTS               4                     //!< Number of output ports in the system
 #define   INPUTS                4                     //!< Number of input  ports in the system
 
+#define   MAX_DEVICE_TYPE       127                   //!< Highest type number (positive)
+#define   MAX_VALID_TYPE        101                   //!< Highest valid type
 #define   MAX_DEVICE_MODES      8                     //!< Max number of modes in one device
 #define   MAX_DEVICE_DATASETS   8                     //!< Max number of data sets in one device
 #define   MAX_DEVICE_DATALENGTH 32                    //!< Max device data length
@@ -396,6 +399,9 @@ struct lms2012_compat {
     u32 adc_map[INPUTADC];
     struct gpio_descs *spi_pins;
     struct gpio_descs *in_pins[INPUTS];
+    void __iomem *uart_mem[INPUTS];
+    int uart_irq[INPUTS];
+    u32 uart_clock_freq[INPUTS];
     struct gpio_descs *out_pins[OUTPUTS];
 };
 

@@ -14,13 +14,12 @@
  */
 
 #include <linux/err.h>
-#include <linux/iio/consumer.h>
-#include <linux/iio/types.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/of_address.h>
 #include <linux/of_device.h>
+#include <linux/of_irq.h>
 #include <linux/platform_device.h>
-#include <linux/power_supply.h>
 #include <linux/slab.h>
 
 #include "lms2012.h"
@@ -50,9 +49,22 @@ struct device *lms2012_compat_get(void)
 }
 EXPORT_SYMBOL_GPL(lms2012_compat_get);
 
+struct lms2012_compat_clk {
+	struct clk *clk;
+};
+
+static void lms2012_compat_release_clk(struct device *dev, void *res)
+{
+	struct lms2012_compat_clk *clk = res;
+
+	clk_disable_unprepare(clk->clk);
+	clk_put(clk->clk);
+}
+
 static int lms2012_compat_probe(struct platform_device *pdev)
 {
 	struct lms2012_compat *lms;
+	struct lms2012_compat_clk *clk;
 	int ret, i;
 	char name[5];
 
@@ -88,6 +100,98 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 				name);
 			return -EINVAL;
 		}
+	}
+
+	ret = of_count_phandle_with_args(pdev->dev.of_node, "in-uarts",
+					 "#uart-cells");
+	if (ret < 0) {
+		dev_err(&pdev->dev, "Could not get uarts\n");
+		return ret;
+	} else if (ret != INPUTS) {
+		dev_err(&pdev->dev, "Incorrect number of uarts (%d)\n", ret);
+		return -EINVAL;
+	}
+	for (i = 0; i < INPUTS; i++) {
+		struct of_phandle_args args;
+		struct resource res;
+		char name[10];
+
+		snprintf(name, 10, "in%d_uart", i + 1);
+
+		ret = of_parse_phandle_with_args(pdev->dev.of_node, "in-uarts",
+						 "#uart-cells", i, &args);
+		if (ret < 0) {
+			dev_err(&pdev->dev, "Could not get uart %d\n", i + 1);
+			return ret;
+		}
+
+		ret = of_address_to_resource(args.np, 0, &res);
+		if (ret < 0) {
+			dev_err(&pdev->dev, "Could not get uart %d resource\n",
+				i + 1);
+			of_node_put(args.np);
+
+			return ret;
+		}
+
+		lms->uart_mem[i] = devm_ioremap_resource(&pdev->dev, &res);
+		if (IS_ERR(lms->uart_mem[i])) {
+			dev_err(&pdev->dev, "Could not map uart %d memory\n",
+				i + 1);
+			of_node_put(args.np);
+
+			return PTR_ERR(lms->uart_mem[i]);
+		}
+
+		lms->uart_irq[i] = of_irq_get(args.np, 0);
+		if (lms->uart_irq[i] < 0) {
+			dev_err(&pdev->dev, "Could not get uart %d irq\n",
+				i + 1);
+			of_node_put(args.np);
+
+			return lms->uart_irq[i];
+		}
+
+		ret = of_property_read_u32(args.np, "clock-frequency",
+					   &lms->uart_clock_freq[i]);
+		if (ret < 0) {
+			dev_err(&pdev->dev,
+				"Could not get uart %d clock frequency\n",
+				i + 1);
+			of_node_put(args.np);
+
+			return ret;
+		}
+
+		clk = devres_alloc(lms2012_compat_release_clk,
+				   sizeof(struct lms2012_compat_clk),
+				   GFP_KERNEL);
+
+		clk->clk = of_clk_get_by_name(args.np, "fck");
+		if (IS_ERR(clk->clk)) {
+			dev_err(&pdev->dev, "Could not get uart %d clock\n",
+				i + 1);
+			devres_free(clk);
+			of_node_put(args.np);
+
+			return PTR_ERR(clk->clk);
+		}
+
+		ret = clk_prepare_enable(clk->clk);
+		if (ret < 0) {
+			dev_err(&pdev->dev,
+				"Failed to prepare/enable uart %d clock\n",
+				i + 1);
+			clk_put(clk->clk);
+			devres_free(clk);
+			of_node_put(args.np);
+
+			return ret;
+		}
+
+		devres_add(&pdev->dev, clk);
+
+		of_node_put(args.np);
 	}
 
 	for (i = 0; i < OUTPUTS; i++) {
