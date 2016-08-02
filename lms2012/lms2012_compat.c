@@ -24,28 +24,18 @@
 
 #include "lms2012.h"
 
-static int lms2012_compat_match(struct device *dev, void *data)
-{
-	return strcmp(dev_name(dev), "lms2012-compat") == 0;
-}
+static struct device *global_dev = NULL;
 
 /**
  * lms2012_compat_get - get the global lms2012-compat instance
  *
- * Returns the instance or -EPROBE_DEFER if it is not found.
+ * Returns the instance or NULL if no device has been probed yet.
  *
  * Release the device with put_device() when finished.
  */
 struct device *lms2012_compat_get(void)
 {
-	struct device *dev;
-
-	dev = bus_find_device(&platform_bus_type, NULL, NULL,
-			      lms2012_compat_match);
-	if (!dev)
-		return ERR_PTR(-EPROBE_DEFER);
-
-	return dev;
+	return get_device(global_dev);
 }
 EXPORT_SYMBOL_GPL(lms2012_compat_get);
 
@@ -67,6 +57,9 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 	struct lms2012_compat_clk *clk;
 	int ret, i;
 	char name[5];
+
+	if (global_dev)
+		return -EBUSY;
 
 	lms = devm_kzalloc(&pdev->dev, sizeof(*lms), GFP_KERNEL);
 	if (!lms)
@@ -210,6 +203,7 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, lms);
+	global_dev = &pdev->dev;
 
 	dev_info(&pdev->dev, "Registered lms2012-compat\n");
 
@@ -219,6 +213,8 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 static int lms2012_compat_remove(struct platform_device *pdev)
 {
 	// struct lms2012_compat *lms = platform_get_drvdata(pdev);
+
+	global_dev = NULL;
 
 	dev_info(&pdev->dev, "Unregistered lms2012-compat\n");
 

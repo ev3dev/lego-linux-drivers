@@ -2610,8 +2610,8 @@ static int Device1Init(void)
 	int ret, i, Tmp;
 
 	Device1Lms2012CompatDev = lms2012_compat_get();
-	if (IS_ERR(Device1Lms2012CompatDev))
-		return PTR_ERR(Device1Lms2012CompatDev);
+	if (!Device1Lms2012CompatDev)
+		return -EPROBE_DEFER;
 
 	Device1Lms2012Compat = dev_get_drvdata(Device1Lms2012CompatDev);
 
