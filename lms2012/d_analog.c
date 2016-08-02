@@ -1737,8 +1737,16 @@ static void Device3Exit(void)
 
 static int ModuleInit(void)
 {
-	Device1Init();
-	Device3Init();
+	int ret;
+
+	ret = Device1Init();
+	if (ret < 0)
+		return ret;
+	ret = Device3Init();
+	if (ret < 0) {
+		Device1Exit();
+		return ret;
+	}
 
 	pr_info("d_analog registered\n");
 
