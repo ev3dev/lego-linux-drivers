@@ -39,6 +39,9 @@
 
 #include <linux/clk.h>
 #include <linux/gpio/consumer.h>
+#include <linux/pwm.h>
+
+#include <plat/dmtimer.h>
 
 //        BASIC DATA TYPES
 
@@ -403,6 +406,8 @@ struct lms2012_compat {
     int uart_irq[INPUTS];
     u32 uart_clock_freq[INPUTS];
     struct gpio_descs *out_pins[OUTPUTS];
+    struct pwm_device *out_pwms[OUTPUTS];
+    struct omap_dm_timer *motor_timer;
 };
 
 struct device *lms2012_compat_get(void);
