@@ -228,12 +228,12 @@ static const struct of_device_id of_lms2012_compat_match[] = {
 MODULE_DEVICE_TABLE(of, of_lms2012_compat_match);
 
 static struct platform_driver lms2012_compat_driver = {
-	.driver = {
-		.name       = "lms2012-compat",
-		.of_match_table = of_lms2012_compat_match,
+	.driver	= {
+		.name		= "lms2012-compat",
+		.of_match_table	= of_lms2012_compat_match,
 	},
-	.probe  = lms2012_compat_probe,
-	.remove = lms2012_compat_remove,
+	.probe	= lms2012_compat_probe,
+	.remove	= lms2012_compat_remove,
 };
 module_platform_driver(lms2012_compat_driver);
 
