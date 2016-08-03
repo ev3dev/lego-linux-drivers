@@ -1479,7 +1479,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 	return HRTIMER_RESTART;
 }
 
-void GetSyncDurationCnt(SLONG *pCount0, SLONG *pCount1)
+static void GetSyncDurationCnt(SLONG *pCount0, SLONG *pCount1)
 {
 	if (StepPowerSteps[SyncMNos[0]] == TimerSteps[SyncMNos[0]]) {
 		*pCount0 = *TimerSteps[SyncMNos[0]];
@@ -1490,7 +1490,7 @@ void GetSyncDurationCnt(SLONG *pCount0, SLONG *pCount1)
 	}
 }
 
-void CheckforEndOfSync(void)
+static void CheckforEndOfSync(void)
 {
 	SLONG Count0, Count1;
 	SBYTE Speed;
