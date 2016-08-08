@@ -343,7 +343,7 @@ static const struct lego_port_mode_info legoev3_input_port_mode_info[] = {
 	},
 	[EV3_INPUT_PORT_MODE_OTHER_I2C] ={
 		/**
-		 * @description: Configure for I2C communications but do probe for NXT sensors.
+		 * @description: Configure for I2C communications but do not probe for NXT sensors.
 		 */
 		.name	= "other-i2c",
 	},
