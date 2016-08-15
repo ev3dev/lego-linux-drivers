@@ -145,6 +145,7 @@ config LEGO_USER_DEVICES
 config LMS2012_COMPAT
 	tristate "lms2012 compatibility"
 	default y
+	depends on OMAP_DM_TIMER
 	help
 	  Select Y to enable lms2012 compatibility drivers.
 
