@@ -13,6 +13,7 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/iio/consumer.h>
 #include <linux/iio/types.h>
@@ -33,6 +34,7 @@ static int evb_battery_get_property(struct power_supply *psy,
 				    union power_supply_propval *val)
 {
 	struct evb_battery *batt = power_supply_get_drvdata(psy);
+	unsigned int retries = 2;
 	int ret = 0;
 
 	switch (psp) {
@@ -43,8 +45,10 @@ static int evb_battery_get_property(struct power_supply *psy,
 		 */
 		ret = iio_read_channel_raw(batt->iio, &val->intval);
 		/* We occasionally get this error */
-		if (ret == -EAGAIN)
+		while (ret == -EAGAIN && retries--) {
+			msleep(1);
 			ret = iio_read_channel_raw(batt->iio, &val->intval);
+		}
 		/* causes log flooding if we return error */
 		if (WARN_ONCE(ret < 0, "iio_read_channel_raw error (%d)", ret))
 			break;
