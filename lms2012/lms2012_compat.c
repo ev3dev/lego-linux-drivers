@@ -208,7 +208,9 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 		snprintf(name, 10, "out%c", i + 'A');
 		lms->out_pwms[i] = devm_pwm_get(&pdev->dev, name);
 		if (IS_ERR(lms->out_pwms[i])) {
-			dev_err(&pdev->dev, "Could not get pwm %s\n", name);
+			if (PTR_ERR(lms->out_pwms[i]) != -EPROBE_DEFER)
+				dev_err(&pdev->dev, "Could not get pwm %s\n",
+					name);
 			return PTR_ERR(lms->out_pwms[i]);
 		}
 	}
