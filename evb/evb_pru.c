@@ -136,6 +136,15 @@ const struct i2c_algorithm evb_pru_i2c_algo = {
 };
 EXPORT_SYMBOL_GPL(evb_pru_i2c_algo);
 
+static const struct i2c_adapter_quirks evb_pru_i2c_quirks = {
+	.flags			= I2C_AQ_NO_CLK_STRETCH,
+	.max_num_msgs		= MESSAGE_LIMIT,
+	.max_write_len		= MAX_BUF_SIZE,
+	.max_read_len		= MAX_BUF_SIZE,
+	.max_comb_1st_msg_len	= MAX_BUF_SIZE,
+	.max_comb_2nd_msg_len	= MAX_BUF_SIZE,
+};
+
 /**
  * evb_pru_i2c_cb - rpmsg_channel message received callback
  */
@@ -180,6 +189,7 @@ static int evb_pru_i2c_probe(struct rpmsg_channel *rpdev)
 	adap->timeout = HZ; /* 1 second */
 	adap->dev.parent = &rpdev->dev;
 	snprintf(adap->name, sizeof(adap->name), "evb-pru-i2c%d", rpdev->dst);
+	adap->quirks = &evb_pru_i2c_quirks;
 
 	adata->rpdev = rpdev;
 	adata->adap = adap;
