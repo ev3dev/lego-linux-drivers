@@ -18,10 +18,12 @@
 #include <linux/device.h>
 #include <linux/gpio/consumer.h>
 #include <linux/hrtimer.h>
+#include <linux/i2c.h>
 #include <linux/iio/consumer.h>
 #include <linux/iio/iio.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/workqueue.h>
 
@@ -31,6 +33,10 @@
 #include "evb_ports.h"
 #include "../sensors/ev3_analog_sensor.h"
 #include "../sensors/nxt_analog_sensor.h"
+
+#ifndef I2C_CLASS_LEGO
+#define I2C_CLASS_LEGO (1<<31)
+#endif
 
 #define INPUT_PORT_POLL_NS	10000000	/* 10 msec */
 #define SETTLE_CNT		2		/* 20 msec */
@@ -200,12 +206,6 @@ unsigned to_ev3_analog_sensor_type_id(int mv)
 	return SENSOR_TYPE_ID_UNKNOWN;
 }
 
-enum pin5_mux_mode {
-	PIN5_MUX_MODE_I2C,
-	PIN5_MUX_MODE_UART,
-	NUM_PIN5_MUX_MODE
-};
-
 enum connection_state {
 	CON_STATE_INIT,			/* Wait for sensor to unregister, then
 						Set port to "float" state */
@@ -260,9 +260,9 @@ enum evb_input_port_mode {
 	EV3_INPUT_PORT_MODE_NXT_ANALOG,
 	EV3_INPUT_PORT_MODE_NXT_COLOR,
 	EV3_INPUT_PORT_MODE_NXT_I2C,
+	EV3_INPUT_PORT_MODE_OTHER_I2C,
 	EV3_INPUT_PORT_MODE_EV3_ANALOG,
 	EV3_INPUT_PORT_MODE_EV3_UART,
-	EV3_INPUT_PORT_MODE_OTHER_I2C,
 	EV3_INPUT_PORT_MODE_OTHER_UART,
 	EV3_INPUT_PORT_MODE_RAW,
 	NUM_EV3_INPUT_PORT_MODE
@@ -331,6 +331,12 @@ static const struct lego_port_mode_info evb_input_port_mode_info[] = {
 		 */
 		.name	= "nxt-i2c",
 	},
+	[EV3_INPUT_PORT_MODE_OTHER_I2C] = {
+		/**
+		 * @description: Configure for I2C communications but do not probe for NXT sensors.
+		 */
+		.name	= "other-i2c",
+	},
 	[EV3_INPUT_PORT_MODE_EV3_ANALOG] = {
 		/**
 		 * @description: Load the [ev3-analog] device.
@@ -342,12 +348,6 @@ static const struct lego_port_mode_info evb_input_port_mode_info[] = {
 		 * @description: Configure for UART communications and load the [ev3-uart-host] device.
 		 */
 		.name	= "ev3-uart",
-	},
-	[EV3_INPUT_PORT_MODE_OTHER_I2C] = {
-		/**
-		 * @description: Configure for I2C communications but do not probe sensors.
-		 */
-		.name	= "other-i2c",
 	},
 	[EV3_INPUT_PORT_MODE_OTHER_UART] = {
 		/**
@@ -415,7 +415,6 @@ static struct device_type evb_input_port_type = {
 
 /**
  * struct evb_input_port_data - Driver data for an input port on the EV3 brick
- * @id: Unique identifier for the port.
  * @port: Pointer to the evb_port that is bound to this instance.
  * @iio_cb: IIO callback buffer for analog inputs.
  * @pin1_gpio: Controls 9V supply on Pin 1.
@@ -423,13 +422,7 @@ static struct device_type evb_input_port_type = {
  * @pin5_gpio: Sensor I/O on pin 5.
  * @pin6_gpio: Sensor I/O on pin 6.
  * @buf_ena_gpio: Enables buffer for UART.
- * @pin5_mux: Pin mux info for the i2c clock and uart Tx pins. These two
- *	functions share a physical pin on the microprocessor so we have to
- *	change the pin mux each time we change which one we are using.
  * @i2c_data: Platform data for i2c-gpio platform device.
- * @i2c_pdev_info: Platform device information for creating a new i2c-gpio
- *	device each time we connect an i2c sensor.
- * @i2c_pdev: I2C platform device.
  * @change_uevent_work: Needed when change is triggered in atomic context.
  * @work: Worker for registering and unregistering sensors when they are
  *	connected and disconnected.
@@ -446,9 +439,15 @@ static struct device_type evb_input_port_type = {
  * @sensor_type: The type of sensor currently connected.
  * @sensor_type_id: The sensor type id for EV3 sensors or -1 for NXT sensors.
  * @sensor: The sensor connected to the port
+ * @i2c_adap: The i2c adapter associated with this port.
+ * @pinctrl: The pinctrl for muxing pins on this port.
+ * @pinctrl_default: The default pinctrl state.
+ * @pinctrl_i2c: The pinctrl state for i2c communications.
+ * @pinctrl_uart: The pinctrl state for uart communications.
+ * @i2c_enabled: Flag indicating if port has i2c enabled.
+ * @uart_enabled: Flag indicating that port has uart enabled.
  */
 struct evb_input_port_data {
-	// enum evb_input_port_id id;
 	struct lego_port_device port;
 	struct evb_analog_device *analog;
 	struct iio_cb_buffer *iio_cb;
@@ -458,10 +457,6 @@ struct evb_input_port_data {
 	struct gpio_desc *pin5_gpio;
 	struct gpio_desc *pin6_gpio;
 	struct gpio_desc *buf_ena_gpio;
-	unsigned pin5_mux[NUM_PIN5_MUX_MODE];
-	//struct i2c_evb_platform_data i2c_data;
-	struct platform_device_info i2c_pdev_info;
-	struct platform_device *i2c_pdev;
 	struct work_struct change_uevent_work;
 	struct work_struct work;
 	struct hrtimer timer;
@@ -476,6 +471,13 @@ struct evb_input_port_data {
 	enum sensor_type sensor_type;
 	enum sensor_type_id sensor_type_id;
 	struct lego_device *sensor;
+	struct i2c_adapter *i2c_adap;
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *pinctrl_default;
+	struct pinctrl_state *pinctrl_i2c;
+	struct pinctrl_state *pinctrl_uart;
+	unsigned i2c_enabled:1;
+	unsigned uart_enabled:1;
 };
 
 static inline int evb_input_port_set_gpio(struct gpio_desc *gpio,
@@ -527,61 +529,61 @@ static void evb_input_port_ev3_analog_cb(struct evb_input_port_data *data)
 		data->port.notify_raw_data_func(data->port.notify_raw_data_context);
 }
 
-int evb_input_port_register_i2c(struct evb_input_port_data *data)
+int evb_input_port_enable_i2c(struct evb_input_port_data *data, unsigned int class)
 {
-	struct platform_device *pdev;
 	int err;
 
+	err = pinctrl_select_state(data->pinctrl, data->pinctrl_i2c);
+	if (err)
+		return err;
+
 	gpiod_set_value(data->buf_ena_gpio, 1);
-	// err = davinci_cfg_reg(data->pin5_mux[PIN5_MUX_MODE_I2C]);
-	// if (err) {
-	// 	dev_err(&data->port.dev, "Pin 5 mux failed for i2c device.\n");
-	// 	goto davinci_cfg_reg_fail;
-	// }
-	data->i2c_pdev_info.parent = &data->port.dev;
-	pdev = platform_device_register_full(&data->i2c_pdev_info);
-	if (IS_ERR(pdev)) {
-		dev_err(&data->port.dev, "Could not register i2c device.\n");
-		err = PTR_ERR(pdev);
-		goto platform_device_register_fail;
-	}
-	data->i2c_pdev = pdev;
+
+	data->i2c_adap->class = class;
+	i2c_adapter_probe(data->i2c_adap);
+
+	data->i2c_enabled = true;
 
 	return 0;
-
-platform_device_register_fail:
-//davinci_cfg_reg_fail:
-	gpiod_set_value(data->buf_ena_gpio, 0);
-
-	return err;
 }
 
-void evb_input_port_unregister_i2c(struct evb_input_port_data *data)
+void evb_input_port_disable_i2c(struct evb_input_port_data *data)
 {
-	if (!data->i2c_pdev)
+	/* NOP if evb_input_port_enable_i2c() was not called */
+	if (!data->i2c_enabled)
 		return;
 
-	platform_device_unregister(data->i2c_pdev);
-	data->i2c_pdev = NULL;
+	data->i2c_enabled = false;
+
+	i2c_adapter_remove_probed(data->i2c_adap);
+	pinctrl_select_state(data->pinctrl, data->pinctrl_default);
 	gpiod_set_value(data->buf_ena_gpio, 0);
 }
 
 int evb_input_port_enable_uart(struct evb_input_port_data *data)
 {
-	// int err;
+	int err;
 
-	// err = davinci_cfg_reg(data->pin5_mux[PIN5_MUX_MODE_UART]);
-	// if (err) {
-	// 	dev_err(&data->port.dev, "Pin 5 mux failed for uart device.\n");
-	// 	return err;
-	// }
+	err = pinctrl_select_state(data->pinctrl, data->pinctrl_uart);
+	if (err)
+		return err;
+
 	gpiod_set_value(data->buf_ena_gpio, 1);
+
+	data->uart_enabled = true;
 
 	return 0;
 }
 
 void evb_input_port_disable_uart(struct evb_input_port_data *data)
 {
+	/* NOP if evb_input_port_enable_uart() was not called */
+	if (!data->uart_enabled)
+		return;
+
+	data->uart_enabled = false;
+
+	pinctrl_select_state(data->pinctrl, data->pinctrl_default);
 	gpiod_set_value(data->buf_ena_gpio, 0);
 }
 
@@ -622,12 +624,12 @@ void evb_input_port_register_sensor(struct work_struct *work)
 	case SENSOR_NXT_I2C:
 		/* Give the sensor time to boot */
 		msleep(1000);
-		//evb_input_port_register_i2c(data);
+		evb_input_port_enable_i2c(data, I2C_CLASS_LEGO);
 		/*
 		 * I2C sensors are handled by the i2c stack, so we are just
-		 * registering a fake device here so that it doesn't break
-		 * the automatic detection.
-		 * */
+		 * kicking the i2c adapter so that it doesn't break the
+		 * automatic detection.
+		 */
 		break;
 	case SENSOR_EV3_UART:
 		evb_input_port_enable_uart(data);
@@ -667,7 +669,7 @@ void evb_input_port_unregister_sensor(struct work_struct *work)
 	data->sensor_type = SENSOR_NONE;
 	data->sensor = NULL;
 	data->sensor_cb = NULL;
-	evb_input_port_unregister_i2c(data);
+	evb_input_port_disable_i2c(data);
 	evb_input_port_disable_uart(data);
 }
 
@@ -922,6 +924,8 @@ static int evb_input_port_set_mode(void *context, u8 mode)
 	hrtimer_cancel(&data->timer);
 	cancel_work_sync(&data->work);
 
+	if (data->port.mode == EV3_INPUT_PORT_MODE_OTHER_I2C)
+		evb_input_port_disable_i2c(data);
 	if (data->port.mode == EV3_INPUT_PORT_MODE_OTHER_UART)
 		evb_input_port_disable_uart(data);
 	if (data->port.mode == EV3_INPUT_PORT_MODE_RAW)
@@ -949,6 +953,11 @@ static int evb_input_port_set_mode(void *context, u8 mode)
 		data->sensor_type = SENSOR_NXT_I2C;
 		data->sensor_type_id = SENSOR_TYPE_ID_NXT_I2C;
 		evb_input_port_register_sensor(&data->work);
+		break;
+	case EV3_INPUT_PORT_MODE_OTHER_I2C:
+		data->sensor_type = SENSOR_NONE;
+		data->sensor_type_id = SENSOR_TYPE_ID_UNKNOWN;
+		evb_input_port_enable_i2c(data, 0);
 		break;
 	case EV3_INPUT_PORT_MODE_EV3_ANALOG:
 		data->sensor_type = SENSOR_EV3_ANALOG;
@@ -1043,6 +1052,35 @@ static int evb_input_port_probe(struct platform_device *pdev)
 	if (!data)
 		return -ENOMEM;
 
+	data->pinctrl = devm_pinctrl_get_select_default(&pdev->dev);
+	if (IS_ERR(data->pinctrl)) {
+		err = PTR_ERR(data->pinctrl);
+		if (err != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Could not get pinctrl\n");
+		return err;
+	}
+
+	data->pinctrl_default = pinctrl_lookup_state(data->pinctrl, "default");
+	if (IS_ERR(data->pinctrl_default)) {
+		err = PTR_ERR(data->pinctrl_default);
+		dev_err(&pdev->dev, "Could not get pinctrl default\n");
+		return err;
+	}
+
+	data->pinctrl_i2c = pinctrl_lookup_state(data->pinctrl, "i2c");
+	if (IS_ERR(data->pinctrl_i2c)) {
+		err = PTR_ERR(data->pinctrl_i2c);
+		dev_err(&pdev->dev, "Could not get pinctrl i2c\n");
+		return err;
+	}
+
+	data->pinctrl_uart = pinctrl_lookup_state(data->pinctrl, "uart");
+	if (IS_ERR(data->pinctrl_uart)) {
+		err = PTR_ERR(data->pinctrl_uart);
+		dev_err(&pdev->dev, "Could not get pinctrl uart\n");
+		return err;
+	}
+
 	data->iio_cb = iio_channel_get_all_cb(&pdev->dev, evb_input_port_buf_cb,
 					      data);
 	if (IS_ERR(data->iio_cb)) {
@@ -1133,15 +1171,16 @@ static int evb_input_port_probe(struct platform_device *pdev)
 		data->pin2_gpio = NULL;
 	}
 
-	// data->i2c_data.sensor_platform_data.in_port = &data->port;
-	// data->i2c_data.sda_pin	= pdata->pin6_gpio;
-	// data->i2c_data.scl_pin	= pdata->i2c_clk_gpio;
-	// data->i2c_data.port_id	= pdata->id;
-
-	// data->i2c_pdev_info.name	= "i2c-evb";
-	// data->i2c_pdev_info.id		= pdata->i2c_dev_id;
-	// data->i2c_pdev_info.data	= &data->i2c_data;
-	// data->i2c_pdev_info.size_data	= sizeof(data->i2c_data);
+	err = of_property_read_u32(pdev->dev.of_node, "ev3dev,i2c-adapter", &i);
+	if (err) {
+		dev_err(&pdev->dev, "No i2c adapter specified\n");
+		goto err_stop_iio_cb;
+	}
+	data->i2c_adap = i2c_get_adapter(i);
+	if (!data->i2c_adap) {
+		err = -EPROBE_DEFER;
+		goto err_stop_iio_cb;
+	}
 
 	data->port.name = evb_input_port_type.name;
 	snprintf(data->port.address, LEGO_NAME_SIZE, "%s", dev_name(&pdev->dev));
@@ -1168,7 +1207,7 @@ static int evb_input_port_probe(struct platform_device *pdev)
 	err = lego_port_register(&data->port, &evb_input_port_type, &pdev->dev);
 	if (err) {
 		dev_err(&pdev->dev, "Failed to register input port.\n");
-		goto err_stop_iio_cb;
+		goto err_put_i2c_adapter;
 	}
 
 	INIT_WORK(&data->change_uevent_work, evb_input_port_change_uevent_work);
@@ -1182,6 +1221,8 @@ static int evb_input_port_probe(struct platform_device *pdev)
 
 	return 0;
 
+err_put_i2c_adapter:
+	i2c_put_adapter(data->i2c_adap);
 err_stop_iio_cb:
 	iio_channel_stop_all_cb(data->iio_cb);
 err_release_iio_cb:
@@ -1203,6 +1244,7 @@ static int evb_input_port_remove(struct platform_device *pdev)
 		evb_input_port_disable_raw_mode(data);
 	evb_input_port_unregister_sensor(&data->work);
 	lego_port_unregister(&data->port);
+	i2c_put_adapter(data->i2c_adap);
 	iio_channel_stop_all_cb(data->iio_cb);
 	iio_channel_release_all_cb(data->iio_cb);
 	evb_input_port_float(data);
