@@ -706,10 +706,6 @@ static enum hrtimer_restart evb_input_port_timer_callback(struct hrtimer *timer)
 		if (data->timer_loop_cnt >= SETTLE_CNT) {
 			data->timer_loop_cnt = 0;
 			data->con_state = CON_STATE_NO_DEV;
-			printk("pin1_mv: %u\n", data->pin1_mv);
-			printk("pin6_mv: %u\n", data->pin6_mv);
-			printk("pin5_gpio: %d\n", gpiod_get_value(data->pin5_gpio));
-			printk("pin6_gpio: %d\n", gpiod_get_value(data->pin6_gpio));
 		}
 		break;
 	case CON_STATE_NO_DEV:
