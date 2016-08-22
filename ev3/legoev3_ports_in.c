@@ -33,6 +33,10 @@
 #include "../sensors/ev3_analog_sensor.h"
 #include "../sensors/nxt_analog_sensor.h"
 
+#ifndef I2C_CLASS_LEGO
+#define I2C_CLASS_LEGO (1<<31)
+#endif
+
 #define INPUT_PORT_POLL_NS	10000000	/* 10 msec */
 #define SETTLE_CNT		2		/* 20 msec */
 #define ADD_CNT			35		/* 350 msec */
@@ -632,7 +636,7 @@ void ev3_input_port_register_sensor(struct work_struct *work)
 	case SENSOR_NXT_I2C:
 		/* Give the sensor time to boot */
 		msleep(1000);
-		ev3_input_port_register_i2c(data, I2C_CLASS_LEGOEV3);
+		ev3_input_port_register_i2c(data, I2C_CLASS_LEGO);
 		/*
 		 * I2C sensors are handled by the i2c stack, so we are just
 		 * registering a fake device here so that it doesn't break

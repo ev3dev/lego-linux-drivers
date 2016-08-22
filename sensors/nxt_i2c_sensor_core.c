@@ -69,8 +69,8 @@
 #include "../ev3/legoev3_ports.h"
 #endif
 
-#ifndef I2C_CLASS_LEGOEV3
-#define I2C_CLASS_LEGOEV3 (1<<31)
+#ifndef I2C_CLASS_LEGO
+#define I2C_CLASS_LEGO (1<<31)
 #endif
 
 static u16 default_poll_ms = 100;
@@ -493,7 +493,7 @@ struct i2c_driver nxt_i2c_sensor_driver = {
 	.id_table	= nxt_i2c_sensor_id_table,
 	.probe		= nxt_i2c_sensor_probe,
 	.remove		= nxt_i2c_sensor_remove,
-	.class		= I2C_CLASS_LEGOEV3,
+	.class		= I2C_CLASS_LEGO,
 	.detect		= nxt_i2c_sensor_detect,
 	.address_list	= I2C_ADDRS(0x01, 0x02, 0x03, 0x08, 0x0a, 0x0c, 0x11, 0x18,
 				    0x4c, 0x50, 0x51, 0x52, 0x58),
