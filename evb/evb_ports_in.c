@@ -1155,7 +1155,6 @@ static int evb_input_port_probe(struct platform_device *pdev)
 		err = PTR_ERR(data->pin1_gpio);
 		if (err == -EPROBE_DEFER)
 			goto err_stop_iio_cb;
-		dev_warn(&pdev->dev, "Port does not support 9V on pin 1.\n");
 		data->pin1_gpio = NULL;
 	}
 	data->pin2_gpio = devm_gpiod_get(&pdev->dev, "pin2", GPIOD_IN);
@@ -1163,7 +1162,6 @@ static int evb_input_port_probe(struct platform_device *pdev)
 		err = PTR_ERR(data->pin2_gpio);
 		if (err == -EPROBE_DEFER)
 			goto err_stop_iio_cb;
-		dev_warn(&pdev->dev, "Port cannot discriminate EV3/NXT sensors.\n");
 		data->pin2_gpio = NULL;
 	}
 
@@ -1214,6 +1212,11 @@ static int evb_input_port_probe(struct platform_device *pdev)
 	data->con_state = CON_STATE_INIT;
 	hrtimer_start(&data->timer, ktime_set(0, INPUT_PORT_POLL_NS),
 		      HRTIMER_MODE_REL);
+
+	if (!data->pin1_gpio)
+		dev_warn(&pdev->dev, "Port does not support 9V on pin 1\n");
+	if (!data->pin2_gpio)
+		dev_warn(&pdev->dev, "Port cannot discriminate EV3/NXT sensors\n");
 
 	return 0;
 
