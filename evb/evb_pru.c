@@ -36,6 +36,13 @@
 #include <linux/rpmsg.h>
 
 /*
+ * We need to use fixed adapter numbers so that the input port driver can
+ * link the adapters to input ports in device tree. The BeagleBone has 3 HW
+ * I2C ports, so start numbering after them.
+ */
+#define EVB_PRU_I2C_ADAPTER_NR_OFFSET 3
+
+/*
  * Everything between here and "END PRU DATA STRUCTS" must exactly match the PRU
  * firmware. These structs are used to pass info to and from the PRU.
  */
@@ -188,6 +195,7 @@ static int evb_pru_i2c_probe(struct rpmsg_channel *rpdev)
 	adap->algo_data = adata;
 	adap->timeout = HZ; /* 1 second */
 	adap->dev.parent = &rpdev->dev;
+	adap->nr = EVB_PRU_I2C_ADAPTER_NR_OFFSET + rpdev->dst;
 	snprintf(adap->name, sizeof(adap->name), "evb-pru-i2c%d", rpdev->dst);
 	adap->quirks = &evb_pru_i2c_quirks;
 
@@ -197,7 +205,7 @@ static int evb_pru_i2c_probe(struct rpmsg_channel *rpdev)
 
 	dev_set_drvdata(&rpdev->dev, adata);
 
-	ret = i2c_add_adapter(adap);
+	ret = i2c_add_numbered_adapter(adap);
 	if (ret < 0)
 		return ret;
 
