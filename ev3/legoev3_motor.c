@@ -37,6 +37,7 @@
  * [incremental rotary encoder]: https://en.wikipedia.org/wiki/Rotary_encoder#Incremental_rotary_encoder
  */
 
+#include <linux/debugfs.h>
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -109,6 +110,8 @@ struct legoev3_motor_data {
 	bool run_to_pos_active;
 	bool speed_pid_ena;
 	bool hold_pid_ena;
+
+	struct dentry *debug;
 };
 
 static DEFINE_SPINLOCK(lock);
@@ -974,6 +977,24 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 	hrtimer_start(&ev3_tm->timer, ktime_set(0, TACHO_MOTOR_POLL_MS * NSEC_PER_MSEC),
 		      HRTIMER_MODE_REL);
 
+	ev3_tm->debug = debugfs_create_dir(ev3_tm->tm.address, NULL);
+	debugfs_create_bool("got_new_sample", 0444, ev3_tm->debug, &ev3_tm->got_new_sample);
+	debugfs_create_u32("num_samples", 0444, ev3_tm->debug, &ev3_tm->num_samples);
+	debugfs_create_u32("dir_chg_samples", 0444, ev3_tm->debug, &ev3_tm->dir_chg_samples);
+	debugfs_create_u32("max_us_per_sample", 0444, ev3_tm->debug, &ev3_tm->max_us_per_sample);
+	debugfs_create_u32("position_sp", 0444, ev3_tm->debug, &ev3_tm->position_sp);
+	debugfs_create_u32("run_direction", 0444, ev3_tm->debug, &ev3_tm->run_direction);
+	debugfs_create_bool("stalled", 0444, ev3_tm->debug, &ev3_tm->stalled);
+	debugfs_create_bool("ramping", 0444, ev3_tm->debug, &ev3_tm->ramping);
+	debugfs_create_u32("position", 0444, ev3_tm->debug, &ev3_tm->position);
+	debugfs_create_u32("speed", 0444, ev3_tm->debug, &ev3_tm->speed);
+	debugfs_create_u32("duty_cycle", 0444, ev3_tm->debug, &ev3_tm->duty_cycle);
+	debugfs_create_u32("state", 0444, ev3_tm->debug, &ev3_tm->state);
+	debugfs_create_u32("run_to_pos_stop_action", 0444, ev3_tm->debug, &ev3_tm->run_to_pos_stop_action);
+	debugfs_create_bool("run_to_pos_active", 0444, ev3_tm->debug, &ev3_tm->run_to_pos_active);
+	debugfs_create_bool("speed_pid_ena", 0444, ev3_tm->debug, &ev3_tm->speed_pid_ena);
+	debugfs_create_bool("hold_pid_ena", 0444, ev3_tm->debug, &ev3_tm->hold_pid_ena);
+
 	return 0;
 
 err_request_irq:
@@ -989,6 +1010,8 @@ static int legoev3_motor_remove(struct lego_device *ldev)
 {
 	struct ev3_motor_platform_data *pdata = ldev->dev.platform_data;
 	struct legoev3_motor_data *ev3_tm = dev_get_drvdata(&ldev->dev);
+
+	debugfs_remove_recursive(ev3_tm->debug);
 
 	hrtimer_cancel(&ev3_tm->timer);
 	cancel_work_sync(&ev3_tm->notify_state_change_work);
