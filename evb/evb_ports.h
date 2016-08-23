@@ -17,21 +17,4 @@
 #define _EVB_PORTS_H
 
 
-struct ev3_input_port_platform_data {
-	u32 id;
-	unsigned i2c_dev_id;
-	unsigned i2c_pin_mux;
-	unsigned uart_pin_mux;
-	const char *uart_tty;
-};
-
-struct ev3_output_port_platform_data {
-	u32 id;
-};
-
-struct evb_ports_platform_data {
-	struct ev3_input_port_platform_data *input_port_data;
-	struct ev3_output_port_platform_data *output_port_data;
-};
-
 #endif /* _EVB_PORTS_H */
