@@ -93,7 +93,30 @@ static struct platform_driver evb_ports_driver = {
 	.probe	= evb_ports_probe,
 	.remove	= evb_ports_remove,
 };
-module_platform_driver(evb_ports_driver);
+
+struct dentry *evb_ports_debug;
+EXPORT_SYMBOL_GPL(evb_ports_debug);
+
+static int __init evb_ports_driver_init(void)
+{
+	int err;
+
+	err = platform_driver_register(&evb_ports_driver);
+	if (err)
+		return err;
+
+	evb_ports_debug = debugfs_create_dir("evb-ports", NULL);
+
+	return 0;
+}
+module_init(evb_ports_driver_init);
+
+static void __exit evb_ports_driver_exit(void)
+{
+	debugfs_remove(evb_ports_debug);
+	platform_driver_unregister(&evb_ports_driver);
+}
+module_exit(evb_ports_driver_exit);
 
 MODULE_DESCRIPTION("Support for FatcatLab EVB input and output ports.");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");

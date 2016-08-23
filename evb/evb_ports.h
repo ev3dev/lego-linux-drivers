@@ -16,5 +16,8 @@
 #ifndef _EVB_PORTS_H
 #define _EVB_PORTS_H
 
+#include <linux/debugfs.h>
+
+extern struct dentry *evb_ports_debug;
 
 #endif /* _EVB_PORTS_H */

@@ -228,6 +228,7 @@ static const char * const evb_output_port_status_names[] = {
  * @tacho_motor_type: The type of tacho motor that was detected.
  * @motor: Pointer to the motor device that is connected to the output port.
  * @command: The current command for the motor driver of the output port.
+ * @debug: Handle to debugfs entry.
  */
 struct evb_output_port_data {
 	struct lego_port_device out_port;
@@ -251,6 +252,7 @@ struct evb_output_port_data {
 	enum ev3_motor_id motor_id;
 	struct lego_device *motor;
 	enum dc_motor_internal_command command;
+	struct dentry *debug;
 };
 
 int evb_output_port_set_direction_gpios(struct evb_output_port_data *data)
@@ -700,6 +702,20 @@ static int evb_output_port_buf_cb(const void *buf_data, void *private)
 	return 0;
 }
 
+static void evb_output_port_debug_init(struct evb_output_port_data *data)
+{
+	data->debug = debugfs_create_dir(data->out_port.address, evb_ports_debug);
+	if (IS_ERR_OR_NULL(data->debug))
+		return;
+
+	debugfs_create_u32("con_state", 0444, data->debug, &data->con_state);
+	debugfs_create_u32("command", 0444, data->debug, &data->command);
+	debugfs_create_u32("pin5_mv", 0444, data->debug, &data->pin5_mv);
+	debugfs_create_u32("pwm_duty_cycle", 0444, data->debug,
+			   &data->pwm->duty_cycle);
+	debugfs_create_u32("pwm_period", 0444, data->debug, &data->pwm->period);
+}
+
 int evb_output_port_probe(struct platform_device *pdev)
 {
 	struct evb_output_port_data *data;
@@ -818,6 +834,9 @@ int evb_output_port_probe(struct platform_device *pdev)
 	hrtimer_start(&data->timer, ktime_set(0, OUTPUT_PORT_POLL_NS),
 		      HRTIMER_MODE_REL);
 
+	if (!IS_ERR_OR_NULL(evb_ports_debug))
+		evb_output_port_debug_init(data);
+
 	return 0;
 
 err_disable_pwm:
@@ -833,6 +852,8 @@ err_release_iio_cb:
 int evb_output_port_remove(struct platform_device *pdev)
 {
 	struct evb_output_port_data *data = dev_get_drvdata(&pdev->dev);
+
+	debugfs_remove_recursive(data->debug);
 
 	hrtimer_cancel(&data->timer);
 	cancel_work_sync(&data->change_uevent_work);
