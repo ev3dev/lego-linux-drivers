@@ -49,7 +49,6 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		.count_per_rot		= 360,
 		.motion_type		= TM_MOTION_ROTATION,
 		.legoev3_info		= {
-			.samples_for_speed	= { 4, 16, 32, 64 },
 			.speed_pid_k		= { .p = 1000, .i = 60, .d = 0 },
 			.position_pid_k		= { .p = 80000, .i = 0, .d = 0 },
 			.max_us_per_sample	= 100000,
@@ -67,7 +66,6 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		.count_per_rot		= 360,
 		.motion_type		= TM_MOTION_ROTATION,
 		.legoev3_info		= {
-			.samples_for_speed	= { 4, 16, 32, 64 },
 			.speed_pid_k		= { .p = 1000, .i = 60, .d = 0 },
 			.position_pid_k		= { .p = 80000, .i = 0, .d = 0 },
 			.max_us_per_sample	= 100000,
@@ -85,7 +83,6 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		.count_per_rot		= 360,
 		.motion_type		= TM_MOTION_ROTATION,
 		.legoev3_info		= {
-			.samples_for_speed	= { 2, 4, 8, 16 },
 			.speed_pid_k		= { .p = 1000, .i = 60, .d = 0 },
 			.position_pid_k		= { .p = 160000, .i = 0, .d = 0 },
 			.max_us_per_sample	= 75000,
@@ -105,7 +102,6 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		.motion_type		= TM_MOTION_LINEAR,
 		.encoder_polarity	= DC_MOTOR_POLARITY_INVERSED,
 		.legoev3_info		= {
-			.samples_for_speed	= { 4, 16, 32, 64 },
 			.speed_pid_k		= { .p = 1000, .i = 60, .d = 0 },
 			.position_pid_k		= { .p = 40000, .i = 0, .d = 0 },
 			/* TODO: need to put a scope on this and get correct values */
@@ -126,7 +122,6 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		.motion_type		= TM_MOTION_LINEAR,
 		.encoder_polarity	= DC_MOTOR_POLARITY_INVERSED,
 		.legoev3_info		= {
-			.samples_for_speed	= { 4, 16, 32, 64 },
 			.speed_pid_k		= { .p = 1000, .i = 60, .d = 0 },
 			.position_pid_k		= { .p = 40000, .i = 0, .d = 0 },
 			/* TODO: need to put a scope on this and get correct values */

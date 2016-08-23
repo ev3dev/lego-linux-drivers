@@ -116,17 +116,18 @@ static DEFINE_SPINLOCK(lock);
 static void set_num_samples_for_speed(struct legoev3_motor_data *ev3_tm,
 				      int speed)
 {
-	const int *samples_for_speed =
-			ev3_tm->tm.info->legoev3_info.samples_for_speed;
-
-	if (speed > 80)
-		ev3_tm->num_samples = samples_for_speed[SPEED_ABOVE_80];
-	else if (speed > 60)
-		ev3_tm->num_samples = samples_for_speed[SPEED_ABOVE_60];
-	else if (speed > 40)
-		ev3_tm->num_samples = samples_for_speed[SPEED_ABOVE_40];
+	if (speed > 1250)
+		ev3_tm->num_samples = 64;
+	else if (speed > 1000)
+		ev3_tm->num_samples = 32;
+	else if (speed > 750)
+		ev3_tm->num_samples = 16;
+	else if (speed > 500)
+		ev3_tm->num_samples = 8;
+	else if (speed > 250)
+		ev3_tm->num_samples = 4;
 	else
-		ev3_tm->num_samples = samples_for_speed[SPEED_BELOW_40];
+		ev3_tm->num_samples = 2;
 }
 
 /*
@@ -369,7 +370,7 @@ static int legoev3_motor_reset(void *context)
 
 	ev3_tm->tacho_samples_head	= 0;
 	ev3_tm->got_new_sample		= false;
-	ev3_tm->num_samples		= info->samples_for_speed[SPEED_BELOW_40];
+	ev3_tm->num_samples		= 2;
 	ev3_tm->dir_chg_samples		= 0;
 	ev3_tm->max_us_per_sample	= info->max_us_per_sample;
 
@@ -586,7 +587,7 @@ static void calculate_speed(struct legoev3_motor_data *ev3_tm)
 		if (unlikely(ktime_equal(diff, ktime_set(0, 0))))
 			diff = ktime_set(0, 1);
 
-		set_num_samples_for_speed(ev3_tm, ev3_tm->max_us_per_sample / (int)ktime_to_us(diff));
+		set_num_samples_for_speed(ev3_tm, USEC_PER_SEC / (int)ktime_to_us(diff));
 	}
 
 	/*
