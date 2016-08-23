@@ -604,11 +604,11 @@ static void calculate_speed(struct legoev3_motor_data *ev3_tm)
 	 *
 	 * The last case is for updating the speed when the last time we got
 	 * a new sample was longer than the tacho update cycle. Instead of
-	 * using the last captured sample as the start point for the differnce
+	 * using the last captured sample as the start point for the difference
 	 * we use the current time.
 	 */
 	if (ev3_tm->got_new_sample && (ev3_tm->dir_chg_samples >= ev3_tm->num_samples)) {
-		long new_speed;
+		s64 new_speed;
 
 		diff = ktime_sub(ev3_tm->tacho_samples[diff_idx],
 			ev3_tm->tacho_samples[(diff_idx + TACHO_SAMPLES - ev3_tm->num_samples) % TACHO_SAMPLES]);
@@ -632,10 +632,10 @@ static void calculate_speed(struct legoev3_motor_data *ev3_tm)
 		ev3_tm->dir_chg_samples = 0;
 		ev3_tm->speed = 0;
 		ev3_tm->stalled = 1;
-	  }
+	}
 
 	else if ((TACHO_MOTOR_POLL_MS * USEC_PER_MSEC) < ktime_to_us(ktime_sub(ktime_get(), ev3_tm->tacho_samples[diff_idx]))) {
-		long new_speed;
+		s64 new_speed;
 
 		diff = ktime_sub(ktime_get(),
 			ev3_tm->tacho_samples[(diff_idx + TACHO_SAMPLES - ev3_tm->num_samples) % TACHO_SAMPLES]);
