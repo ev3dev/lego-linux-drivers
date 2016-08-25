@@ -39,6 +39,7 @@
 
 #include <linux/clk.h>
 #include <linux/gpio/consumer.h>
+#include <linux/i2c.h>
 #include <linux/pwm.h>
 
 #include <plat/dmtimer.h>
@@ -400,8 +401,12 @@ enum OutputPortPins {
 
 struct lms2012_compat {
     u32 adc_map[INPUTADC];
+    struct pinctrl *pinctrl[INPUTS];
+    struct pinctrl_state *pinctrl_default[INPUTS];
+    struct pinctrl_state *pinctrl_i2c[INPUTS];
     struct gpio_descs *spi_pins;
     struct gpio_descs *in_pins[INPUTS];
+    struct i2c_adapter *i2c_adapter[INPUTS];
     void __iomem *uart_mem[INPUTS];
     int uart_irq[INPUTS];
     u32 uart_clock_freq[INPUTS];

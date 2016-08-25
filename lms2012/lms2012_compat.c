@@ -39,6 +39,17 @@ struct device *lms2012_compat_get(void)
 }
 EXPORT_SYMBOL_GPL(lms2012_compat_get);
 
+struct lms2012_compat_i2c_adpater {
+	struct i2c_adapter *adapter;
+};
+
+static void lms2012_compat_release_i2c_adapter(struct device *dev, void *res)
+{
+	struct lms2012_compat_i2c_adpater *adapter = res;
+
+	i2c_put_adapter(adapter->adapter);
+}
+
 struct lms2012_compat_clk {
 	struct clk *clk;
 };
@@ -56,6 +67,7 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 	struct lms2012_compat *lms;
 	struct lms2012_compat_clk *clk;
 	struct of_phandle_args args;
+	u32 i2c_adapters[INPUTS];
 	int ret, i;
 	char name[5];
 
@@ -66,10 +78,54 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 	if (!lms)
 		return -ENOMEM;
 
+	ret = of_count_phandle_with_args(pdev->dev.of_node, "in-in-ports",
+					 "#in-port-cells");
+	if (ret < 0) {
+		dev_err(&pdev->dev, "Could not get in ports\n");
+		return ret;
+	} else if (ret != INPUTS) {
+		dev_err(&pdev->dev, "Incorrect number of in ports (%d)\n",
+			ret);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < INPUTS; i++) {
+		struct platform_device *in_port;
+
+		ret = of_parse_phandle_with_args(pdev->dev.of_node,
+						 "in-in-ports",
+						 "#in-port-cells", i, &args);
+		if (ret < 0) {
+			dev_err(&pdev->dev, "Failed to get in port phandle"
+				" (%d)\n", i);
+			return ret;
+		}
+
+		in_port = of_find_device_by_node(args.np);
+		if (!in_port) {
+			dev_err(&pdev->dev, "Could not get input port (%d)\n", i);
+			return -ENODEV;
+		}
+
+		lms->pinctrl[i] = devm_pinctrl_get_select_default(&in_port->dev);
+		platform_device_put(in_port);
+		if (IS_ERR(lms->pinctrl[i])) {
+			dev_err(&pdev->dev, "Could not get input port pinmux"
+				" (%d)\n", i);
+			return PTR_ERR(lms->pinctrl[i]);
+		}
+		lms->pinctrl_default[i] = pinctrl_lookup_state(lms->pinctrl[i],
+							       "default");
+		lms->pinctrl_i2c[i] = pinctrl_lookup_state(lms->pinctrl[i],
+							   "i2c");
+	}
+
 	ret = of_property_read_u32_array(pdev->dev.of_node, "adc-channels",
 					 lms->adc_map, INPUTADC);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_err(&pdev->dev, "Failed to get adc-channels\n");
 		return ret;
+	}
 
 	lms->spi_pins = devm_gpiod_get_array(&pdev->dev, "spi", GPIOD_ASIS);
 	if (IS_ERR(lms->spi_pins)) {
@@ -94,6 +150,39 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 				name);
 			return -EINVAL;
 		}
+	}
+
+	ret = of_property_count_u32_elems(pdev->dev.of_node, "in-i2cs");
+	if (ret != INPUTS) {
+		dev_err(&pdev->dev, "Incorrect number of i2c adapters (%d)\n",
+			ret);
+		if (ret < 0)
+			return ret;
+
+		return -EINVAL;
+	}
+	ret = of_property_read_u32_array(pdev->dev.of_node, "in-i2cs",
+					 i2c_adapters, INPUTS);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "Could not get i2c adapter numbers\n");
+		return ret;
+	}
+
+	for (i = 0; i < INPUTS; i++) {
+		struct lms2012_compat_i2c_adpater *adapter;
+
+		lms->i2c_adapter[i] = i2c_get_adapter(i2c_adapters[i]);
+		if (!lms->i2c_adapter[i])
+			return -EPROBE_DEFER;
+
+		adapter = devres_alloc(lms2012_compat_release_i2c_adapter,
+				       sizeof(*adapter), GFP_KERNEL);
+		if (!adapter) {
+			i2c_put_adapter(lms->i2c_adapter[i]);
+			return -ENOMEM;
+		}
+
+		devres_add(&pdev->dev, adapter);
 	}
 
 	ret = of_count_phandle_with_args(pdev->dev.of_node, "in-uarts",
