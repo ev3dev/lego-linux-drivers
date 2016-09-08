@@ -118,6 +118,7 @@ struct tacho_motor_device {
 	int ramp_delta_time;
 	unsigned long ramp_end_time;
 	unsigned long last_ramp_work_time;
+	enum tacho_motor_state oldstate;
 	bool ramping;
 	enum dc_motor_polarity polarity;
 	/* private */

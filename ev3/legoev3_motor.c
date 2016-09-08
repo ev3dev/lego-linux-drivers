@@ -727,6 +727,8 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 	if (ev3_tm->run_to_pos_active)
 		update_position(ev3_tm);
 
+	schedule_work(&ev3_tm->notify_state_change_work);
+
 	return HRTIMER_RESTART;
 }
 
