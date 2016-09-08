@@ -457,12 +457,9 @@ ssize_t position_store(struct device *dev, struct device_attribute *attr,
 	return size;
 }
 
-static ssize_t state_show(struct device *dev, struct device_attribute *attr,
-			  char *buf)
+static int tacho_motor_get_state(struct tacho_motor_device *tm)
 {
-	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int ret, i;
-	size_t size = 0;
+	int ret;
 
 	ret = tm->ops->get_state(tm->context);
 	if (ret < 0)
@@ -470,6 +467,20 @@ static ssize_t state_show(struct device *dev, struct device_attribute *attr,
 
 	if (tm->ramping)
 		ret |= BIT(TM_STATE_RAMPING);
+
+	return ret;
+}
+
+static ssize_t state_show(struct device *dev, struct device_attribute *attr,
+			  char *buf)
+{
+	struct tacho_motor_device *tm = to_tacho_motor(dev);
+	int ret, i;
+	size_t size = 0;
+
+	ret = tacho_motor_get_state(tm);
+	if (ret < 0)
+		return ret;
 
 	for (i = 0; i < NUM_TM_STATE; i++) {
 		if (ret & BIT(i))
@@ -1200,7 +1211,13 @@ EXPORT_SYMBOL_GPL(tacho_motor_notify_position_ramp_down);
 
 void tacho_motor_notify_state_change(struct tacho_motor_device *tm)
 {
-	sysfs_notify(&tm->dev.kobj, NULL, "state");
+	int newstate;
+
+	newstate = tacho_motor_get_state(tm);
+	if (newstate != tm->oldstate) {
+		sysfs_notify(&tm->dev.kobj, NULL, "state");
+		tm->oldstate = newstate;
+	}
 }
 EXPORT_SYMBOL_GPL(tacho_motor_notify_state_change);
 
