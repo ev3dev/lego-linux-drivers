@@ -678,26 +678,26 @@ static void update_position(struct legoev3_motor_data *ev3_tm)
 	if (ev3_tm->speed_pid.setpoint > 0) {
 		if (rampdown_endpoint > ev3_tm->position_sp) {
 			ev3_tm->speed_pid.setpoint = new_speed_sp;
-			ev3_tm->ramping = 1;
+			ev3_tm->ramping = true;
 		}
 
 		if (ev3_tm->position >= ev3_tm->position_sp) {
 			schedule_work(&ev3_tm->notify_position_ramp_down_work);
 			legoev3_motor_stop(ev3_tm,
 					   ev3_tm->run_to_pos_stop_action);
-			ev3_tm->ramping = 0;
+			ev3_tm->ramping = false;
 		}
 	} else if (ev3_tm->speed_pid.setpoint < 0) {
 		if (rampdown_endpoint < ev3_tm->position_sp) {
 			ev3_tm->speed_pid.setpoint = new_speed_sp;
-			ev3_tm->ramping = 1;
+			ev3_tm->ramping = true;
 		}
 
 		if (ev3_tm->position <= ev3_tm->position_sp) {
 			schedule_work(&ev3_tm->notify_position_ramp_down_work);
 			legoev3_motor_stop(ev3_tm,
 					   ev3_tm->run_to_pos_stop_action);
-			ev3_tm->ramping = 0;
+			ev3_tm->ramping = false;
 		}
 	}
 }
