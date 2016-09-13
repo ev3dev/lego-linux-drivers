@@ -42,8 +42,6 @@
 #include <linux/i2c.h>
 #include <linux/pwm.h>
 
-#include <plat/dmtimer.h>
-
 //        BASIC DATA TYPES
 
 typedef   unsigned char         UBYTE;  //!< Basic Type used to symbolise 8  bit unsigned values
@@ -412,7 +410,6 @@ struct lms2012_compat {
     u32 uart_clock_freq[INPUTS];
     struct gpio_descs *out_pins[OUTPUTS];
     struct pwm_device *out_pwms[OUTPUTS];
-    struct omap_dm_timer *motor_timer;
 };
 
 struct device *lms2012_compat_get(void);

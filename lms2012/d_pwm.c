@@ -58,12 +58,11 @@
 
 #define PWM_PERIOD		(NSEC_PER_SEC / MAX_PWM_CNT)
 
-//#define COUNTS_PER_PULSE_LM	12800L
-//#define COUNTS_PER_PULSE_MM	8100L
-//Changed for BBB: The clock of timer is 24MHz in BBB other than 33MHz in EV3,
-// so these parameters should be changed
-#define COUNTS_PER_PULSE_LM	9400L
-#define COUNTS_PER_PULSE_MM	5900L
+//#define COUNT_PER_PULSE_LM	12800L
+//#define COUNT_PER_PULSE_MM	8100L
+// COUNT_PER_PULSE_* was from 33MHz / 256 clock counts, so convert to usec...
+#define USEC_PER_PULSE_LM	99297
+#define USEC_PER_PULSE_MM	62836
 
 enum {
 	SAMPLES_BELOW_SPEED_25,
@@ -243,7 +242,7 @@ enum {
 };
 
 typedef struct {
-	ULONG TachoArray[NO_OF_TACHO_SAMPLES];
+	ktime_t TachoArray[NO_OF_TACHO_SAMPLES];
 	UBYTE ArrayPtr;
 	UBYTE ArrayPtrOld;
 } TACHOSAMPLES;
@@ -291,7 +290,7 @@ static UBYTE           TestStatus  = 0;
 static MOTORDATA       MotorData[OUTPUTS];
 static MOTORDATA       *pMotor = MotorData;
 
-static ULONG           TimeOutSpeed0[OUTPUTS];
+static ktime_t         TimeOutSpeed0[OUTPUTS];
 static UBYTE           MinRegEnabled[OUTPUTS];
 
 static UBYTE           SyncMNos[MAX_SYNC_MOTORS];
@@ -302,11 +301,11 @@ static ktime_t         Device1Time;
 
 static UBYTE           PrgStopTimer[OUTPUTS];
 
-static ULONG CountsPerPulse[4] = {
-	COUNTS_PER_PULSE_LM,
-	COUNTS_PER_PULSE_LM,
-	COUNTS_PER_PULSE_LM,
-	COUNTS_PER_PULSE_LM
+static ULONG USecPerPulse[4] = {
+	USEC_PER_PULSE_LM,
+	USEC_PER_PULSE_LM,
+	USEC_PER_PULSE_LM,
+	USEC_PER_PULSE_LM
 };
 
 /*
@@ -336,20 +335,20 @@ static UBYTE *SamplesPerSpeed[OUTPUTS] = {
 static UBYTE AVG_TACHO_COUNTS[OUTPUTS] = { 2, 2, 2, 2 };
 
 static ULONG AVG_COUNTS[OUTPUTS] = {
-	(2 * COUNTS_PER_PULSE_LM),
-	(2 * COUNTS_PER_PULSE_LM),
-	(2 * COUNTS_PER_PULSE_LM),
-	(2 * COUNTS_PER_PULSE_LM)
+	(2 * USEC_PER_PULSE_LM),
+	(2 * USEC_PER_PULSE_LM),
+	(2 * USEC_PER_PULSE_LM),
+	(2 * USEC_PER_PULSE_LM)
 };
 
 static inline void SETMotorType(u8 Port, u8 NewType)
 {
 	Motor[Port].Type = NewType;
 	if (TYPE_MINITACHO == NewType) {
-		CountsPerPulse[Port]  = COUNTS_PER_PULSE_MM;
+		USecPerPulse[Port] = USEC_PER_PULSE_MM;
 		SamplesPerSpeed[Port] = SamplesMediumMotor;
 	} else {
-		CountsPerPulse[Port]  = COUNTS_PER_PULSE_LM;
+		USecPerPulse[Port] = USEC_PER_PULSE_LM;
 		SamplesPerSpeed[Port] = SamplesLargeMotor;
 	}
 }
@@ -358,25 +357,22 @@ static inline void SETAvgTachoCount(u8 Port, u8 Speed)
 {
 	if (Speed > 80) {
 		AVG_TACHO_COUNTS[Port] = SamplesPerSpeed[Port][3];
-		AVG_COUNTS[Port]       = SamplesPerSpeed[Port][3] * CountsPerPulse[Port];
+		AVG_COUNTS[Port]       = SamplesPerSpeed[Port][3] * USecPerPulse[Port];
 	} else {
 		if (Speed > 60) {
 			AVG_TACHO_COUNTS[Port] = SamplesPerSpeed[Port][2];
-			AVG_COUNTS[Port]       = SamplesPerSpeed[Port][2] * CountsPerPulse[Port];
+			AVG_COUNTS[Port]       = SamplesPerSpeed[Port][2] * USecPerPulse[Port];
 		} else {
 			if (Speed > 40) {
 				AVG_TACHO_COUNTS[Port] = SamplesPerSpeed[Port][1];
-				AVG_COUNTS[Port]       = SamplesPerSpeed[Port][1] * CountsPerPulse[Port];
+				AVG_COUNTS[Port]       = SamplesPerSpeed[Port][1] * USecPerPulse[Port];
 			} else {
 				AVG_TACHO_COUNTS[Port] = SamplesPerSpeed[Port][0];
-				AVG_COUNTS[Port]       = SamplesPerSpeed[Port][0] * CountsPerPulse[Port];
+				AVG_COUNTS[Port]       = SamplesPerSpeed[Port][0] * USecPerPulse[Port];
 			}
 		}
 	}
 }
-
-#define FREERunning24bittimer \
-	omap_dm_timer_read_counter(Device1Lms2012Compat->motor_timer)
 
 #define CLEARTachoArray(No) { \
 	Motor[No].DirChgPtr = 0;\
@@ -1771,7 +1767,7 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 					Motor[Tmp].Dir = -1;
 				}
 
-				TimeOutSpeed0[Tmp] = FREERunning24bittimer;
+				TimeOutSpeed0[Tmp] = ktime_get();
 
 				if (FALSE == StepPowerCheckTachoCntUp(Tmp)) {
 					SLONG AdjustTachoValue = 0;
@@ -1832,7 +1828,7 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 					Motor[Tmp].Dir = -1;
 				}
 
-				TimeOutSpeed0[Tmp] = FREERunning24bittimer;
+				TimeOutSpeed0[Tmp] = ktime_get();
 
 				if (FALSE == StepPowerCheckTachoCntUp(Tmp)) {
 					SLONG AdjustTachoValue = 0;
@@ -1886,7 +1882,7 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 					Motor[Tmp].Dir = -1;
 				}
 
-				TimeOutSpeed0[Tmp] = FREERunning24bittimer;
+				TimeOutSpeed0[Tmp] = ktime_get();
 
 				if (FALSE == StepSpeedCheckTachoCntUp(Tmp)) {
 					SLONG AdjustTachoValue = 0;
@@ -1950,7 +1946,7 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 					Motor[Tmp].Dir = -1;
 				}
 
-				TimeOutSpeed0[Tmp] = FREERunning24bittimer;
+				TimeOutSpeed0[Tmp] = ktime_get();
 
 				if (FALSE == StepSpeedCheckTachoCntUp(Tmp)) {
 					SLONG AdjustTachoValue = 0;
@@ -2004,7 +2000,7 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 					Motor[Tmp].TurnRatio     = 100;
 					Motor[Tmp].TachoCntConst = StepSync.Step;
 					SyncMNos[No]             = Tmp;
-					TimeOutSpeed0[Tmp]       = FREERunning24bittimer;
+					TimeOutSpeed0[Tmp]       = ktime_get();
 					MaxSyncSpeed             = StepSync.Speed;
 
 					// Find the direction the main motor will drive
@@ -2078,7 +2074,7 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 						Motor[Tmp].State         = SYNCED_SLAVE;
 					}
 
-					TimeOutSpeed0[Tmp] = FREERunning24bittimer;
+					TimeOutSpeed0[Tmp] = ktime_get();
 				}
 				No++;
 			}
@@ -2132,7 +2128,7 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 					Motor[Tmp].TurnRatio     = 100;
 					Motor[Tmp].TachoCntConst = TimeSync.Time;
 					SyncMNos[No]             = Tmp;
-					TimeOutSpeed0[Tmp]       = FREERunning24bittimer;
+					TimeOutSpeed0[Tmp]       = ktime_get();
 					MaxSyncSpeed             = TimeSync.Speed;
 
 					// Find the direction the main motor will drive
@@ -2206,7 +2202,7 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 						Motor[Tmp].TimeInc       *= Motor[Tmp].Dir;
 						Motor[Tmp].State          = SYNCED_SLAVE;
 					}
-					TimeOutSpeed0[Tmp] = FREERunning24bittimer;
+					TimeOutSpeed0[Tmp] = ktime_get();
 				}
 				No++;
 			}
@@ -2288,9 +2284,6 @@ static int Device1Init(void)
 		SetCoast(Tmp);
 	}
 
-	omap_dm_timer_set_match(Device1Lms2012Compat->motor_timer, 0, 0xFFFFFFFF);
-	omap_dm_timer_set_load_start(Device1Lms2012Compat->motor_timer, 1, 0);
-
 	SyncMNos[0] = UNUSED_SYNC_MOTOR;
 	SyncMNos[1] = UNUSED_SYNC_MOTOR;
 
@@ -2349,12 +2342,12 @@ static irqreturn_t IntA (int irq, void * dev)
 	UBYTE TmpPtr;
 	ULONG IntAState;
 	ULONG DirAState;
-	ULONG Timer;
+	ktime_t Timer;
 
 	// Sample all necessary items as fast as possible
 	IntAState = READIntA;
 	DirAState = READDirA;
-	Timer     = FREERunning24bittimer;
+	Timer     = ktime_get();
 
 	TmpPtr = (TachoSamples[0].ArrayPtr + 1) & (NO_OF_TACHO_SAMPLES-1);
 	TachoSamples[0].TachoArray[TmpPtr] = Timer;
@@ -2427,12 +2420,12 @@ static irqreturn_t IntB (int irq, void * dev)
 	UBYTE TmpPtr;
 	ULONG IntBState;
 	ULONG DirBState;
-	ULONG Timer;
+	ktime_t Timer;
 
 	// Sample all necessary items as fast as possible
 	IntBState = READIntB;
 	DirBState = READDirB;
-	Timer     = FREERunning24bittimer;
+	Timer     = ktime_get();
 
 	TmpPtr = (TachoSamples[1].ArrayPtr + 1) & (NO_OF_TACHO_SAMPLES-1);
 	TachoSamples[1].TachoArray[TmpPtr] = Timer;
@@ -2504,12 +2497,12 @@ static irqreturn_t IntC (int irq, void * dev)
 	UBYTE TmpPtr;
 	ULONG IntCState;
 	ULONG DirCState;
-	ULONG Timer;
+	ktime_t Timer;
 
 	// Sample all necessary items as fast as possible
 	IntCState = READIntC;
 	DirCState = READDirC;
-	Timer     = FREERunning24bittimer;
+	Timer     = ktime_get();
 
 	TmpPtr = (TachoSamples[2].ArrayPtr + 1) & (NO_OF_TACHO_SAMPLES-1);
 	TachoSamples[2].TachoArray[TmpPtr] = Timer;
@@ -2580,12 +2573,12 @@ static irqreturn_t IntD (int irq, void * dev)
 	UBYTE TmpPtr;
 	ULONG IntDState;
 	ULONG DirDState;
-	ULONG Timer;
+	ktime_t Timer;
 
 	// Sample all necessary items as fast as possible
 	IntDState = READIntD;
 	DirDState = READDirD;
-	Timer     = FREERunning24bittimer;
+	Timer     = ktime_get();
 
 	TmpPtr = (TachoSamples[3].ArrayPtr + 1) & (NO_OF_TACHO_SAMPLES-1);
 	TachoSamples[3].TachoArray[TmpPtr] = Timer;
@@ -2653,7 +2646,7 @@ static irqreturn_t IntD (int irq, void * dev)
 
 static UBYTE dCalculateSpeed(UBYTE No, SBYTE *pSpeed)
 {
-	ULONG Tmp1, Tmp2;
+	ktime_t Tmp1, Tmp2;
 	ULONG Diff;
 	UBYTE Ptr, Status;
 	SWORD Speed;
@@ -2662,9 +2655,9 @@ static UBYTE dCalculateSpeed(UBYTE No, SBYTE *pSpeed)
 	Ptr     = TachoSamples[No].ArrayPtr;
 
 	if (Motor[No].DirChgPtr >= 1) {
-		Diff = (((TachoSamples[No].TachoArray[Ptr])-(TachoSamples[No].TachoArray[((Ptr - 1) & (NO_OF_TACHO_SAMPLES - 1))])) & 0x00FFFFFF);
+		Diff = ktime_to_us(ktime_sub(TachoSamples[No].TachoArray[Ptr], TachoSamples[No].TachoArray[((Ptr - 1) & (NO_OF_TACHO_SAMPLES - 1))]));
 		if (Diff) {
-			SETAvgTachoCount(No, (ULONG)((CountsPerPulse[No]/Diff) & 0x00FFFFFF));
+			SETAvgTachoCount(No, (ULONG)((USecPerPulse[No] / Diff)));
 		} else {
 			SETAvgTachoCount(No, (ULONG)1);
 		}
@@ -2680,7 +2673,7 @@ static UBYTE dCalculateSpeed(UBYTE No, SBYTE *pSpeed)
 		TimeOutSpeed0[No]             = Tmp1;
 		TachoSamples[No].ArrayPtrOld  = Ptr;
 
-		Diff = ((Tmp1-Tmp2) & 0x00FFFFFF);
+		Diff = ktime_to_us(ktime_sub(Tmp1, Tmp2));
 		if (Diff) {
 			Speed = (SWORD)((ULONG)(AVG_COUNTS[No])/(ULONG)Diff);
 		} else {
@@ -2697,8 +2690,8 @@ static UBYTE dCalculateSpeed(UBYTE No, SBYTE *pSpeed)
 		}
 	} else {
 		// No new Values check for speed 0
-		if ((CountsPerPulse[No]) < ((FREERunning24bittimer - TimeOutSpeed0[No]) & 0x00FFFFFF)) {
-			TimeOutSpeed0[No]   = FREERunning24bittimer;
+		if ((USecPerPulse[No]) < ktime_to_us(ktime_sub(ktime_get(), TimeOutSpeed0[No]))) {
+			TimeOutSpeed0[No]   = ktime_get();
 			Speed               = 0;
 			Motor[No].DirChgPtr = 0;
 			Status              = TRUE;

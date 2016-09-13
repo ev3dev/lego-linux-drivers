@@ -1,7 +1,3 @@
-
-# hack to use platform-specific timer driver
-KBUILD_CFLAGS += -Iarch/arm/plat-omap/include
-
 obj-$(CONFIG_LMS2012_COMPAT)	+= d_analog.o
 obj-$(CONFIG_LMS2012_COMPAT)	+= d_iic.o
 obj-$(CONFIG_LMS2012_COMPAT)	+= d_pwm.o

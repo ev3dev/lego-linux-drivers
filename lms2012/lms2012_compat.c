@@ -304,19 +304,6 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = of_parse_phandle_with_args(pdev->dev.of_node, "motor-timer",
-					 "#timer-cells", 0, &args);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "Could not get motor timer node.\n");
-		return ret;
-	}
-
-	lms->motor_timer = omap_dm_timer_request_by_node(args.np);
-	if (!lms->motor_timer) {
-		dev_err(&pdev->dev, "Could not get motor timer.\n");
-		return -ENODEV;
-	}
-
 	platform_set_drvdata(pdev, lms);
 	global_dev = &pdev->dev;
 
@@ -327,10 +314,7 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 
 static int lms2012_compat_remove(struct platform_device *pdev)
 {
-	struct lms2012_compat *lms = platform_get_drvdata(pdev);
-
 	global_dev = NULL;
-	omap_dm_timer_free(lms->motor_timer);
 
 	dev_info(&pdev->dev, "Unregistered lms2012-compat\n");
 
