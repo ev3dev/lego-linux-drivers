@@ -30,6 +30,7 @@
 #include <linux/miscdevice.h>
 #include <linux/mm.h>
 #include <linux/module.h>
+#include <linux/platform_device.h>
 #include <linux/rcupdate.h>
 #include <linux/sched.h>
 #include <linux/signal.h>
@@ -2804,7 +2805,7 @@ static void Device2Exit(void)
 	kfree(kmalloc_ptr);
 }
 
-static int ModuleInit(void)
+static int d_pwm_probe(struct platform_device *pdev)
 {
 	int ret;
 
@@ -2829,17 +2830,26 @@ static int ModuleInit(void)
 	return 0;
 }
 
-static void ModuleExit(void)
+static int d_pwm_remove(struct platform_device *pdev)
 {
 	Device2Exit();
 	Device1Exit();
 
 	pr_info("d_pwm removed\n");
+
+	return 0;
 }
 
-module_init(ModuleInit);
-module_exit(ModuleExit);
+static struct platform_driver d_pwm_driver = {
+	.driver	= {
+		.name	= "d_pwm",
+	},
+	.probe	= d_pwm_probe,
+	.remove	= d_pwm_remove,
+};
+module_platform_driver(d_pwm_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("LIU");
 MODULE_DESCRIPTION(MODULE_NAME);
+MODULE_ALIAS("platform:d_pwm");

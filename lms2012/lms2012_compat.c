@@ -307,6 +307,11 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, lms);
 	global_dev = &pdev->dev;
 
+	lms->d_analog = platform_device_register_simple("d_analog", -1, NULL, 0);
+	lms->d_iic = platform_device_register_simple("d_iic", -1, NULL, 0);
+	lms->d_uart = platform_device_register_simple("d_uart", -1, NULL, 0);
+	lms->d_pwm = platform_device_register_simple("d_pwm", -1, NULL, 0);
+
 	dev_info(&pdev->dev, "Registered lms2012-compat\n");
 
 	return 0;
@@ -314,6 +319,12 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 
 static int lms2012_compat_remove(struct platform_device *pdev)
 {
+	struct lms2012_compat *lms = platform_get_drvdata(pdev);
+
+	platform_device_unregister(lms->d_pwm);
+	platform_device_unregister(lms->d_uart);
+	platform_device_unregister(lms->d_iic);
+	platform_device_unregister(lms->d_analog);
 	global_dev = NULL;
 
 	dev_info(&pdev->dev, "Unregistered lms2012-compat\n");

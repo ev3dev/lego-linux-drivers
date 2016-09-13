@@ -398,6 +398,10 @@ enum OutputPortPins {
 #define   INPUTADC        (INPUTADCPORTS + INPUTADCPOWERS)
 
 struct lms2012_compat {
+    struct platform_device *d_analog;
+    struct platform_device *d_iic;
+    struct platform_device *d_uart;
+    struct platform_device *d_pwm;
     u32 adc_map[INPUTADC];
     struct pinctrl *pinctrl[INPUTS];
     struct pinctrl_state *pinctrl_default[INPUTS];

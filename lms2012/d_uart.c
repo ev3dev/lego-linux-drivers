@@ -31,6 +31,7 @@
 #include <linux/miscdevice.h>
 #include <linux/mm.h>
 #include <linux/module.h>
+#include <linux/platform_device.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
@@ -2731,7 +2732,7 @@ static void Device1Exit(void)
 
 // MODULE *********************************************************************
 
-static int ModuleInit(void)
+static int d_uart_probe(struct platform_device *pdev)
 {
 	int ret;
 
@@ -2742,16 +2743,25 @@ static int ModuleInit(void)
 	return ret;
 }
 
-static void ModuleExit(void)
+static int d_uart_remove(struct platform_device *pdev)
 {
 	Device1Exit();
 
 	pr_info("d_uart removed\n");
+
+	return 0;
 }
 
-module_init(ModuleInit);
-module_exit(ModuleExit);
+static struct platform_driver d_uart_driver = {
+	.driver	= {
+		.name	= "d_uart",
+	},
+	.probe	= d_uart_probe,
+	.remove	= d_uart_remove,
+};
+module_platform_driver(d_uart_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("LIU");
 MODULE_DESCRIPTION(MODULE_NAME);
+MODULE_ALIAS("platform:d_uart");

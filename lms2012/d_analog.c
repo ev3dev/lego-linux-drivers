@@ -28,6 +28,7 @@
 #include <linux/miscdevice.h>
 #include <linux/mm.h>
 #include <linux/module.h>
+#include <linux/platform_device.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/time.h>
@@ -1735,7 +1736,7 @@ static void Device3Exit(void)
 
 // MODULE *********************************************************************
 
-static int ModuleInit(void)
+static int d_analog_probe(struct platform_device *pdev)
 {
 	int ret;
 
@@ -1753,17 +1754,26 @@ static int ModuleInit(void)
 	return 0;
 }
 
-static void ModuleExit(void)
+static int d_analog_remove(struct platform_device *pdev)
 {
 	Device3Exit();
 	Device1Exit();
 
 	pr_info("d_analog removed\n");
+
+	return 0;
 }
 
-module_init(ModuleInit);
-module_exit(ModuleExit);
+static struct platform_driver d_analog_driver = {
+	.driver	= {
+		.name	= "d_analog",
+	},
+	.probe	= d_analog_probe,
+	.remove	= d_analog_remove,
+};
+module_platform_driver(d_analog_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("The LEGO Group");
 MODULE_DESCRIPTION("d_analog from lms2012");
+MODULE_ALIAS("platform:d_analog");
