@@ -186,9 +186,11 @@ static u8 NxtcolorLatchedCmd[INPUTS];
 static u8 InputPoint2 = 0;
 
 #define PINRead(p, i)	gpiod_get_value(Device1Lms2012Compat->in_pins[p]->desc[i])
+#define PIN2Read(p)	(!Device1Lms2012Compat->in_pin2[p] || gpiod_get_value(Device1Lms2012Compat->in_pin2[p]))
 #define PINLow(p, i)	gpiod_direction_output(Device1Lms2012Compat->in_pins[p]->desc[i], 0)
 #define PINHigh(p, i)	gpiod_direction_output(Device1Lms2012Compat->in_pins[p]->desc[i], 1)
 #define PINFloat(p, i)	gpiod_direction_input(Device1Lms2012Compat->in_pins[p]->desc[i])
+#define PIN2Float(p)	{ if (Device1Lms2012Compat->in_pin2[p]) gpiod_direction_input(Device1Lms2012Compat->in_pin2[p]); }
 
 #define POUTRead(p, i)	gpiod_get_value(Device1Lms2012Compat->out_pins[p]->desc[i])
 #define POUTLow(p, i)	gpiod_direction_output(Device1Lms2012Compat->out_pins[p]->desc[i], 0)
@@ -453,7 +455,7 @@ static const OUTPORT OutputPortDefault = {
 static void InputPortFloat(int Port)
 {
 	//PINLow(Port, INPUT_PORT_PIN1);		//9V disable, deleted for bbb
-	//PINFloat(Port, INPUT_PORT_PIN2);		//nxt sensor detect, deleted for bbb
+	PIN2Float(Port);
 	PINFloat(Port, INPUT_PORT_PIN5);
 	PINFloat(Port, INPUT_PORT_PIN6);
 	PINHigh(Port, INPUT_PORT_BUF);
@@ -1063,11 +1065,8 @@ static enum hrtimer_restart Device3TimerInterrupt1(struct hrtimer *pTimer)
 				// pins floating - check and for connection event
 
 				Event = 0;
-				//if (!(PINRead(Port, INPUT_PORT_PIN2)))			//nxt sensor detect, changed for bbb
-				if (!1) { // pin 2 low
-
-					// Event |=  (0x01 << INPUT_PORT_PIN2);
-				}
+				if (!PIN2Read(Port))
+					Event |= 0x01 << INPUT_PORT_PIN2;
 				if ((pAnalog->InPin1[Port]) < VtoC(IN1_NEAR_5V))	//<3931
 				{ // pin 1 loaded
 
@@ -1103,10 +1102,7 @@ static enum hrtimer_restart Device3TimerInterrupt1(struct hrtimer *pTimer)
 			case DCM_CONNECTION:
 				// something is connected - try to evaluate
 
-				// if (InputPort[Port].Event & (0x01 << INPUT_PORT_PIN2))	//1, & 0x2
-				if (0)
-				{ // pin 2 is low, 6
-
+				if (InputPort[Port].Event & (0x01 << INPUT_PORT_PIN2)) {
 					InputPort[Port].State = DCM_PIN2_LOW;
 				} else {
 					if (InputPort[Port].Event & (0x01 << INPUT_PORT_VALUE))	//6, the right pos, & 0x40
@@ -1263,8 +1259,7 @@ static enum hrtimer_restart Device3TimerInterrupt1(struct hrtimer *pTimer)
 				break;
 #endif
 			case DCM_CONNECTED_WAITING_FOR_PIN2_HIGH:
-				//if (PINRead(Port, INPUT_PORT_PIN2))		//nxt sensor detect, changed for bbb
-				if (1) {
+				if (PIN2Read(Port)) {
 					if (++(InputPort[Port].Timer) >= (DCM_EVENT_STABLE_DELAY / DCM_TIMER_RESOLUTION)) {
 						InputPort[Port].Connected  = 0;
 						InputPort[Port].State      = DCM_INIT;

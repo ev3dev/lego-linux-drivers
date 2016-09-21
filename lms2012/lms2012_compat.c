@@ -69,7 +69,7 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 	struct of_phandle_args args;
 	u32 i2c_adapters[INPUTS];
 	int ret, i;
-	char name[5];
+	char name[10];
 
 	if (global_dev)
 		return -EBUSY;
@@ -138,7 +138,15 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 	}
 
 	for (i = 0; i < INPUTS; i++) {
-		snprintf(name, 5, "in%d", i + 1);
+		snprintf(name, 10, "in%d-pin2", i + 1);
+		lms->in_pin2[i] = devm_gpiod_get_optional(&pdev->dev, name,
+							  GPIOD_ASIS);
+		if (IS_ERR(lms->in_pin2[i])) {
+			dev_err(&pdev->dev, "Failed to get %s\n", name);
+			return PTR_ERR(lms->in_pin2[i]);
+		}
+
+		snprintf(name, 10, "in%d", i + 1);
 		lms->in_pins[i] = devm_gpiod_get_array(&pdev->dev, name,
 						       GPIOD_ASIS);
 		if (IS_ERR(lms->in_pins[i])) {
@@ -196,7 +204,6 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 	}
 	for (i = 0; i < INPUTS; i++) {
 		struct resource res;
-		char name[10];
 
 		snprintf(name, 10, "in%d_uart", i + 1);
 
@@ -277,7 +284,7 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 	}
 
 	for (i = 0; i < OUTPUTS; i++) {
-		snprintf(name, 5, "out%c", i + 'A');
+		snprintf(name, 10, "out%c", i + 'A');
 		lms->out_pins[i] = devm_gpiod_get_array(&pdev->dev, name,
 							GPIOD_ASIS);
 		if (IS_ERR(lms->out_pins[i])) {
@@ -292,8 +299,6 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 	}
 
 	for (i = 0; i < OUTPUTS; i++) {
-		char name[10];
-
 		snprintf(name, 10, "out%c", i + 'A');
 		lms->out_pwms[i] = devm_pwm_get(&pdev->dev, name);
 		if (IS_ERR(lms->out_pwms[i])) {

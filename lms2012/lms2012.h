@@ -374,12 +374,12 @@ enum InputSpiPins {
 };
 
 enum InputPortPins {
-  // INPUT_PORT_PIN1,
-  // INPUT_PORT_PIN2,
   INPUT_PORT_PIN5,
   INPUT_PORT_PIN6,
   INPUT_PORT_BUF,
   INPUT_PORT_PINS,
+  /* the following values are not used as array indexes */
+  INPUT_PORT_PIN2,
   INPUT_PORT_VALUE
 };
 
@@ -407,6 +407,7 @@ struct lms2012_compat {
     struct pinctrl_state *pinctrl_default[INPUTS];
     struct pinctrl_state *pinctrl_i2c[INPUTS];
     struct gpio_descs *spi_pins;
+    struct gpio_desc *in_pin2[INPUTS];
     struct gpio_descs *in_pins[INPUTS];
     struct i2c_adapter *i2c_adapter[INPUTS];
     void __iomem *uart_mem[INPUTS];
