@@ -39,7 +39,8 @@
  * : This provides the default value for the poll_ms attribute. A value of `0`
  * .    will disable polling by default. Values of less that the minimum 50
  * .    msec will be rounded up to 50 msec. Changes only affect sensors plugged
- * .    in after the change was made. Default is 100 msec.
+ * .    in after the change was made. Default is 100 msec. Values must not be
+ * .    negative.
  * .
  * ### sysfs
  * .

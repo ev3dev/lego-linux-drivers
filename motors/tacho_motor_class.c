@@ -154,7 +154,7 @@
  *   to a non-zero value, the motor speed will increase from 0 to 100% of
  *   `max_speed` over the span of this setpoint. The actual ramp time is the
  *   ratio of the difference between the `speed_sp` and the current `speed`
- *   and max_speed multiplied by `ramp_up_sp`.
+ *   and max_speed multiplied by `ramp_up_sp`. Values must not be negative.
  * .
  * `ramp_down_sp`
  * : (read/write) Writing sets the ramp down setpoint. Reading returns the
@@ -162,7 +162,7 @@
  *   to a non-zero value, the motor speed will decrease from 0 to 100% of
  *   `max_speed` over the span of this setpoint. The actual ramp time is the
  *   ratio of the difference between the `speed_sp` and the current `speed`
- *   and max_speed multiplied by `ramp_down_sp`.
+ *   and max_speed multiplied by `ramp_down_sp`. Values must not be negative.
  * .
  * `speed_pid/Kd`
  * : (read/write) The derivative constant for the speed regulation PID.
@@ -210,7 +210,7 @@
  * `time_sp`
  * : (read/write) Writing specifies the amount of time the motor will run when
  *   using the `run-timed` command. Reading returns the current value. Units
- *   are in milliseconds.
+ *   are in milliseconds. Values must not be negative.
  */
 
 #include <linux/device.h>
