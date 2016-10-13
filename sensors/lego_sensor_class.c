@@ -118,6 +118,7 @@
  *   `-EOPNOTSUPP` if changing polling is not supported. Note: Setting `poll_ms`
  *   too high can cause the input port autodetection to fail. If this happens,
  *   use the `mode` attribute of the port to force the port to nxt-i2c mode.
+ *   Values must not be negative.
  * .
  * `units`
  * : (read-only) Returns the units of the measured value for the current mode.

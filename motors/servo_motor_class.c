@@ -53,6 +53,7 @@
  *   tells the servo to drive to the maximum (clockwise) position_sp. Default
  *   value is 2400. Valid values are 2300 to 2700. You must write to the
  *   `position_sp` attribute for changes to this attribute to take effect.
+ *   Values must not be negative.
  * .
  * `mid_pulse_sp`
  * : (read/write) Used to set the pulse size in milliseconds for the signal that
@@ -60,13 +61,15 @@
  *   Valid values are 1300 to 1700. For example, on a 180 degree servo, this
  *   would be 90 degrees. On continuous rotation servo, this is the "neutral"
  *   position where the motor does not turn. You must write to the `position_sp`
- *   attribute for changes to this attribute to take effect.
+ *   attribute for changes to this attribute to take effect. Values must not be
+ *   negative.
  * .
  * `min_pulse_sp`
  * : (read/write) Used to set the pulse size in milliseconds for the signal
  *   that tells the servo to drive to the minimum (counter-clockwise) position.
  *   Default value is 600. Valid values are 300 to 700. You must write to the
  *   `position_sp` attribute for changes to this attribute to take effect.
+ *   Values must not be negative.
  * .
  * `polarity`
  * : (read/write) Sets the polarity of the servo. Valid values are:
@@ -90,7 +93,7 @@
  *   seconds to move from 0 to 180 degrees. Note: Some servo controllers may not
  *   support this in which case reading and writing will fail with `-EOPNOTSUPP`.
  *   In continuous rotation servos, this value will affect the rate at which the
- *   speed ramps up or down.
+ *   speed ramps up or down. Values must not be negative.
  * .
  * `state`
  * : (read-only)Returns a space separated list of flags indicating the state of

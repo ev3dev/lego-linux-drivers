@@ -112,7 +112,7 @@
  * .
  * `time_sp`
  * : (read/write) Sets the time setpoint used with the `run-timed` command.
- *   Units are in milliseconds.
+ *   Units are in milliseconds. Values must not be negative.
  * .
  * [supported devices]: /docs/motors/#supported-devices
  */
