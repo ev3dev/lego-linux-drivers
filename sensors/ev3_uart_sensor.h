@@ -1,7 +1,7 @@
 /*
  * LEGO MINDSTORMS EV3 UART sensor device driver
  *
- * Copyright (C) 2014-2015 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014-2016 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -30,6 +30,20 @@
 #define LEGO_EV3_GYRO_TYPE_ID		32
 #define LEGO_EV3_INFRARED_NAME		"lego-ev3-ir"
 #define LEGO_EV3_INFRARED_TYPE_ID	33
+#define FATCATLAB_ADC_NAME		"fcl-adc"
+#define FATCATLAB_ADC_TYPE_ID		71
+#define FATCATLAB_GESTURE_NAME		"fcl-gesture"
+#define FATCATLAB_GESTURE_TYPE_ID	72
+#define FATCATLAB_LIGHT_NAME		"fcl-light"
+#define FATCATLAB_LIGHT_TYPE_ID		73
+#define FATCATLAB_ALTITUDE_NAME		"fcl-altitude"
+#define FATCATLAB_ALTITUDE_TYPE_ID	74
+#define FATCATLAB_IR_NAME		"fcl-ir"
+#define FATCATLAB_IR_TYPE_ID		75
+#define FATCATLAB_9DOF_NAME		"fcl-9dof"
+#define FATCATLAB_9DOF_TYPE_ID		76
+#define FATCATLAB_HUMIDITY_NAME		"fcl-humidity"
+#define FATCATLAB_HUMIDITY_TYPE_ID	77
 
 
 /* There must be one of these for each well-known name above */
@@ -38,6 +52,13 @@ enum ev3_uart_sensor_types {
 	LEGO_EV3_ULTRASONIC,
 	LEGO_EV3_GYRO,
 	LEGO_EV3_INFRARED,
+	FATCATLAB_ADC,
+	FATCATLAB_GESTURE,
+	FATCATLAB_LIGHT,
+	FATCATLAB_ALTITUDE,
+	FATCATLAB_IR,
+	FATCATLAB_9DOF,
+	FATCATLAB_HUMIDITY,
 	NUM_LEGO_EV3_SENSOR_TYPES
 };
 

@@ -1,7 +1,7 @@
 /*
  * LEGO MINDSTORMS EV3 UART Sensor driver
  *
- * Copyright (C) 2013-2015 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2016 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -516,6 +516,328 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				.name		= "IR-CAL",
 				.data_sets	= 2,
 				.data_type	= LEGO_SENSOR_DATA_S32,
+			},
+		},
+	},
+	[FATCATLAB_ADC] = {
+		/**
+		 * @vendor_name: Fatcatlab
+		 * @vendor_part_name: ADC Adapter
+		 * @vendor_website: http://fatcatlab.com/product/adc-adapter
+		 */
+		.name		= FATCATLAB_ADC_NAME,
+		.type_id	= FATCATLAB_ADC_TYPE_ID,
+		.num_modes	= 3,
+		.num_view_modes	= 2,
+		.mode_info	= {
+			[0] = {
+				/**
+				 * @description: Channel 1
+				 * @value0: Voltage (0 to 3300)
+				 * @units_description: millivolts
+				 */
+				.name		= "CH1-VOLTAGE",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "mV",
+			},
+			[1] = {
+				/**
+				 * @description: Channel 2
+				 * @value0: Voltage (0 to 3300)
+				 * @units_description: millivolts
+				 */
+				.name		= "CH2-VOLTAGE",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "mV",
+			},
+			[2] = {
+				/**
+				 * @description: Both Channels
+				 * @value0: Channel 1 Voltage (0 to 3300)
+				 * @value1: Channel 2 Voltage (0 to 3300)
+				 * @units_description: millivolts
+				 */
+				.name		= "VOLTAGE",
+				.data_sets	= 2,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "mV",
+			},
+		},
+	},
+	[FATCATLAB_GESTURE] = {
+		/**
+		 * @vendor_name: Fatcatlab
+		 * @vendor_part_name: Gesture Sensor
+		 * @vendor_website: http://fatcatlab.com/product/gesture-sensor
+		 */
+		.name		= FATCATLAB_GESTURE_NAME,
+		.type_id	= FATCATLAB_GESTURE_TYPE_ID,
+		.num_modes	= 4,
+		.num_view_modes	= 4,
+		.mode_info	= {
+			[0] = {
+				/**
+				 * [^gesture-values]: Gesture Values:
+				 *
+				 * | Value | Description |
+				 * |-------|-------------|
+				 * | 0     | *none*      |
+				 * | 1     | left        |
+				 * | 2     | right       |
+				 * | 3     | up          |
+				 * | 4     | down        |
+				 * | 5     | near        |
+				 * | 6     | far         |
+				 *
+				 * @description: Gesture
+				 * @value0: Gesture (0 to 6)
+				 * @value0_footnote: [^gesture-values]
+				 */
+				.name		= "GESTURE",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S8,
+			},
+			[1] = {
+				/**
+				 * @description: Proximity
+				 * @value0: Voltage (0 to 127)
+				 */
+				.name		= "PROXIMITY",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S8,
+			},
+			[2] = {
+				/**
+				 * @description: Color
+				 * @value0: Red
+				 * @value1: Green
+				 * @value2: Blue
+				 */
+				.name		= "RGB-RAW",
+				.data_sets	= 3,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+			},
+			[3] = {
+				/**
+				 * [^clear]: The `CLEAR` mode is used to reset
+				 * the value of the `GESTURE` mode back to zero.
+				 *
+				 * @description: Clear
+				 * @value0: Always 1
+				 * @name_footnote: [^clear]
+				 */
+				.name		= "CLEAR",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S8,
+			},
+		},
+	},
+	[FATCATLAB_LIGHT] = {
+		/**
+		 * @vendor_name: Fatcatlab
+		 * @vendor_part_name: Light Sensor
+		 * @vendor_website: http://fatcatlab.com/product/light-sensor
+		 */
+		.name		= FATCATLAB_LIGHT_NAME,
+		.type_id	= FATCATLAB_LIGHT_TYPE_ID,
+		.num_modes	= 1,
+		.num_view_modes	= 1,
+		.mode_info	= {
+			[0] = {
+				/**
+				 * @description: Illuminance
+				 * @value0: Illuminance (0 to 65535)
+				 * @units_description: lux
+				 */
+				.name		= "ILLUMINANCE",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S32,
+				.units		= "lx",
+			},
+		},
+	},
+	[FATCATLAB_ALTITUDE] = {
+		/**
+		 * @vendor_name: Fatcatlab
+		 * @vendor_part_name: Altitude Sensor
+		 * @vendor_website: http://fatcatlab.com/product/altitude-sensor
+		 */
+		.name		= FATCATLAB_ALTITUDE_NAME,
+		.type_id	= FATCATLAB_ALTITUDE_TYPE_ID,
+		.num_modes	= 2,
+		.num_view_modes	= 2,
+		.mode_info	= {
+			[0] = {
+				/**
+				 * @description: Pressure
+				 * @value0: Pressure (3000 to 11000)
+				 * @units_description: hectopascals
+				 */
+				.name		= "PRESSURE",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "hPa",
+				.decimals	= 1,
+			},
+			[1] = {
+				/**
+				 * @description: Altitude
+				 * @value0: Altitude (-5000 to 90000)
+				 * @units_description: meters
+				 */
+				.name		= "ALTITUDE",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S32,
+				.units		= "m",
+				.decimals	= 1,
+			},
+		},
+	},
+	[FATCATLAB_IR] = {
+		/**
+		 * @vendor_name: Fatcatlab
+		 * @vendor_part_name: IR Receiver
+		 * @vendor_website: http://fatcatlab.com/product/ir-receiver
+		 */
+		.name		= FATCATLAB_IR_NAME,
+		.type_id	= FATCATLAB_IR_TYPE_ID,
+		.num_modes	= 1,
+		.num_view_modes	= 1,
+		.mode_info	= {
+			[0] = {
+				/**
+				 * [^ir-mode-values]: Button values:
+				 *
+				 * | Value | Button                 |
+				 * |-------|------------------------|
+				 * | 0     | *none*                 |
+				 * | 1-9   | 1-9 (digits)           |
+				 * | 10    | 0 (zero)               |
+				 * | 11    | + (plus)               |
+				 * | 12    | - (minus)              |
+				 * | 13    | &#x23ee; (previous)    |
+				 * | 14    | &#x23ed; (next)        |
+				 * | 15    | &#x23ef; (play/pause)  |
+				 * | 21    | OK                     |
+				 * | 22    | &#x21b0; (back)        |
+				 * | 30    | &#x23fb; (power)       |
+				 * | 40    | MENU                   |
+				 * | 50    | &#x1f507; (mute)       |
+				 * | 60    | MODE                   |
+				 *
+				 * @description: IR Remote Control
+				 * @value0: Channel 1 (0 to 60)
+				 * @value0_footnote: [^ir-mode-values]
+				 * @units_description: button
+				 */
+				.name		= "IR DATA",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S8,
+			},
+		},
+	},
+	[FATCATLAB_9DOF] = {
+		/**
+		 * @vendor_name: Fatcatlab
+		 * @vendor_part_name: 9DOF Sensor
+		 * @vendor_website: http://fatcatlab.com/product/9dof-sensor
+		 */
+		.name		= FATCATLAB_9DOF_NAME,
+		.type_id	= FATCATLAB_9DOF_TYPE_ID,
+		.num_modes	= 3,
+		.num_view_modes	= 3,
+		.mode_info	= {
+			[0] = {
+				/**
+				 * @description: Gyroscope
+				 * @value0: X-axis rotational speed (-20000  to 20000)
+				 * @value1: Y-axis rotational speed (-20000  to 20000)
+				 * @value2: Z-axis rotational speed (-20000  to 20000)
+				 * @units_description: degrees per second
+				 */
+				.name		= "GYRO",
+				.data_sets	= 3,
+				.data_type	= LEGO_SENSOR_DATA_S32,
+				.units		= "d/s",
+				.decimals	= 1,
+			},
+			[1] = {
+				/**
+				 * @description: Accelerometer
+				 * @value0: X-axis acceleration (-16000 to 16000)
+				 * @value1: Y-axis acceleration (-16000 to 16000)
+				 * @value2: Z-axis acceleration (-16000 to 16000)
+				 * @units_description: standard gravity
+				 */
+				.name		= "ACC",
+				.data_sets	= 3,
+				.data_type	= LEGO_SENSOR_DATA_S32,
+				.units		= "g",
+				.decimals	= 3,
+			},
+			[2] = {
+				/**
+				 * @description: Magnetometer
+				 * @value0: X-axis magnetic flux density (-4800 to 4800)
+				 * @value1: Y-axis magnetic flux density (-4800 to 4800)
+				 * @value2: Z-axis magnetic flux density (-4800 to 4800)
+				 * @units_description: microteslas
+				 */
+				.name		= "MAGNET",
+				.data_sets	= 3,
+				.data_type	= LEGO_SENSOR_DATA_S32,
+				.units		= "uT",
+			},
+		},
+	},
+	[FATCATLAB_HUMIDITY] = {
+		/**
+		 * @vendor_name: Fatcatlab
+		 * @vendor_part_name: Humidity Sensor
+		 * @vendor_website: http://fatcatlab.com/product/humidity-sensor
+		 */
+		.name		= FATCATLAB_HUMIDITY_NAME,
+		.type_id	= FATCATLAB_HUMIDITY_TYPE_ID,
+		.num_modes	= 3,
+		.num_view_modes	= 3,
+		.mode_info	= {
+			[0] = {
+				/**
+				 * @description: Temperature (Celsius)
+				 * @value0: Temperature (-400 to 1250)
+				 * @units_description: degrees Celsius
+				 */
+				.name		= "CENTIGRADE",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "C",
+				.decimals	= 1,
+			},
+			[1] = {
+				/**
+				 * @description: Temperature (Fahrenheit)
+				 * @value0: Temperature (-400 to 2570)
+				 * @units_description: degrees Fahrenheit
+				 */
+				.name		= "FAHRENHEIT",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "F",
+				.decimals	= 1,
+			},
+			[2] = {
+				/**
+				 * @description: Humidity
+				 * @value0: Humidity (0 to 1000)
+				 * @units_description: percent relative humidity
+				 */
+				.name		= "HUMIDITY",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "%RH",
+				.decimals	= 1,
 			},
 		},
 	},
