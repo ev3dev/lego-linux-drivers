@@ -62,6 +62,8 @@
 
 #define MAX_SYNC_MOTORS		2
 
+#define TACHO_MOTOR_STALLED_MS  100
+
 enum legoev3_motor_command {
 	UNKNOWN,
 	FORWARD,
@@ -99,6 +101,8 @@ struct legoev3_motor_data {
 	int position_sp;
 
 	enum legoev3_motor_command run_direction;
+	ktime_t stalling_since;
+	bool stalling;
 	bool stalled;
 	bool ramping;
 
@@ -384,6 +388,7 @@ static int legoev3_motor_reset(void *context)
 	ev3_tm->speed			= 0;
 	ev3_tm->duty_cycle		= 0;
 	ev3_tm->stalled			= 0;
+	ev3_tm->stalling		= 0;
 
 	tm_pid_init(&ev3_tm->speed_pid, info->speed_pid_k.p,
 		    info->speed_pid_k.i, info->speed_pid_k.d);
@@ -628,13 +633,22 @@ static void calculate_speed(struct legoev3_motor_data *ev3_tm)
 			ev3_tm->speed  = -new_speed;
 
 		ev3_tm->stalled = 0;
+		ev3_tm->stalling = 0;
 		ev3_tm->got_new_sample = false;
 
 	} else if (ev3_tm->max_us_per_sample < ktime_to_us(ktime_sub(ktime_get(), ev3_tm->tacho_samples[diff_idx]))) {
 
 		ev3_tm->dir_chg_samples = 0;
 		ev3_tm->speed = 0;
-		ev3_tm->stalled = 1;
+		ev3_tm->stalled = 0;
+
+		if (ev3_tm->stalling) {
+			if ((TACHO_MOTOR_STALLED_MS * USEC_PER_SEC) < ktime_to_us(ktime_sub(ktime_get(), ev3_tm->stalling_since)))
+				ev3_tm->stalled = 1;
+		} else {
+			ev3_tm->stalling = 1;
+			ev3_tm->stalling_since = ktime_get();
+		}
 	}
 
 	else if ((TACHO_MOTOR_POLL_MS * USEC_PER_MSEC) < ktime_to_us(ktime_sub(ktime_get(), ev3_tm->tacho_samples[diff_idx]))) {
@@ -652,6 +666,7 @@ static void calculate_speed(struct legoev3_motor_data *ev3_tm)
 			ev3_tm->speed  = -new_speed;
 
 		ev3_tm->stalled = 0;
+		ev3_tm->stalling = 0;
 	}
 }
 
