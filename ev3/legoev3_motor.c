@@ -642,13 +642,17 @@ static void calculate_speed(struct legoev3_motor_data *ev3_tm)
 		ev3_tm->speed = 0;
 		ev3_tm->stalled = 0;
 
-		if (ev3_tm->stalling) {
-			if (TACHO_MOTOR_STALLED_MS < ktime_to_ms(ktime_sub(ktime_get(), ev3_tm->stalling_since)))
-				ev3_tm->stalled = 1;
-		} else {
-			ev3_tm->stalling = 1;
-			ev3_tm->stalling_since = ktime_get();
-		}
+                if (ev3_tm->state == STATE_RUNNING) {
+                        if (ev3_tm->stalling) {
+                                if (TACHO_MOTOR_STALLED_MS < ktime_to_ms(ktime_sub(ktime_get(), ev3_tm->stalling_since)))
+                                        ev3_tm->stalled = 1;
+                        } else {
+                                ev3_tm->stalling = 1;
+                                ev3_tm->stalling_since = ktime_get();
+                        }
+                } else {
+                        ev3_tm->stalling = 0;
+                }
 	}
 
 	else if (TACHO_MOTOR_POLL_MS < ktime_to_ms(ktime_sub(ktime_get(), ev3_tm->tacho_samples[diff_idx]))) {
