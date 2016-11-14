@@ -291,11 +291,11 @@ static void set_duty_cycle(struct legoev3_motor_data *ev3_tm, int duty_cycle)
 	void *context = ev3_tm->ldev->port->context;
 	int err;
 
-	if (duty_cycle == ev3_tm->duty_cycle)
-		return;
-
 	duty_cycle = min(duty_cycle, DC_MOTOR_MAX_DUTY_CYCLE);
 	duty_cycle = max(duty_cycle, -DC_MOTOR_MAX_DUTY_CYCLE);
+
+	if (duty_cycle == ev3_tm->duty_cycle)
+		return;
 
 	if (duty_cycle > 0)
 		motor_ops->set_command(context,
