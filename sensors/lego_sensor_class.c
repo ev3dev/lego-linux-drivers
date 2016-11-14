@@ -157,7 +157,6 @@ size_t lego_sensor_data_size[NUM_LEGO_SENSOR_DATA_TYPE] = {
 	[LEGO_SENSOR_DATA_U16]		= 2,
 	[LEGO_SENSOR_DATA_S16_BE]	= 2,
 	[LEGO_SENSOR_DATA_S32]		= 4,
-	[LEGO_SENSOR_DATA_U32]		= 4,
 	[LEGO_SENSOR_DATA_S32_BE]	= 4,
 	[LEGO_SENSOR_DATA_FLOAT]	= 4,
 };
@@ -376,9 +375,6 @@ int lego_sensor_default_scale(struct lego_sensor_mode_info *mode_info, u8 index,
 		*value = (s16)be16_to_cpu(*(u16 *)
 					(mode_info->raw_data + index * 2));
 		break;
-	case LEGO_SENSOR_DATA_U32:
-		*value = *(u32 *)(mode_info->raw_data + index * 4);
-		break;
 	case LEGO_SENSOR_DATA_S32:
 		*value = *(s32 *)(mode_info->raw_data + index * 4);
 		break;
@@ -445,8 +441,6 @@ const char *lego_sensor_bin_data_format_to_str(enum lego_sensor_data_type value)
 		return "s16";
 	case LEGO_SENSOR_DATA_S16_BE:
 		return "s16_be";
-	case LEGO_SENSOR_DATA_U32:
-		return "u32";
 	case LEGO_SENSOR_DATA_S32:
 		return "s32";
 	case LEGO_SENSOR_DATA_S32_BE:
