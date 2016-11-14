@@ -35,7 +35,7 @@
  */
 void tm_speed_update(struct tm_speed *spd, int pos, ktime_t t)
 {
-	long ds = USEC_PER_SEC * (pos - spd->pos[spd->tail]);
+	s64 ds = USEC_PER_SEC * (pos - spd->pos[spd->tail]);
 	ktime_t dt = ktime_sub(t, spd->time[spd->tail]);
 
 	spd->tail++;
