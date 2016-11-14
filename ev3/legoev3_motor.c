@@ -324,6 +324,7 @@ static int legoev3_motor_stop(void *context, enum tm_stop_action action)
 	ev3_tm->run_to_pos_active = false;
 	ev3_tm->speed_pid_ena = false;
 	ev3_tm->hold_pid_ena = false;
+	ev3_tm->duty_cycle = 0;
 	/*
 	 * Reset the PID terms here to avoid having these terms influence the
 	 * motor operation at the beginning of the next sequence. The most
