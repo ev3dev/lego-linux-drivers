@@ -689,16 +689,15 @@ static struct config_group
 
 	mutex_init(&info->lock);
 
-	info->group.default_groups = info->default_groups;
-	info->default_groups[GROUP_INDEX_SENSORS] = &info->sensors_group;
-	info->default_groups[GROUP_INDEX_LEDS] = &info->uleds_group;
-	info->default_groups[GROUP_INDEX_LIVE] = &info->live_group;
 	config_group_init_type_name(&info->group, name, &port_info_type);
 	config_group_init_type_name(&info->sensors_group, "sensors",
 				    &sensors_group_type);
+	configfs_add_default_group(&info->sensors_group, &info->group);
 	config_group_init_type_name(&info->uleds_group, "leds",
 				    &uleds_group_type);
+	configfs_add_default_group(&info->uleds_group, &info->group);
 	config_group_init_type_name(&info->live_group, "live", &live_group_type);
+	configfs_add_default_group(&info->live_group, &info->group);
 
 	return &info->group;
 }

@@ -90,9 +90,10 @@ static int snd_legoev3_apply_tone_volume(struct snd_legoev3 *chip)
 	duty_percent = ((50/8) * chip->volume) >> 8;
 	if ((duty_percent == 0) && (chip->volume > 0))
 		duty_percent = 1; 
-	
-	return pwm_config(chip->pwm, chip->pwm->period * duty_percent / 100,
-			  chip->pwm->period);
+
+	return pwm_config(chip->pwm,
+			  pwm_get_period(chip->pwm) * duty_percent / 100,
+			  pwm_get_period(chip->pwm));
 }
 
 static int snd_legoev3_do_tone(struct snd_legoev3 *chip, int hz)
@@ -106,7 +107,7 @@ static int snd_legoev3_do_tone(struct snd_legoev3 *chip, int hz)
 	if (hz <= 0) {
 		gpio_set_value(chip->amp_gpio, 0);
 		pwm_disable(chip->pwm);
-		pwm_config(chip->pwm, 0, chip->pwm->period);
+		pwm_config(chip->pwm, 0, pwm_get_period(chip->pwm));
 		chip->tone_frequency = 0;
 		chip->tone_duration  = 0;
 		return 0;
@@ -352,7 +353,7 @@ static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 	if (err < 0)
 		goto err_ehrpwm_et_cb_register;
 
-	pwm_config(chip->pwm, 0, chip->pwm->period);
+	pwm_config(chip->pwm, 0, pwm_get_period(chip->pwm));
 
 	tasklet_init(&chip->pcm_period_tasklet, snd_legoev3_call_pcm_elapsed,
 	             (unsigned long)substream);
