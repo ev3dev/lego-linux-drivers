@@ -35,6 +35,9 @@
 #define SLOW_CLOCK_PERIOD_NS (NSEC_PER_SEC / 32768)
 
 enum legoev3_bluetooth_gpios {
+	LEGOEV3_BT_GPIO_PIC_ENA,
+	LEGOEV3_BT_GPIO_PIC_RST,
+	LEGOEV3_BT_GPIO_PIC_CTS,
 	LEGOEV3_BT_GPIO_BT_ENA,
 	LEGOEV3_BT_GPIO_BT_CLK_ENA,
 	NUM_LEGOEV3_BT_GPIO
@@ -112,6 +115,15 @@ static int legoev3_bluetooth_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].gpio	= pdata->pic_ena_gpio;
+	btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].flags	= GPIOF_OUT_INIT_LOW;
+	btdev->gpios[LEGOEV3_BT_GPIO_PIC_ENA].label	= "PIC ENA";
+	btdev->gpios[LEGOEV3_BT_GPIO_PIC_RST].gpio	= pdata->pic_rst_gpio;
+	btdev->gpios[LEGOEV3_BT_GPIO_PIC_RST].flags	= GPIOF_OUT_INIT_HIGH;
+	btdev->gpios[LEGOEV3_BT_GPIO_PIC_RST].label	= "PIC RST";
+	btdev->gpios[LEGOEV3_BT_GPIO_PIC_CTS].gpio	= pdata->pic_cts_gpio;
+	btdev->gpios[LEGOEV3_BT_GPIO_PIC_CTS].flags	= GPIOF_IN;
+	btdev->gpios[LEGOEV3_BT_GPIO_PIC_CTS].label	= "PIC CTS";
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].gpio	= pdata->bt_ena_gpio;
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].flags	= GPIOF_OUT_INIT_LOW;
 	btdev->gpios[LEGOEV3_BT_GPIO_BT_ENA].label	= "bluetooth disable";
