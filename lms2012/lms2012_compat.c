@@ -138,6 +138,14 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 	}
 
 	for (i = 0; i < INPUTS; i++) {
+		snprintf(name, 10, "in%d-pin1", i + 1);
+		lms->in_pin1[i] = devm_gpiod_get_optional(&pdev->dev, name,
+							  GPIOD_ASIS);
+		if (IS_ERR(lms->in_pin1[i])) {
+			dev_err(&pdev->dev, "Failed to get %s\n", name);
+			return PTR_ERR(lms->in_pin1[i]);
+		}
+
 		snprintf(name, 10, "in%d-pin2", i + 1);
 		lms->in_pin2[i] = devm_gpiod_get_optional(&pdev->dev, name,
 							  GPIOD_ASIS);

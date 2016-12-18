@@ -407,6 +407,7 @@ struct lms2012_compat {
     struct pinctrl_state *pinctrl_default[INPUTS];
     struct pinctrl_state *pinctrl_i2c[INPUTS];
     struct gpio_descs *spi_pins;
+    struct gpio_desc *in_pin1[INPUTS];
     struct gpio_desc *in_pin2[INPUTS];
     struct gpio_descs *in_pins[INPUTS];
     struct i2c_adapter *i2c_adapter[INPUTS];

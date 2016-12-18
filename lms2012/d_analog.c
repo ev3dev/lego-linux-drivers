@@ -188,7 +188,9 @@ static u8 InputPoint2 = 0;
 #define PINRead(p, i)	gpiod_get_value(Device1Lms2012Compat->in_pins[p]->desc[i])
 #define PIN2Read(p)	(!Device1Lms2012Compat->in_pin2[p] || gpiod_get_value(Device1Lms2012Compat->in_pin2[p]))
 #define PINLow(p, i)	gpiod_direction_output(Device1Lms2012Compat->in_pins[p]->desc[i], 0)
+#define PIN1Low(p)	gpiod_direction_output(Device1Lms2012Compat->in_pin1[p], 0)
 #define PINHigh(p, i)	gpiod_direction_output(Device1Lms2012Compat->in_pins[p]->desc[i], 1)
+#define PIN1High(p)	gpiod_direction_output(Device1Lms2012Compat->in_pin1[p], 1)
 #define PINFloat(p, i)	gpiod_direction_input(Device1Lms2012Compat->in_pins[p]->desc[i])
 #define PIN2Float(p)	{ if (Device1Lms2012Compat->in_pin2[p]) gpiod_direction_input(Device1Lms2012Compat->in_pin2[p]); }
 
@@ -454,7 +456,7 @@ static const OUTPORT OutputPortDefault = {
 
 static void InputPortFloat(int Port)
 {
-	//PINLow(Port, INPUT_PORT_PIN1);		//9V disable, deleted for bbb
+	PIN1Low(Port);
 	PIN2Float(Port);
 	PINFloat(Port, INPUT_PORT_PIN5);
 	PINFloat(Port, INPUT_PORT_PIN6);
@@ -1615,9 +1617,9 @@ static ssize_t Device3Write(struct file *File, const char *Buffer, size_t Count,
 				if ((Char & 0xF8) == '0') { // 0, 1, 2, 3, 4, 5, 6, 7
 
 					if (Char & 0x01) { // pin 1
-						//PINHigh(Port, INPUT_PORT_PIN1);	//9V enable, deleted for bbb
+						PIN1High(Port);
 					} else {
-						//PINLow(Port, INPUT_PORT_PIN1);	//9V disable, deleted for bbb
+						PIN1Low(Port);
 					}
 					if (Char & 0x02) { // pin 5
 
