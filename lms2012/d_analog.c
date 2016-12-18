@@ -749,10 +749,10 @@ static int Device1Init(void)
 
 	// setup analog update timer interrupt
 
-	Time1[0] = ktime_set(0, 200000);
-	Time1[1] = ktime_set(0, 600000);
-	Time2[0] = ktime_set(0, 200000);
-	Time2[1] = ktime_set(0, 400000);
+	Time1[0] = ktime_set(0, 2000000);
+	Time1[1] = ktime_set(0, 6000000);
+	Time2[0] = ktime_set(0, 2000000);
+	Time2[1] = ktime_set(0, 4000000);
 
 	NextTime = Time1[0];
 
