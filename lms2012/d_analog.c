@@ -186,6 +186,7 @@ static u8 NxtcolorLatchedCmd[INPUTS];
 static u8 InputPoint2 = 0;
 
 #define PINRead(p, i)	gpiod_get_value(Device1Lms2012Compat->in_pins[p]->desc[i])
+#define PIN1Read(p)	gpiod_get_value(Device1Lms2012Compat->in_pin1[p])
 #define PIN2Read(p)	(!Device1Lms2012Compat->in_pin2[p] || gpiod_get_value(Device1Lms2012Compat->in_pin2[p]))
 #define PINLow(p, i)	gpiod_direction_output(Device1Lms2012Compat->in_pins[p]->desc[i], 0)
 #define PIN1Low(p)	gpiod_direction_output(Device1Lms2012Compat->in_pin1[p], 0)
@@ -603,6 +604,14 @@ static ssize_t Device1Read(struct file *File, char *Buffer, size_t Count, loff_t
 	int ret;
 
 	for (Point = 0;Point < INPUTS;Point++) {
+		if (PIN1Read(Point))
+			Buf[Lng++] = '1';
+		else
+			Buf[Lng++] = '0';
+		if (PIN2Read(Point))
+			Buf[Lng++] = '1';
+		else
+			Buf[Lng++] = '0';
 		Pins = Device1GetInputPins(Point);
 		for (Tmp = 0;Tmp < INPUT_PORT_PINS;Tmp++) {
 			if ((Pins & 0x0001)) {
