@@ -187,14 +187,18 @@ static char UartBuffer[UARTBUFFERSIZE];
 
 static UBYTE UartPortSend(UBYTE Port, UBYTE Byte);
 
-UWORD   ShowTimer[INPUTS];
+#ifdef DEBUG
+static UWORD ShowTimer[INPUTS];
+#endif
+
+#if defined(HIGHDEBUG) || defined(DEBUG_D_UART_ERROR) || defined(DEBUG) || defined(DEBUG_TRACE_MODE_CHANGE) || defined(DEBUG_UART_WRITE)
 
 #define LOGPOOLSIZE 100000
 static ULONG LogPointer = 0;
 static ULONG LogOutPointer = 0;
 static char LogPool[LOGPOOLSIZE];
 
-void UartWrite(char *pString)
+static void UartWrite(char *pString)
 {
 	ULONG Tmp;
 
@@ -218,6 +222,8 @@ void UartWrite(char *pString)
 	}
 }
 
+#endif
+
 // UART 1 *********************************************************************
 
 static volatile u32 *Uart1Base;
@@ -231,7 +237,7 @@ static UBYTE Uart1RecMesLng;
 static UBYTE Uart1RecMes[UART_BUFFER_SIZE];
 static UBYTE Uart1RecMesIn;
 
-irqreturn_t Uart1Interrupt(int irq, void *dev_id)
+static irqreturn_t Uart1Interrupt(int irq, void *dev_id)
 {
 	UBYTE IntrType;
 
@@ -408,7 +414,7 @@ static int Uart1Init(void)
 	return ret;
 }
 
-void Uart1Exit(void)
+static void Uart1Exit(void)
 {
 	Uart1Base[UART_IER] = 0x00;
 	free_irq(Device1Lms2012Compat->uart_irq[Uart1], Uart1Name);
@@ -459,7 +465,7 @@ static UBYTE Uart2RecMesLng;
 static UBYTE Uart2RecMes[UART_BUFFER_SIZE];
 static UBYTE Uart2RecMesIn;
 
-irqreturn_t Uart2Interrupt(int irq, void *dev_id)
+static irqreturn_t Uart2Interrupt(int irq, void *dev_id)
 {
 	UBYTE IntrType;
 
@@ -637,7 +643,7 @@ static int Uart2Init(void)
 	return ret;
 }
 
-void Uart2Exit(void)
+static void Uart2Exit(void)
 {
 	Uart2Base[UART_IER] = 0x00;
 
@@ -657,7 +663,7 @@ static UBYTE Uart3RecMesLng;
 static UBYTE Uart3RecMes[UART_BUFFER_SIZE];
 static UBYTE Uart3RecMesIn;
 
-irqreturn_t Uart3Interrupt(int irq, void *dev_id)
+static irqreturn_t Uart3Interrupt(int irq, void *dev_id)
 {
 	UBYTE IntrType;
 
@@ -834,7 +840,7 @@ static int Uart3Init(void)
 	return ret;
 }
 
-void Uart3Exit(void)
+static void Uart3Exit(void)
 {
 	Uart3Base[UART_IER] = 0x00;
 
@@ -854,7 +860,7 @@ static UBYTE Uart4RecMesLng;
 static UBYTE Uart4RecMes[UART_BUFFER_SIZE];
 static UBYTE Uart4RecMesIn;
 
-irqreturn_t Uart4Interrupt(int irq, void *dev_id)
+static irqreturn_t Uart4Interrupt(int irq, void *dev_id)
 {
 	UBYTE IntrType;
 
@@ -1034,7 +1040,7 @@ static int Uart4Init(void)
 	return ret;
 }
 
-void Uart4Exit(void)
+static void Uart4Exit(void)
 {
 	Uart4Base[UART_IER] = 0x00;
 
@@ -1083,7 +1089,7 @@ enum UART_STATE {
 	UART_STATES
 };
 
-static const char UartStateText[UART_STATES][50] = {
+static const char * const UartStateText[UART_STATES] = {
 	"IDLE",
 	"INIT",
 	"UART_RESTART",
@@ -1103,10 +1109,10 @@ static const char UartStateText[UART_STATES][50] = {
 	"TERMINAL",
 	"DATA_ERROR",
 	"ERROR",
-	"EXIT"
+	"EXIT",
 };
 
-UARTPORT UartPortDefault = {
+static const UARTPORT UartPortDefault = {
 	.InfoData	= INFODATA_INIT,
 	.BitRate	= (ULONG)LOWEST_BITRATE,
 	.BitRateMax	= (ULONG)LOWEST_BITRATE,
