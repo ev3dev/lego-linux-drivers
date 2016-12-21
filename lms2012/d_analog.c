@@ -107,7 +107,7 @@ static ANALOG AnalogDefault;
 static ANALOG *pAnalog = &AnalogDefault;
 static u16 *pInputs = (u16*)&AnalogDefault;
 
-static u8 Device3State = 0;
+static struct dentry *device1_debug;
 
 typedef struct {
 	u16  Value;
@@ -406,10 +406,10 @@ enum DCM_STATE {
 	DCM_STATES
 };
 
-static const char DcmStateText[DCM_STATES][50] = {
+static const char * const DcmStateText[DCM_STATES] = {
 	"DCM_INIT",
 	"DCM_FLOATING_DELAY",
-	"DCM_FLOATING\n",
+	"DCM_FLOATING",
 	"DCM_WAITING_FOR_PIN5_LOW",
 	"DCM_WAITING_FOR_PIN6_LOW",
 	"DCM_CONNECTION",
@@ -594,78 +594,6 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 	return Count;
 }
 
-static ssize_t Device1Read(struct file *File, char *Buffer, size_t Count, loff_t *Offset)
-{
-	char Buf[256];
-	int Lng = 0;
-	int Tmp;
-	int Point;
-	u16 Pins;
-	int ret;
-
-	for (Point = 0;Point < INPUTS;Point++) {
-		if (PIN1Read(Point))
-			Buf[Lng++] = '1';
-		else
-			Buf[Lng++] = '0';
-		if (PIN2Read(Point))
-			Buf[Lng++] = '1';
-		else
-			Buf[Lng++] = '0';
-		Pins = Device1GetInputPins(Point);
-		for (Tmp = 0;Tmp < INPUT_PORT_PINS;Tmp++) {
-			if ((Pins & 0x0001)) {
-				Buf[Lng++] = '1';
-			} else {
-				Buf[Lng++] = '0';
-			}
-			Pins >>= 1;
-		}
-		Pins = Device1GetOutputPins(Point);
-		for (Tmp = 0;Tmp < OUTPUT_PORT_PINS;Tmp++) {
-			if ((Pins & 0x0001)) {
-				Buf[Lng++] = '1';
-			} else {
-				Buf[Lng++] = '0';
-			}
-			Pins >>= 1;
-		}
-		Buf[Lng++] = ' ';
-	}
-
-	Buf[Lng++] = '\r';
-
-	Buf[Lng++] = 0x1B;
-	Buf[Lng++] = '[';
-	Buf[Lng++] = 'B';
-
-	Point = 0;
-	Tmp   = 5;
-	while ((Count > Tmp) && (Point < INPUTADC)) {
-		if (Point != (INPUTADC - 1)) {
-			Tmp = snprintf(&Buf[Lng], 6, "%04u ", pInputs[Point]);
-		} else {
-			Tmp = snprintf(&Buf[Lng], 7, "%04u\r", pInputs[Point]);
-		}
-		Lng += Tmp;
-		Count -= Tmp;
-		Point++;
-	}
-
-	Buf[Lng++] = 0x1B;
-	Buf[Lng++] = '[';
-	Buf[Lng++] = 'A';
-
-	if (Lng > Count)
-		return -EINVAL;
-
-	ret = copy_to_user(Buffer, Buf, Lng);
-	if (ret < 0)
-		return ret;
-
-	return Lng;
-}
-
 #define SHM_LENGTH (sizeof(AnalogDefault))
 #define NPAGES     ((SHM_LENGTH + PAGE_SIZE - 1) / PAGE_SIZE)
 
@@ -687,7 +615,6 @@ static int Device1Mmap(struct file *filp, struct vm_area_struct *vma)
 
 static const struct file_operations Device1Entries = {
 	.owner	= THIS_MODULE,
-	.read	= Device1Read,
 	.write	= Device1Write,
 	.mmap	= Device1Mmap,
 };
@@ -695,12 +622,76 @@ static const struct file_operations Device1Entries = {
 static struct miscdevice Device1 = {
 	.minor	= MISC_DYNAMIC_MINOR,
 	.name	= DEVICE1_NAME,
-	.fops	= &Device1Entries
+	.fops	= &Device1Entries,
 };
 
 #ifndef DISABLE_OLD_COLOR
 static void NxtColorCommInit(void);
 #endif
+
+static int device1_debug_show(struct seq_file *m, void *data)
+{
+	seq_printf(m, "Port\t1\t2\t3\t4\n");
+	seq_printf(m, "Pin 1\t%d\t%d\t%d\t%d\n",
+		   PIN1Read(0), PIN1Read(1), PIN1Read(2), PIN1Read(3));
+	seq_printf(m, "\t%04u\t%04u\t%04u\t%04u\n",
+		   CtoV(pInputs[0]), CtoV(pInputs[1]),
+		   CtoV(pInputs[2]), CtoV(pInputs[3]));
+	seq_printf(m, "Pin 2\t%d\t%d\t%d\t%d\n",
+		   PIN2Read(0), PIN2Read(1), PIN2Read(2), PIN2Read(3));
+	seq_printf(m, "Pin 5\t%d\t%d\t%d\t%d\n",
+		   PINRead(0, INPUT_PORT_PIN5), PINRead(1, INPUT_PORT_PIN5),
+		   PINRead(2, INPUT_PORT_PIN5), PINRead(3, INPUT_PORT_PIN5));
+	seq_printf(m, "Pin 6\t%d\t%d\t%d\t%d\n",
+		   PINRead(0, INPUT_PORT_PIN6), PINRead(1, INPUT_PORT_PIN6),
+		   PINRead(2, INPUT_PORT_PIN6), PINRead(3, INPUT_PORT_PIN6));
+	seq_printf(m, "\t%04u\t%04u\t%04u\t%04u\n",
+		   CtoV(pInputs[4]), CtoV(pInputs[5]),
+		   CtoV(pInputs[6]), CtoV(pInputs[7]));
+	seq_printf(m, "Buffer\t%d\t%d\t%d\t%d\n",
+		   PINRead(0, INPUT_PORT_BUF), PINRead(1, INPUT_PORT_BUF),
+		   PINRead(2, INPUT_PORT_BUF), PINRead(3, INPUT_PORT_BUF));
+	seq_printf(m, "\n");
+	seq_printf(m, "Port\tA\tB\tC\tD\n");
+	seq_printf(m, "Pin 1\t%d\t%d\t%d\t%d\n",
+		   POUTRead(0, OUTPUT_PORT_PIN1), POUTRead(1, OUTPUT_PORT_PIN1),
+		   POUTRead(2, OUTPUT_PORT_PIN1), POUTRead(3, OUTPUT_PORT_PIN1));
+	seq_printf(m, "Pin 2\t%d\t%d\t%d\t%d\n",
+		   POUTRead(0, OUTPUT_PORT_PIN2), POUTRead(1, OUTPUT_PORT_PIN2),
+		   POUTRead(2, OUTPUT_PORT_PIN2), POUTRead(3, OUTPUT_PORT_PIN2));
+	seq_printf(m, "Pin 5W\t%d\t%d\t%d\t%d\n",
+		   POUTRead(0, OUTPUT_PORT_PIN5W), POUTRead(1, OUTPUT_PORT_PIN5W),
+		   POUTRead(2, OUTPUT_PORT_PIN5W), POUTRead(3, OUTPUT_PORT_PIN5W));
+	seq_printf(m, "\t%04u\t%04u\t%04u\t%04u\n",
+		   CtoV(pInputs[8]), CtoV(pInputs[9]),
+		   CtoV(pInputs[10]), CtoV(pInputs[11]));
+	seq_printf(m, "Pin 5R\t%d\t%d\t%d\t%d\n",
+		   POUTRead(0, OUTPUT_PORT_PIN5R), POUTRead(1, OUTPUT_PORT_PIN5R),
+		   POUTRead(2, OUTPUT_PORT_PIN5R), POUTRead(3, OUTPUT_PORT_PIN5R));
+	seq_printf(m, "Pin 6\t%d\t%d\t%d\t%d\n",
+		   POUTRead(0, OUTPUT_PORT_PIN6), POUTRead(1, OUTPUT_PORT_PIN6),
+		   POUTRead(2, OUTPUT_PORT_PIN6), POUTRead(3, OUTPUT_PORT_PIN6));
+	seq_printf(m, "\n");
+	seq_printf(m, "Battery\n");
+	seq_printf(m, "Temp\t%04u\n", CtoV(pInputs[12]));
+	seq_printf(m, "Motor\t%04u\n", CtoV(pInputs[13]));
+	seq_printf(m, "Amp\t%04u\n", CtoV(pInputs[14]));
+	seq_printf(m, "Volt\t%04u\n", CtoV(pInputs[15]));
+
+	return 0;
+}
+
+static int device1_debug_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, device1_debug_show, NULL);
+}
+
+static const struct file_operations device1_debug_fops = {
+	.open		= device1_debug_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
 
 static int Device1Init(void)
 {
@@ -775,6 +766,9 @@ static int Device1Init(void)
 
 	hrtimer_start(&Device1Timer, Device1Time, HRTIMER_MODE_REL);
 
+	device1_debug = debugfs_create_file(DEVICE1_NAME, 0444, NULL, NULL,
+					    &device1_debug_fops);
+
 	return 0;
 }
 
@@ -782,6 +776,8 @@ static void Device1Exit(void)
 {
 	u16   *pTmp;
 	int     i;
+
+	debugfs_remove(device1_debug);
 
 	hrtimer_cancel(&Device1Timer);
 
@@ -819,6 +815,7 @@ static void Device1Exit(void)
 static struct hrtimer	Device3Timer;
 static ktime_t		Device3Time;
 
+static u8 Device3State = 0;
 static u16 Device3StateTimer;
 
 #ifndef DISABLE_OLD_COLOR
@@ -845,6 +842,8 @@ static u16 NxtColorInitTimer[INPUTS];
 static u8 NxtColorInitCnt[INPUTS];
 
 static u8 NxtColorInitInUse;
+
+static struct dentry *device3_debug;
 
 static enum hrtimer_restart NxtColorCommIntr(struct hrtimer *pTimer)
 {
@@ -1655,53 +1654,58 @@ static ssize_t Device3Write(struct file *File, const char *Buffer, size_t Count,
 	return Count;
 }
 
-static ssize_t Device3Read(struct file *File, char *Buffer, size_t Count, loff_t *Offset)
-{
-	u8 Buf[10];
-	int Lng = 0;
-	int ret;
-
-	if (Count < 10)
-		return -EINVAL;
-
-	while (Lng < NO_OF_INPUT_PORTS) {
-		Buf[Lng] = pAnalog->InDcm[Lng];
-		Lng++;
-	}
-	while (Lng < INPUTS) {
-		Buf[Lng] = TYPE_NONE;
-		Lng++;
-	}
-	while (Lng < (INPUTS + NO_OF_OUTPUT_PORTS)) {
-		Buf[Lng] = pAnalog->OutDcm[Lng - INPUTS];
-		Lng++;
-	}
-	while (Lng < (INPUTS + OUTPUTS)) {
-		Buf[Lng] = TYPE_NONE;
-		Lng++;
-	}
-	Buf[Lng++] = '\r';
-	Buf[Lng++] = 0;
-
-	ret = copy_to_user(Buffer, Buf, Lng);
-	if (ret < 0)
-		return ret;
-
-	return Lng;
-}
-
-static const struct file_operations Device3Entries =
-{
+static const struct file_operations Device3Entries = {
 	.owner	= THIS_MODULE,
-	.read	= Device3Read,
-	.write	= Device3Write
+	.write	= Device3Write,
 };
 
-static struct miscdevice Device3 =
-{
+static struct miscdevice Device3 = {
 	.minor	= MISC_DYNAMIC_MINOR,
 	.name	= DEVICE3_NAME,
-	.fops	= &Device3Entries
+	.fops	= &Device3Entries,
+};
+
+static int device3_debug_show(struct seq_file *m, void *data)
+{
+	seq_printf(m, "Port\t1\t2\t3\t4\n");
+	seq_printf(m, "State\t%s\t%s\t%s\t%s\n",
+		   DcmStateText[InputPort[0].State],
+		   DcmStateText[InputPort[1].State],
+		   DcmStateText[InputPort[2].State],
+		   DcmStateText[InputPort[3].State]);
+	seq_printf(m, "Type\t%d\t%d\t%d\t%d\n",
+		   pAnalog->InDcm[0], pAnalog->InDcm[1],
+		   pAnalog->InDcm[2], pAnalog->InDcm[3]);
+	seq_printf(m, "Conn\t%d\t%d\t%d\t%d\n",
+		   pAnalog->InConn[0], pAnalog->InConn[1],
+		   pAnalog->InConn[2], pAnalog->InConn[3]);
+	seq_printf(m, "\n");
+	seq_printf(m, "Port\tA\tB\tC\tD\n");
+	seq_printf(m, "State\t%s\t%s\t%s\t%s\n",
+		   DcmStateText[OutputPort[0].State],
+		   DcmStateText[OutputPort[1].State],
+		   DcmStateText[OutputPort[2].State],
+		   DcmStateText[OutputPort[3].State]);
+	seq_printf(m, "Type\t%d\t%d\t%d\t%d\n",
+		   pAnalog->OutDcm[0], pAnalog->OutDcm[1],
+		   pAnalog->OutDcm[2], pAnalog->OutDcm[3]);
+	seq_printf(m, "Conn\t%d\t%d\t%d\t%d\n",
+		   pAnalog->OutConn[0], pAnalog->OutConn[1],
+		   pAnalog->OutConn[2], pAnalog->OutConn[3]);
+
+	return 0;
+}
+
+static int device3_debug_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, device3_debug_show, NULL);
+}
+
+static const struct file_operations device3_debug_fops = {
+	.open		= device3_debug_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
 };
 
 static int Device3Init(void)
@@ -1726,12 +1730,17 @@ static int Device3Init(void)
 
 	hrtimer_start(&Device3Timer, Device3Time, HRTIMER_MODE_REL);
 
+	device3_debug = debugfs_create_file(DEVICE3_NAME, 0444, NULL, NULL,
+					    &device3_debug_fops);
+
 	return 0;
 }
 
 static void Device3Exit(void)
 {
 	int Tmp;
+
+	debugfs_remove(device3_debug);
 
 	hrtimer_cancel(&Device3Timer);
 	misc_deregister(&Device3);
