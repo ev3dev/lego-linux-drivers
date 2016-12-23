@@ -411,9 +411,7 @@ struct lms2012_compat {
     struct gpio_desc *in_pin2[INPUTS];
     struct gpio_descs *in_pins[INPUTS];
     struct i2c_adapter *i2c_adapter[INPUTS];
-    void __iomem *uart_mem[INPUTS];
-    int uart_irq[INPUTS];
-    u32 uart_clock_freq[INPUTS];
+    const char *tty_names[INPUTS];
     struct gpio_descs *out_pins[OUTPUTS];
     struct pwm_device *out_pwms[OUTPUTS];
 };

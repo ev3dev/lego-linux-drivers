@@ -26,7 +26,6 @@
 #include <linux/hrtimer.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
-#include <linux/ioport.h>
 #include <linux/kernel.h>
 #include <linux/miscdevice.h>
 #include <linux/mm.h>
@@ -34,11 +33,14 @@
 #include <linux/platform_device.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
+#include <linux/tty.h>
 #include <linux/uaccess.h>
 
 #include <asm/io.h>
 
 #include "lms2012.h"
+
+#define N_D_UART		27 /* line dicipline no. */
 
 #define DEBUG_UART		(-1)    // must match settings in lms2012
 
@@ -138,14 +140,6 @@ static const TYPES TypeDefaultUart[] = {
 static struct device *Device1Lms2012CompatDev;
 static struct lms2012_compat *Device1Lms2012Compat;
 
-enum UartPort {
-	UART_1,
-	UART_2,
-	UART_3,
-	UART_4,
-	NUM_UART
-};
-
 typedef struct {
 	ULONG InfoData;
 	ULONG BitRate;
@@ -187,27 +181,6 @@ typedef struct {
 
 #define PUARTLow(port, pin) \
 	gpiod_direction_output(Device1Lms2012Compat->in_pins[port]->desc[pin], 0)
-
-#define UART_RHR		(0x00>>2)
-#define UART_THR		(0x00>>2)
-#define UART_DLL		(0x00>>2)
-#define UART_IER		(0x04>>2)
-#define UART_DLH		(0x04>>2)
-#define UART_EFR		(0x08>>2)
-#define UART_IIR		(0x08>>2)
-#define UART_FCR		(0x08>>2)
-#define UART_LCR		(0x0C>>2)
-#define UART_MCR		(0x10>>2)
-#define UART_LSR		(0x14>>2)
-#define UART_TCR		(0x18>>2)
-#define UART_MSR		(0x18>>2)
-#define UART_TLR		(0x1C>>2)
-#define UART_MDR1		(0x20>>2)
-#define UART_MDR2		(0x24>>2)
-#define UART_SCR		(0x40>>2)
-
-#define UART_SYSC		(0x54>>2)
-#define UART_SYSS		(0x58>>2)
 
 #define UART_RECBUF_SIZE	256
 
@@ -254,50 +227,43 @@ static void UartDebug(char *pString)
 
 // UART *********************************************************************
 
-static volatile u32 *UartBase[NUM_UART];
-static char UartName[NUM_UART][20];
+struct d_uart_ldisc_data {
+	struct tty_struct *tty;
+	UBYTE port;
+	UBYTE UartRecBuf[UART_RECBUF_SIZE];
+	UWORD UartRecBufIn;
+	UWORD UartRecBufOut;
+	UBYTE UartRecMesLng;
+	UBYTE UartRecMes[UART_BUFFER_SIZE];
+	UBYTE UartRecMesIn;
+};
 
-static UBYTE UartRecBuf[NUM_UART][UART_RECBUF_SIZE];
-static UWORD UartRecBufIn[NUM_UART];
-static UWORD UartRecBufOut[NUM_UART];
+static struct d_uart_ldisc_data d_uart_ldisc_data[INPUTS];
 
-static UBYTE UartRecMesLng[NUM_UART];
-static UBYTE UartRecMes[NUM_UART][UART_BUFFER_SIZE];
-static UBYTE UartRecMesIn[NUM_UART];
-
-static irqreturn_t UartInterrupt(int irq, void *dev_id)
+static void d_uart_receive_buf(struct tty_struct *tty, const unsigned char *cp,
+			       char *fp, int count)
 {
-	UBYTE port = (UBYTE)(ulong)dev_id;
-	UBYTE IntrType;
+	struct d_uart_ldisc_data *data = tty->disc_data;
+	int i;
 
-	IntrType = (UBYTE)UartBase[port][UART_IIR] & 0x0F;
+	for (i = 0; i < count; i++) {
+		data->UartRecBuf[data->UartRecBufIn] = cp[i];
 
-	while (!(IntrType & 1)) {
-		if (IntrType != 2) {
-			if (IntrType & 2) {
-				UartRecBuf[port][UartRecBufIn[port]] = (UBYTE)UartBase[port][UART_LSR];
-			}
-			UartRecBuf[port][UartRecBufIn[port]] = (UBYTE)UartBase[port][UART_RHR];
-
-			if (++UartRecBufIn[port] >= UART_RECBUF_SIZE) {
-				UartRecBufIn[port] = 0;
-			}
-		}
-		IntrType = (UBYTE)UartBase[port][UART_IIR] & 0x0F;
+		if (++data->UartRecBufIn >= UART_RECBUF_SIZE)
+			data->UartRecBufIn = 0;
 	}
-
-	return IRQ_HANDLED;
 }
 
 static UBYTE UartRead(UBYTE port, UBYTE *pByte)
 {
+	struct d_uart_ldisc_data *data = &d_uart_ldisc_data[port];
 	UBYTE   Result = 0;
 
-	if (UartRecBufIn[port] != UartRecBufOut[port]) {
-		*pByte = UartRecBuf[port][UartRecBufOut[port]];
+	if (data->UartRecBufIn != data->UartRecBufOut) {
+		*pByte = data->UartRecBuf[data->UartRecBufOut];
 
-		if (++UartRecBufOut[port] >= UART_RECBUF_SIZE) {
-			UartRecBufOut[port] = 0;
+		if (++data->UartRecBufOut >= UART_RECBUF_SIZE) {
+			data->UartRecBufOut = 0;
 		}
 		Result   = 1;
 	}
@@ -307,14 +273,20 @@ static UBYTE UartRead(UBYTE port, UBYTE *pByte)
 
 static void UartFlush(int port)
 {
-	UartBase[port][UART_FCR] = 0x07;
-	UartRecBufIn[port] = 0;
-	UartRecBufOut[port] = 0;
-	UartRecMesIn[port] = 0;
+	struct d_uart_ldisc_data *data = &d_uart_ldisc_data[port];
+	struct tty_struct *tty = data->tty;
+
+	if (tty->ldisc->ops->flush_buffer)
+		tty->ldisc->ops->flush_buffer(tty);
+	tty_driver_flush_buffer(tty);
+	data->UartRecBufIn = 0;
+	data->UartRecBufOut = 0;
+	data->UartRecMesIn = 0;
 }
 
 static UBYTE UartReadData(UBYTE port, UBYTE *pCmd, UBYTE *pData, UBYTE *pCheck, UBYTE *pFail)
 {
+	struct d_uart_ldisc_data *data = &d_uart_ldisc_data[port];
 	UBYTE   Byte;
 	UBYTE   Length;
 	UBYTE   Collect;
@@ -325,35 +297,35 @@ static UBYTE UartReadData(UBYTE port, UBYTE *pCmd, UBYTE *pData, UBYTE *pCheck, 
 
 	while (Collect) {
 		if (UartRead(port, &Byte)) {
-			if (UartRecMesIn[port] == 0) { // Wait for data message start
+			if (data->UartRecMesIn == 0) { // Wait for data message start
 
 				if (GET_MESSAGE_TYPE(Byte) == MESSAGE_DATA) {
 
-					UartRecMesLng[port] = GET_MESSAGE_LENGTH(Byte) + 2;
+					data->UartRecMesLng = GET_MESSAGE_LENGTH(Byte) + 2;
 
-					if (UartRecMesLng[port] <= UART_BUFFER_SIZE) { // Valid length
+					if (data->UartRecMesLng <= UART_BUFFER_SIZE) { // Valid length
 
-						UartRecMes[port][UartRecMesIn[port]] = Byte;
-						UartRecMesIn[port]++;
+						data->UartRecMes[data->UartRecMesIn] = Byte;
+						data->UartRecMesIn++;
 					}
 				}
 			} else {
-				UartRecMes[port][UartRecMesIn[port]] = Byte;
+				data->UartRecMes[data->UartRecMesIn] = Byte;
 
-				if (++UartRecMesIn[port] >= UartRecMesLng[port]) { // Message ready
+				if (++data->UartRecMesIn >= data->UartRecMesLng) { // Message ready
 
-					*pCmd   = UartRecMes[port][0];
+					*pCmd   = data->UartRecMes[0];
 					*pFail  ^=  *pCmd;
 
-					while (Length < (UartRecMesLng[port] - 2)) {
-						pData[Length]  = UartRecMes[port][Length + 1];
+					while (Length < (data->UartRecMesLng - 2)) {
+						pData[Length]  = data->UartRecMes[Length + 1];
 						*pFail       ^=  pData[Length];
 						Length++;
 					}
-					*pCheck = UartRecMes[port][Length + 1];
+					*pCheck = data->UartRecMes[Length + 1];
 					*pFail  ^=  *pCheck;
 
-					UartRecMesIn[port] = 0;
+					data->UartRecMesIn = 0;
 					Collect = 0;
 				}
 			}
@@ -367,84 +339,38 @@ static UBYTE UartReadData(UBYTE port, UBYTE *pCmd, UBYTE *pData, UBYTE *pCheck, 
 
 static UBYTE UartWrite(UBYTE port, UBYTE Byte)
 {
-	if (UartBase[port][UART_LSR] & 0x20) {
-		UartBase[port][UART_THR] = Byte;
-		return 1;
-	}
-
-	return 0;
-}
-
-static void UartSetup(UBYTE port, ULONG BitRate)
-{
-	ULONG Divisor;
-
-	Divisor = Device1Lms2012Compat->uart_clock_freq[port] / (BitRate * (ULONG)16);
-
-	UartBase[port][UART_LCR] = 0xBF;
-	UartBase[port][UART_EFR] |= 0x10;    //Enables access to MCR
-
-	UartBase[port][UART_LCR] = 0x80;
-	UartBase[port][UART_MCR] |= 0x40;    //Enables access to TCR and TLR
-
-	UartBase[port][UART_LCR] = 0xBF;
-	UartBase[port][UART_SCR] |= 0x80;    //Enable granularity of 1 for trigger RX level
-	UartBase[port][UART_SCR] &= ~(0x40); //Disable granularity of 1 for trigger TX level
-	UartBase[port][UART_TLR] = 0x0;
-
-	UartBase[port][UART_SCR] |= 0x1; //DMAMODE is set with SCR[2:1]
-	UartBase[port][UART_SCR] &= ~(0x6);  //no DMA
-
-	UartBase[port][UART_LCR] = 0x7F;
-	UartBase[port][UART_IER] &= ~(0x10); //Disables sleep mode
-
-	UartBase[port][UART_LCR] = 0xBF;
-
-	UartBase[port][UART_MDR1] |= 0x7;    //Disable uart
-	UartBase[port][UART_DLL] = 0x0;
-	UartBase[port][UART_DLH] = 0x0;
-	//UartBase[port][UART_MDR1] &= ~(0x7);   //uart 16x mode
-
-	UartBase[port][UART_LCR] = 0x80;
-	UartBase[port][UART_FCR] = (1 << 6) | 0x7;
-
-	UartBase[port][UART_LCR] = 0xBF;
-
-	//UartBase[port][UART_MDR1] |= 0x7;  //Disable uart
-	UartBase[port][UART_DLL] = Divisor & 0xFF;
-	UartBase[port][UART_DLH] = (Divisor & 0x3F00) >> 8;
-	UartBase[port][UART_MDR1] &= ~(0x7); //uart 16x mode
-
-	UartBase[port][UART_LCR] = 0x3;
-	UartBase[port][UART_IER] = 0x1;
-}
-
-static int UartInit(UBYTE port)
-{
-	int timeout = 10000;
+	struct d_uart_ldisc_data *data = &d_uart_ldisc_data[port];
+	struct tty_struct *tty = data->tty;
 	int ret;
 
-	snprintf(UartName[port], 20, "%s.port%d", DEVICE1_NAME, port + 1);
-	UartBase[port] = Device1Lms2012Compat->uart_mem[port];
-
-	UartBase[port][UART_SYSC] |= 0x2;
-	while(!(UartBase[port][UART_SYSS] & 0x1)) {
-		if (!timeout--)
-			return -ETIMEDOUT;
-		udelay(1);
-	}
-
-	ret = request_irq(Device1Lms2012Compat->uart_irq[port],
-			  &UartInterrupt, IRQF_SHARED, UartName[port],
-			  (void *)(ulong)port);
+	/*
+	 * FIXME: there is a bunch of sleeping stuff here that is called in an
+	 * atomic context.
+	 */
+	set_bit(TTY_DO_WRITE_WAKEUP, &tty->flags);
+	ret = tty_put_char(tty, Byte);
+	if (tty->ops->flush_chars)
+		tty->ops->flush_chars(tty);
 
 	return ret;
 }
 
-static void UartExit(UBYTE port)
+static void UartSetup(UBYTE port, ULONG BitRate)
 {
-	UartBase[port][UART_IER] = 0x00;
-	free_irq(Device1Lms2012Compat->uart_irq[port], (void *)(ulong)port);
+	struct d_uart_ldisc_data *data = &d_uart_ldisc_data[port];
+	struct tty_struct *tty = data->tty;
+	struct ktermios old_termios = tty->termios;
+
+	/*
+	 * FIXME: there is a bunch of sleeping stuff here that is called in an
+	 * atomic context.
+	 */
+	tty_wait_until_sent(tty, 0);
+	down_write(&tty->termios_rwsem);
+	tty_encode_baud_rate(tty, BitRate, BitRate);
+	if (tty->ops->set_termios)
+		tty->ops->set_termios(tty, &old_termios);
+	up_write(&tty->termios_rwsem);
 }
 
 // DEVICE1 ********************************************************************
@@ -561,14 +487,14 @@ static UARTPORT UartPort[INPUTS];
 static UART UartDefault;
 static UART *pUart = &UartDefault;
 
-static struct hrtimer Device1Timer;
+static struct tasklet_hrtimer Device1Timer;
 static ktime_t        Device1Time;
 
 static UBYTE TestMode = 0;
 
 static void UartPortDisable(UBYTE Port)
 {
-	if (Port >= NUM_UART)
+	if (Port >= INPUTS || !d_uart_ldisc_data[Port].tty)
 		return;
 
 	PUARTHigh(Port, INPUT_PORT_BUF);
@@ -576,7 +502,7 @@ static void UartPortDisable(UBYTE Port)
 
 static void UartPortFlush(UBYTE Port)
 {
-	if (Port >= NUM_UART)
+	if (Port >= INPUTS || !d_uart_ldisc_data[Port].tty)
 		return;
 
 	UartFlush(Port);
@@ -584,7 +510,7 @@ static void UartPortFlush(UBYTE Port)
 
 static void UartPortEnable(UBYTE Port)
 {
-	if (Port >= NUM_UART)
+	if (Port >= INPUTS || !d_uart_ldisc_data[Port].tty)
 		return;
 
 	// TODO: well need to do pin mux when I2C is working
@@ -595,7 +521,7 @@ static void UartPortEnable(UBYTE Port)
 
 static UBYTE UartPortSend(UBYTE Port, UBYTE Byte)
 {
-	if (Port >= NUM_UART)
+	if (Port >= INPUTS || !d_uart_ldisc_data[Port].tty)
 		return 1;
 
 	return UartWrite(Port, Byte);
@@ -603,7 +529,7 @@ static UBYTE UartPortSend(UBYTE Port, UBYTE Byte)
 
 static UBYTE UartPortReceive(UBYTE Port, UBYTE *pByte)
 {
-	if (Port >= NUM_UART)
+	if (Port >= INPUTS || !d_uart_ldisc_data[Port].tty)
 		return 0;
 
 	return UartRead(Port, pByte);
@@ -612,7 +538,7 @@ static UBYTE UartPortReceive(UBYTE Port, UBYTE *pByte)
 static UBYTE UartPortReadData(UBYTE Port, UBYTE *pCmd, UBYTE *pData,
 			      UBYTE *pCheck, UBYTE *pFail)
 {
-	if (Port >= NUM_UART)
+	if (Port >= INPUTS || !d_uart_ldisc_data[Port].tty)
 		return 0;
 
 	return UartReadData(Port, pCmd, pData, pCheck, pFail);
@@ -620,7 +546,7 @@ static UBYTE UartPortReadData(UBYTE Port, UBYTE *pCmd, UBYTE *pData,
 
 static void UartPortSetup(UBYTE Port, ULONG BitRate)
 {
-	if (Port >= NUM_UART)
+	if (Port >= INPUTS || !d_uart_ldisc_data[Port].tty)
 		return;
 
 	UartSetup(Port, BitRate);
@@ -1933,19 +1859,6 @@ static int Device1Init(void)
 	pUart = (UART*)pTmp;
 	memset(pUart, 0, sizeof(UART));
 
-	ret = UartInit(UART_1);
-	if (ret < 0)
-		goto err1;
-	ret = UartInit(UART_2);
-	if (ret < 0)
-		goto err2;
-	ret = UartInit(UART_3);
-	if (ret < 0)
-		goto err3;
-	ret = UartInit(UART_4);
-	if (ret < 0)
-		goto err4;
-
 	for (Tmp = 0;Tmp < INPUTS;Tmp++) {
 		UartPort[Tmp]       = UartPortDefault;
 		UartConfigured[Tmp] = 0;
@@ -1967,24 +1880,16 @@ static int Device1Init(void)
 
 	ret = misc_register(&Device1);
 	if (ret)
-		goto err5;
+		goto err1;
 
 	Device1Time = ktime_set(0, UART_TIMER_RESOLUTION * 100000);
-	hrtimer_init(&Device1Timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	Device1Timer.function = Device1TimerInterrupt1;
+	tasklet_hrtimer_init(&Device1Timer, Device1TimerInterrupt1,
+			     CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 
-	hrtimer_start(&Device1Timer, Device1Time, HRTIMER_MODE_REL);
+	tasklet_hrtimer_start(&Device1Timer, Device1Time, HRTIMER_MODE_REL);
 
 	return 0;
 
-err5:
-	UartExit(UART_4);
-err4:
-	UartExit(UART_3);
-err3:
-	UartExit(UART_2);
-err2:
-	UartExit(UART_1);
 err1:
 	for (i = 0; i < NPAGES * PAGE_SIZE; i+= PAGE_SIZE) {
 		ClearPageReserved(virt_to_page(((unsigned long)pTmp) + i));
@@ -2002,14 +1907,9 @@ static void Device1Exit(void)
 	UWORD   *pTmp;
 	int     i;
 
-	hrtimer_cancel(&Device1Timer);
+	tasklet_hrtimer_cancel(&Device1Timer);
 
 	misc_deregister(&Device1);
-
-	UartExit(UART_4);
-	UartExit(UART_3);
-	UartExit(UART_2);
-	UartExit(UART_1);
 
 	for (Tmp = 0; Tmp < INPUTS; Tmp++) {
 		UartPort[Tmp] = UartPortDefault;
@@ -2036,11 +1936,108 @@ static void Device1Exit(void)
 
 // MODULE *********************************************************************
 
+static int d_uart_open(struct tty_struct *tty)
+{
+	struct ktermios old_termios = tty->termios;
+	struct d_uart_ldisc_data *data = NULL;
+	int i;
+
+	for (i = 0; i < INPUTS; i++) {
+		const char *n1 = Device1Lms2012Compat->tty_names[i];
+		const char *n2 = dev_name(tty->dev);
+
+		if (!n1 || !n2)
+			continue;
+		if (!strcmp(n1, n2)) {
+			data = &d_uart_ldisc_data[i];
+			memset(data, 0, sizeof(*data));
+			data->tty = tty;
+			data->port = i;
+			break;
+		}
+	}
+
+	if (!data) {
+		pr_err("%s: Could not find matching tty\n", __func__);
+		return -ENXIO;
+	}
+
+	tty->disc_data = data;
+
+	/* set baud rate and other port settings */
+	down_write(&tty->termios_rwsem);
+	tty->termios.c_iflag &=
+		~(IGNBRK	/* disable ignore break */
+		| BRKINT	/* disable break causes interrupt */
+		| PARMRK	/* disable mark parity errors */
+		| ISTRIP	/* disable clear high bit of input characters */
+		| INLCR		/* disable translate NL to CR */
+		| IGNCR		/* disable ignore CR */
+		| ICRNL		/* disable translate CR to NL */
+		| IXON);	/* disable enable XON/XOFF flow control */
+
+	/* disable postprocess output characters */
+	tty->termios.c_oflag &= ~OPOST;
+
+	tty->termios.c_lflag &=
+		~(ECHO		/* disable echo input characters */
+		| ECHONL	/* disable echo new line */
+		| ICANON	/* disable erase, kill, werase, and rprnt
+				   special characters */
+		| ISIG		/* disable interrupt, quit, and suspend special
+				   characters */
+		| IEXTEN);	/* disable non-POSIX special characters */
+
+	/* 2400 baud, 8bits, no parity, 1 stop */
+	tty->termios.c_cflag = B2400 | CS8 | CREAD | HUPCL | CLOCAL;
+	tty->ops->set_termios(tty, &old_termios);
+	up_write(&tty->termios_rwsem);
+	tty->ops->tiocmset(tty, 0, ~0); /* clear all */
+
+	tty->receive_room = 65536;
+
+	/* flush any existing data in the buffer */
+	if (tty->ldisc->ops->flush_buffer)
+		tty->ldisc->ops->flush_buffer(tty);
+	tty_driver_flush_buffer(tty);
+
+	return 0;
+}
+
+static void d_uart_close(struct tty_struct *tty)
+{
+	struct d_uart_ldisc_data *data = tty->disc_data;
+
+	data->tty = NULL;
+	tty->disc_data = NULL;
+}
+
+static struct tty_ldisc_ops d_uart_ldisc = {
+	.magic			= TTY_LDISC_MAGIC,
+	.name			= "n_d_uart",
+	.open			= d_uart_open,
+	.close			= d_uart_close,
+	.ioctl			= tty_mode_ioctl,
+	.receive_buf		= d_uart_receive_buf,
+	.owner			= THIS_MODULE,
+};
+
 static int d_uart_probe(struct platform_device *pdev)
 {
 	int ret;
 
 	ret = Device1Init();
+
+	/*
+	 * Technically, this should be in module init, but since there is only
+	 * on device, it should be safe to register the line discipline here.
+	 */
+	ret = tty_register_ldisc(N_D_UART, &d_uart_ldisc);
+	if (ret) {
+		pr_err("Could not register d_uart line discipline. (%d)\n", ret);
+		Device1Exit();
+		return ret;
+	}
 
 	pr_info("d_uart registered\n");
 
@@ -2049,6 +2046,7 @@ static int d_uart_probe(struct platform_device *pdev)
 
 static int d_uart_remove(struct platform_device *pdev)
 {
+	tty_unregister_ldisc(N_D_UART);
 	Device1Exit();
 
 	pr_info("d_uart removed\n");
