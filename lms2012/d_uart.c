@@ -145,6 +145,36 @@ enum UartPort {
 	Uart4,
 };
 
+typedef struct {
+	ULONG InfoData;
+	ULONG BitRate;
+	ULONG BitRateMax;
+	UWORD Timer;
+	UWORD WatchDog;
+	UWORD BreakTimer;
+	UBYTE Initialised;
+	UBYTE ChangeMode;
+	UBYTE State;
+	UBYTE OldState;
+	UBYTE SubState;
+	UBYTE Cmd;
+	UBYTE InfoCmd;
+	UBYTE Check;
+	UBYTE Types;
+	UBYTE Views;
+	UBYTE Mode;
+	UBYTE Type;
+	UBYTE DataOk;
+	UBYTE DataErrors;
+	SBYTE Name[TYPE_NAME_LENGTH + 1];
+	UBYTE InLength;
+	UBYTE InPointer;
+	UBYTE OutLength;
+	UBYTE OutPointer;
+	UBYTE InBuffer[UART_BUFFER_SIZE];
+	UBYTE OutBuffer[UART_BUFFER_SIZE];
+} UARTPORT;
+
 #define PUARTFloat(port, pin) \
 	gpiod_direction_input(Device1Lms2012Compat->in_pins[port]->desc[pin])
 
@@ -180,23 +210,20 @@ enum UartPort {
 
 #define UART_RECBUF_SIZE	256
 
-#ifdef DEBUG_D_UART_ERROR
-#define UARTBUFFERSIZE		250
-static char UartBuffer[UARTBUFFERSIZE];
-#endif
-
-static UBYTE UartPortSend(UBYTE Port, UBYTE Byte);
-
 #ifdef DEBUG
 static UWORD ShowTimer[INPUTS];
 #endif
 
 #if defined(HIGHDEBUG) || defined(DEBUG_D_UART_ERROR) || defined(DEBUG) || defined(DEBUG_TRACE_MODE_CHANGE) || defined(DEBUG_UART_WRITE)
 
+#define UARTBUFFERSIZE 250
+static char UartBuffer[UARTBUFFERSIZE];
 #define LOGPOOLSIZE 100000
 static ULONG LogPointer = 0;
 static ULONG LogOutPointer = 0;
 static char LogPool[LOGPOOLSIZE];
+
+static UBYTE UartPortSend(UBYTE Port, UBYTE Byte);
 
 static void UartWrite(char *pString)
 {
@@ -421,38 +448,6 @@ static void Uart1Exit(void)
 }
 
 // UART 2 *********************************************************************
-
-typedef struct {
-	ULONG InfoData;
-	ULONG BitRate;
-	ULONG BitRateMax;
-	UWORD Timer;
-	UWORD WatchDog;
-	UWORD BreakTimer;
-	UBYTE Initialised;
-	UBYTE ChangeMode;
-	UBYTE State;
-	UBYTE OldState;
-	UBYTE SubState;
-	UBYTE Cmd;
-	UBYTE InfoCmd;
-	UBYTE Check;
-	UBYTE Types;
-	UBYTE Views;
-	UBYTE Mode;
-	UBYTE Type;
-	UBYTE DataOk;
-	UBYTE DataErrors;
-	SBYTE Name[TYPE_NAME_LENGTH + 1];
-	UBYTE InLength;
-	UBYTE InPointer;
-	UBYTE OutLength;
-	UBYTE OutPointer;
-	UBYTE InBuffer[UART_BUFFER_SIZE];
-	UBYTE OutBuffer[UART_BUFFER_SIZE];
-} UARTPORT;
-
-static UARTPORT UartPort[INPUTS];
 
 static volatile u32 *Uart2Base;
 static char Uart2Name[20];
@@ -1156,7 +1151,7 @@ static DATA8 Changed[INPUTS][MAX_DEVICE_MODES];
 #define UART_ALLOWABLE_DATA_ERRORS	6
 
 static UBYTE UartConfigured[INPUTS];
-//UARTPORT  UartPort[INPUTS];
+static UARTPORT UartPort[INPUTS];
 
 static UART UartDefault;
 static UART *pUart = &UartDefault;
