@@ -139,10 +139,11 @@ static struct device *Device1Lms2012CompatDev;
 static struct lms2012_compat *Device1Lms2012Compat;
 
 enum UartPort {
-	Uart1,
-	Uart2,
-	Uart3,
-	Uart4,
+	UART_1,
+	UART_2,
+	UART_3,
+	UART_4,
+	NUM_UART
 };
 
 typedef struct {
@@ -225,7 +226,7 @@ static char LogPool[LOGPOOLSIZE];
 
 static UBYTE UartPortSend(UBYTE Port, UBYTE Byte);
 
-static void UartWrite(char *pString)
+static void UartDebug(char *pString)
 {
 	ULONG Tmp;
 
@@ -251,52 +252,52 @@ static void UartWrite(char *pString)
 
 #endif
 
-// UART 1 *********************************************************************
+// UART *********************************************************************
 
-static volatile u32 *Uart1Base;
-static char Uart1Name[20];
+static volatile u32 *UartBase[NUM_UART];
+static char UartName[NUM_UART][20];
 
-static UBYTE Uart1RecBuf[UART_RECBUF_SIZE];
-static UWORD Uart1RecBufIn;
-static UWORD Uart1RecBufOut;
+static UBYTE UartRecBuf[NUM_UART][UART_RECBUF_SIZE];
+static UWORD UartRecBufIn[NUM_UART];
+static UWORD UartRecBufOut[NUM_UART];
 
-static UBYTE Uart1RecMesLng;
-static UBYTE Uart1RecMes[UART_BUFFER_SIZE];
-static UBYTE Uart1RecMesIn;
+static UBYTE UartRecMesLng[NUM_UART];
+static UBYTE UartRecMes[NUM_UART][UART_BUFFER_SIZE];
+static UBYTE UartRecMesIn[NUM_UART];
 
-static irqreturn_t Uart1Interrupt(int irq, void *dev_id)
+static irqreturn_t UartInterrupt(int irq, void *dev_id)
 {
+	UBYTE port = (UBYTE)(ulong)dev_id;
 	UBYTE IntrType;
 
-	IntrType = (UBYTE)Uart1Base[UART_IIR] & 0x0F;
+	IntrType = (UBYTE)UartBase[port][UART_IIR] & 0x0F;
 
 	while (!(IntrType & 1)) {
-		if (IntrType == 2) {
-		} else {
+		if (IntrType != 2) {
 			if (IntrType & 2) {
-				Uart1RecBuf[Uart1RecBufIn] = (UBYTE)Uart1Base[UART_LSR];
+				UartRecBuf[port][UartRecBufIn[port]] = (UBYTE)UartBase[port][UART_LSR];
 			}
-			Uart1RecBuf[Uart1RecBufIn] = (UBYTE)Uart1Base[UART_RHR];
+			UartRecBuf[port][UartRecBufIn[port]] = (UBYTE)UartBase[port][UART_RHR];
 
-			if (++Uart1RecBufIn >= UART_RECBUF_SIZE) {
-				Uart1RecBufIn = 0;
+			if (++UartRecBufIn[port] >= UART_RECBUF_SIZE) {
+				UartRecBufIn[port] = 0;
 			}
 		}
-		IntrType = (UBYTE)Uart1Base[UART_IIR] & 0x0F;
+		IntrType = (UBYTE)UartBase[port][UART_IIR] & 0x0F;
 	}
 
 	return IRQ_HANDLED;
 }
 
-static UBYTE Uart1Read(UBYTE *pByte)
+static UBYTE UartRead(UBYTE port, UBYTE *pByte)
 {
 	UBYTE   Result = 0;
 
-	if (Uart1RecBufIn != Uart1RecBufOut) {
-		*pByte = Uart1RecBuf[Uart1RecBufOut];
+	if (UartRecBufIn[port] != UartRecBufOut[port]) {
+		*pByte = UartRecBuf[port][UartRecBufOut[port]];
 
-		if (++Uart1RecBufOut >= UART_RECBUF_SIZE) {
-			Uart1RecBufOut = 0;
+		if (++UartRecBufOut[port] >= UART_RECBUF_SIZE) {
+			UartRecBufOut[port] = 0;
 		}
 		Result   = 1;
 	}
@@ -304,15 +305,15 @@ static UBYTE Uart1Read(UBYTE *pByte)
 	return Result;
 }
 
-static void Uart1Flush(void)
+static void UartFlush(int port)
 {
-	Uart1Base[UART_FCR]  = 0x07;
-	Uart1RecBufIn        = 0;
-	Uart1RecBufOut       = 0;
-	Uart1RecMesIn        = 0;
+	UartBase[port][UART_FCR] = 0x07;
+	UartRecBufIn[port] = 0;
+	UartRecBufOut[port] = 0;
+	UartRecMesIn[port] = 0;
 }
 
-static UBYTE Uart1ReadData(UBYTE *pCmd, UBYTE *pData, UBYTE *pCheck, UBYTE *pFail)
+static UBYTE UartReadData(UBYTE port, UBYTE *pCmd, UBYTE *pData, UBYTE *pCheck, UBYTE *pFail)
 {
 	UBYTE   Byte;
 	UBYTE   Length;
@@ -323,36 +324,36 @@ static UBYTE Uart1ReadData(UBYTE *pCmd, UBYTE *pData, UBYTE *pCheck, UBYTE *pFai
 	Collect  = 1;
 
 	while (Collect) {
-		if (Uart1Read(&Byte)) {
-			if (Uart1RecMesIn == 0) { // Wait for data message start
+		if (UartRead(port, &Byte)) {
+			if (UartRecMesIn[port] == 0) { // Wait for data message start
 
 				if (GET_MESSAGE_TYPE(Byte) == MESSAGE_DATA) {
 
-					Uart1RecMesLng = GET_MESSAGE_LENGTH(Byte) + 2;
+					UartRecMesLng[port] = GET_MESSAGE_LENGTH(Byte) + 2;
 
-					if (Uart1RecMesLng <= UART_BUFFER_SIZE) { // Valid length
+					if (UartRecMesLng[port] <= UART_BUFFER_SIZE) { // Valid length
 
-						Uart1RecMes[Uart1RecMesIn] = Byte;
-						Uart1RecMesIn++;
+						UartRecMes[port][UartRecMesIn[port]] = Byte;
+						UartRecMesIn[port]++;
 					}
 				}
 			} else {
-				Uart1RecMes[Uart1RecMesIn] = Byte;
+				UartRecMes[port][UartRecMesIn[port]] = Byte;
 
-				if (++Uart1RecMesIn >= Uart1RecMesLng) { // Message ready
+				if (++UartRecMesIn[port] >= UartRecMesLng[port]) { // Message ready
 
-					*pCmd   = Uart1RecMes[0];
+					*pCmd   = UartRecMes[port][0];
 					*pFail  ^=  *pCmd;
 
-					while (Length < (Uart1RecMesLng - 2)) {
-						pData[Length]  = Uart1RecMes[Length + 1];
+					while (Length < (UartRecMesLng[port] - 2)) {
+						pData[Length]  = UartRecMes[port][Length + 1];
 						*pFail       ^=  pData[Length];
 						Length++;
 					}
-					*pCheck = Uart1RecMes[Length + 1];
+					*pCheck = UartRecMes[port][Length + 1];
 					*pFail  ^=  *pCheck;
 
-					Uart1RecMesIn = 0;
+					UartRecMesIn[port] = 0;
 					Collect = 0;
 				}
 			}
@@ -364,682 +365,86 @@ static UBYTE Uart1ReadData(UBYTE *pCmd, UBYTE *pData, UBYTE *pCheck, UBYTE *pFai
 	return Length;
 }
 
-static UBYTE Uart1Write(UBYTE Byte)
+static UBYTE UartWrite(UBYTE port, UBYTE Byte)
 {
-	UBYTE Result = 0;
-
-	if (Uart1Base[UART_LSR] & 0x20) {
-		Uart1Base[UART_THR]  = Byte;
-		Result               = 1;
+	if (UartBase[port][UART_LSR] & 0x20) {
+		UartBase[port][UART_THR] = Byte;
+		return 1;
 	}
 
-	return Result;
+	return 0;
 }
 
-static void Uart1Setup(ULONG BitRate)
+static void UartSetup(UBYTE port, ULONG BitRate)
 {
 	ULONG Divisor;
 
-	Divisor = Device1Lms2012Compat->uart_clock_freq[Uart1] / (BitRate * (ULONG)16);
+	Divisor = Device1Lms2012Compat->uart_clock_freq[port] / (BitRate * (ULONG)16);
 
-	Uart1Base[UART_LCR] = 0xBF;
-	Uart1Base[UART_EFR] |= 0x10;    //Enables access to MCR
+	UartBase[port][UART_LCR] = 0xBF;
+	UartBase[port][UART_EFR] |= 0x10;    //Enables access to MCR
 
-	Uart1Base[UART_LCR] = 0x80;
-	Uart1Base[UART_MCR] |= 0x40;    //Enables access to TCR and TLR
+	UartBase[port][UART_LCR] = 0x80;
+	UartBase[port][UART_MCR] |= 0x40;    //Enables access to TCR and TLR
 
-	Uart1Base[UART_LCR] = 0xBF;
-	Uart1Base[UART_SCR] |= 0x80;    //Enable granularity of 1 for trigger RX level
-	Uart1Base[UART_SCR] &= ~(0x40); //Disable granularity of 1 for trigger TX level
-	Uart1Base[UART_TLR] = 0x0;
+	UartBase[port][UART_LCR] = 0xBF;
+	UartBase[port][UART_SCR] |= 0x80;    //Enable granularity of 1 for trigger RX level
+	UartBase[port][UART_SCR] &= ~(0x40); //Disable granularity of 1 for trigger TX level
+	UartBase[port][UART_TLR] = 0x0;
 
-	Uart1Base[UART_SCR] |= 0x1; //DMAMODE is set with SCR[2:1]
-	Uart1Base[UART_SCR] &= ~(0x6);  //no DMA
+	UartBase[port][UART_SCR] |= 0x1; //DMAMODE is set with SCR[2:1]
+	UartBase[port][UART_SCR] &= ~(0x6);  //no DMA
 
-	Uart1Base[UART_LCR] = 0x7F;
-	Uart1Base[UART_IER] &= ~(0x10); //Disables sleep mode
+	UartBase[port][UART_LCR] = 0x7F;
+	UartBase[port][UART_IER] &= ~(0x10); //Disables sleep mode
 
-	Uart1Base[UART_LCR] = 0xBF;
+	UartBase[port][UART_LCR] = 0xBF;
 
-	Uart1Base[UART_MDR1] |= 0x7;    //Disable uart
-	Uart1Base[UART_DLL] = 0x0;
-	Uart1Base[UART_DLH] = 0x0;
-	//Uart1Base[UART_MDR1] &= ~(0x7);   //uart 16x mode
+	UartBase[port][UART_MDR1] |= 0x7;    //Disable uart
+	UartBase[port][UART_DLL] = 0x0;
+	UartBase[port][UART_DLH] = 0x0;
+	//UartBase[port][UART_MDR1] &= ~(0x7);   //uart 16x mode
 
-	Uart1Base[UART_LCR] = 0x80;
-	Uart1Base[UART_FCR] = (1 << 6) | 0x7;
+	UartBase[port][UART_LCR] = 0x80;
+	UartBase[port][UART_FCR] = (1 << 6) | 0x7;
 
-	Uart1Base[UART_LCR] = 0xBF;
+	UartBase[port][UART_LCR] = 0xBF;
 
-	//Uart1Base[UART_MDR1] |= 0x7;  //Disable uart
-	Uart1Base[UART_DLL] = Divisor & 0xFF;
-	Uart1Base[UART_DLH] = (Divisor & 0x3F00) >> 8;
-	Uart1Base[UART_MDR1] &= ~(0x7); //uart 16x mode
+	//UartBase[port][UART_MDR1] |= 0x7;  //Disable uart
+	UartBase[port][UART_DLL] = Divisor & 0xFF;
+	UartBase[port][UART_DLH] = (Divisor & 0x3F00) >> 8;
+	UartBase[port][UART_MDR1] &= ~(0x7); //uart 16x mode
 
-	Uart1Base[UART_LCR] = 0x3;
-	Uart1Base[UART_IER] = 0x1;
+	UartBase[port][UART_LCR] = 0x3;
+	UartBase[port][UART_IER] = 0x1;
 }
 
-static int Uart1Init(void)
+static int UartInit(UBYTE port)
 {
 	int timeout = 10000;
 	int ret;
 
-	snprintf(Uart1Name, 20, "%s.port%d", DEVICE1_NAME, Uart1 + 1);
-	Uart1Base = Device1Lms2012Compat->uart_mem[Uart1];
+	snprintf(UartName[port], 20, "%s.port%d", DEVICE1_NAME, port + 1);
+	UartBase[port] = Device1Lms2012Compat->uart_mem[port];
 
-	Uart1Base[UART_SYSC] |= 0x2;
-	while(!(Uart1Base[UART_SYSS] & 0x1)) {
+	UartBase[port][UART_SYSC] |= 0x2;
+	while(!(UartBase[port][UART_SYSS] & 0x1)) {
 		if (!timeout--)
 			return -ETIMEDOUT;
 		udelay(1);
 	}
 
-	ret = request_irq(Device1Lms2012Compat->uart_irq[Uart1], &Uart1Interrupt,
-			  IRQF_SHARED, Uart1Name, &Uart1Name);
+	ret = request_irq(Device1Lms2012Compat->uart_irq[port],
+			  &UartInterrupt, IRQF_SHARED, UartName[port],
+			  (void *)(ulong)port);
 
 	return ret;
 }
 
-static void Uart1Exit(void)
+static void UartExit(UBYTE port)
 {
-	Uart1Base[UART_IER] = 0x00;
-	free_irq(Device1Lms2012Compat->uart_irq[Uart1], Uart1Name);
-}
-
-// UART 2 *********************************************************************
-
-static volatile u32 *Uart2Base;
-static char Uart2Name[20];
-
-static UBYTE Uart2RecBuf[UART_RECBUF_SIZE];
-static UWORD Uart2RecBufIn;
-static UWORD Uart2RecBufOut;
-
-static UBYTE Uart2RecMesLng;
-static UBYTE Uart2RecMes[UART_BUFFER_SIZE];
-static UBYTE Uart2RecMesIn;
-
-static irqreturn_t Uart2Interrupt(int irq, void *dev_id)
-{
-	UBYTE IntrType;
-
-	IntrType = (UBYTE)Uart2Base[UART_IIR] & 0x0F;
-
-	while (!(IntrType & 1)) {
-		if (IntrType == 2) {
-		} else {
-			if (IntrType & 2) {
-				Uart2RecBuf[Uart2RecBufIn] = (UBYTE)Uart2Base[UART_LSR];
-			}
-			Uart2RecBuf[Uart2RecBufIn] = (UBYTE)Uart2Base[UART_RHR];
-
-			if (++Uart2RecBufIn >= UART_RECBUF_SIZE) {
-				Uart2RecBufIn = 0;
-			}
-		}
-		IntrType = (UBYTE)Uart2Base[UART_IIR] & 0x0F;
-	}
-
-	return IRQ_HANDLED;
-}
-
-static UBYTE Uart2Read(UBYTE *pByte)
-{
-	UBYTE Result = 0;
-
-	if (Uart2RecBufIn != Uart2RecBufOut) {
-		*pByte = Uart2RecBuf[Uart2RecBufOut];
-
-		if (++Uart2RecBufOut >= UART_RECBUF_SIZE) {
-			Uart2RecBufOut = 0;
-		}
-		Result = 1;
-	}
-
-	return Result;
-}
-
-static void Uart2Flush(void)
-{
-	Uart2Base[UART_FCR] |= 0x06;
-	Uart2RecBufIn        = 0;
-	Uart2RecBufOut       = 0;
-	Uart2RecMesIn        = 0;
-}
-
-static UBYTE Uart2ReadData(UBYTE *pCmd, UBYTE *pData, UBYTE *pCheck, UBYTE *pFail)
-{
-	UBYTE   Byte;
-	UBYTE   Length;
-	UBYTE   Collect;
-
-	Length   = 0;
-	*pFail   = 0xFF;
-	Collect  = 1;
-
-	while (Collect) {
-
-		if (Uart2Read(&Byte)) {
-			if (Uart2RecMesIn == 0) { // Wait for data message start
-
-				if (GET_MESSAGE_TYPE(Byte) == MESSAGE_DATA) {
-
-					Uart2RecMesLng = GET_MESSAGE_LENGTH(Byte) + 2;
-
-					if (Uart2RecMesLng <= UART_BUFFER_SIZE) { // Valid length
-
-						Uart2RecMes[Uart2RecMesIn] = Byte;
-						Uart2RecMesIn++;
-					}
-				}
-			} else {
-				Uart2RecMes[Uart2RecMesIn] = Byte;
-
-				if (++Uart2RecMesIn >= Uart2RecMesLng) { // Message ready
-
-					*pCmd   = Uart2RecMes[0];
-					*pFail  ^=  *pCmd;
-
-					while (Length < (Uart2RecMesLng - 2)) {
-						pData[Length]  = Uart2RecMes[Length + 1];
-						*pFail       ^=  pData[Length];
-						Length++;
-					}
-					*pCheck = Uart2RecMes[Length + 1];
-					*pFail  ^=  *pCheck;
-
-					Uart2RecMesIn = 0;
-					Collect       = 0;
-				}
-			}
-		} else {
-			Collect = 0;
-		}
-	}
-
-	return Length;
-}
-
-static UBYTE Uart2Write(UBYTE Byte)
-{
-	UBYTE Result = 0;
-
-	if (Uart2Base[UART_LSR] & 0x20) {
-		Uart2Base[UART_THR]  = Byte;
-		Result               = 1;
-	}
-
-	return Result;
-}
-
-static void Uart2Setup(ULONG BitRate)
-{
-	ULONG Divisor;
-
-	Divisor = Device1Lms2012Compat->uart_clock_freq[Uart2] / (BitRate * (ULONG)16);
-
-	Uart2Base[UART_LCR] = 0xBF;
-	Uart2Base[UART_EFR] |= 0x10;    //Enables access to MCR
-
-	Uart2Base[UART_LCR] = 0x80;
-	Uart2Base[UART_MCR] |= 0x40;    //Enables access to TCR and TLR
-
-	Uart2Base[UART_LCR] = 0xBF;
-	Uart2Base[UART_SCR] |= 0x80;    //Enable granularity of 1 for trigger RX level
-	Uart2Base[UART_SCR] &= ~(0x40); //Disable granularity of 1 for trigger TX level
-	Uart2Base[UART_TLR] = 0x0;
-
-	Uart2Base[UART_SCR] |= 0x1; //DMAMODE is set with SCR[2:1]
-	Uart2Base[UART_SCR] &= ~(0x6);  //no DMA
-
-	Uart2Base[UART_LCR] = 0x7F;
-	Uart2Base[UART_IER] &= ~(0x10); //Disables sleep mode
-
-	Uart2Base[UART_LCR] = 0xBF;
-
-	Uart2Base[UART_MDR1] |= 0x7;    //Disable uart
-	Uart2Base[UART_DLL] = 0x0;
-	Uart2Base[UART_DLH] = 0x0;
-	//Uart2Base[UART_MDR1] &= ~(0x7);   //uart 16x mode
-
-	Uart2Base[UART_LCR] = 0x80;
-	Uart2Base[UART_FCR] = (1 << 6) | 0x7;
-
-	Uart2Base[UART_LCR] = 0xBF;
-
-	//Uart2Base[UART_MDR1] |= 0x7;  //Disable uart
-	Uart2Base[UART_DLL] = Divisor & 0xFF;
-	Uart2Base[UART_DLH] = (Divisor & 0x3F00) >> 8;
-	Uart2Base[UART_MDR1] &= ~(0x7); //uart 16x mode
-
-	Uart2Base[UART_LCR] = 0x3;
-	Uart2Base[UART_IER] = 0x1;
-}
-
-static int Uart2Init(void)
-{
-	int timeout = 10000;
-	int ret;
-
-	snprintf(Uart2Name, 20, "%s.port%d", DEVICE1_NAME, Uart2 + 1);
-	Uart2Base = Device1Lms2012Compat->uart_mem[Uart2];
-
-	Uart2Base[UART_SYSC] |= 0x2;
-	while(!(Uart2Base[UART_SYSS] & 0x1)) {
-		if (!timeout--)
-			return -ETIMEDOUT;
-		udelay(1);
-	}
-
-	ret = request_irq(Device1Lms2012Compat->uart_irq[Uart2], &Uart2Interrupt,
-			  IRQF_SHARED, Uart2Name, &Uart2Name);
-
-	return ret;
-}
-
-static void Uart2Exit(void)
-{
-	Uart2Base[UART_IER] = 0x00;
-
-	free_irq(Device1Lms2012Compat->uart_irq[Uart2], Uart2Name);
-}
-
-//Uart 3 **************************************************************************************
-
-static volatile u32 *Uart3Base;
-static char Uart3Name[20];
-
-static UBYTE Uart3RecBuf[UART_RECBUF_SIZE];
-static UWORD Uart3RecBufIn;
-static UWORD Uart3RecBufOut;
-
-static UBYTE Uart3RecMesLng;
-static UBYTE Uart3RecMes[UART_BUFFER_SIZE];
-static UBYTE Uart3RecMesIn;
-
-static irqreturn_t Uart3Interrupt(int irq, void *dev_id)
-{
-	UBYTE IntrType;
-
-	IntrType = (UBYTE)Uart3Base[UART_IIR] & 0x0F;
-
-	while (!(IntrType & 1)) {
-		if (IntrType == 2) {
-		} else {
-			if (IntrType & 2) {
-				Uart3RecBuf[Uart3RecBufIn] = (UBYTE)Uart3Base[UART_LSR];
-			}
-			Uart3RecBuf[Uart3RecBufIn] = (UBYTE)Uart3Base[UART_RHR];
-
-			if (++Uart3RecBufIn >= UART_RECBUF_SIZE) {
-				Uart3RecBufIn = 0;
-			}
-		}
-		IntrType = (UBYTE)Uart3Base[UART_IIR] & 0x0F;
-	}
-
-	return IRQ_HANDLED;
-}
-
-static UBYTE Uart3Read(UBYTE *pByte)
-{
-	UBYTE Result = 0;
-
-	if (Uart3RecBufIn != Uart3RecBufOut) {
-		*pByte = Uart3RecBuf[Uart3RecBufOut];
-
-		if (++Uart3RecBufOut >= UART_RECBUF_SIZE) {
-			Uart3RecBufOut = 0;
-		}
-		Result   = 1;
-	}
-
-	return Result;
-}
-
-static void Uart3Flush(void)
-{
-	Uart3Base[UART_FCR]  = 0x07;
-	Uart3RecBufIn        = 0;
-	Uart3RecBufOut       = 0;
-	Uart3RecMesIn        = 0;
-}
-
-static UBYTE Uart3ReadData(UBYTE *pCmd, UBYTE *pData, UBYTE *pCheck, UBYTE *pFail)
-{
-	UBYTE   Byte;
-	UBYTE   Length;
-	UBYTE   Collect;
-
-	Length   = 0;
-	*pFail   = 0xFF;
-	Collect  = 1;
-
-	while (Collect) {
-		if (Uart3Read(&Byte)) {
-			if (Uart3RecMesIn == 0) { // Wait for data message start
-
-				if (GET_MESSAGE_TYPE(Byte) == MESSAGE_DATA) {
-
-					Uart3RecMesLng = GET_MESSAGE_LENGTH(Byte) + 2;
-
-					if (Uart3RecMesLng <= UART_BUFFER_SIZE) { // Valid length
-
-						Uart3RecMes[Uart3RecMesIn] = Byte;
-						Uart3RecMesIn++;
-					}
-				}
-			} else {
-				Uart3RecMes[Uart3RecMesIn] = Byte;
-
-				if (++Uart3RecMesIn >= Uart3RecMesLng) { // Message ready
-
-					*pCmd   = Uart3RecMes[0];
-					*pFail  ^=  *pCmd;
-
-					while (Length < (Uart3RecMesLng - 2)) {
-						pData[Length]  = Uart3RecMes[Length + 1];
-						*pFail       ^=  pData[Length];
-						Length++;
-					}
-					*pCheck = Uart3RecMes[Length + 1];
-					*pFail  ^=  *pCheck;
-
-					Uart3RecMesIn = 0;
-					Collect = 0;
-				}
-			}
-		} else {
-			Collect = 0;
-		}
-	}
-
-	return Length;
-}
-
-static UBYTE Uart3Write(UBYTE Byte)
-{
-	UBYTE Result = 0;
-
-	if (Uart3Base[UART_LSR] & 0x20) {
-		Uart3Base[UART_THR]  = Byte;
-		Result               = 1;
-	}
-
-	return Result;
-}
-
-static void Uart3Setup(ULONG BitRate)
-{
-	ULONG Divisor;
-
-	Divisor = Device1Lms2012Compat->uart_clock_freq[Uart3] / (BitRate * (ULONG)16);
-
-	Uart3Base[UART_LCR] = 0xBF;
-	Uart3Base[UART_EFR] |= 0x10;    //Enables access to MCR
-
-	Uart3Base[UART_LCR] = 0x80;
-	Uart3Base[UART_MCR] |= 0x40;    //Enables access to TCR and TLR
-
-	Uart3Base[UART_LCR] = 0xBF;
-	Uart3Base[UART_SCR] |= 0x80;    //Enable granularity of 1 for trigger RX level
-	Uart3Base[UART_SCR] &= ~(0x40); //Disable granularity of 1 for trigger TX level
-	Uart3Base[UART_TLR] = 0x0;
-
-	Uart3Base[UART_SCR] |= 0x1; //DMAMODE is set with SCR[2:1]
-	Uart3Base[UART_SCR] &= ~(0x6);  //no DMA
-
-	Uart3Base[UART_LCR] = 0x7F;
-	Uart3Base[UART_IER] &= ~(0x10); //Disables sleep mode
-
-	Uart3Base[UART_LCR] = 0xBF;
-
-	Uart3Base[UART_MDR1] |= 0x7;    //Disable uart
-	Uart3Base[UART_DLL] = 0x0;
-	Uart3Base[UART_DLH] = 0x0;
-	//Uart3Base[UART_MDR1] &= ~(0x7);   //uart 16x mode
-
-	Uart3Base[UART_LCR] = 0x80;
-	Uart3Base[UART_FCR] = (1 << 6) | 0x7;
-
-	Uart3Base[UART_LCR] = 0xBF;
-
-	//Uart3Base[UART_MDR1] |= 0x7;  //Disable uart
-	Uart3Base[UART_DLL] = Divisor & 0xFF;
-	Uart3Base[UART_DLH] = (Divisor & 0x3F00) >> 8;
-	Uart3Base[UART_MDR1] &= ~(0x7); //uart 16x mode
-
-	Uart3Base[UART_LCR] = 0x3;
-	Uart3Base[UART_IER] = 0x1;
-}
-
-static int Uart3Init(void)
-{
-	int timeout = 10000;
-	int ret;
-
-	snprintf(Uart3Name, 20, "%s.port%d", DEVICE1_NAME, Uart3 + 1);
-	Uart3Base = Device1Lms2012Compat->uart_mem[Uart3];
-
-	Uart3Base[UART_SYSC] |= 0x2;
-	while(!(Uart3Base[UART_SYSS] & 0x1)) {
-		if (!timeout--)
-			return -ETIMEDOUT;
-		udelay(1);
-	}
-
-	ret = request_irq(Device1Lms2012Compat->uart_irq[Uart3], &Uart3Interrupt,
-			  IRQF_SHARED, Uart3Name, &Uart3Name);
-
-	return ret;
-}
-
-static void Uart3Exit(void)
-{
-	Uart3Base[UART_IER] = 0x00;
-
-	free_irq(Device1Lms2012Compat->uart_irq[Uart3], Uart3Name);
-}
-
-// UART 4 *********************************************************************
-
-static volatile u32 *Uart4Base;
-static char Uart4Name[20];
-
-static UBYTE Uart4RecBuf[UART_RECBUF_SIZE];
-static UWORD Uart4RecBufIn;
-static UWORD Uart4RecBufOut;
-
-static UBYTE Uart4RecMesLng;
-static UBYTE Uart4RecMes[UART_BUFFER_SIZE];
-static UBYTE Uart4RecMesIn;
-
-static irqreturn_t Uart4Interrupt(int irq, void *dev_id)
-{
-	UBYTE IntrType;
-
-	IntrType = (UBYTE)Uart4Base[UART_IIR] & 0x0F;
-
-	while (!(IntrType & 1)) {
-		if (IntrType == 2) {
-		} else {
-			if (IntrType & 2) {
-				Uart4RecBuf[Uart4RecBufIn] = (UBYTE)Uart4Base[UART_LSR];
-			}
-			Uart4RecBuf[Uart4RecBufIn] = (UBYTE)Uart4Base[UART_RHR];
-
-			if (++Uart4RecBufIn >= UART_RECBUF_SIZE) {
-				Uart4RecBufIn = 0;
-			}
-		}
-		IntrType = (UBYTE)Uart4Base[UART_IIR] & 0x0F;
-	}
-
-	return IRQ_HANDLED;
-
-}
-
-static UBYTE Uart4Read(UBYTE *pByte)
-{
-	UBYTE Result = 0;
-
-	if (Uart4RecBufIn != Uart4RecBufOut) {
-		*pByte = Uart4RecBuf[Uart4RecBufOut];
-
-		if (++Uart4RecBufOut >= UART_RECBUF_SIZE) {
-			Uart4RecBufOut = 0;
-		}
-		Result   = 1;
-	}
-
-	return Result;
-}
-
-static void Uart4Flush(void)
-{
-	Uart4Base[UART_FCR]  = 0x07;
-	Uart4RecBufIn        = 0;
-	Uart4RecBufOut       = 0;
-	Uart4RecMesIn        = 0;
-}
-
-static UBYTE Uart4ReadData(UBYTE *pCmd, UBYTE *pData, UBYTE *pCheck, UBYTE *pFail)
-{
-	UBYTE   Byte;
-	UBYTE   Length;
-	UBYTE   Collect;
-
-	Length   = 0;
-	*pFail   = 0xFF;
-	Collect  = 1;
-
-	while (Collect) {
-
-		if (Uart4Read(&Byte)) {
-			if (Uart4RecMesIn == 0) { // Wait for data message start
-
-				if (GET_MESSAGE_TYPE(Byte) == MESSAGE_DATA) {
-
-					Uart4RecMesLng = GET_MESSAGE_LENGTH(Byte) + 2;
-
-					if (Uart4RecMesLng <= UART_BUFFER_SIZE) { // Valid length
-
-						Uart4RecMes[Uart4RecMesIn] = Byte;
-						Uart4RecMesIn++;
-					}
-				}
-			} else {
-				Uart4RecMes[Uart4RecMesIn] = Byte;
-
-				if (++Uart4RecMesIn >= Uart4RecMesLng) { // Message ready
-
-					*pCmd   = Uart4RecMes[0];
-					*pFail  ^=  *pCmd;
-
-					while (Length < (Uart4RecMesLng - 2)) {
-						pData[Length]  = Uart4RecMes[Length + 1];
-						*pFail       ^=  pData[Length];
-						Length++;
-					}
-					*pCheck = Uart4RecMes[Length + 1];
-					*pFail  ^=  *pCheck;
-
-					Uart4RecMesIn = 0;
-					Collect       = 0;
-				}
-			}
-		} else {
-			Collect = 0;
-		}
-	}
-
-	return Length;
-}
-
-static UBYTE Uart4Write(UBYTE Byte)
-{
-	UBYTE   Result = 0;
-
-	if (Uart4Base[UART_LSR] & 0x20) {
-		Uart4Base[UART_THR]  = Byte;
-		Result               = 1;
-	}
-
-	return Result;
-}
-
-static void Uart4Setup(ULONG BitRate)
-{
-	ULONG Divisor;
-
-	Divisor = Device1Lms2012Compat->uart_clock_freq[Uart4] / (BitRate * (ULONG)16);
-
-	Uart4Base[UART_LCR] = 0xBF;
-	Uart4Base[UART_EFR] |= 0x10;    //Enables access to MCR
-
-	Uart4Base[UART_LCR] = 0x80;
-	Uart4Base[UART_MCR] |= 0x40;    //Enables access to TCR and TLR
-
-	Uart4Base[UART_LCR] = 0xBF;
-	Uart4Base[UART_SCR] |= 0x80;    //Enable granularity of 1 for trigger RX level
-	Uart4Base[UART_SCR] &= ~(0x40); //Disable granularity of 1 for trigger TX level
-	Uart4Base[UART_TLR] = 0x0;
-
-	Uart4Base[UART_SCR] |= 0x1; //DMAMODE is set with SCR[2:1]
-	Uart4Base[UART_SCR] &= ~(0x6);  //no DMA
-
-	Uart4Base[UART_LCR] = 0x7F;
-	Uart4Base[UART_IER] &= ~(0x10); //Disables sleep mode
-
-	Uart4Base[UART_LCR] = 0xBF;
-
-	Uart4Base[UART_MDR1] |= 0x7;    //Disable uart
-	Uart4Base[UART_DLL] = 0x0;
-	Uart4Base[UART_DLH] = 0x0;
-	//Uart4Base[UART_MDR1] &= ~(0x7);   //uart 16x mode
-
-	Uart4Base[UART_LCR] = 0x80;
-	Uart4Base[UART_FCR] = (1 << 6) | 0x7;
-
-	Uart4Base[UART_LCR] = 0xBF;
-
-	//Uart4Base[UART_MDR1] |= 0x7;  //Disable uart
-	Uart4Base[UART_DLL] = Divisor & 0xFF;
-	Uart4Base[UART_DLH] = (Divisor & 0x3F00) >> 8;
-	Uart4Base[UART_MDR1] &= ~(0x7); //uart 16x mode
-
-	Uart4Base[UART_LCR] = 0x3;
-	Uart4Base[UART_IER] = 0x1;
-
-}
-
-static int Uart4Init(void)
-{
-	int timeout = 10000;
-	int ret;
-
-	snprintf(Uart4Name, 20, "%s.port%d", DEVICE1_NAME, Uart4 + 1);
-	Uart4Base = Device1Lms2012Compat->uart_mem[Uart4];
-
-	Uart4Base[UART_SYSC] |= 0x2;
-	while(!(Uart4Base[UART_SYSS] & 0x1)) {
-		if (!timeout--)
-			return -ETIMEDOUT;
-		udelay(1);
-	}
-
-	ret = request_irq(Device1Lms2012Compat->uart_irq[Uart4], &Uart4Interrupt,
-			  IRQF_SHARED, Uart4Name, &Uart4Name);
-
-	return ret;
-}
-
-static void Uart4Exit(void)
-{
-	Uart4Base[UART_IER] = 0x00;
-
-	free_irq(Device1Lms2012Compat->uart_irq[Uart4], Uart4Name);
+	UartBase[port][UART_IER] = 0x00;
+	free_irq(Device1Lms2012Compat->uart_irq[port], (void *)(ulong)port);
 }
 
 // DEVICE1 ********************************************************************
@@ -1163,164 +568,62 @@ static UBYTE TestMode = 0;
 
 static void UartPortDisable(UBYTE Port)
 {
-	switch (Port) {
-	case Uart1:
-		break;
-
-	case Uart2:
-		break;
-
-	case Uart3:
-		break;
-
-	case Uart4:
-		break;
-	}
+	if (Port >= NUM_UART)
+		return;
 
 	PUARTHigh(Port, INPUT_PORT_BUF);
 }
 
 static void UartPortFlush(UBYTE Port)
 {
-	switch (Port) {
-	case Uart1:
-		Uart1Flush();
-		break;
+	if (Port >= NUM_UART)
+		return;
 
-	case Uart2:
-		Uart2Flush();
-		break;
-
-	case Uart3:
-		Uart3Flush();
-		break;
-
-	case Uart4:
-		Uart4Flush();
-		break;
-	}
+	UartFlush(Port);
 }
 
 static void UartPortEnable(UBYTE Port)
 {
+	if (Port >= NUM_UART)
+		return;
+
 	// TODO: well need to do pin mux when I2C is working
 	// SetGpio(InputUartPin[Port][INPUT_UART_TXD].Pin);
 	PUARTLow(Port, INPUT_PORT_BUF);
-
-	switch (Port) {
-	case Uart1:
-		Uart1Flush();
-		break;
-
-	case Uart2:
-		Uart2Flush();
-		break;
-
-	case Uart3:
-		Uart3Flush();
-		break;
-
-	case Uart4:
-		Uart4Flush();
-		break;
-	}
+	UartFlush(Port);
 }
 
 static UBYTE UartPortSend(UBYTE Port, UBYTE Byte)
 {
-	UBYTE Result = 1;
+	if (Port >= NUM_UART)
+		return 1;
 
-	switch (Port) {
-	case Uart1:
-		Result = Uart1Write(Byte);
-		break;
-
-	case Uart2:
-		Result = Uart2Write(Byte);
-		break;
-
-	case Uart3:
-		Result = Uart3Write(Byte);
-		break;
-
-	case Uart4:
-		Result = Uart4Write(Byte);
-		break;
-	}
-
-	return Result;
+	return UartWrite(Port, Byte);
 }
 
 static UBYTE UartPortReceive(UBYTE Port, UBYTE *pByte)
 {
-	UBYTE Result = 0;
+	if (Port >= NUM_UART)
+		return 0;
 
-	switch (Port) {
-	case Uart1:
-		Result = Uart1Read(pByte);
-		break;
-
-	case Uart2:
-		Result = Uart2Read(pByte);
-		break;
-
-	case Uart3:
-		Result = Uart3Read(pByte);
-		break;
-
-	case Uart4:
-		Result = Uart4Read(pByte);
-		break;
-	}
-
-	return Result;
+	return UartRead(Port, pByte);
 }
 
 static UBYTE UartPortReadData(UBYTE Port, UBYTE *pCmd, UBYTE *pData,
 			      UBYTE *pCheck, UBYTE *pFail)
 {
-	UBYTE Result = 0;
+	if (Port >= NUM_UART)
+		return 0;
 
-	switch (Port) {
-	case Uart1:
-		Result = Uart1ReadData(pCmd, pData, pCheck, pFail);
-		break;
-
-	case Uart2:
-		Result = Uart2ReadData(pCmd, pData, pCheck, pFail);
-		break;
-
-	case Uart3:
-		Result = Uart3ReadData(pCmd, pData, pCheck, pFail);
-		break;
-
-	case Uart4:
-		Result = Uart4ReadData(pCmd, pData, pCheck, pFail);
-		break;
-	}
-
-	return Result;
+	return UartReadData(Port, pCmd, pData, pCheck, pFail);
 }
 
 static void UartPortSetup(UBYTE Port, ULONG BitRate)
 {
-	switch (Port) {
-	case Uart1:
-		Uart1Setup(BitRate);
-		break;
+	if (Port >= NUM_UART)
+		return;
 
-	case Uart2:
-		Uart2Setup(BitRate);
-		break;
-
-	case Uart3:
-		Uart3Setup(BitRate);
-		break;
-
-	case Uart4:
-		Uart4Setup(BitRate);
-		break;
-	}
+	UartSetup(Port, BitRate);
 }
 
 static UBYTE WriteRequest[INPUTS];
@@ -1350,7 +653,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 
 #ifdef DEBUG_D_UART_ERROR
           snprintf(UartBuffer, UARTBUFFERSIZE, "    %d BREAK\n", Port);
-          UartWrite(UartBuffer);
+          UartDebug(UartBuffer);
 #endif
 
           UartPortDisable(Port);
@@ -1444,15 +747,15 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
                 UartPort[Port].InfoData |= INFODATA_CMD_TYPE;
 #ifdef HIGHDEBUG
                 snprintf(UartBuffer, UARTBUFFERSIZE, "    %d TYPE   = %-3u\n", Port, (UWORD)UartPort[Port].Type & 0xFF);
-                UartWrite(UartBuffer);
+                UartDebug(UartBuffer);
 #endif
                 UartPort[Port].State     = UART_MESSAGE_START;
               } else {
 #ifdef DEBUG_D_UART_ERROR
 //                snprintf(UartBuffer, UARTBUFFERSIZE, "[%02X]", Byte);
-//                UartWrite(UartBuffer);
+//                UartDebug(UartBuffer);
 //                snprintf(UartBuffer, UARTBUFFERSIZE, "    %d No sync %02X %02X %02X\n", Port, UartPort[Port].InBuffer[0], UartPort[Port].InBuffer[1], UartPort[Port].InBuffer[2]);
-//                UartWrite(UartBuffer);
+//                UartDebug(UartBuffer);
 #endif
                 for (Tmp = 0;Tmp < 2;Tmp++) {
                   UartPort[Port].InBuffer[Tmp] = UartPort[Port].InBuffer[Tmp + 1];
@@ -1506,7 +809,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
                 case BYTE_ACK:
 #ifdef HIGHDEBUG
                   snprintf(UartBuffer, UARTBUFFERSIZE, "    %d ACK RECEIVED\n", Port);
-                  UartWrite(UartBuffer);
+                  UartDebug(UartBuffer);
 #endif
                   if (UartPort[Port].Types == 0) {
                     if ((UartPort[Port].InfoData & INFODATA_NEEDED) == INFODATA_NEEDED) {
@@ -1563,25 +866,25 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
                 if (UartPort[Port].Check !=  Byte) { // Check not correct
 #ifdef DEBUG_D_UART_ERROR
                   snprintf(UartBuffer, UARTBUFFERSIZE, " c  %d %02X[", Port, UartPort[Port].Cmd & 0xFF);
-                  UartWrite(UartBuffer);
+                  UartDebug(UartBuffer);
                   for (Tmp = 0;Tmp < UartPort[Port].InLength;Tmp++) {
                     snprintf(UartBuffer, UARTBUFFERSIZE, "%02X", UartPort[Port].InBuffer[Tmp] & 0xFF);
-                    UartWrite(UartBuffer);
+                    UartDebug(UartBuffer);
                   }
                   snprintf(UartBuffer, UARTBUFFERSIZE, "]%02X\n", UartPort[Port].Check & 0xFF);
-                  UartWrite(UartBuffer);
+                  UartDebug(UartBuffer);
 #endif
                   UartPort[Port].State = UART_CMD_ERROR;
                 } else { // Command message valid
 #ifdef HIGHDEBUG
                   snprintf(UartBuffer, UARTBUFFERSIZE, "    %d %02X[", Port, UartPort[Port].Cmd & 0xFF);
-                  UartWrite(UartBuffer);
+                  UartDebug(UartBuffer);
                   for (Tmp = 0;Tmp < UartPort[Port].InLength;Tmp++) {
                     snprintf(UartBuffer, UARTBUFFERSIZE, "%02X", UartPort[Port].InBuffer[Tmp] & 0xFF);
-                    UartWrite(UartBuffer);
+                    UartDebug(UartBuffer);
                   }
                   snprintf(UartBuffer, UARTBUFFERSIZE, "]%02X\n", UartPort[Port].Check & 0xFF);
-                  UartWrite(UartBuffer);
+                  UartDebug(UartBuffer);
 #endif
                   switch (GET_CMD_COMMAND(UartPort[Port].Cmd)) { // Command message type
 
@@ -1594,7 +897,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 
 #ifdef DEBUG_D_UART_ERROR
                           snprintf(UartBuffer, UARTBUFFERSIZE, " ## %d MODES ALREADY GIVEN\n", Port);
-                          UartWrite(UartBuffer);
+                          UartDebug(UartBuffer);
 #endif
                           UartPort[Port].State = UART_CMD_ERROR;
                         } else {
@@ -1605,14 +908,14 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
                             UartPort[Port].Views = UartPort[Port].InBuffer[1] + 1;
 #ifdef HIGHDEBUG
                             snprintf(UartBuffer, UARTBUFFERSIZE, "    %d MODES  = %u  VIEWS  = %u\n", Port, (UWORD)UartPort[Port].Types & 0xFF, (UWORD)UartPort[Port].Views & 0xFF);
-                            UartWrite(UartBuffer);
+                            UartDebug(UartBuffer);
 #endif
                           } else { // Only modes present
 
                             UartPort[Port].Views = UartPort[Port].Types;
 #ifdef HIGHDEBUG
                             snprintf(UartBuffer, UARTBUFFERSIZE, "    %d MODES  = %u = VIEWS\n", Port, (UWORD)UartPort[Port].Types & 0xFF);
-                            UartWrite(UartBuffer);
+                            UartDebug(UartBuffer);
 #endif
                           }
                           UartPort[Port].InfoData |=  INFODATA_CMD_MODES;
@@ -1620,7 +923,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
                       } else { // Number of modes invalid
 #ifdef DEBUG_D_UART_ERROR
                         snprintf(UartBuffer, UARTBUFFERSIZE, " ## %d MODES ERROR  %u\n", Port, (UWORD)UartPort[Port].Types & 0xFF);
-                        UartWrite(UartBuffer);
+                        UartDebug(UartBuffer);
 #endif
                         UartPort[Port].State = UART_CMD_ERROR;
                       }
@@ -1641,14 +944,14 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 
 #ifdef DEBUG_D_UART_ERROR
                           snprintf(UartBuffer, UARTBUFFERSIZE, " ## %d SPEED ALREADY GIVEN\n", Port);
-                          UartWrite(UartBuffer);
+                          UartDebug(UartBuffer);
 #endif
                           UartPort[Port].State = UART_CMD_ERROR;
                         } else {
                           if ((UartPort[Port].BitRate != LOWEST_BITRATE) && (TmpL <= MIDLE_BITRATE)) { // allow bit rate adjust
 #ifdef HIGHDEBUG
                             snprintf(UartBuffer, UARTBUFFERSIZE, "    %d SPEED ADJUST\n", Port);
-                            UartWrite(UartBuffer);
+                            UartDebug(UartBuffer);
 #endif
                             UartPort[Port].BitRateMax = (UartPort[Port].BitRate * TmpL) / LOWEST_BITRATE;
                           } else {
@@ -1657,14 +960,14 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
                           }
 #ifdef HIGHDEBUG
                           snprintf(UartBuffer, UARTBUFFERSIZE, "    %d SPEED  = %lu\n", Port, (unsigned long)UartPort[Port].BitRateMax);
-                          UartWrite(UartBuffer);
+                          UartDebug(UartBuffer);
 #endif
                           UartPort[Port].InfoData |=  INFODATA_CMD_SPEED;
                         }
                       } else { // Speed invalid
 #ifdef DEBUG_D_UART_ERROR
                         snprintf(UartBuffer, UARTBUFFERSIZE, " ## %d SPEED ERROR\n", Port);
-                        UartWrite(UartBuffer);
+                        UartDebug(UartBuffer);
 #endif
                         UartPort[Port].State = UART_CMD_ERROR;
                       }
@@ -1695,7 +998,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
                         if (UartPort[Port].InLength < 2) {
 #ifdef DEBUG_D_UART_ERROR
                           snprintf(UartBuffer, UARTBUFFERSIZE, " ## %d FORMAT ERROR\n", Port);
-                          UartWrite(UartBuffer);
+                          UartDebug(UartBuffer);
 #endif
                           UartPort[Port].State = UART_INFO_ERROR;
                         }
@@ -1721,29 +1024,29 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
                       if (UartPort[Port].Check !=  Byte) {
 #ifdef DEBUG_D_UART_ERROR
                         snprintf(UartBuffer, UARTBUFFERSIZE, " c  %d %02X ", Port, UartPort[Port].Cmd & 0xFF);
-                        UartWrite(UartBuffer);
+                        UartDebug(UartBuffer);
                         snprintf(UartBuffer, UARTBUFFERSIZE, "%02X[", UartPort[Port].InfoCmd & 0xFF);
-                        UartWrite(UartBuffer);
+                        UartDebug(UartBuffer);
                         for (Tmp = 0;Tmp < UartPort[Port].InLength;Tmp++) {
                           snprintf(UartBuffer, UARTBUFFERSIZE, "%02X", UartPort[Port].InBuffer[Tmp] & 0xFF);
-                          UartWrite(UartBuffer);
+                          UartDebug(UartBuffer);
                         }
                         snprintf(UartBuffer, UARTBUFFERSIZE, "]%02X\n", UartPort[Port].Check & 0xFF);
-                        UartWrite(UartBuffer);
+                        UartDebug(UartBuffer);
 #endif
                         UartPort[Port].State = UART_INFO_ERROR;
                       } else {
 #ifdef HIGHDEBUG
                         snprintf(UartBuffer, UARTBUFFERSIZE, "    %d %02X ", Port, UartPort[Port].Cmd & 0xFF);
-                        UartWrite(UartBuffer);
+                        UartDebug(UartBuffer);
                         snprintf(UartBuffer, UARTBUFFERSIZE, "%02X[", UartPort[Port].InfoCmd & 0xFF);
-                        UartWrite(UartBuffer);
+                        UartDebug(UartBuffer);
                         for (Tmp = 0;Tmp < UartPort[Port].InLength;Tmp++) {
                           snprintf(UartBuffer, UARTBUFFERSIZE, "%02X", UartPort[Port].InBuffer[Tmp] & 0xFF);
-                          UartWrite(UartBuffer);
+                          UartDebug(UartBuffer);
                         }
                         snprintf(UartBuffer, UARTBUFFERSIZE, "]%02X\n", UartPort[Port].Check & 0xFF);
-                        UartWrite(UartBuffer);
+                        UartDebug(UartBuffer);
 #endif
 
                         Mode = GET_MODE(UartPort[Port].Cmd);
@@ -1758,7 +1061,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
                               snprintf((char*)UartPort[Port].Name, TYPE_NAME_LENGTH + 1, "%s", (char*)UartPort[Port].InBuffer);
 #ifdef HIGHDEBUG
                               snprintf(UartBuffer, UARTBUFFERSIZE, "    %d NAME   = %s\n", Port, UartPort[Port].Name);
-                              UartWrite(UartBuffer);
+                              UartDebug(UartBuffer);
 #endif
                               TypeData[Port][Mode].Mode  = Mode;
                               UartPort[Port].InfoData   |= INFODATA_INFO_NAME;
@@ -1766,7 +1069,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 #ifdef DEBUG_D_UART_ERROR
                               UartPort[Port].InBuffer[TYPE_NAME_LENGTH] = 0;
                               snprintf(UartBuffer, UARTBUFFERSIZE, " f  %d NAME = %s\n", Port, UartPort[Port].InBuffer);
-                              UartWrite(UartBuffer);
+                              UartDebug(UartBuffer);
 #endif
                               UartPort[Port].State = UART_INFO_ERROR;
                             }
@@ -1792,20 +1095,20 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 
 #ifdef DEBUG_D_UART_ERROR
                                 snprintf(UartBuffer, UARTBUFFERSIZE, " ## %d RAW ALREADY GIVEN\n", Port);
-                                UartWrite(UartBuffer);
+                                UartDebug(UartBuffer);
 #endif
                                 UartPort[Port].State = UART_INFO_ERROR;
                               } else {
 #ifdef HIGHDEBUG
                                 snprintf(UartBuffer, UARTBUFFERSIZE, "    %d RAW = Min..Max\n", Port);
-                                UartWrite(UartBuffer);
+                                UartDebug(UartBuffer);
 #endif
                                 UartPort[Port].InfoData |=  INFODATA_INFO_RAW;
                               }
                             } else {
 #ifdef DEBUG_D_UART_ERROR
                               snprintf(UartBuffer, UARTBUFFERSIZE, " f  %d RAW = Min..Max\n", Port);
-                              UartWrite(UartBuffer);
+                              UartDebug(UartBuffer);
 #endif
                               UartPort[Port].State = UART_INFO_ERROR;
                             }
@@ -1832,20 +1135,20 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 
 #ifdef DEBUG_D_UART_ERROR
                                 snprintf(UartBuffer, UARTBUFFERSIZE, " ## %d PCT ALREADY GIVEN\n", Port);
-                                UartWrite(UartBuffer);
+                                UartDebug(UartBuffer);
 #endif
                                 UartPort[Port].State = UART_INFO_ERROR;
                               } else {
 #ifdef HIGHDEBUG
                                 snprintf(UartBuffer, UARTBUFFERSIZE, "    %d PCT = Min..Max\n", Port);
-                                UartWrite(UartBuffer);
+                                UartDebug(UartBuffer);
 #endif
                                 UartPort[Port].InfoData |=  INFODATA_INFO_PCT;
                               }
                             } else { // Mode invalid
 #ifdef DEBUG_D_UART_ERROR
                               snprintf(UartBuffer, UARTBUFFERSIZE, " f  %d PCT = Min..Max\n", Port);
-                              UartWrite(UartBuffer);
+                              UartDebug(UartBuffer);
 #endif
                               UartPort[Port].State = UART_INFO_ERROR;
                             }
@@ -1872,20 +1175,20 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 
 #ifdef DEBUG_D_UART_ERROR
                                 snprintf(UartBuffer, UARTBUFFERSIZE, " ## %d SI ALREADY GIVEN\n", Port);
-                                UartWrite(UartBuffer);
+                                UartDebug(UartBuffer);
 #endif
                                 UartPort[Port].State = UART_INFO_ERROR;
                               } else {
 #ifdef HIGHDEBUG
                                 snprintf(UartBuffer, UARTBUFFERSIZE, "    %d SI  = Min..Max\n", Port);
-                                UartWrite(UartBuffer);
+                                UartDebug(UartBuffer);
 #endif
                                 UartPort[Port].InfoData |=  INFODATA_INFO_SI;
                               }
                             } else { // Mode invalid
 #ifdef DEBUG_D_UART_ERROR
                               snprintf(UartBuffer, UARTBUFFERSIZE, " f  %d SI  = Min..Max\n", Port);
-                              UartWrite(UartBuffer);
+                              UartDebug(UartBuffer);
 #endif
                               UartPort[Port].State = UART_INFO_ERROR;
                             }
@@ -1899,14 +1202,14 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 
 #ifdef DEBUG_D_UART_ERROR
                               snprintf(UartBuffer, UARTBUFFERSIZE, " ## %d SYMBOL ALREADY GIVEN\n", Port);
-                              UartWrite(UartBuffer);
+                              UartDebug(UartBuffer);
 #endif
                               UartPort[Port].State = UART_INFO_ERROR;
                             } else {
                               snprintf((char*)TypeData[Port][Mode].Symbol, SYMBOL_LENGTH + 1, "%s", (char*)UartPort[Port].InBuffer);
 #ifdef HIGHDEBUG
                               snprintf(UartBuffer, UARTBUFFERSIZE, "    %d SYMBOL = %s\n", Port, TypeData[Port][Mode].Symbol);
-                              UartWrite(UartBuffer);
+                              UartDebug(UartBuffer);
 #endif
                               UartPort[Port].InfoData |=  INFODATA_INFO_SYMBOL;
                             }
@@ -1920,7 +1223,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 
 #ifdef DEBUG_D_UART_ERROR
                               snprintf(UartBuffer, UARTBUFFERSIZE, " ## %d FORMAT ALREADY GIVEN\n", Port);
-                              UartWrite(UartBuffer);
+                              UartDebug(UartBuffer);
 #endif
                               UartPort[Port].State = UART_INFO_ERROR;
                             } else {
@@ -1956,12 +1259,12 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
                                         Changed[Port][Mode]             = 1;
 #ifdef HIGHDEBUG
                                         snprintf(UartBuffer, UARTBUFFERSIZE, "    %d FORMAT = %u * %u  %u.%u\n", Port, TypeData[Port][Mode].DataSets, TypeData[Port][Mode].Format, TypeData[Port][Mode].Figures, TypeData[Port][Mode].Decimals);
-                                        UartWrite(UartBuffer);
+                                        UartDebug(UartBuffer);
 #endif
                                       } else { // Not enough info data given
 #ifdef DEBUG_D_UART_ERROR
                                         snprintf(UartBuffer, UARTBUFFERSIZE, " ## %d NOT ENOUGH INFO GIVEN\n", Port);
-                                        UartWrite(UartBuffer);
+                                        UartDebug(UartBuffer);
 #endif
                                         UartPort[Port].State = UART_INFO_ERROR;
 
@@ -1969,7 +1272,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
                                     } else { // Format invalid
 #ifdef DEBUG_D_UART_ERROR
                                       snprintf(UartBuffer, UARTBUFFERSIZE, " ## %d FORMAT ERROR\n", Port);
-                                      UartWrite(UartBuffer);
+                                      UartDebug(UartBuffer);
 #endif
                                       UartPort[Port].State = UART_INFO_ERROR;
 
@@ -1977,14 +1280,14 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
                                   } else { // Mode invalid
 #ifdef DEBUG_D_UART_ERROR
                                     snprintf(UartBuffer, UARTBUFFERSIZE, " f  %d FORMAT = %u * %u  %u.%u\n", Port, TypeData[Port][Mode].DataSets, TypeData[Port][Mode].Format, TypeData[Port][Mode].Figures, TypeData[Port][Mode].Decimals);
-                                    UartWrite(UartBuffer);
+                                    UartDebug(UartBuffer);
 #endif
                                     UartPort[Port].State = UART_INFO_ERROR;
                                   }
                                 } else { // No more modes left
 #ifdef DEBUG_D_UART_ERROR
                                   snprintf(UartBuffer, UARTBUFFERSIZE, " ## %d TYPES ERROR\n", Port);
-                                  UartWrite(UartBuffer);
+                                  UartDebug(UartBuffer);
 #endif
                                   UartPort[Port].State = UART_INFO_ERROR;
 
@@ -1992,7 +1295,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
                               } else { // Data sets invalid
 #ifdef DEBUG_D_UART_ERROR
                                 snprintf(UartBuffer, UARTBUFFERSIZE, " f  %d FORMAT = %u * %u  %u.%u\n", Port, TypeData[Port][Mode].DataSets, TypeData[Port][Mode].Format, TypeData[Port][Mode].Figures, TypeData[Port][Mode].Decimals);
-                                UartWrite(UartBuffer);
+                                UartDebug(UartBuffer);
 #endif
                                 UartPort[Port].State = UART_INFO_ERROR;
                               }
@@ -2011,7 +1314,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
                 if (UartPort[Port].Type == UartPortDefault.Type) {
 #ifdef DEBUG_D_UART_ERROR
                   snprintf(UartBuffer, UARTBUFFERSIZE, " ## %d TYPE ERROR\n", Port);
-                  UartWrite(UartBuffer);
+                  UartDebug(UartBuffer);
 #endif
                   UartPort[Port].State = UART_INFO_ERROR;
                 }
@@ -2063,7 +1366,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 
 #ifdef DEBUG_TRACE_MODE_CHANGE
                     snprintf(UartBuffer, UARTBUFFERSIZE, "d_uart %d   State machine: mode changed to  %d\n", Port, UartPort[Port].Mode);
-                    UartWrite(UartBuffer);
+                    UartDebug(UartBuffer);
 #endif
                   }
 
@@ -2090,20 +1393,20 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
             } else {
 #ifdef DEBUG_D_UART_ERROR
               snprintf(UartBuffer, UARTBUFFERSIZE, " c  %d %02X[", Port, UartPort[Port].Cmd & 0xFF);
-              UartWrite(UartBuffer);
+              UartDebug(UartBuffer);
 
               for (Tmp = 0;Tmp < UartPort[Port].InLength;Tmp++) {
                 snprintf(UartBuffer, UARTBUFFERSIZE, "%02X", TmpBuffer[Tmp] & 0xFF);
-                UartWrite(UartBuffer);
+                UartDebug(UartBuffer);
               }
               snprintf(UartBuffer, UARTBUFFERSIZE, "]%02X\n", UartPort[Port].Check & 0xFF);
-              UartWrite(UartBuffer);
+              UartDebug(UartBuffer);
 #endif
 #ifndef DISABLE_UART_DATA_ERROR
               if (++UartPort[Port].DataErrors >= UART_ALLOWABLE_DATA_ERRORS) {
 #ifdef DEBUG_D_UART_ERROR
                 snprintf(UartBuffer, UARTBUFFERSIZE, " ## %d No valid data in %d messages\n", Port, UartPort[Port].DataErrors);
-                UartWrite(UartBuffer);
+                UartDebug(UartBuffer);
 #endif
                 UartPort[Port].State = UART_DATA_ERROR;
               }
@@ -2118,14 +1421,14 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
               } else {
                 snprintf(UartBuffer, UARTBUFFERSIZE, "    %d %02X[", Port, UartPort[Port].Cmd & 0xFF);
               }
-              UartWrite(UartBuffer);
+              UartDebug(UartBuffer);
 
               for (Tmp = 0;Tmp < UartPort[Port].InLength;Tmp++) {
                 snprintf(UartBuffer, UARTBUFFERSIZE, "%02X", TmpBuffer[Tmp] & 0xFF);
-                UartWrite(UartBuffer);
+                UartDebug(UartBuffer);
               }
               snprintf(UartBuffer, UARTBUFFERSIZE, "]%02X\n", UartPort[Port].Check & 0xFF);
-              UartWrite(UartBuffer);
+              UartDebug(UartBuffer);
             }
 #endif
           }
@@ -2141,14 +1444,14 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
               } else {
                 snprintf(UartBuffer, UARTBUFFERSIZE, "    %d %02X[", Port, UartPort[Port].Cmd & 0xFF);
               }
-              UartWrite(UartBuffer);
+              UartDebug(UartBuffer);
 
               for (Tmp = 0;Tmp < UartPort[Port].InLength;Tmp++) {
                 snprintf(UartBuffer, UARTBUFFERSIZE, "%02X", TmpBuffer[Tmp] & 0xFF);
-                UartWrite(UartBuffer);
+                UartDebug(UartBuffer);
               }
               snprintf(UartBuffer, UARTBUFFERSIZE, "]%02X\n", UartPort[Port].Check & 0xFF);
-              UartWrite(UartBuffer);
+              UartDebug(UartBuffer);
 #endif
               UartPort[Port].Cmd           = UartPort[Port].Mode;
               UartPort[Port].OutBuffer[0]  = MAKE_CMD_COMMAND(CMD_SELECT, 0);
@@ -2161,14 +1464,14 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 
 #ifdef DEBUG_TRACE_MODE_CHANGE
               snprintf(UartBuffer, UARTBUFFERSIZE, " WR %d %02X[", Port, UartPort[Port].OutBuffer[0]);
-              UartWrite(UartBuffer);
+              UartDebug(UartBuffer);
 
               for (Tmp = 1;Tmp < (UartPort[Port].OutLength - 1);Tmp++) {
                 snprintf(UartBuffer, UARTBUFFERSIZE, "%02X", UartPort[Port].OutBuffer[Tmp] & 0xFF);
-                UartWrite(UartBuffer);
+                UartDebug(UartBuffer);
               }
               snprintf(UartBuffer, UARTBUFFERSIZE, "]%02X\n", UartPort[Port].OutBuffer[Tmp] & 0xFF);
-              UartWrite(UartBuffer);
+              UartDebug(UartBuffer);
 #endif
             }
             pUart->Status[Port] &= ~UART_DATA_READY;
@@ -2185,7 +1488,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
                 if (++UartPort[Port].DataErrors >= UART_ALLOWABLE_DATA_ERRORS) {
 #ifdef DEBUG_D_UART_ERROR
                   snprintf(UartBuffer, UARTBUFFERSIZE, " ## %d No valid data in %d services\n", Port, UART_ALLOWABLE_DATA_ERRORS);
-                  UartWrite(UartBuffer);
+                  UartDebug(UartBuffer);
 #endif
                   UartPort[Port].State       = UART_DATA_ERROR;
                 } else {
@@ -2203,7 +1506,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
                 UartPort[Port].OutLength     = 1;
 #ifdef DEBUG
                 snprintf(UartBuffer, UARTBUFFERSIZE, " WD %d %02X\n", Port, UartPort[Port].OutBuffer[0]);
-                UartWrite(UartBuffer);
+                UartDebug(UartBuffer);
 #endif
               }
             }
@@ -2244,14 +1547,14 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
               pUart->Status[Port]                   &= ~UART_WRITE_REQUEST;
 #ifdef DEBUG
               snprintf(UartBuffer, UARTBUFFERSIZE, " WR %d %02X[", Port, UartPort[Port].OutBuffer[0]);
-              UartWrite(UartBuffer);
+              UartDebug(UartBuffer);
 
               for (Tmp = 1;Tmp < (UartPort[Port].OutLength - 1);Tmp++) {
                 snprintf(UartBuffer, UARTBUFFERSIZE, "%02X", UartPort[Port].OutBuffer[Tmp] & 0xFF);
-                UartWrite(UartBuffer);
+                UartDebug(UartBuffer);
               }
               snprintf(UartBuffer, UARTBUFFERSIZE, "]%02X\n", UartPort[Port].OutBuffer[Tmp] & 0xFF);
-              UartWrite(UartBuffer);
+              UartDebug(UartBuffer);
 #endif
             }
           }
@@ -2269,14 +1572,14 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
             UartPort[Port].State   = UART_ACK_INFO;
 #ifdef DEBUG_D_UART_ERROR
             snprintf(UartBuffer, UARTBUFFERSIZE, "    %d Type %-3d has changed modes: ", Port, TypeData[Port][0].Type);
-            UartWrite(UartBuffer);
+            UartDebug(UartBuffer);
             for (Mode = 0;Mode < MAX_DEVICE_MODES;Mode++) {
               UartBuffer[Mode] = Changed[Port][Mode] + '0';
             }
             UartBuffer[Mode++] = '\r';
             UartBuffer[Mode++] = '\n';
             UartBuffer[Mode]   = 0;
-            UartWrite(UartBuffer);
+            UartDebug(UartBuffer);
 #endif
           }
           break;
@@ -2360,7 +1663,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
           if (UartPortReceive(Port, &Byte)) {
 #ifdef HIGHDEBUG
             snprintf(UartBuffer, UARTBUFFERSIZE, "[0x%02X]\n", Byte);
-            UartWrite(UartBuffer);
+            UartDebug(UartBuffer);
 #endif
             if (UartPort[Port].InPointer < UART_BUFFER_SIZE) {
               UartPort[Port].InBuffer[UartPort[Port].InPointer] = Byte;
@@ -2378,7 +1681,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
         } else {
           snprintf(UartBuffer, UARTBUFFERSIZE, "*** %d %s ***\n", Port, UartStateText[UartPort[Port].State]);
         }
-        UartWrite(UartBuffer);
+        UartDebug(UartBuffer);
       }
 #endif
     }
@@ -2412,7 +1715,7 @@ static long Device1Ioctl(struct file *File, unsigned int Request, unsigned long 
 						if (UartPort[Port].Mode != DevCon.Mode[Port]) {
 #ifdef DEBUG_TRACE_MODE_CHANGE
 							snprintf(UartBuffer, UARTBUFFERSIZE, "d_uart %d   Device1Ioctl: Changing to    %c\n", Port, DevCon.Mode[Port] + '0');
-							UartWrite(UartBuffer);
+							UartDebug(UartBuffer);
 #endif
 							UartPort[Port].Mode        = DevCon.Mode[Port];
 							UartPort[Port].ChangeMode  = 1;
@@ -2440,7 +1743,7 @@ static long Device1Ioctl(struct file *File, unsigned int Request, unsigned long 
 #ifdef DEBUG
 		if (TypeData[Port][Mode].Name[0]) {
 			snprintf(UartBuffer, UARTBUFFERSIZE, "d_uart %d   Device1Ioctl: READ    Type=%d Mode=%d\n", Port, TypeData[Port][Mode].Type, Mode);
-			UartWrite(UartBuffer);
+			UartDebug(UartBuffer);
 		}
 #endif
 		if ((Mode < MAX_DEVICE_MODES) && (Port < INPUTS)) {
@@ -2464,7 +1767,7 @@ static long Device1Ioctl(struct file *File, unsigned int Request, unsigned long 
 
 #ifdef DEBUG
 		snprintf(UartBuffer, UARTBUFFERSIZE, "d_uart %d   Device1Ioctl: NACK    Type=%d Mode=%d\n", Port, TypeData[Port][Mode].Type, Mode);
-		UartWrite(UartBuffer);
+		UartDebug(UartBuffer);
 #endif
 		if ((Mode < MAX_DEVICE_MODES) && (Port < INPUTS)) {
 			Changed[Port][Mode] = 1;
@@ -2543,14 +1846,14 @@ static ssize_t Device1Read(struct file *File, char *Buffer, size_t Count, loff_t
 		UartBuffer[5] = '[';
 		UartBuffer[6] = 'H';
 		UartBuffer[7] = 0;
-		UartWrite(UartBuffer);
-		UartWrite(UartBuffer);
+		UartDebug(UartBuffer);
+		UartDebug(UartBuffer);
 		snprintf(UartBuffer, UARTBUFFERSIZE, "-----------------------------------------------------------------\n");
-		UartWrite(UartBuffer);
+		UartDebug(UartBuffer);
 		snprintf(UartBuffer, UARTBUFFERSIZE, "    UART DUMP\n");
-		UartWrite(UartBuffer);
+		UartDebug(UartBuffer);
 		snprintf(UartBuffer, UARTBUFFERSIZE, "-----------------------------------------------------------------\n");
-		UartWrite(UartBuffer);
+		UartDebug(UartBuffer);
 	}
 #else
 	int Tmp;
@@ -2630,16 +1933,16 @@ static int Device1Init(void)
 	pUart = (UART*)pTmp;
 	memset(pUart, 0, sizeof(UART));
 
-	ret = Uart1Init();
+	ret = UartInit(UART_1);
 	if (ret < 0)
 		goto err1;
-	ret = Uart2Init();
+	ret = UartInit(UART_2);
 	if (ret < 0)
 		goto err2;
-	ret = Uart3Init();
+	ret = UartInit(UART_3);
 	if (ret < 0)
 		goto err3;
-	ret = Uart4Init();
+	ret = UartInit(UART_4);
 	if (ret < 0)
 		goto err4;
 
@@ -2655,7 +1958,7 @@ static int Device1Init(void)
 			UartPortEnable(Tmp);
 #ifdef DEBUG
 			snprintf(UartBuffer, UARTBUFFERSIZE, "  %s debug uart init test\n", DEVICE1_NAME);
-			UartWrite(UartBuffer);
+			UartDebug(UartBuffer);
 #endif
 		} else {
 			UartPortDisable(Tmp);
@@ -2675,13 +1978,13 @@ static int Device1Init(void)
 	return 0;
 
 err5:
-	Uart4Exit();
+	UartExit(UART_4);
 err4:
-	Uart3Exit();
+	UartExit(UART_3);
 err3:
-	Uart2Exit();
+	UartExit(UART_2);
 err2:
-	Uart1Exit();
+	UartExit(UART_1);
 err1:
 	for (i = 0; i < NPAGES * PAGE_SIZE; i+= PAGE_SIZE) {
 		ClearPageReserved(virt_to_page(((unsigned long)pTmp) + i));
@@ -2703,10 +2006,10 @@ static void Device1Exit(void)
 
 	misc_deregister(&Device1);
 
-	Uart4Exit();
-	Uart3Exit();
-	Uart2Exit();
-	Uart1Exit();
+	UartExit(UART_4);
+	UartExit(UART_3);
+	UartExit(UART_2);
+	UartExit(UART_1);
 
 	for (Tmp = 0; Tmp < INPUTS; Tmp++) {
 		UartPort[Tmp] = UartPortDefault;
