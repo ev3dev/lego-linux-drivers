@@ -248,11 +248,6 @@ typedef struct {
 	UBYTE ArrayPtrOld;
 } TACHOSAMPLES;
 
-static irqreturn_t IntA (int irq, void * dev);
-static irqreturn_t IntB (int irq, void * dev);
-static irqreturn_t IntC (int irq, void * dev);
-static irqreturn_t IntD (int irq, void * dev);
-
 static UBYTE dCalculateSpeed(UBYTE No, SBYTE *pSpeed);
 static void GetSyncDurationCnt(SLONG *pCount0, SLONG *pCount1);
 static void CheckforEndOfSync(void);
@@ -1500,6 +1495,92 @@ static void CheckforEndOfSync(void)
 }
 
 /*
+ *  Tacho interrupt function
+ *
+ *  Tacho count is incremented or decremented on both positive
+ *  and negative edges of the OUTPUT_PORT_PIN6 signal.
+ *
+ *  For each positive and negative edge of the OUTPUT_PORT_PIN6 tacho signal
+ *  a timer is sampled. this is used to calculate the speed later on.
+ *
+ *  DirChgPtr is implemented for ensuring that there is enough
+ *  samples in the same direction to calculate a speed.
+ */
+static irqreturn_t d_pwm_handle_gpio_irq(int irq, void * dev)
+{
+	UBYTE TmpPtr;
+	ULONG IntState;
+	ULONG DirState;
+	ktime_t Timer;
+	UBYTE Port = (long)dev;
+
+	// Sample all necessary items as fast as possible
+	IntState = OutputRead(Port, OUTPUT_PORT_PIN6);
+	DirState = OutputReadDir(Port, OUTPUT_PORT_PIN5R);
+	Timer = ktime_get();
+
+	TmpPtr = (TachoSamples[Port].ArrayPtr + 1) & (NO_OF_TACHO_SAMPLES - 1);
+	TachoSamples[Port].TachoArray[TmpPtr] = Timer;
+	TachoSamples[Port].ArrayPtr = TmpPtr;
+
+	if ((35 < Motor[Port].Speed) || (-35 > Motor[Port].Speed)) {
+		if (FORWARD == Motor[Port].Direction)
+			Motor[Port].IrqTacho++;
+		else
+			Motor[Port].IrqTacho--;
+
+		if (Motor[Port].DirChgPtr < SamplesPerSpeed[Port][SAMPLES_ABOVE_SPEED_75])
+			Motor[Port].DirChgPtr++;
+	} else {
+		if (IntState) {
+			if (DirState) {
+				if (FORWARD == Motor[Port].Direction) {
+					if (Motor[Port].DirChgPtr < SamplesPerSpeed[Port][SAMPLES_ABOVE_SPEED_75])
+						Motor[Port].DirChgPtr++;
+				} else {
+					Motor[Port].DirChgPtr = 0;
+				}
+				Motor[Port].IrqTacho++;
+				Motor[Port].Direction = FORWARD;
+			} else {
+				if (BACKWARD == Motor[Port].Direction) {
+					TachoSamples[Port].TachoArray[TmpPtr] = Timer;
+					TachoSamples[Port].ArrayPtr = TmpPtr;
+					if (Motor[Port].DirChgPtr < SamplesPerSpeed[Port][SAMPLES_ABOVE_SPEED_75])
+						Motor[Port].DirChgPtr++;
+				} else {
+					Motor[Port].DirChgPtr = 0;
+				}
+				Motor[Port].IrqTacho--;
+				Motor[Port].Direction = BACKWARD;
+			}
+		} else {
+			if (DirState) {
+				if (BACKWARD == Motor[Port].Direction) {
+					if (Motor[Port].DirChgPtr < SamplesPerSpeed[Port][SAMPLES_ABOVE_SPEED_75])
+						Motor[Port].DirChgPtr++;
+				} else {
+					Motor[Port].DirChgPtr = 0;
+				}
+				Motor[Port].IrqTacho--;
+				Motor[Port].Direction = BACKWARD;
+			} else {
+				if (FORWARD == Motor[Port].Direction) {
+					if (Motor[Port].DirChgPtr < SamplesPerSpeed[Port][SAMPLES_ABOVE_SPEED_75])
+						Motor[Port].DirChgPtr++;
+				} else {
+					Motor[Port].DirChgPtr = 0;
+				}
+				Motor[Port].IrqTacho++;
+				Motor[Port].Direction = FORWARD;
+			}
+		}
+	}
+
+	return IRQ_HANDLED;
+}
+
+/*
  *  VALID COMMANDS:
  *
  *  opPROGRAM_STOP:       User program stopped -> either brake or float motors
@@ -2282,8 +2363,9 @@ static int Device1Init(void)
 		goto err1;
 
 	Device1Lms2012Compat->motor_irqs[0] = ret;
-	ret = request_irq(ret, IntA, IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING,
-			  "PWM_DEVICE", NULL);
+	ret = request_irq(ret, d_pwm_handle_gpio_irq,
+			  IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING,
+			  "PWM_DEVICE", (void *)0);
 	if (ret < 0)
 		goto err1;
 
@@ -2292,8 +2374,9 @@ static int Device1Init(void)
 		goto err2;
 
 	Device1Lms2012Compat->motor_irqs[1] = ret;
-	ret = request_irq(ret, IntB, IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING,
-			  "PWM_DEVICE", NULL);
+	ret = request_irq(ret, d_pwm_handle_gpio_irq,
+			  IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING,
+			  "PWM_DEVICE", (void *)1);
 	if (ret < 0)
 		goto err2;
 
@@ -2302,8 +2385,9 @@ static int Device1Init(void)
 		goto err3;
 
 	Device1Lms2012Compat->motor_irqs[2] = ret;
-	ret = request_irq(ret, IntC, IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING,
-			  "PWM_DEVICE", NULL);
+	ret = request_irq(ret, d_pwm_handle_gpio_irq,
+			  IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING,
+			  "PWM_DEVICE", (void *)2);
 	if (ret < 0)
 		goto err3;
 
@@ -2312,8 +2396,9 @@ static int Device1Init(void)
 		goto err4;
 
 	Device1Lms2012Compat->motor_irqs[3] = ret;
-	ret = request_irq(ret, IntD, IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING,
-			  "PWM_DEVICE", NULL);
+	ret = request_irq(ret, d_pwm_handle_gpio_irq,
+			  IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING,
+			  "PWM_DEVICE", (void *)3);
 	if (ret < 0)
 		goto err4;
 
@@ -2324,13 +2409,13 @@ static int Device1Init(void)
 	return 0;
 
 err5:
-	free_irq(Device1Lms2012Compat->motor_irqs[3], NULL);
+	free_irq(Device1Lms2012Compat->motor_irqs[3], (void *)3);
 err4:
-	free_irq(Device1Lms2012Compat->motor_irqs[2], NULL);
+	free_irq(Device1Lms2012Compat->motor_irqs[2], (void *)2);
 err3:
-	free_irq(Device1Lms2012Compat->motor_irqs[1], NULL);
+	free_irq(Device1Lms2012Compat->motor_irqs[1], (void *)1);
 err2:
-	free_irq(Device1Lms2012Compat->motor_irqs[0], NULL);
+	free_irq(Device1Lms2012Compat->motor_irqs[0], (void *)0);
 err1:
 	put_device(Device1Lms2012CompatDev);
 
@@ -2344,330 +2429,11 @@ static void Device1Exit(void)
 	misc_deregister(&Device1);
 	hrtimer_cancel(&Device1Timer);
 	for (i = 0; i < OUTPUTS; i++) {
-		free_irq(Device1Lms2012Compat->motor_irqs[i], NULL);
+		free_irq(Device1Lms2012Compat->motor_irqs[i], (void *)i);
 		SetCoast(i);
 		pwm_disable(Device1Lms2012Compat->out_pwms[i]);
 	}
 	put_device(Device1Lms2012CompatDev);
-}
-
-/*
- *  Tacho A interrupt function
- *
- *  Tacho count is incremented or decremented on both positive
- *  and negative edges of the OUTPUT_PORT_PIN6 signal.
- *
- *  For each positive and negative edge of the OUTPUT_PORT_PIN6 tacho signal
- *  a timer is sampled. this is used to calculate the speed later on.
- *
- *  DirChgPtr is implemented for ensuring that there is enough
- *  samples in the same direction to calculate a speed.
- */
-static irqreturn_t IntA (int irq, void * dev)
-{
-	UBYTE TmpPtr;
-	ULONG IntAState;
-	ULONG DirAState;
-	ktime_t Timer;
-
-	// Sample all necessary items as fast as possible
-	IntAState = OutputRead(0, OUTPUT_PORT_PIN6);
-	DirAState = OutputReadDir(0, OUTPUT_PORT_PIN5R);
-	Timer     = ktime_get();
-
-	TmpPtr = (TachoSamples[0].ArrayPtr + 1) & (NO_OF_TACHO_SAMPLES-1);
-	TachoSamples[0].TachoArray[TmpPtr] = Timer;
-	TachoSamples[0].ArrayPtr           = TmpPtr;
-
-	if ((35 < Motor[0].Speed) || (-35 > Motor[0].Speed)) {
-		if (FORWARD == Motor[0].Direction) {
-			(Motor[0].IrqTacho)++;
-		} else {
-			(Motor[0].IrqTacho)--;
-		}
-		if (Motor[0].DirChgPtr < SamplesPerSpeed[0][SAMPLES_ABOVE_SPEED_75]) {
-			Motor[0].DirChgPtr++;
-		}
-	} else {
-		if (IntAState) {
-			if (DirAState) {
-				if (FORWARD == Motor[0].Direction) {
-					if (Motor[0].DirChgPtr < SamplesPerSpeed[0][SAMPLES_ABOVE_SPEED_75]) {
-						Motor[0].DirChgPtr++;
-					}
-				} else {
-					Motor[0].DirChgPtr = 0;
-				}
-				(Motor[0].IrqTacho)++;
-				Motor[0].Direction = FORWARD;
-			} else {
-				if (BACKWARD == Motor[0].Direction) {
-					TachoSamples[0].TachoArray[TmpPtr] = Timer;
-					TachoSamples[0].ArrayPtr = TmpPtr;
-					if (Motor[0].DirChgPtr < SamplesPerSpeed[0][SAMPLES_ABOVE_SPEED_75]) {
-						Motor[0].DirChgPtr++;
-					}
-				} else {
-					Motor[0].DirChgPtr = 0;
-				}
-				(Motor[0].IrqTacho)--;
-				Motor[0].Direction = BACKWARD;
-			}
-		} else {
-			if (DirAState) {
-				if (BACKWARD == Motor[0].Direction) {
-					if (Motor[0].DirChgPtr < SamplesPerSpeed[0][SAMPLES_ABOVE_SPEED_75]) {
-						Motor[0].DirChgPtr++;
-					}
-				} else {
-					Motor[0].DirChgPtr = 0;
-				}
-				(Motor[0].IrqTacho)--;
-				Motor[0].Direction = BACKWARD;
-			} else {
-				if (FORWARD == Motor[0].Direction) {
-					if (Motor[0].DirChgPtr < SamplesPerSpeed[0][SAMPLES_ABOVE_SPEED_75]) {
-						Motor[0].DirChgPtr++;
-					}
-				} else {
-					Motor[0].DirChgPtr = 0;
-				}
-				(Motor[0].IrqTacho)++;
-				Motor[0].Direction = FORWARD;
-			}
-		}
-	}
-
-	return IRQ_HANDLED;
-}
-
-static irqreturn_t IntB (int irq, void * dev)
-{
-	UBYTE TmpPtr;
-	ULONG IntBState;
-	ULONG DirBState;
-	ktime_t Timer;
-
-	// Sample all necessary items as fast as possible
-	IntBState = OutputRead(1, OUTPUT_PORT_PIN6);
-	DirBState = OutputReadDir(1, OUTPUT_PORT_PIN5R);
-	Timer     = ktime_get();
-
-	TmpPtr = (TachoSamples[1].ArrayPtr + 1) & (NO_OF_TACHO_SAMPLES-1);
-	TachoSamples[1].TachoArray[TmpPtr] = Timer;
-	TachoSamples[1].ArrayPtr           = TmpPtr;
-
-	if ((35 < Motor[1].Speed) || (-35 > Motor[1].Speed)) {
-		if (FORWARD == Motor[1].Direction) {
-			(Motor[1].IrqTacho)++;
-		} else {
-			(Motor[1].IrqTacho)--;
-		}
-
-		if (Motor[1].DirChgPtr < SamplesPerSpeed[1][SAMPLES_ABOVE_SPEED_75]) {
-			Motor[1].DirChgPtr++;
-		}
-	} else {
-		if (IntBState) {
-			if (DirBState) {
-				if (FORWARD == Motor[1].Direction) {
-					if (Motor[1].DirChgPtr < SamplesPerSpeed[1][SAMPLES_ABOVE_SPEED_75]) {
-						Motor[1].DirChgPtr++;
-					}
-				} else {
-					Motor[1].DirChgPtr = 0;
-				}
-				(Motor[1].IrqTacho)++;
-				Motor[1].Direction = FORWARD;
-			} else {
-				if (BACKWARD == Motor[1].Direction) {
-					if (Motor[1].DirChgPtr < SamplesPerSpeed[1][SAMPLES_ABOVE_SPEED_75]) {
-						Motor[1].DirChgPtr++;
-					}
-				} else {
-					Motor[1].DirChgPtr = 0;
-				}
-				(Motor[1].IrqTacho)--;
-				Motor[1].Direction = BACKWARD;
-			}
-		} else {
-			if (DirBState) {
-				if (BACKWARD == Motor[1].Direction) {
-					if (Motor[1].DirChgPtr < SamplesPerSpeed[1][SAMPLES_ABOVE_SPEED_75]) {
-						Motor[1].DirChgPtr++;
-					}
-				} else {
-					Motor[1].DirChgPtr = 0;
-				}
-				(Motor[1].IrqTacho)--;
-				Motor[1].Direction = BACKWARD;
-			} else {
-				if (FORWARD == Motor[1].Direction) {
-					if (Motor[1].DirChgPtr < SamplesPerSpeed[1][SAMPLES_ABOVE_SPEED_75]) {
-						Motor[1].DirChgPtr++;
-					}
-				} else {
-					Motor[1].DirChgPtr = 0;
-				}
-				(Motor[1].IrqTacho)++;
-				Motor[1].Direction = FORWARD;
-			}
-		}
-	}
-
-	return IRQ_HANDLED;
-}
-
-static irqreturn_t IntC (int irq, void * dev)
-{
-	UBYTE TmpPtr;
-	ULONG IntCState;
-	ULONG DirCState;
-	ktime_t Timer;
-
-	// Sample all necessary items as fast as possible
-	IntCState = OutputRead(2, OUTPUT_PORT_PIN6);
-	DirCState = OutputReadDir(2, OUTPUT_PORT_PIN5R);
-	Timer     = ktime_get();
-
-	TmpPtr = (TachoSamples[2].ArrayPtr + 1) & (NO_OF_TACHO_SAMPLES-1);
-	TachoSamples[2].TachoArray[TmpPtr] = Timer;
-	TachoSamples[2].ArrayPtr           = TmpPtr;
-
-	if ((35 < Motor[2].Speed) || (-35 > Motor[2].Speed)) {
-		if (FORWARD == Motor[2].Direction) {
-			(Motor[2].IrqTacho)++;
-		} else {
-			(Motor[2].IrqTacho)--;
-		}
-		if (Motor[2].DirChgPtr < SamplesPerSpeed[2][SAMPLES_ABOVE_SPEED_75]) {
-			Motor[2].DirChgPtr++;
-		}
-	} else {
-		if (IntCState) {
-			if (DirCState) {
-				if (FORWARD == Motor[2].Direction) {
-					if (Motor[2].DirChgPtr < SamplesPerSpeed[2][SAMPLES_ABOVE_SPEED_75]) {
-						Motor[2].DirChgPtr++;
-					}
-				} else {
-					Motor[2].DirChgPtr = 0;
-				}
-				(Motor[2].IrqTacho)++;
-				Motor[2].Direction = FORWARD;
-			} else {
-				if (BACKWARD == Motor[2].Direction) {
-					if (Motor[2].DirChgPtr < SamplesPerSpeed[2][SAMPLES_ABOVE_SPEED_75]) {
-						Motor[2].DirChgPtr++;
-					}
-				} else {
-					Motor[2].DirChgPtr = 0;
-				}
-				(Motor[2].IrqTacho)--;
-				Motor[2].Direction = BACKWARD;
-			}
-		} else {
-			if (DirCState) {
-				if (BACKWARD == Motor[2].Direction) {
-					if (Motor[2].DirChgPtr < SamplesPerSpeed[2][SAMPLES_ABOVE_SPEED_75]) {
-						Motor[2].DirChgPtr++;
-					}
-				} else {
-					Motor[2].DirChgPtr = 0;
-				}
-				(Motor[2].IrqTacho)--;
-				Motor[2].Direction = BACKWARD;
-			} else {
-				if (FORWARD == Motor[2].Direction) {
-					if (Motor[2].DirChgPtr < SamplesPerSpeed[2][SAMPLES_ABOVE_SPEED_75]) {
-						Motor[2].DirChgPtr++;
-					}
-				} else {
-					Motor[2].DirChgPtr = 0;
-				}
-				(Motor[2].IrqTacho)++;
-				Motor[2].Direction = FORWARD;
-			}
-		}
-	}
-
-	return IRQ_HANDLED;
-}
-
-static irqreturn_t IntD (int irq, void * dev)
-{
-	UBYTE TmpPtr;
-	ULONG IntDState;
-	ULONG DirDState;
-	ktime_t Timer;
-
-	// Sample all necessary items as fast as possible
-	IntDState = OutputRead(3, OUTPUT_PORT_PIN6);
-	DirDState = OutputReadDir(3, OUTPUT_PORT_PIN5R);
-	Timer     = ktime_get();
-
-	TmpPtr = (TachoSamples[3].ArrayPtr + 1) & (NO_OF_TACHO_SAMPLES-1);
-	TachoSamples[3].TachoArray[TmpPtr] = Timer;
-	TachoSamples[3].ArrayPtr           = TmpPtr;
-
-	if ((35 < Motor[3].Speed) || (-35 > Motor[3].Speed)) {
-		if (FORWARD == Motor[3].Direction) {
-			(Motor[3].IrqTacho)++;
-		} else {
-			(Motor[3].IrqTacho)--;
-		}
-		if (Motor[3].DirChgPtr < SamplesPerSpeed[3][SAMPLES_ABOVE_SPEED_75]) {
-			Motor[3].DirChgPtr++;
-		}
-	} else {
-		if (IntDState) {
-			if (DirDState) {
-				if (FORWARD == Motor[3].Direction) {
-					if (Motor[3].DirChgPtr < SamplesPerSpeed[3][SAMPLES_ABOVE_SPEED_75]) {
-						Motor[3].DirChgPtr++;
-					}
-				} else {
-					Motor[3].DirChgPtr = 0;
-				}
-				(Motor[3].IrqTacho)++;
-				Motor[3].Direction = FORWARD;
-			} else {
-				if (BACKWARD == Motor[3].Direction) {
-					if (Motor[3].DirChgPtr < SamplesPerSpeed[3][SAMPLES_ABOVE_SPEED_75]) {
-						Motor[3].DirChgPtr++;
-					}
-				} else {
-					Motor[3].DirChgPtr = 0;
-				}
-				(Motor[3].IrqTacho)--;
-				Motor[3].Direction = BACKWARD;
-			}
-		} else {
-			if (DirDState) {
-				if (BACKWARD == Motor[3].Direction) {
-					if (Motor[3].DirChgPtr < SamplesPerSpeed[3][SAMPLES_ABOVE_SPEED_75]) {
-						Motor[3].DirChgPtr++;
-					}
-				} else {
-					Motor[3].DirChgPtr = 0;
-				}
-				(Motor[3].IrqTacho)--;
-				Motor[3].Direction = BACKWARD;
-			} else {
-				if (FORWARD == Motor[3].Direction) {
-					if (Motor[3].DirChgPtr < SamplesPerSpeed[3][SAMPLES_ABOVE_SPEED_75]) {
-						Motor[3].DirChgPtr++;
-					}
-				} else {
-					Motor[3].DirChgPtr = 0;
-				}
-				(Motor[3].IrqTacho)++;
-				Motor[3].Direction = FORWARD;
-			}
-		}
-	}
-
-	return IRQ_HANDLED;
 }
 
 static UBYTE dCalculateSpeed(UBYTE No, SBYTE *pSpeed)
