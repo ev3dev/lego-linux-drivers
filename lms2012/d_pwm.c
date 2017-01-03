@@ -2318,6 +2318,63 @@ static struct miscdevice Device1 = {
 	.fops	= &Device1Entries,
 };
 
+#define MOTOR_DEBUG_PRINT(n) seq_printf(m, __stringify(n) "\t%d\t%d\t%d\t%d\n", \
+	(int)Motor[0].n, (int)Motor[1].n, (int)Motor[2].n, (int)Motor[3].n)
+
+static int device1_debug_show(struct seq_file *m, void *data)
+{
+	seq_printf(m, "Motor\tA\tB\tC\tD\n");
+	MOTOR_DEBUG_PRINT(IrqTacho);
+	MOTOR_DEBUG_PRINT(TachoCnt);
+	MOTOR_DEBUG_PRINT(TachoSensor);
+	MOTOR_DEBUG_PRINT(TimeCnt);
+	MOTOR_DEBUG_PRINT(TimeInc);
+	MOTOR_DEBUG_PRINT(OldTachoCnt);
+	MOTOR_DEBUG_PRINT(TachoCntUp);
+	MOTOR_DEBUG_PRINT(TachoCntConst);
+	MOTOR_DEBUG_PRINT(TachoCntDown);
+	MOTOR_DEBUG_PRINT(RampUpFactor);
+	MOTOR_DEBUG_PRINT(RampUpOffset);
+	MOTOR_DEBUG_PRINT(RampDownFactor);
+	MOTOR_DEBUG_PRINT(PVal);
+	MOTOR_DEBUG_PRINT(IVal);
+	MOTOR_DEBUG_PRINT(DVal);
+	MOTOR_DEBUG_PRINT(OldSpeedErr);
+	MOTOR_DEBUG_PRINT(Power);
+	MOTOR_DEBUG_PRINT(TargetPower);
+	MOTOR_DEBUG_PRINT(Dir);
+	MOTOR_DEBUG_PRINT(Speed);
+	MOTOR_DEBUG_PRINT(TargetSpeed);
+	MOTOR_DEBUG_PRINT(TargetBrake);
+	MOTOR_DEBUG_PRINT(BrakeAfter);
+	MOTOR_DEBUG_PRINT(LockRampDown);
+	MOTOR_DEBUG_PRINT(Pol);
+	MOTOR_DEBUG_PRINT(Direction);
+	MOTOR_DEBUG_PRINT(Type);
+	MOTOR_DEBUG_PRINT(State);
+	MOTOR_DEBUG_PRINT(TargetState);
+	MOTOR_DEBUG_PRINT(Owner);
+	MOTOR_DEBUG_PRINT(Mutex);
+	MOTOR_DEBUG_PRINT(DirChgPtr);
+	MOTOR_DEBUG_PRINT(TurnRatio);
+
+	return 0;
+}
+
+static int device1_debug_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, device1_debug_show, NULL);
+}
+
+static const struct file_operations device1_debug_fops = {
+	.open		= device1_debug_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static struct dentry *device1_debug;
+
 static int Device1Init(void)
 {
 	int ret;
@@ -2406,6 +2463,9 @@ static int Device1Init(void)
 	if (ret < 0)
 		goto err5;
 
+	device1_debug = debugfs_create_file(DEVICE1_NAME, 0444, NULL, NULL,
+					    &device1_debug_fops);
+
 	return 0;
 
 err5:
@@ -2426,6 +2486,7 @@ static void Device1Exit(void)
 {
 	int i;
 
+	debugfs_remove(device1_debug);
 	misc_deregister(&Device1);
 	hrtimer_cancel(&Device1Timer);
 	for (i = 0; i < OUTPUTS; i++) {
