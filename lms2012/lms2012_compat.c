@@ -222,6 +222,8 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 					name);
 			return PTR_ERR(lms->out_pwms[i]);
 		}
+		/* This applies device tree settings, like polarity */
+		pwm_apply_args(lms->out_pwms[i]);
 	}
 
 	platform_set_drvdata(pdev, lms);
