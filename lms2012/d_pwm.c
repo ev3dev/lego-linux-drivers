@@ -2,7 +2,7 @@
  * LEGO® MINDSTORMS EV3
  *
  * Copyright (C) 2010-2013 The LEGO Group
- * Copyright (C) 2016 David Lechner <david@lechnology.com>
+ * Copyright (C) 2016-2017 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -254,7 +254,6 @@ static irqreturn_t IntC (int irq, void * dev);
 static irqreturn_t IntD (int irq, void * dev);
 
 static UBYTE dCalculateSpeed(UBYTE No, SBYTE *pSpeed);
-static void SetGpioRisingIrq(UBYTE Port, UBYTE PinNo, irqreturn_t (*IntFuncPtr)(int, void *));
 static void GetSyncDurationCnt(SLONG *pCount0, SLONG *pCount1);
 static void CheckforEndOfSync(void);
 
@@ -2288,13 +2287,62 @@ static int Device1Init(void)
 	SyncMNos[0] = UNUSED_SYNC_MOTOR;
 	SyncMNos[1] = UNUSED_SYNC_MOTOR;
 
-	// Setup interrupt for the tacho int pins
-	SetGpioRisingIrq(0, OUTPUT_PORT_PIN6, IntA);
-	SetGpioRisingIrq(1, OUTPUT_PORT_PIN6, IntB);
-	SetGpioRisingIrq(2, OUTPUT_PORT_PIN6, IntC);
-	SetGpioRisingIrq(3, OUTPUT_PORT_PIN6, IntD);
+	ret = gpiod_to_irq(Device1Lms2012Compat->out_pins[0]->desc[OUTPUT_PORT_PIN6]);
+	if (ret < 0)
+		goto err1;
+
+	Device1Lms2012Compat->motor_irqs[0] = ret;
+	ret = request_irq(ret, IntA, IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING,
+			  "PWM_DEVICE", NULL);
+	if (ret < 0)
+		goto err1;
+
+	ret = gpiod_to_irq(Device1Lms2012Compat->out_pins[1]->desc[OUTPUT_PORT_PIN6]);
+	if (ret < 0)
+		goto err2;
+
+	Device1Lms2012Compat->motor_irqs[1] = ret;
+	ret = request_irq(ret, IntB, IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING,
+			  "PWM_DEVICE", NULL);
+	if (ret < 0)
+		goto err2;
+
+	ret = gpiod_to_irq(Device1Lms2012Compat->out_pins[2]->desc[OUTPUT_PORT_PIN6]);
+	if (ret < 0)
+		goto err3;
+
+	Device1Lms2012Compat->motor_irqs[2] = ret;
+	ret = request_irq(ret, IntC, IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING,
+			  "PWM_DEVICE", NULL);
+	if (ret < 0)
+		goto err3;
+
+	ret = gpiod_to_irq(Device1Lms2012Compat->out_pins[3]->desc[OUTPUT_PORT_PIN6]);
+	if (ret < 0)
+		goto err4;
+
+	Device1Lms2012Compat->motor_irqs[3] = ret;
+	ret = request_irq(ret, IntD, IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING,
+			  "PWM_DEVICE", NULL);
+	if (ret < 0)
+		goto err4;
 
 	ret = misc_register(&Device1);
+	if (ret < 0)
+		goto err5;
+
+	return 0;
+
+err5:
+	free_irq(Device1Lms2012Compat->motor_irqs[3], NULL);
+err4:
+	free_irq(Device1Lms2012Compat->motor_irqs[2], NULL);
+err3:
+	free_irq(Device1Lms2012Compat->motor_irqs[1], NULL);
+err2:
+	free_irq(Device1Lms2012Compat->motor_irqs[0], NULL);
+err1:
+	put_device(Device1Lms2012CompatDev);
 
 	return ret;
 }
@@ -2306,24 +2354,11 @@ static void Device1Exit(void)
 	misc_deregister(&Device1);
 	hrtimer_cancel(&Device1Timer);
 	for (i = 0; i < OUTPUTS; i++) {
+		free_irq(Device1Lms2012Compat->motor_irqs[i], NULL);
 		SetCoast(i);
 		pwm_disable(Device1Lms2012Compat->out_pwms[i]);
 	}
 	put_device(Device1Lms2012CompatDev);
-}
-
-static void SetGpioRisingIrq(UBYTE Port, UBYTE PinNo, irqreturn_t (*IntFuncPtr)(int, void *))
-{
-	UWORD Status;
-	int irq;
-
-	irq = gpiod_to_irq(Device1Lms2012Compat->out_pins[Port]->desc[PinNo]);
-
-	Status = request_irq(irq, IntFuncPtr, 0, "PWM_DEVICE", NULL);
-	if (Status < 0) {
-		printk("error %d requesting GPIO IRQ %d\n", Status, PinNo);
-	}
-	irq_set_irq_type(irq, IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING);
 }
 
 /*
