@@ -61,9 +61,9 @@
 
 //#define COUNT_PER_PULSE_LM	12800L
 //#define COUNT_PER_PULSE_MM	8100L
-// COUNT_PER_PULSE_* was from 33MHz / 256 clock counts, so convert to usec...
-#define USEC_PER_PULSE_LM	99297
-#define USEC_PER_PULSE_MM	62836
+// COUNT_PER_PULSE_* was from 24MHz / 256 clock counts, so convert to usec...
+#define USEC_PER_PULSE_LM	136533
+#define USEC_PER_PULSE_MM	86400
 
 enum {
 	SAMPLES_BELOW_SPEED_25,
