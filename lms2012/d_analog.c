@@ -801,7 +801,7 @@ static void Device1Exit(void)
 #define DCM_TIMER_RESOLUTION		10                        // [mS]
 #define DCM_DEVICE_RESET_TIME		2000                      // [mS]
 #define DCM_FLOAT_DELAY			20                        // [mS]
-#define DCM_LOW_DELAY			20                        // [mS]
+#define DCM_LOW_DELAY			100                       // [mS]
 #define DCM_TOUCH_DELAY			20                        // [mS]
 #define DCM_CONNECT_STABLE_DELAY	IN_CONNECT_STEADY_TIME    // [mS]
 #define DCM_EVENT_STABLE_DELAY		IN_DISCONNECT_STEADY_TIME // [mS]
