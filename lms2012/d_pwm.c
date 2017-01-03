@@ -260,11 +260,6 @@ static void CheckforEndOfSync(void);
 #define OutputReadDir(port, pin) \
 	gpiod_get_value(Device1Lms2012Compat->out_pins[port]->desc[pin])
 
-#define READDirA OutputReadDir(0, OUTPUT_PORT_PIN5R)
-#define READDirB OutputReadDir(1, OUTPUT_PORT_PIN5R)
-#define READDirC OutputReadDir(2, OUTPUT_PORT_PIN5R)
-#define READDirD OutputReadDir(3, OUTPUT_PORT_PIN5R)
-
 static struct device *Device1Lms2012CompatDev;
 static struct lms2012_compat *Device1Lms2012Compat;
 
@@ -390,11 +385,6 @@ static inline void SETAvgTachoCount(u8 Port, u8 Speed)
 
 #define OutputLow(port, pin) \
 	gpiod_direction_output(Device1Lms2012Compat->out_pins[port]->desc[pin], 0)
-
-#define READIntA OutputRead(0, OUTPUT_PORT_PIN6)
-#define READIntB OutputRead(1, OUTPUT_PORT_PIN6)
-#define READIntC OutputRead(2, OUTPUT_PORT_PIN6)
-#define READIntD OutputRead(3, OUTPUT_PORT_PIN6)
 
 static void CheckSpeedPowerLimits(SBYTE *pCheckVal)
 {
@@ -2381,8 +2371,8 @@ static irqreturn_t IntA (int irq, void * dev)
 	ktime_t Timer;
 
 	// Sample all necessary items as fast as possible
-	IntAState = READIntA;
-	DirAState = READDirA;
+	IntAState = OutputRead(0, OUTPUT_PORT_PIN6);
+	DirAState = OutputReadDir(0, OUTPUT_PORT_PIN5R);
 	Timer     = ktime_get();
 
 	TmpPtr = (TachoSamples[0].ArrayPtr + 1) & (NO_OF_TACHO_SAMPLES-1);
@@ -2459,8 +2449,8 @@ static irqreturn_t IntB (int irq, void * dev)
 	ktime_t Timer;
 
 	// Sample all necessary items as fast as possible
-	IntBState = READIntB;
-	DirBState = READDirB;
+	IntBState = OutputRead(1, OUTPUT_PORT_PIN6);
+	DirBState = OutputReadDir(1, OUTPUT_PORT_PIN5R);
 	Timer     = ktime_get();
 
 	TmpPtr = (TachoSamples[1].ArrayPtr + 1) & (NO_OF_TACHO_SAMPLES-1);
@@ -2536,8 +2526,8 @@ static irqreturn_t IntC (int irq, void * dev)
 	ktime_t Timer;
 
 	// Sample all necessary items as fast as possible
-	IntCState = READIntC;
-	DirCState = READDirC;
+	IntCState = OutputRead(2, OUTPUT_PORT_PIN6);
+	DirCState = OutputReadDir(2, OUTPUT_PORT_PIN5R);
 	Timer     = ktime_get();
 
 	TmpPtr = (TachoSamples[2].ArrayPtr + 1) & (NO_OF_TACHO_SAMPLES-1);
@@ -2612,8 +2602,8 @@ static irqreturn_t IntD (int irq, void * dev)
 	ktime_t Timer;
 
 	// Sample all necessary items as fast as possible
-	IntDState = READIntD;
-	DirDState = READDirD;
+	IntDState = OutputRead(3, OUTPUT_PORT_PIN6);
+	DirDState = OutputReadDir(3, OUTPUT_PORT_PIN5R);
 	Timer     = ktime_get();
 
 	TmpPtr = (TachoSamples[3].ArrayPtr + 1) & (NO_OF_TACHO_SAMPLES-1);
