@@ -1175,6 +1175,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 */
 		.name		= HT_NXT_COMPASS_SENSOR_NAME,
 		.vendor_id	= "HITECHNC",
+		.alt_vendor_id	= "HiTechnc",
 		.product_id	= "Compass",
 		.num_modes	= 1,
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
