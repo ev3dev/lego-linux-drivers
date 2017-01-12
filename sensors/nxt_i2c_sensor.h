@@ -90,6 +90,8 @@ struct nxt_i2c_sensor_cmd_info {
  * struct nxt_i2c_sensor_info
  * @name: The driver name. Must match name in id_table.
  * @vendor_id: The vendor ID string to match to the sensor.
+ * @alt_vendor_id: An alternate vendor ID, e.g. for working around case
+ * 	sensitivity issues.
  * @product_id: The product ID string to match to the sensor.
  * @ops: Optional hooks for special-case drivers.
  * @mode_info: Array of mode information for each sensor mode. Used by the
@@ -110,6 +112,7 @@ struct nxt_i2c_sensor_cmd_info {
 struct nxt_i2c_sensor_info {
 	const char *name;
 	const char *vendor_id;
+	const char *alt_vendor_id;
 	const char *product_id;
 	const struct nxt_i2c_sensor_ops *ops;
 	const struct lego_sensor_mode_info *mode_info;
