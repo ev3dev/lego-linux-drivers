@@ -95,25 +95,13 @@ static int brickpi_i2c_sensor_send_command(void *context, u8 mode)
 	const struct nxt_i2c_sensor_cmd_info *i2c_cmd_info = data->info->i2c_cmd_info;
 	const struct nxt_i2c_sensor_mode_info *i2c_mode_info = data->info->i2c_mode_info;
 	int size = lego_sensor_get_raw_data_size(mode_info);
-	int err; //temporary workaround for mi-xg1300l and ms-absolute-imu (5 of 5)
-	
+
 	/* set mode function also works for sending command */
-	err = brickpi_in_port_set_i2c_mode(data->ldev,
+	return brickpi_in_port_set_i2c_mode(data->ldev,
 					    i2c_cmd_info[mode].cmd_reg,
 					    i2c_cmd_info[mode].cmd_data,
 					    i2c_mode_info[mode].read_data_reg,
 					    size);
-					
-	
-	//temporary workaround for mi-xg1300l and ms-absolute-imu (5 of 5)
-	if (err)
-		return err;
-					
-	//temporary workaround for mi-xg1300l and ms-absolute-imu (5 of 5)					
-	if (sensor->info->ops && sensor->info->ops->send_cmd_post_cb)
-		sensor->info->ops->send_cmd_post_cb(sensor, command);						
-						
-	return err;
 }
 
 static int brickpi_i2c_sensor_probe(struct lego_device *ldev)
@@ -133,9 +121,7 @@ static int brickpi_i2c_sensor_probe(struct lego_device *ldev)
 
 	sensor_info = &nxt_i2c_sensor_defs[ldev->entry_id->driver_data];
 
-	if (sensor_info->ops //temporary workaround for mi-xg1300l and ms-absolute-imu (1 of 5)
-		&& ldev->entry_id->driver_data != MI_CRUIZCORE_XG1300L 
-		&& ldev->entry_id->driver_data != MS_ABSOLUTE_IMU ) {
+	if (sensor_info->ops) {
 		dev_err(&ldev->dev, "The '%s' driver requires special operations"
 			" that are not supported in the '%s' module.",
 			ldev->entry_id->name, "brickpi-i2c-sensor");
@@ -185,13 +171,6 @@ static int brickpi_i2c_sensor_probe(struct lego_device *ldev)
 
 	dev_set_drvdata(&ldev->dev, data);
 
-	//temporary workaround for mi-xg1300l and ms-absolute-imu (2 of 5)
-	if (data->info->ops && data->info->ops->probe_cb) {
-		err = data->info->ops->probe_cb(data);
-		if (err < 0)
-			goto err_probe_cb;
-	}
-	
 	err = register_lego_sensor(&data->sensor, &ldev->dev);
 	if (err) {
 		dev_err(&ldev->dev, "could not register sensor!\n");
@@ -203,9 +182,7 @@ static int brickpi_i2c_sensor_probe(struct lego_device *ldev)
 
 	return 0;
 
-err_probe_cb:
-err_register_lego_sensor: //consider keeping the line below even without workaround
-	dev_set_drvdata(&ldev->dev, NULL); //workaround for mi-xg1300l and ms-absolute-imu (3 of 5)
+err_register_lego_sensor:
 	kfree(data->sensor.mode_info);
 err_kalloc_mode_info:
 	kfree(data);
@@ -217,10 +194,6 @@ static int brickpi_i2c_sensor_remove(struct lego_device *ldev)
 {
 	struct brickpi_i2c_sensor_data *data = dev_get_drvdata(&ldev->dev);
 
-	//temporary workaround for mi-xg1300l and ms-absolute-imu (4 of 5)
-	if (data->info->ops && data->info->ops->remove_cb)
-		data->info->ops->remove_cb(data);	
-	
 	lego_port_set_raw_data_ptr_and_func(ldev->port, NULL, 0, NULL, NULL);
 	unregister_lego_sensor(&data->sensor);
 	dev_set_drvdata(&ldev->dev, NULL);
