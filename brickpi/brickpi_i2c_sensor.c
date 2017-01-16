@@ -115,7 +115,7 @@ static int brickpi_i2c_sensor_send_command(void *context, u8 mode)
 	if (data->info->ops && data->info->ops->send_cmd_post_cb)
 	{
 		workaround_sensor.sensor.mode_info = data->sensor.mode_info;
-		data->info->ops->send_cmd_post_cb(workaround_sensor, mode);						
+		data->info->ops->send_cmd_post_cb(&workaround_sensor, mode);						
 	}			
 	
 	return err;
