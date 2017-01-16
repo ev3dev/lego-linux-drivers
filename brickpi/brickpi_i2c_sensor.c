@@ -104,7 +104,7 @@ static int brickpi_i2c_sensor_send_command(void *context, u8 mode)
 					    i2c_cmd_info[mode].cmd_reg,
 					    i2c_cmd_info[mode].cmd_data,
 					    i2c_mode_info[mode].read_data_reg,
-					    size);		
+					    size);
 
 	/* temporary workaround for ms-absolute-imu (4 of 5) */
 	if (err)
