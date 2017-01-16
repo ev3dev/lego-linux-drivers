@@ -98,26 +98,25 @@ static int brickpi_i2c_sensor_send_command(void *context, u8 mode)
 	
 	int err; //temporary workaround for ms-absolute-imu (2 of 5)
 	struct nxt_i2c_sensor_data workaround_sensor; //workaround (3 of 5)
-	
+
 	/* set mode function also works for sending command */
 	err = brickpi_in_port_set_i2c_mode(data->ldev,
 					    i2c_cmd_info[mode].cmd_reg,
 					    i2c_cmd_info[mode].cmd_data,
 					    i2c_mode_info[mode].read_data_reg,
-					    size);
-					
-	
+					    size);				
+
 	//temporary workaround for ms-absolute-imu (4 of 5)
 	if (err)
 		return err;
-					
+
 	//temporary workaround for ms-absolute-imu (5 of 5)					
 	if (data->info->ops && data->info->ops->send_cmd_post_cb)
 	{
 		workaround_sensor.sensor.mode_info = data->sensor.mode_info;
 		data->info->ops->send_cmd_post_cb(&workaround_sensor, mode);						
 	}			
-	
+
 	return err;
 }
 
