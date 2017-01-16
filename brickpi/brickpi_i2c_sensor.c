@@ -112,6 +112,7 @@ static int brickpi_i2c_sensor_send_command(void *context, u8 mode)
 	if (data->ldev->entry_id->driver_data == MS_ABSOLUTE_IMU &&
 	data->info->ops && data->info->ops->send_cmd_post_cb) {
 		struct nxt_i2c_sensor_data workaround_sensor;
+
 		workaround_sensor.sensor.mode_info = data->sensor.mode_info;
 		data->info->ops->send_cmd_post_cb(&workaround_sensor, mode);
 	}
