@@ -51,13 +51,14 @@
  */
 #define NO_OF_TACHO_SAMPLES	128
 
-#define MAX_PWM_CNT		(10000)
+//#define MAX_PWM_CNT		(10000)
+// MAX_PWM_CNT was based on 132.5MHz clock, so, 10000 / 132MHz = 75758 ns
+/* TODO: we should get this value from device tree */
+#define PWM_PERIOD		75758	/* 13.2 kHz */
 #define MAX_SPEED		(100)
-#define SPEED_PWMCNT_REL	(MAX_PWM_CNT / MAX_SPEED)
+#define SPEED_PWMCNT_REL	(PWM_PERIOD / MAX_SPEED)
 #define RAMP_FACTOR		(1000)
 #define MAX_SYNC_MOTORS		(2)
-
-#define PWM_PERIOD		(NSEC_PER_SEC / MAX_PWM_CNT)
 
 //#define COUNT_PER_PULSE_LM	12800L
 //#define COUNT_PER_PULSE_MM	8100L
@@ -460,18 +461,31 @@ static inline UWORD GetTachoInt(UBYTE Port)
 
 static inline void SetDuty(UBYTE Port, ULONG Duty)
 {
-	Duty = PWM_PERIOD * Duty / MAX_PWM_CNT;
 	pwm_config(Device1Lms2012Compat->out_pwms[Port], Duty, PWM_PERIOD);
+}
+
+/**
+ * adjust_for_min_pct - proportionally adjust Power based on a minimum
+ * percent.
+ *
+ * @Power: the value to adjust
+ * @Pct: the duty cycle for minimum speed in percent
+ */
+static inline SLONG adjust_for_min_pct(SLONG Power, UBYTE Pct)
+{
+	SLONG min = PWM_PERIOD * Pct / 100;
+
+	return Power * (100 - Pct) / 100 + min;
 }
 
 static void SetPower(UBYTE Port, SLONG Power)
 {
-	if (MAX_PWM_CNT < Power) {
-		Power             = MAX_PWM_CNT;
+	if (PWM_PERIOD < Power) {
+		Power             = PWM_PERIOD;
 		Motor[Port].Power = Power;
 	}
-	if (-MAX_PWM_CNT > Power) {
-		Power             = -MAX_PWM_CNT;
+	if (-PWM_PERIOD > Power) {
+		Power             = -PWM_PERIOD;
 		Motor[Port].Power = Power;
 	}
 
@@ -484,7 +498,7 @@ static void SetPower(UBYTE Port, SLONG Power)
 				SetDirRwd(Port);
 				Power = 0 - Power;
 			}
-			Power = ((Power * 8000)/10000) + 2000;
+			Power = adjust_for_min_pct(Power, 20);
 		}
 	} else {
 		// Large motor
@@ -495,7 +509,7 @@ static void SetPower(UBYTE Port, SLONG Power)
 				SetDirRwd(Port);
 				Power = 0 - Power;
 			}
-			Power = ((Power * 9500)/10000) + 500;
+			Power = adjust_for_min_pct(Power, 5);
 		}
 	}
 	SetDuty(Port, Power);
@@ -503,12 +517,12 @@ static void SetPower(UBYTE Port, SLONG Power)
 
 static void SetRegulationPower(UBYTE Port, SLONG Power)
 {
-	if (MAX_PWM_CNT < Power) {
-		Power             = MAX_PWM_CNT;
+	if (PWM_PERIOD < Power) {
+		Power             = PWM_PERIOD;
 		Motor[Port].Power = Power;
 	}
-	if (-MAX_PWM_CNT > Power) {
-		Power             = -MAX_PWM_CNT;
+	if (-PWM_PERIOD > Power) {
+		Power             = -PWM_PERIOD;
 		Motor[Port].Power = Power;
 	}
 
@@ -521,7 +535,7 @@ static void SetRegulationPower(UBYTE Port, SLONG Power)
 				SetDirRwd(Port);
 				Power = 0 - Power;
 			}
-			Power = ((Power * 9000)/10000) + 1000;
+			Power = adjust_for_min_pct(Power, 10);
 		}
 	} else {
 		// Large motor
@@ -532,7 +546,7 @@ static void SetRegulationPower(UBYTE Port, SLONG Power)
 				SetDirRwd(Port);
 				Power = 0 - Power;
 			}
-			Power = ((Power * 10000)/10000) + 0;
+			Power = adjust_for_min_pct(Power, 0);
 		}
 	}
 	SetDuty(Port, Power);
@@ -797,12 +811,12 @@ static void dRegulateSpeed(UBYTE No)
 
 	Motor[No].Power = Motor[No].Power + ((Motor[No].PVal + Motor[No].IVal + Motor[No].DVal));
 
-	if (Motor[No].Power > MAX_PWM_CNT) {
-		Motor[No].Power = MAX_PWM_CNT;
+	if (Motor[No].Power > PWM_PERIOD) {
+		Motor[No].Power = PWM_PERIOD;
 	}
 
-	if (Motor[No].Power < -MAX_PWM_CNT) {
-		Motor[No].Power = -MAX_PWM_CNT;
+	if (Motor[No].Power < -PWM_PERIOD) {
+		Motor[No].Power = -PWM_PERIOD;
 	}
 	Motor[No].OldSpeedErr = SpeedErr;
 
@@ -825,11 +839,11 @@ static void BrakeMotor(UBYTE No, SLONG TachoCnt)
 
 	TmpTacho <<= 2;
 
-	if (TmpTacho > MAX_PWM_CNT) {
-		TmpTacho = MAX_PWM_CNT;
+	if (TmpTacho > PWM_PERIOD) {
+		TmpTacho = PWM_PERIOD;
 	}
-	if (TmpTacho < -MAX_PWM_CNT) {
-		TmpTacho = -MAX_PWM_CNT;
+	if (TmpTacho < -PWM_PERIOD) {
+		TmpTacho = -PWM_PERIOD;
 	}
 
 	Motor[No].Power = 0 - TmpTacho;
@@ -1250,7 +1264,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 
 				Status  = FALSE;
 
-				if ((Motor[SyncMNos[0]].Power > (MAX_PWM_CNT - 100)) || (Motor[SyncMNos[0]].Power < (-MAX_PWM_CNT + 100))) {
+				if ((Motor[SyncMNos[0]].Power > (PWM_PERIOD - 100)) || (Motor[SyncMNos[0]].Power < (-PWM_PERIOD + 100))) {
 					// Regulation is stretched to the limit....... Checked in both directions
 					Status = TRUE;
 					if (TRUE == CheckLessThanSpecial((SLONG)(Motor[SyncMNos[0]].Speed), (SLONG)(Motor[SyncMNos[0]].TargetSpeed), Motor[SyncMNos[0]].Dir)) {
@@ -1264,7 +1278,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 						}
 					}
 				}
-				if ((Motor[SyncMNos[1]].Power > (MAX_PWM_CNT - 100)) || (Motor[SyncMNos[1]].Power < (-MAX_PWM_CNT + 100))) {
+				if ((Motor[SyncMNos[1]].Power > (PWM_PERIOD - 100)) || (Motor[SyncMNos[1]].Power < (-PWM_PERIOD + 100))) {
 					// Regulation is stretched to the limit....... Checked in both directions
 					Status = TRUE;
 					if (TRUE == CheckLessThanSpecial((SLONG)(Motor[SyncMNos[1]].Speed), (SLONG)(Motor[SyncMNos[1]].TargetSpeed), (Motor[SyncMNos[0]].Dir * Motor[SyncMNos[1]].Dir))) {
@@ -1330,7 +1344,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 
 				Status  = FALSE;
 
-				if ((Motor[SyncMNos[0]].Power > (MAX_PWM_CNT - 100)) || (Motor[SyncMNos[0]].Power < (-MAX_PWM_CNT + 100))) {
+				if ((Motor[SyncMNos[0]].Power > (PWM_PERIOD - 100)) || (Motor[SyncMNos[0]].Power < (-PWM_PERIOD + 100))) {
 					// Regulation is stretched to the limit....... in both directions
 					Status = TRUE;
 					if (TRUE == CheckLessThanSpecial((SLONG)(Motor[SyncMNos[0]].Speed), (SLONG)(Motor[SyncMNos[0]].TargetSpeed), Motor[SyncMNos[0]].Dir)) {
@@ -1345,7 +1359,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 					}
 				}
 
-				if ((Motor[SyncMNos[1]].Power > (MAX_PWM_CNT - 100)) || (Motor[SyncMNos[1]].Power < (-MAX_PWM_CNT + 100))) {
+				if ((Motor[SyncMNos[1]].Power > (PWM_PERIOD - 100)) || (Motor[SyncMNos[1]].Power < (-PWM_PERIOD + 100))) {
 					// Regulation is stretched to the limit....... in both directions
 					Status = TRUE;
 					if (TRUE == CheckLessThanSpecial((SLONG)(Motor[SyncMNos[1]].Speed), (SLONG)(Motor[SyncMNos[1]].TargetSpeed), (Motor[SyncMNos[1]].Dir * Motor[SyncMNos[0]].Dir))) {
