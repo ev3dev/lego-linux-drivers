@@ -95,13 +95,30 @@ static int brickpi_i2c_sensor_send_command(void *context, u8 mode)
 	const struct nxt_i2c_sensor_cmd_info *i2c_cmd_info = data->info->i2c_cmd_info;
 	const struct nxt_i2c_sensor_mode_info *i2c_mode_info = data->info->i2c_mode_info;
 	int size = lego_sensor_get_raw_data_size(mode_info);
-
+	
+	int err; //temporary workaround for ms-absolute-imu (2 of 5)
+	struct nxt_i2c_sensor_data workaround_sensor; //workaround (3 of 5)
+	
 	/* set mode function also works for sending command */
-	return brickpi_in_port_set_i2c_mode(data->ldev,
+	err = brickpi_in_port_set_i2c_mode(data->ldev,
 					    i2c_cmd_info[mode].cmd_reg,
 					    i2c_cmd_info[mode].cmd_data,
 					    i2c_mode_info[mode].read_data_reg,
 					    size);
+					
+	
+	//temporary workaround for ms-absolute-imu (4 of 5)
+	if (err)
+		return err;
+					
+	//temporary workaround for ms-absolute-imu (5 of 5)					
+	if (data->info->ops && data->info->ops->send_cmd_post_cb)
+	{
+		workaround_sensor.sensor.mode_info = data->sensor.mode_info;
+		data->info->ops->send_cmd_post_cb(workaround_sensor, command);						
+	}			
+	
+	return err;
 }
 
 static int brickpi_i2c_sensor_probe(struct lego_device *ldev)
@@ -121,7 +138,8 @@ static int brickpi_i2c_sensor_probe(struct lego_device *ldev)
 
 	sensor_info = &nxt_i2c_sensor_defs[ldev->entry_id->driver_data];
 
-	if (sensor_info->ops) {
+	if (sensor_info->ops //below temporary workaround for ms_absolute_imu (1 o 5)
+	&& ldev->entry_id->driver_data != MS_ABSOLUTE_IMU) {
 		dev_err(&ldev->dev, "The '%s' driver requires special operations"
 			" that are not supported in the '%s' module.",
 			ldev->entry_id->name, "brickpi-i2c-sensor");
