@@ -137,7 +137,7 @@ static int brickpi_i2c_sensor_probe(struct lego_device *ldev)
 
 	sensor_info = &nxt_i2c_sensor_defs[ldev->entry_id->driver_data];
 
-	/* below temporary workaround for ms_absolute_imu (1 o 4) */
+	/* below temporary workaround for ms_absolute_imu (1 of 4) */
 	if (sensor_info->ops &&
 		ldev->entry_id->driver_data != MS_ABSOLUTE_IMU) {
 		dev_err(&ldev->dev, "The '%s' driver requires special operations"
