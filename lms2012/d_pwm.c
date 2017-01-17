@@ -52,7 +52,7 @@
 #define NO_OF_TACHO_SAMPLES	128
 
 //#define MAX_PWM_CNT		(10000)
-// MAX_PWM_CNT was based on 132.5MHz clock, so, 10000 / 132MHz = 75758 ns
+// MAX_PWM_CNT was based on 132MHz clock, so, 10000 / 132MHz = 75758 ns
 /* TODO: we should get this value from device tree */
 #define PWM_PERIOD		75758	/* 13.2 kHz */
 #define MAX_SPEED		(100)
@@ -62,9 +62,21 @@
 
 //#define COUNT_PER_PULSE_LM	12800L
 //#define COUNT_PER_PULSE_MM	8100L
-// COUNT_PER_PULSE_* was from 33MHz / 256 clock counts, so convert to usec...
-#define USEC_PER_PULSE_LM	99297
-#define USEC_PER_PULSE_MM	62836
+// COUNT_PER_PULSE_* was from 37.5MHz / 256 clock counts, so convert to usec...
+// 37.5MHz comes from 150MHz clock divided by 4 (PSC34 = 3)
+// Essentially, we are setting the max speed for motors here. And because of
+// that, values are x100 to scale for 100 being the max motor speed in EV3-G.
+#define USEC_PER_PULSE_LM	87381 /* ~190 RPM */
+#define USEC_PER_PULSE_MM	55296 /* ~300 RPM */
+// The ASYNC3 clock on the EV3 is actually 132MHz and not 150MHz, so I think
+// LEGO made a mistake when selecting the COUNT_PER_PULSE_* values. The
+// correct (converted) values should probably be the values below, which result
+// in slightly slower motor speeds. In fact, they match very closely to the 9V,
+// no load RPMs from <http://philohome.com/motors/motorcomp.htm>. We are using
+// the values above instead because they result in motor speeds that empirically
+// match the official LEGO firmware.
+//#define USEC_PER_PULSE_LM	99297 /* ~170 RPM */
+//#define USEC_PER_PULSE_MM	62836 /* ~265 RPM */
 
 enum {
 	SAMPLES_BELOW_SPEED_25,
