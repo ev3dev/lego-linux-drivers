@@ -1,7 +1,7 @@
 /*
  * LEGO MINDSTORMS EV3 sound driver
  *
- * Copyright (C) 2013-2014,2016 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2014,2016-2017 David Lechner <david@lechnology.com>
  * Copyright (C) 2014 Franz Detro <franz.detro@gmx.de>
  *
  * This driver is a combination of:
@@ -39,6 +39,10 @@
 #include <sound/initval.h>
 #include <sound/pcm.h>
 
+#if IS_ENABLED(CONFIG_LEGOEV3_FIQ)
+#include <mach/legoev3-fiq.h>
+#endif
+
 #define DRIVER_NAME	"snd-legoev3"
 
 /*--- configuration defines ---*/
@@ -74,6 +78,9 @@ struct snd_legoev3 {
 	size_t			 pcm_playback_ptr;
 	unsigned int		 pcm_callback_count;
 	unsigned int		 pcm_volume;
+#if IS_ENABLED(CONFIG_LEGOEV3_FIQ)
+	int			 fiq_err;
+#endif
 	bool			 requested_enabled;
 	bool			 is_enabled;
 };
@@ -292,6 +299,15 @@ static enum hrtimer_restart snd_legoev3_pcm_timer_callback(struct hrtimer *timer
 	return HRTIMER_RESTART;
 }
 
+#if IS_ENABLED(CONFIG_LEGOEV3_FIQ)
+static void snd_legoev3_period_elapsed(void *data)
+{
+	struct snd_legoev3 *chip = data;
+
+	tasklet_schedule(&chip->pcm_period_tasklet);
+}
+#endif
+
 static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 {
 	struct snd_legoev3 *chip = snd_pcm_substream_chip(substream);
@@ -307,6 +323,13 @@ static int snd_legoev3_pcm_playback_open(struct snd_pcm_substream *substream)
 	tasklet_init(&chip->pcm_period_tasklet, snd_legoev3_period_elapsed_tasklet,
 		     (unsigned long)substream);
 
+#if IS_ENABLED(CONFIG_LEGOEV3_FIQ)
+	chip->fiq_err = legoev3_fiq_ehrpwm_request();
+	if (chip->fiq_err < 0)
+		pr_warn("%s: Failed to get FIQ (%d), falling back to hrtimer\n",
+			__func__, chip->fiq_err);
+#endif
+
 	return 0;
 }
 
@@ -317,6 +340,11 @@ static int snd_legoev3_pcm_playback_close(struct snd_pcm_substream *substream)
 	/* Should already be stopped, but just in case... */
 	hrtimer_cancel(&chip->pcm_timer);
 	tasklet_kill(&chip->pcm_period_tasklet);
+
+#if IS_ENABLED(CONFIG_LEGOEV3_FIQ)
+	if (!chip->fiq_err)
+		legoev3_fiq_ehrpwm_release();
+#endif
 
 	return 0;
 }
@@ -340,6 +368,29 @@ static int snd_legoev3_pcm_prepare(struct snd_pcm_substream *substream)
 	chip->pcm_playback_ptr = 0;
 	chip->pcm_callback_count = 0;
 
+#if IS_ENABLED(CONFIG_LEGOEV3_FIQ)
+	if (!chip->fiq_err) {
+		unsigned char int_period;
+		int period;
+
+		/* interrupt can occur on every 1st, 2nd or 3rd pwm pulse */
+		if (substream->runtime->rate > 32000)
+			int_period = 1;
+		else if (substream->runtime->rate > 16000)
+			int_period = 2;
+		else
+			int_period = 3;
+
+		period = NSEC_PER_SEC / (substream->runtime->rate * int_period);
+		pwm_config(chip->pwm, period / 2, period);
+		legoev3_fiq_ehrpwm_prepare(substream,
+					   chip->pcm_volume,
+					   int_period,
+					   snd_legoev3_period_elapsed,
+					   chip);
+	}
+#endif
+
 	return 0;
 }
 
@@ -351,14 +402,28 @@ static int snd_legoev3_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	case SNDRV_PCM_TRIGGER_START:
 		if (chip->tone_frequency || hrtimer_is_queued(&chip->pcm_timer))
 			return -EBUSY;
+#if IS_ENABLED(CONFIG_LEGOEV3_FIQ)
+		if (legoev3_fiq_ehrpwm_int_is_enabled())
+			return -EBUSY;
+#endif
 		snd_legoev3_enable(chip);
 		chip->pcm_timer_period = ktime_set(0,
 				NSEC_PER_SEC / substream->runtime->rate);
+#if IS_ENABLED(CONFIG_LEGOEV3_FIQ)
+		if (!chip->fiq_err)
+			legoev3_fiq_ehrpwm_int_enable();
+		else
+#endif
 		hrtimer_start(&chip->pcm_timer, chip->pcm_timer_period,
 			      HRTIMER_MODE_REL);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 		snd_legoev3_disable(chip);
+#if IS_ENABLED(CONFIG_LEGOEV3_FIQ)
+		if (!chip->fiq_err)
+			legoev3_fiq_ehrpwm_int_disable();
+		else
+#endif
 		hrtimer_cancel(&chip->pcm_timer);
 		break;
 	default:
@@ -373,6 +438,11 @@ snd_legoev3_pcm_pointer(struct snd_pcm_substream *substream)
 {
 	struct snd_legoev3 *chip = snd_pcm_substream_chip(substream);
 
+#if IS_ENABLED(CONFIG_LEGOEV3_FIQ)
+	if (!chip->fiq_err)
+		return bytes_to_frames(substream->runtime,
+				       legoev3_fiq_ehrpwm_get_playback_ptr());
+#endif
 	return bytes_to_frames(substream->runtime, chip->pcm_playback_ptr);
 }
 
@@ -482,8 +552,12 @@ static int snd_legoev3_pcm_volume_control_put(struct snd_kcontrol *kcontrol,
 	if (chip->tone_volume != newValue) {
 		chip->pcm_volume = newValue;
 
-		/* if tone playback is running, apply volume */
+		/* if PCM playback is running, apply volume */
 		/* FIXME: */
+#if IS_ENABLED(CONFIG_LEGOEV3_FIQ)
+		if (!chip->fiq_err)
+			legoev3_fiq_ehrpwm_set_volume(chip->pcm_volume);
+#endif
 
 		changed = 1;
 	}
