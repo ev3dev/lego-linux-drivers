@@ -197,7 +197,7 @@ static int snd_legoev3_input_device_create(struct snd_card *card)
 	if (IS_ERR(input))
 		return PTR_ERR(input);
 
-	input->name = "EV3 speaker beep";
+	input->name = card->shortname;
 	input->dev.parent = chip->card->dev;
 	input->event = snd_legoev3_beep_event;
 	input_set_capability(input, EV_SND, SND_BELL);
@@ -392,11 +392,11 @@ static int snd_legoev3_new_pcm(struct snd_legoev3 *chip)
 	struct snd_pcm *pcm;
 	int err;
 
-	err = snd_pcm_new(chip->card, "LEGO MINDSTORMS EV3", 0, 1, 0, &pcm);
+	err = snd_pcm_new(chip->card, "PWM", 0, 1, 0, &pcm);
 	if (err < 0)
 		return err;
 	pcm->private_data = chip;
-	strcpy(pcm->name, "LEGO MINDSTORMS EV3");
+	strlcpy(pcm->name, chip->card->shortname, sizeof(pcm->name));
 	chip->pcm = pcm;
 
 	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK,
@@ -551,7 +551,10 @@ static int snd_legoev3_probe(struct platform_device *pdev)
 	struct snd_card *card;
 	struct gpio_desc *ena_gpio;
 	struct pwm_device *pwm;
+	const char *label;
 	int err;
+
+	of_property_read_string(pdev->dev.of_node, "label", &label);
 
 	ena_gpio = devm_gpiod_get(&pdev->dev, "enable", GPIOD_OUT_LOW);
 	if (IS_ERR(ena_gpio)) {
@@ -595,16 +598,16 @@ static int snd_legoev3_probe(struct platform_device *pdev)
 		goto err_snd_card_new;
 	}
 
+	strlcpy(card->driver, DRIVER_NAME, sizeof(card->driver));
+	strlcpy(card->shortname, label, sizeof(card->shortname));
+	sprintf(card->longname, "%s connected to %s", card->shortname,
+		dev_name(pwm->chip->dev));
+
 	err = snd_legoev3_create(card, pwm, ena_gpio);
 	if (err < 0) {
 		dev_err(&pdev->dev, "Failed to create sound device!\n");
 		goto err_snd_legoev3_create;
 	}
-
-	strlcpy(card->driver, DRIVER_NAME, sizeof(card->driver));
-	strcpy(card->shortname, "LEGO MINDSTORMS EV3 speaker");
-	sprintf(card->longname, "%s connected to %s", card->shortname,
-		dev_name(pwm->chip->dev));
 
 	err = snd_card_register(card);
 	if (err < 0) {
