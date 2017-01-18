@@ -39,6 +39,8 @@
 #include <sound/initval.h>
 #include <sound/pcm.h>
 
+#define DRIVER_NAME	"snd-legoev3"
+
 /*--- configuration defines ---*/
 
 #define BUFFER_SIZE	(128*1024)
@@ -599,7 +601,7 @@ static int snd_legoev3_probe(struct platform_device *pdev)
 		goto err_snd_legoev3_create;
 	}
 
-	strcpy(card->driver, "legoev3");
+	strlcpy(card->driver, DRIVER_NAME, sizeof(card->driver));
 	strcpy(card->shortname, "LEGO MINDSTORMS EV3 speaker");
 	sprintf(card->longname, "%s connected to %s", card->shortname,
 		dev_name(pwm->chip->dev));
@@ -655,7 +657,7 @@ MODULE_DEVICE_TABLE(of, of_snd_legoev3_match);
 
 static struct platform_driver snd_legoev3_platform_driver = {
 	.driver = {
-		.name		= "snd-legoev3",
+		.name		= DRIVER_NAME,
 		.of_match_table = of_snd_legoev3_match,
 	},
 	.probe = snd_legoev3_probe,
@@ -666,4 +668,4 @@ module_platform_driver(snd_legoev3_platform_driver);
 MODULE_DESCRIPTION("LEGO MINDSTORMS EV3 speaker driver");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("platform:snd-legoev3");
+MODULE_ALIAS("platform:" DRIVER_NAME);
