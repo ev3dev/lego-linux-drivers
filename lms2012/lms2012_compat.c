@@ -114,6 +114,16 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	lms->adc_gpios = devm_gpiod_get_array(&pdev->dev, "adc", GPIOD_ASIS);
+	if (IS_ERR(lms->adc_gpios)) {
+		dev_err(&pdev->dev, "Failed to get adc gpios\n");
+		return PTR_ERR(lms->adc_gpios);
+	}
+	if (lms->adc_gpios->ndescs != ADC_GPIOS) {
+		dev_err(&pdev->dev, "Incorrect number of adc gpios\n");
+		return -EINVAL;
+	}
+
 	lms->spi_pins = devm_gpiod_get_array(&pdev->dev, "spi", GPIOD_ASIS);
 	if (IS_ERR(lms->spi_pins)) {
 		dev_err(&pdev->dev, "Failed to get spi pins\n");

@@ -1,3 +1,4 @@
+obj-$(CONFIG_LMS2012_COMPAT)	+= battery.o
 obj-$(CONFIG_LMS2012_COMPAT)	+= d_analog.o
 obj-$(CONFIG_LMS2012_COMPAT)	+= d_iic.o
 obj-$(CONFIG_LMS2012_COMPAT)	+= d_pwm.o

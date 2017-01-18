@@ -365,6 +365,12 @@ IICSTR;
 
 /* lms2012_compat stuff */
 
+enum AdcGpios {
+  ADC_VOLT_ENA_GPIO,
+  ADC_BATT_TYPE_GPIO,
+  ADC_GPIOS
+};
+
 enum InputSpiPins {
   ADCMOSI,
   ADCMISO,
@@ -406,6 +412,7 @@ struct lms2012_compat {
     struct pinctrl *pinctrl[INPUTS];
     struct pinctrl_state *pinctrl_default[INPUTS];
     struct pinctrl_state *pinctrl_i2c[INPUTS];
+    struct gpio_descs *adc_gpios;
     struct gpio_descs *spi_pins;
     struct gpio_desc *in_pin1[INPUTS];
     struct gpio_desc *in_pin2[INPUTS];
@@ -418,5 +425,14 @@ struct lms2012_compat {
 };
 
 struct device *lms2012_compat_get(void);
+
+struct lms2012_battery;
+struct lms2012_battery *lms2012_battery_probe(struct device *parent,
+                                              struct gpio_desc *adc_gpio,
+                                              struct gpio_desc *type_gpio,
+                                              int (*get_volts)(void *),
+                                              int (*get_amps)(void *),
+                                              void *context);
+void lms2012_battery_remove(struct lms2012_battery *bat);
 
 #endif /* LMS2012_H_ */
