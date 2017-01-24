@@ -76,7 +76,7 @@ enum pin_state_flag {
 	PIN_STATE_FLAG_PIN2_LOW,
 	PIN_STATE_FLAG_PIN5_LOADED,
 	PIN_STATE_FLAG_PIN5_LOW,
-	PIN_STATE_FLAG_PIN6_HIGH,
+	PIN_STATE_FLAG_PIN6_LOW,
 	NUM_PIN_STATE_FLAG
 };
 
@@ -436,8 +436,8 @@ static enum hrtimer_restart evb_output_port_timer_callback(struct hrtimer *timer
 	case CON_STATE_NO_DEV:
 		new_pin5_mv = data->pin5_mv;
 
-		if (gpiod_get_value(data->pin6_gpio))
-			new_pin_state_flags |= BIT(PIN_STATE_FLAG_PIN6_HIGH);
+		if (!gpiod_get_value(data->pin6_gpio))
+			new_pin_state_flags |= BIT(PIN_STATE_FLAG_PIN6_LOW);
 		if ((new_pin5_mv < PIN5_BALANCE_LOW) || (new_pin5_mv > PIN5_BALANCE_HIGH))
 			new_pin_state_flags |= BIT(PIN_STATE_FLAG_PIN5_LOADED);
 
@@ -449,7 +449,7 @@ static enum hrtimer_restart evb_output_port_timer_callback(struct hrtimer *timer
 		if (data->pin_state_flags && (data->timer_loop_cnt >= ADD_CNT)) {
 			data->pin5_float_mv = new_pin5_mv;
 			data->timer_loop_cnt = 0;
-			gpiod_direction_output(data->pin6_gpio, 0);
+			gpiod_direction_output(data->pin6_gpio, 1);
 			data->con_state = CON_STATE_PIN6_SETTLE;
 		}
 		break;
@@ -477,7 +477,7 @@ static enum hrtimer_restart evb_output_port_timer_callback(struct hrtimer *timer
 
 			if ((data->pin5_float_mv >= PIN5_BALANCE_LOW)
 				&& (data->pin5_float_mv <= PIN5_BALANCE_HIGH)
-				&& (data->pin_state_flags & (0x01 << PIN_STATE_FLAG_PIN6_HIGH)))
+				&& (data->pin_state_flags & (0x01 << PIN_STATE_FLAG_PIN6_LOW)))
 			{
 				/* NXT TOUCH SENSOR, NXT SOUND SENSOR or NEW UART SENSOR */
 				data->motor_type = MOTOR_ERR;
