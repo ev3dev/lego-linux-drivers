@@ -76,7 +76,7 @@
 #endif
 
 /* EV3_UART_BUFFER_SIZE must be power of 2 for circ_buf macros */
-#define EV3_UART_BUFFER_SIZE		256
+#define EV3_UART_BUFFER_SIZE		1024
 #define EV3_UART_MAX_DATA_SIZE		32
 #define EV3_UART_MAX_MESSAGE_SIZE	(EV3_UART_MAX_DATA_SIZE + 2)
 
