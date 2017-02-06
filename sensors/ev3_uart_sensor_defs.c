@@ -354,6 +354,8 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				 * [^heading-value]: When looking in the same direction as the
 				 * sensor, -25 is far left and +25 is far right.
 				 *
+				 * [^proximity-value]: 100% is approximately 200cm/78in.
+				 *
 				 * [^no-beacon]: The absence of a beacon on a channel can be
 				 * detected when distance == -128 (and heading == 0).
 				 *
@@ -361,19 +363,19 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				 * @value0: Channel 1 Heading (-25 to 25)
 				 * @value0_footnote: [^heading-value]
 				 * @value1: Channel 1 Distance (-128 and 0 to 100)
-				 * @value1_footnote: [^distance-value]<sup>,</sup>[^no-beacon]
+				 * @value1_footnote: [^proximity-value]<sup>,</sup>[^no-beacon]
 				 * @value2: Channel 2 Heading (-25 to 25)
 				 * @value2_footnote: [^heading-value]
 				 * @value3: Channel 2 Distance (-128 and 0 to 100)
-				 * @value3_footnote: [^distance-value]<sup>,</sup>[^no-beacon]
+				 * @value3_footnote: [^proximity-value]<sup>,</sup>[^no-beacon]
 				 * @value4: Channel 3 Heading (-25 to 25)
 				 * @value4_footnote: [^heading-value]
 				 * @value5: Channel 3 Distance (-128 and 0 to 100)
-				 * @value5_footnote: [^distance-value]<sup>,</sup>[^no-beacon]
+				 * @value5_footnote: [^proximity-value]<sup>,</sup>[^no-beacon]
 				 * @value6: Channel 4 Heading (-25 to 25)
 				 * @value6_footnote: [^heading-value]
 				 * @value7: Channel 4 Distance (-128 and 0 to 100)
-				 * @value7_footnote: [^distance-value]<sup>,</sup>[^no-beacon]
+				 * @value7_footnote: [^proximity-value]<sup>,</sup>[^no-beacon]
 				 * @units_description: percent
 				 */
 				.name		= "IR-SEEK",
