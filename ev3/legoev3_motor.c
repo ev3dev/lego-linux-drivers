@@ -768,7 +768,7 @@ static void legoev3_motor_notify_state_change_work(struct work_struct *work)
 	tacho_motor_notify_state_change(&ev3_tm->tm);
 }
 
-static int legoev3_motor_get_position(void *context, long *position)
+static int legoev3_motor_get_position(void *context, int *position)
 {
 	struct legoev3_motor_data *ev3_tm = context;
 
@@ -779,7 +779,7 @@ static int legoev3_motor_get_position(void *context, long *position)
 
 static int legoev3_motor_get_state(void *context);
 
-static int legoev3_motor_set_position(void *context, long position)
+static int legoev3_motor_set_position(void *context, int position)
 {
 	struct legoev3_motor_data *ev3_tm = context;
 

@@ -150,7 +150,7 @@ static struct dc_motor_ops brickpi_out_port_dc_motor_ops = {
 	.get_duty_cycle		= brickpi_out_port_get_duty_cycle,
 };
 
-static int brickpi_out_port_get_position(void *context, long *position)
+static int brickpi_out_port_get_position(void *context, int *position)
 {
 	struct brickpi_out_port_data *data = context;
 
@@ -159,7 +159,7 @@ static int brickpi_out_port_get_position(void *context, long *position)
 	return 0;
 }
 
-static int brickpi_out_port_set_position(void *context, long position)
+static int brickpi_out_port_set_position(void *context, int position)
 {
 	struct brickpi_out_port_data *data = context;
 

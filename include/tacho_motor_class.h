@@ -164,8 +164,8 @@ struct tacho_motor_device {
  * @set_position_Kd: Sets the current derivative PID constant for the position PID.
  */
 struct tacho_motor_ops {
-	int (*get_position)(void *context, long *position);
-	int (*set_position)(void *context, long position);
+	int (*get_position)(void *context, int *position);
+	int (*set_position)(void *context, int position);
 
 	int (*get_state)(void *context);
 

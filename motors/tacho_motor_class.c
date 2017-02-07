@@ -424,8 +424,7 @@ static ssize_t position_show(struct device *dev, struct device_attribute *attr,
 			     char *buf)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	long position;
-	int err;
+	int position, err;
 
 	err = tm->ops->get_position(tm->context, &position);
 	if (err < 0)
@@ -653,7 +652,7 @@ static int tm_send_command(struct tacho_motor_device *tm,
 			new_params.position_sp = tm->active_params.position_sp +
 							tm->params.position_sp;
 		} else {
-			long position;
+			int position;
 
 			tm->ops->get_position(tm->context, &position);
 			new_params.position_sp = position +
@@ -1016,8 +1015,7 @@ static ssize_t position_sp_store(struct device *dev,
 				 const char *buf, size_t size)
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
-	int err;
-	long position;
+	int err, position;
 
 	if (!((BIT(TM_COMMAND_RUN_TO_ABS_POS) | BIT(TM_COMMAND_RUN_TO_REL_POS))
 						& get_supported_commands(tm))) {

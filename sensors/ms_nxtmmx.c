@@ -174,7 +174,7 @@ static inline int ms_nxtmmx_scale_speed(int speed)
 	return scaled;
 }
 
-static int ms_nxtmmx_get_position(void *context, long *position)
+static int ms_nxtmmx_get_position(void *context, int *position)
 {
 	struct ms_nxtmmx_data *mmx = context;
 	int err;
@@ -194,7 +194,7 @@ static int ms_nxtmmx_get_position(void *context, long *position)
 	return 0;
 }
 
-static int ms_nxtmmx_set_position(void *context, long position)
+static int ms_nxtmmx_set_position(void *context, int position)
 {
 	struct ms_nxtmmx_data *mmx = context;
 	int ret;
