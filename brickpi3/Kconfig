@@ -1,0 +1,7 @@
+menuconfig BRICKPI3
+	tristate "Dexter Industries BrickPi3 support"
+	help
+	  Say Y here if you want to use Dexter Industries BrickPi3.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called brickpi.
