@@ -155,9 +155,11 @@ int brickpi_set_sensors(struct brickpi_channel_data *ch_data)
 	struct brickpi_data *data = ch_data->data;
 	int i, err;
 
-	if (data->closing)
-		return 0;
 	mutex_lock(&data->tx_mutex);
+	if (data->closing) {
+		mutex_unlock(&data->tx_mutex);
+		return 0;
+	}
 	data->tx_buffer_tail = BRICKPI_TX_BUFFER_TAIL_INIT;
 	brickpi_append_tx(data, 8, ch_data->in_port[BRICKPI_PORT_1].sensor_type);
 	brickpi_append_tx(data, 8, ch_data->in_port[BRICKPI_PORT_2].sensor_type);
@@ -202,9 +204,11 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 	int i, j, err;
 	u8 port_size[NUM_BRICKPI_PORT];
 
-	if (data->closing)
-		return 0;
 	mutex_lock(&data->tx_mutex);
+	if (data->closing) {
+		mutex_unlock(&data->tx_mutex);
+		return 0;
+	}
 	data->tx_buffer_tail = BRICKPI_TX_BUFFER_TAIL_INIT;
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
 		brickpi_append_tx(data, 1, ch_data->out_port[i].motor_use_offset);
