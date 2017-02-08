@@ -151,6 +151,7 @@ config LMS2012_COMPAT
 source "drivers/lego/wedo/Kconfig"
 
 source "drivers/lego/brickpi/Kconfig"
+source "drivers/lego/brickpi3/Kconfig"
 source "drivers/lego/pistorms/Kconfig"
 source "drivers/lego/evb/Kconfig"
 
