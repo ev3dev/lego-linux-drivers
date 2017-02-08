@@ -433,7 +433,7 @@ static ssize_t position_show(struct device *dev, struct device_attribute *attr,
 	if (tm->polarity == DC_MOTOR_POLARITY_INVERSED)
 		position *= -1;
 
-	return sprintf(buf, "%ld\n", position);
+	return sprintf(buf, "%d\n", position);
 }
 
 ssize_t position_store(struct device *dev, struct device_attribute *attr,
@@ -1022,7 +1022,7 @@ static ssize_t position_sp_store(struct device *dev,
 		return -EOPNOTSUPP;
 	}
 
-	err = kstrtol(buf, 10, &position);
+	err = kstrtoint(buf, 10, &position);
 	if (err < 0)
 		return err;
 
