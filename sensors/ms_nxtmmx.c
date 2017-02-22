@@ -13,6 +13,14 @@
  * GNU General Public License for more details.
  */
 
+/**
+ * DOC: userspace
+ *
+ * The NXT motor multiplexer provides 3 motor ports via one input port. A port
+ * device is registered for each port. These can be found in ``/sys/class/lego-port/``.
+ * This device cannot detect when motors are attached or removed.
+ */
+
 #include <linux/i2c.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
@@ -133,18 +141,19 @@ ms_nxtmmx_out_port_default_driver[NUM_MS_NXTMMX_OUT_PORT_MODES] = {
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new modes have the same syntax. The comments
  * are also parsed to provide more information for the documentation. The
- * parser can be found in the ev3dev-kpkg repository.
+ * parser can be found in the Documentation/json/ directory.
  */
 
 static const struct lego_port_mode_info ms_nxtmmx_out_port_mode_info[NUM_MS_NXTMMX_OUT_PORT_MODES] = {
 	/**
-	 * [^prefix]: The full address will be something like `in2:i2c3:M1`
-	 * depending on what port the motor multiplexer is plugged into.
+	 * .. [#ms-nxtmmx-prefix] The full address will be something like
+	 *    ``in2:i2c3:M1`` depending on what port the motor multiplexer is
+	 *    plugged into.
 	 *
 	 * @description: mindsensors.com NXTMMX Output Port
 	 * @connection_types: tacho-motor
 	 * @prefix: M
-	 * @prefix_footnote: [^prefix]
+	 * @prefix_footnote: [#ms-nxtmmx-prefix]_
 	 */
 	[MS_NXTMMX_OUT_PORT_MODE_TACHO_MOTOR] = {
 		/**

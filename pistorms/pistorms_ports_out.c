@@ -13,6 +13,15 @@
  * GNU General Public License for more details.
  */
 
+/**
+ * DOC: userspace
+ *
+ * The PiStorms has four LEGO MINDSTORMS compatible output ports. Unlike the
+ * EV3, motors cannot be automatically detected when attached. By default,
+ * the ports are configured with the NXT motor driver, which will work for
+ * most cases.
+ */
+
 #include "pistorms.h"
 
 /* most of the implementation is shared with the NXTMMX */
@@ -25,17 +34,19 @@
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new modes have the same syntax. The comments
  * are also parsed to provide more information for the documentation. The
- * parser can be found in the ev3dev-kpkg repository.
+ * parser can be found in the Documentation/json/ directory.
  */
 
 static const struct lego_port_mode_info pistorms_out_port_mode_info[NUM_PISTORMS_OUT_PORT_MODES] = {
 	/**
-	 * [^prefix]: The full address will be something like `pistorms:BAM1`.
+	 * .. [#out-port-prefix] The full address will be something like
+	 *    ``pistorms:BAM1``.
 	 *
 	 * @description: mindsensors.com PiStorms Output Port
 	 * @connection_types: tacho-motor
 	 * @prefix: M
-	 * @prefix_footnote: [^prefix]
+	 * @prefix_footnote: [#out-port-prefix]_
+	 * @module: pistorms
 	 */
 	[PISTORMS_OUT_PORT_MODE_TACHO_MOTOR] = {
 		/**

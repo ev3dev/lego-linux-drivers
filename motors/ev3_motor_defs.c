@@ -23,7 +23,7 @@
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new motors have the same syntax. The comments
  * are also parsed to provide more information for the documentation. The
- * parser can be found in the ev3dev-kpkg repository.
+ * parser can be found in the Documentation/json/ directory.
  *
  * The LEGO Motor Comparison Page by Philippe Hurbain provided valuable data:
  *
@@ -41,7 +41,7 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		/**
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 9842
-		 * @vendor_part_name: Interactive Servo Motor (NXT)
+		 * @vendor_part_name: NXT (Interactive Servo) Motor
 		 * @vendor_website: http://shop.lego.com/en-US/Interactive-Servo-Motor-9842
 		 */
 		.name			= LEGO_NXT_MOTOR_NAME,

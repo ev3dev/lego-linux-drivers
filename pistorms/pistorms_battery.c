@@ -6,7 +6,25 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
+ */
 
+/**
+ * DOC: userspace
+ *
+ * - This driver is used to get information about the PiStorms battery.
+ * - It uses the `power_supply`_ subsytem.
+ * - It registers a sysfs device node at ``/sys/class/power_supply/pistorms-battery/``.
+ *
+ * .. flat-table:: Sysfs Attributes
+ *    :widths: 1 2
+ *
+ *    * - ``scope``
+ *      - Always returns ``System``.
+ *
+ *    * - ``voltage_now``
+ *      - Returns the battery voltage in microvolts.
+ *
+ * .. _power_supply: http://lxr.free-electrons.com/source/Documentation/power/power_supply_class.txt?v=4.4
  */
 
 #include <linux/kernel.h>

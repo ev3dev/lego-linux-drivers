@@ -6,7 +6,43 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
+ */
 
+/**
+ * DOC: userspace
+ *
+ * - This driver is used to get information about the EV3 battery.
+ * - It uses the `power_supply`_ subsytem.
+ * - It registers a sysfs device node at ``/sys/class/power_supply/legoev3-battery/``.
+ *
+ * .. flat-table:: Sysfs Attributes
+ *    :widths: 1 3
+ *
+ *    * - ``current_now``
+ *      - Returns the battery current in microamps.
+ *
+ *    * - ``scope``
+ *      - Always returns ``System``.
+ *
+ *    * - ``technology``
+ *      - Returns ``Unknown`` or ``Li-on`` depending on if the rechargeable 
+ *        battery is present.
+ *
+ *    * - ``type``
+ *      - Always returns ``Battery``.
+ *
+ *    * - ``voltage_max_design``
+ *      - Returns the nominal "full" battery voltage. The value returned
+ *        depends on ``technology``.
+ *
+ *    * - ``voltage_min_design``
+ *      - Returns the nominal "empty" battery voltage. The value returned
+ *        depends on ``technology``.
+ *
+ *    * - ``voltage_now``
+ *      - Returns the battery voltage in microvolts.
+ *
+ * .. _power_supply: http://lxr.free-electrons.com/source/Documentation/power/power_supply_class.txt?v=4.4
  */
 
 #include <linux/kernel.h>

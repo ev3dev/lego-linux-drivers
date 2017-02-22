@@ -29,6 +29,17 @@
  * GNU General Public License for more details.
  */
 
+/**
+ * DOC: userspace
+ *
+ * The `ev3dev PRU firmware for FatcatLab EVB <firmware>`_ creates one I2C
+ * adapter for each input port. These are available at ``/dev/i2c-X`` where
+ * ``X`` is the number of the input port plus 2. The adapters can only be used
+ * when the port is set to ``nxt-i2c`` or ``other-i2c`` mode.
+ *
+ * .. _firmware: https://github.com/ev3dev/ev3dev-pru-firmware
+ */
+
 #include <linux/completion.h>
 #include <linux/i2c.h>
 #include <linux/kernel.h>

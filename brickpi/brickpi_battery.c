@@ -8,20 +8,29 @@
  * published by the Free Software Foundation.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
 /**
- * DOC: website
+ * DOC: userspace
  *
- * Dexter Industries BrickPi+ Battery Driver
+ * .. note:: The BrickPi+ battery driver is only available on BrickPi+ (HW
+ *    v2.8), not the earlier BrickPi models.
  *
- * A `brickpi-battery` is available to monitor battery voltage on the BrickPi+.
- * (Not available on the original BrickPi.) Use the `voltage_now` attribute to
- * read the instantaneous battery voltage.
+ * - This driver is used to get information about the BrickPi+ battery.
+ * - It uses the `power_supply`_ subsytem.
+ * - It registers a sysfs device node at ``/sys/class/power_supply/brickpi-battery/``.
+ *
+ * .. tip:: This driver is enabled by the line ``dtparam=brickpi_battery=okay``
+ *    in ``/boot/flash/config.txt``.
+ *
+ * .. flat-table:: Sysfs Attributes
+ *    :widths: 1 5
+ *
+ *    * - ``scope``
+ *      - Always returns ``System``.
+ *
+ *    * - ``voltage_now``
+ *      - Returns the battery voltage in microvolts.
+ *
+ * .. _power_supply: http://lxr.free-electrons.com/source/Documentation/power/power_supply_class.txt?v=4.4
  */
 
 #include <linux/err.h>

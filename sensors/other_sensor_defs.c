@@ -22,113 +22,105 @@
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new sensors have the same layout. The comments
  * are also parsed to provide more information for the documentation. The
- * parser can be found in the ev3dev-kpkg repository.
+ * parser can be found in the Documentation/json/ directory.
  */
 
-const struct other_sensor_info gpio_pcf857xr_defs[] = {
+const struct other_sensor_info other_i2c_sensor_defs[] = {
 	[MS_SENSOR_KIT_PFC8574] = {
 		/**
-		 * [^addresses]: Valid addresses are 0x38..0x3F (configurable via input pins)
-		 * [^usage]: Sample usage:
+		 * .. [#pcf8574-address] Valid addresses are 0x38..0x3F
+		 *    (configurable via input pins)
 		 *
-		 * Register I2C device:
+		 * .. [#pcf8574-device-class] Sample usage:
 		 *
-		 * <pre><code>echo pcf8574 0x38 > /sys/bus/i2c/devices/i2c-<port+2>/new_device
-		 * </code></pre>
+		 *    Register I2C device::
 		 *
-		 * Finding device class node and initializing:
+		 *        echo pcf8574 0x38 > /sys/bus/i2c/devices/i2c-<port+2>/new_device
 		 *
-		 * <pre><code>for chip in $(find /sys/class/gpio -name gpiochip*)
-		 * do
-		 *     if [[ "$(cat $chip/label)" == "pcf8547" ]]
-		 *     then
-		 *         base=$(cat $chip/base)
-		 *         # Pins are active low
-		 *         for i in {0..7}
-		 *         do
-		 *             gpio=$(($base + $i))
-		 *             echo $gpio > /sys/class/gpio/export
-		 *             # gpios on this chip are active low
-		 *             echo 1 > /sys/class/gpio/gpio$gpio/active_low
-		 *             # initialize direction here
-		 *         done
-		 *         # do whatever with the gpios
-		 *     fi
-		 * done
-		 * </code></pre>
+		 *    Finding device class node and initializing::
+		 *
+		 *        for chip in $(find /sys/class/gpio -name gpiochip*)
+		 *        do
+		 *            if [[ "$(cat $chip/label)" == "pcf8547" ]]
+		 *            then
+		 *                base=$(cat $chip/base)
+		 *                # Pins are active low
+		 *                for i in {0..7}
+		 *                do
+		 *                    gpio=$(($base + $i))
+		 *                    echo $gpio > /sys/class/gpio/export
+		 *                    # gpios on this chip are active low
+		 *                    echo 1 > /sys/class/gpio/gpio$gpio/active_low
+		 *                    # initialize direction here
+		 *                done
+		 *                # do whatever with the gpios
+		 *            fi
+		 *        done
 		 *
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: PCF8574-Nx
 		 * @vendor_part_name: Sensor building kit for NXT with PCF8574 IC
 		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=71
-		 * @device_class: [gpio](https://www.kernel.org/doc/Documentation/gpio/) [^usage]
+		 * @device_class: `gpio <https://www.kernel.org/doc/Documentation/gpio/>`_ [#pcf8574-device-class]_
 		 * @default_address: 0x38
-		 * @default_address_footnote: [^addresses]
+		 * @default_address_footnote: [#pcf8574-address]_
 		 */
 		.name		= "pcf8574",
 	},
-};
-
-const struct other_sensor_info pcf8591_defs[] = {
 	[MS_SENSOR_KIT_PCF8591] = {
 		/**
-		 * [^addresses]: Valid addresses are 0x48..0x4F (configurable via input pins)
-		 * [^usage]: Sample usage:
+		 * .. [#pcf8591-address] Valid addresses are 0x48..0x4F
+		 *    (configurable via input pins)
 		 *
-		 * Register I2C device:
+		 * .. [#pcf8591-device-class] Sample usage:
 		 *
-		 * <pre><code>echo pcf8591 0x48 > /sys/bus/i2c/devices/i2c-<port+2>/new_device
-		 * </code></pre>
+		 *    Register I2C device::
 		 *
-		 * Finding device class node:
+		 *        echo pcf8591 0x48 > /sys/bus/i2c/devices/i2c-<port+2>/new_device
 		 *
-		 * <pre><code>for chip in $(find /sys/class/hwmon -name hwmon*)
-		 * do
-		 *     if [[ "$(cat $chip/device/name)" == "pcf8591" ]]
-		 *     then
-		 *         # do whatever
-		 *     fi
-		 * done
-		 * </code></pre>
+		 *    Finding device class node::
+		 *
+		 *        for chip in $(find /sys/class/hwmon -name hwmon*)
+		 *        do
+		 *            if [[ "$(cat $chip/device/name)" == "pcf8591" ]]
+		 *            then
+		 *                # do whatever
+		 *            fi
+		 *        done
 		 *
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: PCF8591-Nx
 		 * @vendor_part_name: Sensor building kit for NXT with PCF8591 IC
 		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=92
-		 * @device_class: [hwmon](https://wiki.archlinux.org/index.php/Lm_sensors) [^usage]
+		 * @device_class: `hwmon <https://wiki.archlinux.org/index.php/Lm_sensors>`_ [#pcf8591-device-class]_
 		 * @default_address: 0x48
-		 * @default_address_footnote: [^addresses]
+		 * @default_address_footnote: [#pcf8591-address]_
 		 */
 		.name		= "pcf8591",
 	},
-};
-
-const struct other_sensor_info rtc_ds1307_defs[] = {
 	[MS_RTC] = {
 		/**
-		 * [^usage]: Sample usage:
+		 * .. [#ds1307-device-class] Sample usage:
 		 *
-		 * Register I2C device:
+		 *    Register I2C device::
 		 *
-		 * <pre><code>echo ds1307 0x68 > /sys/bus/i2c/devices/i2c-<port+2>/new_device
-		 * </code></pre>
+		 *        echo ds1307 0x68 > /sys/bus/i2c/devices/i2c-<port+2>/new_device
 		 *
-		 * Finding device class node:
+		 *    Finding device class node::
 		 *
-		 * <pre><code>for chip in $(find /sys/class/rtc -name rtc*)
-		 * do
-		 *     if [[ "$(cat $chip/name)" == "ds1307" ]]
-		 *     then
-		 *         # do whatever
-		 *     fi
-		 * done
-		 * </code></pre>
+		 *        for chip in $(find /sys/class/rtc -name rtc*)
+		 *        do
+		 *            if [[ "$(cat $chip/name)" == "ds1307" ]]
+		 *            then
+		 *                # do whatever
+		 *            fi
+		 *        done
 		 *
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: RTC-Nx-v3
 		 * @vendor_part_name: Realtime Clock for NXT
 		 * @vendor_website: http://mindsensors.com/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=77
-		 * @device_class: [rtc](https://www.kernel.org/doc/Documentation/rtc.txt) [^usage]
+		 * @device_class: `rtc <https://www.kernel.org/doc/Documentation/rtc.txt>`_ [#ds1307-device-class]_
 		 * @default_address: 0x68
 		 */
 		.name		= "ds1307",

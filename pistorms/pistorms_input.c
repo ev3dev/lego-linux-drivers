@@ -19,6 +19,19 @@
  *  published by the Free Software Foundation.
  */
 
+/**
+ * DOC: userspace
+ *
+ * The ``pistorms`` module registers an input device node for the touchscreen
+ * an the GO button on the PiStorms.
+ *
+ * The touchscreen provides ``ABS_X`` and ``ABS_Y`` events to indicate where the
+ * screen was touched and ``BTN_TOUCH`` to indicate when a touch event starts
+ * and stops.
+ *
+ * The GO button is mapped to ``KEY_ENTER``.
+ */
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>

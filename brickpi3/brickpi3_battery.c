@@ -13,6 +13,25 @@
  * GNU General Public License for more details.
  */
 
+/**
+ * DOC: userspace
+ *
+ * - This driver is used to get information about the BrickPi battery.
+ * - It uses the `power_supply`_ subsytem.
+ * - It registers a sysfs device node at ``/sys/class/power_supply/brickpi-battery/``.
+ *
+ * .. flat-table:: Sysfs Attributes
+ *    :widths: 1 2
+ *
+ *    * - ``scope``
+ *      - Always returns ``System``.
+ *
+ *    * - ``voltage_now``
+ *      - Returns the battery voltage in microvolts.
+ *
+ * .. _power_supply: http://lxr.free-electrons.com/source/Documentation/power/power_supply_class.txt?v=4.4
+ */
+
 #include <linux/device.h>
 #include <linux/iio/consumer.h>
 #include <linux/iio/types.h>

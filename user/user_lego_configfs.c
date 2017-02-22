@@ -15,79 +15,71 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
 /**
- * DOC: website
+ * DOC: userspace
  *
- * User-defined LEGO devices using configfs
- *
- * This driver provides a [configfs] interface for creating user-defined devices
+ * This driver provides a `configfs`_ interface for creating user-defined devices
  * that use the various ev3dev drivers. Currently, only ports, sensors and LEDs
  * are implemented. Motors could be added in the future.
- * .
- * # Usage
- * .
- * **Note:** All commands assume root privileges.
- * .
+ *
+ * .. _configfs: https://www.kernel.org/doc/Documentation/filesystems/configfs/configfs.txt
+ *
+ * Usage
+ * -----
+ *
+ * .. note:: All commands assume root privileges.
+ *
  * Here is an example of how to create a port and a sensor:
- * .
- * * Make sure module is loaded.
- * .
- * .        modprobe user-lego-configfs
- * .
- * * Go to the configfs directory for this driver.
- * .
- * .        cd /sys/kernel/config/lego_user_device
- * .
- * * Create a new port called `p1`.
- * .
- * .        mkdir p1
- * .
- * * Check out the new port - there should be `live` and `sensors` directories.
- * .
- * .        cd p1
- * .        ls
- * .
- * * This also creates a new port that is linked to `sys/class/lego-port`.
- * .
- * .        ls /sys/devices/lego_user_device/lego-port/
- * .
- * * Now create a sensor named `s1` attached to this port.
- * .
- * .        mkdir sensors/s1
- * .
- * * Check out the sensor.
- * .
- * .        ls sensors/s1
- * .
- * * These attributes correspond to attributes in the `lego-sensor` class.
- * .  Set them as appropriate. For example...
- * .
- * .        echo "my-driver" > sensors/s1/driver_name
- * .
- * * Once the attributes have been set, export the sensor by linking it to `live`.
- * .
- * .        ln -s sensors/s1 live
- * .
- * * There will be two new devices created, one is /sys/class/user-lego-sensor
- * .  and one in /sys/class/lego-sensor. The `lego-sensor` class device is used
- * .  just as any other sensor. The `user-lego-sensor` device is used to feed
- * .  data into the sensor. See the [user-lego-sensor driver] docs for more info.
- * .
- * * To remove the sensor and port, perform the operations in reverse.
- * .
- * .        rm link/s1
- * .        rmdir sensors/s1
- * .        cd ..
- * .        rmdir p1
- * .
- * [configfs]: https://www.kernel.org/doc/Documentation/filesystems/configfs/configfs.txt
- * [user-lego-sensor driver]: ../user-lego-sensor
+ *
+ * - Make sure module is loaded::
+ *
+ *       modprobe user-lego-configfs
+ *
+ * - Go to the configfs directory for this driver::
+ *
+ *       cd /sys/kernel/config/lego_user_device
+ *
+ * - Create a new port called `p1`::
+ * 
+ *       mkdir p1
+ * 
+ * - Check out the new port - there should be ``live`` and ``sensors`` directories::
+ *
+ *       cd p1
+ *       ls
+ *
+ * - This also creates a new port that is linked to ``sys/class/lego-port``::
+ *
+ *       ls /sys/devices/lego_user_device/lego-port/
+ *
+ * - Now create a sensor named ``s1`` attached to this port::
+ *
+ *       mkdir sensors/s1
+ *
+ * - Check out the sensor::
+ *
+ *       ls sensors/s1
+ *
+ * - These attributes correspond to attributes in the ``lego-sensor`` class.
+ *   Set them as appropriate. For example::
+ *
+ *       echo "my-driver" > sensors/s1/driver_name
+ *
+ * - Once the attributes have been set, export the sensor by linking it to ``live``::
+ *
+ *       ln -s sensors/s1 live
+ *
+ *   There will be two new devices created, one in ``/sys/class/user-lego-sensor/``
+ *   and one in ``/sys/class/lego-sensor``. The ``lego-sensor`` class device is used
+ *   just as any other sensor. The ``user-lego-sensor`` device is used to feed
+ *   data into the sensor. See the `user-lego-sensor-class`_ docs for more info.
+ *
+ * - To remove the sensor and port, perform the operations in reverse::
+ *
+ *       rm link/s1
+ *       rmdir sensors/s1
+ *       cd ..
+ *       rmdir p1
  */
 
 #include <linux/configfs.h>

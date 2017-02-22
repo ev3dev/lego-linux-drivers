@@ -22,6 +22,21 @@
  * published by the Free Software Foundation.
  */
 
+/**
+ * DOC: userspace
+ *
+ * The ``snd-evb`` module provedes an `ALSA`_ driver for PCM playback and a
+ * Linux input device with sound capabilities (``EV_SND``) for producing tones.
+ *
+ * The ALSA driver can be used with standard tools such as ``alsamixer`` and
+ * ``aplay``. Tones can be produced by using the ``beep`` command, ioctls such
+ * as ``KDMKTONE`` (must run on local console or as root for ioctls) or by
+ * writing ``SND_*`` events to the event device (must be member of ``input``
+ * group for this).
+ *
+ * .. _ALSA: https://en.wikipedia.org/wiki/Advanced_Linux_Sound_Architecture
+ */
+
 #include <linux/gpio/consumer.h>
 #include <linux/hrtimer.h>
 #include <linux/init.h>

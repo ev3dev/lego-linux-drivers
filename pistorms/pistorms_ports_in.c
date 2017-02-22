@@ -13,6 +13,17 @@
  * GNU General Public License for more details.
  */
 
+/**
+ * DOC: userspace
+ *
+ * The PiStorms has four LEGO MINDSTORMS EV3 compatible input ports. There are
+ * some differences though. Sensors cannot be automatically detected, so you
+ * must manually specify the mode of the port before using a sensors. And in
+ * many cases, you must also manually specify the type of sensor that is
+ * attached. Furthermore, all four ports share a single I2C adapter (master)
+ * instead of each port having its own.
+ */
+
 #include <linux/hrtimer.h>
 #include <linux/i2c.h>
 #include <linux/slab.h>
@@ -128,22 +139,23 @@ pistorms_in_port_device_types[NUM_PS_IN_PORT_MODES] = {
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new modes have the same syntax. The comments
  * are also parsed to provide more information for the documentation. The
- * parser can be found in the ev3dev-kpkg repository.
+ * parser can be found in the Documentation/json/ directory.
  */
 
 static const struct lego_port_mode_info pistorms_in_port_mode_info[NUM_PS_IN_PORT_MODES] = {
 	/**
-	 * [^address-prefix]: The full `address` is in the format:
-	 * ^
+	 * .. [#in-port-prefix] The full ``address`` is in the format::
+	 *
 	 *        pistorms:B<b>:<prefix><n>
-	 * ^
+	 *
 	 *    For example, if we are looking at the port labeled "BBS2" on the
-	 *    PiStorms, the address will be `pistorms:BB:S2`.
+	 *    PiStorms, the address will be ``pistorms:BB:S2``.
 	 *
 	 * @description: mindsensors.com PiStorms Input Port
 	 * @connection_types: NXT/Analog, NXT/Color, NXT/I2C, Other/I2C, EV3/Analog, EV3/UART
 	 * @prefix: S
-	 * @prefix_footnote: [^address-prefix]
+	 * @prefix_footnote: [#in-port-prefix]_
+	 * @module: pistorms
 	 */
 	[PS_IN_PORT_MODE_NONE] = {
 		/**
@@ -153,16 +165,14 @@ static const struct lego_port_mode_info pistorms_in_port_mode_info[NUM_PS_IN_POR
 	},
 	[PS_IN_PORT_MODE_NXT_ANALOG] = {
 		/**
-		 * [^nxt-analog-mode]: The generic [nxt-analog] driver will be
-		 * loaded when this mode is set. You must manually specify the
-		 * correct driver for your sensor using `set_device` if you want
-		 * to use another driver. Any driver with a connection type of
-		 * NXT/Analog is allowed.
-		 * ^
-		 * [nxt-analog]: /docs/sensors/generic-nxt-analog-sensor
+		 * .. [#in-port-nxt-analog-mode] The generic ``nxt-analog``
+		 *    driver will be loaded when this mode is set. You must
+		 *    manually specify thecorrect driver for your sensor using
+		 *    ``set_device`` if you want to use another driver. Any
+		 *    driver with a connection type of NXT/Analog is allowed.
 		 *
 		 * @description: NXT/Analog sensor
-		 * @name_footnote: [^nxt-analog-mode]
+		 * @name_footnote: [#in-port-nxt-analog-mode]_
 		 */
 		.name   = "nxt-analog",
 	},
@@ -174,41 +184,41 @@ static const struct lego_port_mode_info pistorms_in_port_mode_info[NUM_PS_IN_POR
 	},
 	[PS_IN_PORT_MODE_I2C_THRU] = {
 		/**
-		 * [^i2c-thru-mode]: I2C signals are passed through the
-		 * input port to `i2c_arm` on the Raspberry Pi. This means that
-		 * all 4 input ports share the same I2C master and the devices
-		 * must have different addresses even if they are connected to
-		 * different ports on the PiStorms. Additionally, the LEGO NXT
-		 * Ultrasonic sensor is not supported on the PiStorms.
-		 * ^
-		 * NXT/I2C sensors will be automatically detected, otherwise
-		 * you must manually specify the sensor that is connected by
-		 * using the `set_device` attribute.
+		 * .. [#in-port-i2c-thru-mode] I2C signals are passed through
+		 *    the input port to ``i2c_arm`` on the Raspberry Pi. This
+		 *    means that all 4 input ports share the same I2C master and
+		 *    the devices must have different addresses even if they are
+		 *    connected to different ports on the PiStorms.
+		 *
+		 *    NXT/I2C sensors will be automatically detected, otherwise
+		 *    you must manually specify the sensor that is connected by
+		 *    using the ``set_device`` attribute.
 		 *
 		 * @description: I2C pass through
-		 * @name_footnote: [^i2c-thru-mode]
+		 * @name_footnote: [#in-port-i2c-thru-mode]_
 		 */
 		.name   = "i2c-thru",
 	},
 	[PS_IN_PORT_MODE_EV3_ANALOG] = {
 		/**
-		 * [^ev3-analog-mode]: Only the LEGO EV3 Touch sensor is supported.
-		 * The driver will load by default.
+		 * .. [#in-port-ev3-analog-mode] Only the LEGO EV3 Touch sensor
+		 *    is supported. The driver will load by default.
 		 *
 		 * @description: EV3/Analog sensor
-		 * @name_footnote: [^ev3-analog-mode]
+		 * @name_footnote: [#in-port-ev3-analog-mode]_
 		 */
 		.name   = "ev3-analog",
 	},
 	[PS_IN_PORT_MODE_EV3_UART] = {
 		/**
-		 * [^ev3-uart-mode]: Only the LEGO EV3 Ultrasonic, Color, Gyro,
-		 * and Infrared sensors are supported. When this mode is set,
-		 * a sensor device will be registered for the type of sensor
-		 * that is attached (or was most recently attached).
+		 * .. [#in-port-ev3-uart-mode] Only the LEGO EV3 Ultrasonic,
+		 *    Color, Gyro, and Infrared sensors are supported. When this
+		 *    mode is set, a sensor device will be registered for the
+		 *    type of sensor that is attached (or was most recently
+		 *    attached).
 		 *
 		 * @description: EV3/UART sensor
-		 * @name_footnote: [^ev3-uart-mode]
+		 * @name_footnote: [#in-port-ev3-uart-mode]_
 		 */
 		.name   = "ev3-uart",
 	},

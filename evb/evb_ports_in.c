@@ -13,6 +13,16 @@
  * GNU General Public License for more details.
  */
 
+/**
+ * DOC: userspace
+ *
+ * FatcatLab EVB has four input ports labeled 1, 2, 3 and 4. These ports
+ * are used with LEGO MINDSTORMS EV3 and NXT compatible sensors and other
+ * devices. Most sensors can be automatically detected when plugged in.
+ * Unlike the EV3, however, NXT analog sensors cannot be detected, so to use
+ * these sensors, the port has to be placed in ``nxt-analog`` mode manually.
+ */
+
 #include <linux/err.h>
 #include <linux/delay.h>
 #include <linux/device.h>
@@ -286,48 +296,45 @@ static const struct lego_port_mode_info evb_input_port_mode_info[] = {
 	 * @module: evb-ports
 	 * @connection_types: NXT/Analog, NXT/I2C, Other/I2C, EV3/Analog, EV3/UART, Other/UART
 	 * @prefix: in
+	 * @module: evb_ports
 	 */
 	[EV3_INPUT_PORT_MODE_AUTO] = {
 		/**
-		 * [^auto-mode]: In `auto` mode, the port will attempt to
-		 * automatically detect the type of sensor that was connected
-		 * and load the appropriate driver. See the list of [supported
-		 * sensors] to determine if a sensor can be automatically
-		 * detected.
-		 * ^
-		 * [supported sensors]: /docs/sensors/#supported-sensors
+		 * .. [#in-port-auto-mode] In `auto` mode, the port will attempt
+		 *    to automatically detect the type of sensor that was
+		 *    connected and load the appropriate driver. See the list of
+		 *    :ref:`supported-sensors` to determine if a sensor can be
+		 *    automatically detected.
 		 *
 		 * @description: Automatically detect most sensors.
-		 * @name_footnote: [^auto-mode]
+		 * @name_footnote: [#in-port-auto-mode]_
 		 */
 		.name	= "auto",
 	},
 	[EV3_INPUT_PORT_MODE_NXT_ANALOG] = {
 		/**
-		 * [^nxt-analog-mode]: This loads the [generic NXT/Analog sensor]
-		 * [nxt-analog] driver. Use `set_device` to load the appropriate
-		 * device/driver.
-		 * ^
-		 * [nxt-analog]: /docs/sensors/generic-nxt-analog-sensor
+		 * .. [#in-port-nxt-analog-mode] This loads the generic
+		 *    NXT/Analog sensor ``nxt-analog`` driver. Use
+		 *    ``set_device`` to load the appropriate device/driver.
 		 *
-		 * @description: Load the [nxt-analog] device.
-		 * @name_footnote: [^nxt-analog-mode]
+		 * @description: Configures the port for NXT/Analog sensors
+		 * @name_footnote: [#in-port-nxt-analog-mode]_
 		 */
 		.name	= "nxt-analog",
 	},
 	[EV3_INPUT_PORT_MODE_NXT_COLOR] = {
 		/**
-		 * [^nxt-color-mode]: NXT Color sensor driver has not been
-		 * implemented yet, so right now, this mode does nothing.
+		 * .. [#in-port-nxt-color-mode] NXT Color sensor driver has not
+		 *    been implemented yet, so right now, this mode does nothing.
 		 *
-		 * @description: Load the [nxt-color-sensor] device.
-		 * @name_footnote: [^nxt-color-mode]
+		 * @description: Configures the port for the LEGO NXT Color sensor
+		 * @name_footnote: [#in-port-nxt-color-mode]_
 		 */
 		.name=	"nxt-color",
 	},
 	[EV3_INPUT_PORT_MODE_NXT_I2C] ={
 		/**
-		 * @description: Configure for I2C communications and load the [nxt-i2c-host] device.
+		 * @description: Configure for I2C communications and load the ``nxt-i2c-host`` device.
 		 */
 		.name	= "nxt-i2c",
 	},
@@ -339,13 +346,13 @@ static const struct lego_port_mode_info evb_input_port_mode_info[] = {
 	},
 	[EV3_INPUT_PORT_MODE_EV3_ANALOG] = {
 		/**
-		 * @description: Load the [ev3-analog] device.
+		 * @description: Configures the port for EV3/Analog sensors
 		 */
 		.name	= "ev3-analog",
 	},
 	[EV3_INPUT_PORT_MODE_EV3_UART] = {
 		/**
-		 * @description: Configure for UART communications and load the [ev3-uart-host] device.
+		 * @description: Configure for UART communications and load the ``ev3-uart-host`` device.
 		 */
 		.name	= "ev3-uart",
 	},
@@ -357,11 +364,12 @@ static const struct lego_port_mode_info evb_input_port_mode_info[] = {
 	},
 	[EV3_INPUT_PORT_MODE_RAW] = {
 		/**
-		 * [^raw-mode]: Exports gpios and analog/digital converter values
-		 * to sysfs so that they can be controlled directly.
+		 * .. [#in-port-raw-mode] Exports gpios and analog/digital
+		 *    converter values to sysfs so that they can be controlled
+		 *    directly.
 		 *
 		 * @description: Provide access to low level drivers.
-		 * @name_footnote: [^raw-mode]
+		 * @name_footnote: [#in-port-raw-mode]_
 		 */
 		.name	= "raw",
 	},

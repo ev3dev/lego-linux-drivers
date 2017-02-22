@@ -13,6 +13,15 @@
  * GNU General Public License for more details.
  */
 
+/**
+ * DOC: userspace
+ *
+ * The ``brickpi3`` modules creates one I2C adapter for each input port. These
+ * are available at ``/dev/i2c-X`` where ``X`` is the number of the input port
+ * plus 2. The adapters can only be used when the port is set to ``nxt-i2c``
+ * mode. Only SMBUS messages are supported and are limited to 16 bytes.
+ */
+
 #include <linux/device.h>
 #include <linux/i2c.h>
 

@@ -1,0 +1,12 @@
+
+.rst-content table.docutils.citation td table.docutils td,
+.rst-content table.docutils.footnote td table.docutils td {
+    border: 1px solid #e1e4e5;
+}
+
+/* override table width restrictions */
+@media (min-width: 1024px) {
+    .wy-table-responsive table td, .wy-table-responsive table th {
+        white-space: normal;
+    }
+}

@@ -12,6 +12,21 @@
  * published by the Free Software Foundation.
  */
 
+/**
+ * DOC: userspace
+ *
+ * The ``pistorms`` module provides six LED devices for controlling the LEDs
+ * on the Pistorms. There are two tri-color LEDs. Each component (red, green,
+ * blue) is controlled separately.
+ *
+ * The device nodes can be found at ``/sys/class/leds/pistorms:B<bank>:<color>:ev3dev``
+ * where ``<bank>>`` is ``A`` or ``B`` and ``<color>`` is ``red``, ``green`` or
+ * ``blue``.
+ *
+ * .. note:: Some models of PiStorms only have one LED. The driver will still
+ *    provide controls for two, but only one will actually work.
+ */
+
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/i2c.h>
