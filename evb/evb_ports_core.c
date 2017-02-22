@@ -20,29 +20,30 @@
  */
 
 /**
- * DOC: website
- *
- * FatcatLab EVB Input and Output Ports
+ * DOC: userspace
  *
  * By default, a sysfs device is created for each input and output port on the
- * EVB. See the [evb-input-port] and [evb-output-port] drivers for more
- * information on how these work.
- * .
- * ### Module parameters
- * .
- * `disable_in_port`
- * : Used to prevent the input port device from being loaded. This is useful
- *   if you want to use input port 1 for printing kernel messages while you
- *   are debugging the Linux kernel. You may also want to do this if you want
- *   to control the input port gpios directly.
- * .
- * `disable_out_port`
- * : Used to prevent the output port from being loaded. This leaves the pwm
- *   device and gpios used by the port free to be controlled directly or used
- *   by other drivers.
- * .
- * [evb-input-port]: /docs/ports/evb-input-port
- * [evb-output-port]: /docs/ports/evb-output-port
+ * EVB. See the `input ports`_ and `output ports`_ driver descriptions for more
+ * information on how these work. There is a single module for input and output
+ * ports named ``evb_ports``. This module has some module parameters.
+ *
+ * .. flat-table:: Module Parameters
+ *    :widths: 1 5
+ *    :header-rows: 1
+ *
+ *    * - Name
+ *      - Description
+ *
+ *    * - ``disable_in_port``
+ *      - Used to prevent the input port device from being loaded. This is
+ *        useful if you want to use input port 1 for printing kernel messages
+ *        this if you want while you are debugging the Linux kernel. You may
+ *        also want to do to control the input port gpios directly.
+ *
+ *    * - ``disable_out_port``
+ *      - Used to prevent the output port from being loaded. This leaves the
+ *        pwm device and gpios used by the port free to be controlled directly
+ *        or used by other drivers.
  */
 
 #include <linux/device.h>

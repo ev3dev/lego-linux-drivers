@@ -111,7 +111,7 @@ static int ms_touch_mux_scale(void *context,
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new sensors have the same layout. The comments
  * are also parsed to provide more information for the documentation. The
- * parser can be found in the ev3dev-kpkg repository.
+ * parser can be found in the Documentation/json/ directory.
  */
 
 const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
@@ -140,7 +140,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 * @description: Raw analog value<br />Pin 5 high
+				 * @description: Raw analog value - pin 5 high
 				 * @value0: Voltage (0 - 5000)
 				 * @units_description: volts
 				 */
@@ -175,16 +175,18 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		.mode_info = {
 			[0] = {
 				/**
-				 * [^mode0-value]: Values:
+				 * .. [#lego-nxt-touch-mode0-value0] Values:
 				 *
-				 * | Value | Description |
-				 * |:-----:|:-----------:|
-				 * | `0`   | Released    |
-				 * | `1`   | Pressed     |
+				 *    ======= =============
+				 *     Value   Description
+				 *    ======= =============
+				 *     0       Released
+				 *     1       Pressed
+				 *    ======= =============
 				 *
 				 * @description: Button state
 				 * @value0: State (0 or 1)
-				 * @value0_footnote: [^mode0-value]
+				 * @value0_footnote: [#lego-nxt-touch-mode0-value0]_
 				 */
 				.name = "TOUCH",
 				.scale = nxt_touch_sensor_scale,
@@ -204,7 +206,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		.mode_info = {
 			[0] = {
 				/**
-				 * @description: Reflected light<br />LED on
+				 * @description: Reflected light - LED on
 				 * @value0: Reflected light intensity (0 to 1000)
 				 * @units_description: percent
 				 */
@@ -220,7 +222,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 * @description: Ambient light<br />LED off
+				 * @description: Ambient light - LED off
 				 * @value0: Ambient light intensity (0 to 1000)
 				 * @units_description: percent
 				 */
@@ -256,7 +258,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		.mode_info = {
 			[0] = {
 				/**
-				 * @description: Sound pressure level<br />Flat weighting
+				 * @description: Sound pressure level - Flat weighting
 				 * @value0: Sound pressure level (0 to 1000)
 				 * @units_description: percent
 				 */
@@ -271,7 +273,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 * @description: Sound pressure level<br />A weighting
+				 * @description: Sound pressure level - A weighting
 				 * @value0: Sound pressure level (0 to 1000)
 				 * @units_description: percent
 				 */
@@ -297,8 +299,9 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 	[DI_DFLEX_SENSOR] = {
 		/**
 		 * @vendor_name: Dexter Industries
-		 * @vendor_part_name: dFlex
-		 * @vendor_website: http://www.dexterindustries.com/shop/dflex-lego-mindstorms-nxt-flexible-sensor-for-mindstorms/
+		 * @vendor_part_number: dFlex
+		 * @vendor_part_name: Flexible Sensor for Mindstorms NXT
+		 * @vendor_website: https://www.dexterindustries.com/manual/dflex/
 		 */
 		.name = DI_DFLEX_SENSOR_NAME,
 		.num_modes = 1,
@@ -307,7 +310,6 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				/**
 				 * @description: Flex
 				 * @value0: Flex (0-100)
-				 * @value0_footnote: [^adjusted-value]
 				 */
 				.name = "FLEX",
 				.raw_min = 4150,
@@ -331,14 +333,15 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		.mode_info = {
 			[0] = {
 				/**
-				 * [^adjusted-value]: This value is the square root of the
-				 * raw value. You can derive a value proportional (linear)
-				 * to distance by dividing a constant by this value,
-				 * e.g. `35 / value0`.
+				 * .. [#ht-nxt-epod-mode0-value0] This value is
+				 *    the square root of the raw value. You can
+				 *    derive a value proportional (linear) to
+				 *    distance by dividing a constant by this
+				 *    value, e.g. ``35 / value0``.
 				 *
 				 * @description: Proximity (long range)
 				 * @value0: Proximity (0-100)
-				 * @value0_footnote: [^adjusted-value]
+				 * @value0_footnote: [#ht-nxt-epod-mode0-value0]_
 				 */
 				.name = "LONG",
 				.scale = ht_eopd_sensor_scale,
@@ -349,7 +352,7 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 				/**
 				 * @description: Proximity (short range)
 				 * @value0: Proximity (0-100)
-				 * @value0_footnote: [^adjusted-value]
+				 * @value0_footnote: [#ht-nxt-epod-mode0-value0]_
 				 */
 				.name = "SHORT",
 				.scale = ht_eopd_sensor_scale,
@@ -458,20 +461,22 @@ const struct nxt_analog_sensor_info nxt_analog_sensor_defs[] = {
 		.mode_info = {
 			[0] = {
 				/**
-				 * [^values]: Values:
+				 * .. [#ms-nxt-touch-mux-mode0-value0] Values:
 				 *
-				 * | Value | Description |
-				 * |:-----:|:-----------:|
-				 * | `0`   | Released    |
-				 * | `1`   | Pressed     |
+				 *    ======= =============
+				 *     Value   Description
+				 *    ======= =============
+				 *     0       Released
+				 *     1       Pressed
+				 *    ======= =============
 				 *
 				 * @description: Touch sensors
 				 * @value0: Sensor T1 state
-				 * @value0_footnote: [^values]
+				 * @value0_footnote: [#ms-nxt-touch-mux-mode0-value0]_
 				 * @value1: Sensor T2 state
-				 * @value1_footnote: [^values]
+				 * @value1_footnote: [#ms-nxt-touch-mux-mode0-value0]_
 				 * @value2: Sensor T3 state
-				 * @value2_footnote: [^values]
+				 * @value2_footnote: [#ms-nxt-touch-mux-mode0-value0]_
 				 */
 				.name = "TOUCH-MUX",
 				.scale = ms_touch_mux_scale,

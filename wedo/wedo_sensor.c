@@ -133,20 +133,22 @@ const struct wedo_sensor_info wedo_sensor_defs[] = {
 		.mode_info = {
 			[0] = {
 				/**
-				 * [^tilt-values]: Tilt values:
+				 * .. [#wedo-tilt-mode0-value0] Tilt values:
 				 *
-				 * | Value | Description |
-				 * |-------|-------------|
-				 * | 0     | Level       |
-				 * | 1     | Front       |
-				 * | 2     | Back        |
-				 * | 3     | Left        |
-				 * | 4     | Right       |
-				 * | 5     | Unknown     |
+				 *    =======  =============
+				 *     Value    Description
+				 *    =======  =============
+				 *     0        Level
+				 *     1        Front
+				 *     2        Back
+				 *     3        Left
+				 *     4        Right
+				 *     5        Unknown
+				 *    =======  =============
 				 *
 				 * @description: Tilt status
 				 * @value0: Tilt (0 to 5)
-				 * @value0_footnote: [^tilt-values]
+				 * @value0_footnote: [#wedo-tilt-mode0-value0]_
 				 */
 				.name = "TILT",
 				.scale = wedo_tilt_scale,
@@ -155,24 +157,26 @@ const struct wedo_sensor_info wedo_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 * [^axis-values]: Axis values:
+				 * .. [#wedo-tilt-mode1-value0] Axis values:
 				 *
-				 * | Value0 | Value1 | Value2 | Description |
-				 * |--------|--------|--------|-------------|
-				 * | 0      | 0      | 1      | Level       |
-				 * | 0      | 1      | 1      | Front       |
-				 * | 0      | -1     | 1      | Back        |
-				 * | -1     | 0      | 1      | Left        |
-				 * | 1      | 0      | 1      | Right       |
-				 * | 0      | 0      | 0      | Unknown     |
+				 *    ========  ========  ========  =============
+				 *     Value0    Value1    Value2    Description
+				 *    ========  ========  ========  =============
+				 *     0         0         1         Level
+				 *     0         1         1         Front
+				 *     0         -1        1         Back
+				 *     -1        0         1         Left
+				 *     1         0         1         Right
+				 *     0         0         0         Unknown
+				 *    ========  ========  ========  =============
 				 *
 				 * @description: Tilt around 2 separate axes
 				 * @value0: Tilt Left/Right (-1/0/1)
-				 * @value0_footnote: [^axis-values]
+				 * @value0_footnote: [#wedo-tilt-mode1-value0]_
 				 * @value1: Tilt Back/Front (-1/0/1)
-				 * @value1_footnote: [^axis-values]
+				 * @value1_footnote: [#wedo-tilt-mode1-value0]_
 				 * @value2: Tilt value valid (0/1)
-				 * @value2_footnote: [^axis-values]
+				 * @value2_footnote: [#wedo-tilt-mode1-value0]_
 				 */
 				.name = "TILT-AXIS",
 				.scale = wedo_tilt_axis_scale,
@@ -181,20 +185,22 @@ const struct wedo_sensor_info wedo_sensor_defs[] = {
 			},
 			[2] = {
 				/**
-				 * [^raw-values]: Raw values:
+				 * .. [#wedo-tilt-mode2-value0] Raw values:
 				 *
-				 * | Value | Description |
-				 * |-------|-------------|
-				 * | 0     | Unknown     |
-				 * | < 48  | Back        |
-				 * | < 99  | Right       |
-				 * | < 153 | Level       |
-				 * | < 204 | Front       |
-				 * | < 255 | Left        |
+				 *    =======  =============
+				 *     Value    Description
+				 *    =======  =============
+				 *     0        Unknown
+				 *     < 48     Back
+				 *     < 99     Right
+				 *     < 153    Level
+				 *     < 204    Front
+				 *     < 255    Left
+				 *    =======  =============
 				 *
 				 * @description: Raw analog value
 				 * @value0: Tilt (0 - 255)
-				 * @value0_footnote: [^raw-values]
+				 * @value0_footnote: [#wedo-tilt-mode2-value0]_
 				 */
 				.name = "RAW",
 				.data_sets = 1,
@@ -239,4 +245,3 @@ const struct wedo_sensor_info wedo_sensor_defs[] = {
 		},
 	},
 };
-

@@ -13,6 +13,17 @@
  * GNU General Public License for more details.
  */
 
+/**
+ * DOC: userspace
+ *
+ * BrickPi3 has four output ports labeled M1, M2, M3 and M4. These ports are
+ * very similar to EV3 output ports with a motor controller and quadrature
+ * encoder feedback. However, they cannot automatically detected when a motor
+ * is attached or removed. By default, the NXT motor driver is already loaded
+ * for these ports, so you don't have to set the mode unless you want to use
+ * a different type of driver.
+ */
+
 #include <dc_motor_class.h>
 #include <tacho_motor_class.h>
 
@@ -48,14 +59,20 @@ brickpi_out_port_default_driver[NUM_BRICKPI_OUT_PORT_MODES] = {
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new modes have the same syntax. The comments
  * are also parsed to provide more information for the documentation. The
- * parser can be found in the ev3dev-kpkg repository.
+ * parser can be found in the Documentation/json/ directory.
  */
 
 static const struct lego_port_mode_info brickpi_out_port_mode_info[NUM_BRICKPI_OUT_PORT_MODES] = {
 	/**
+	 * .. [#out-port-prefix] The full port name includes the parent device
+	 *    node. So, the ``address`` attribute will return something like
+	 *    ``ttyAMA0:M1``.
+	 *
 	 * @description: Dexter Industries BrickPi Output Port
 	 * @connection_types: tacho-motor, dc-motor, led
-	 * @prefix: out
+	 * @prefix: M
+	 * @prefix_footnote: [#out-port-prefix]_
+	 * @module: brickpi
 	 */
 	[BRICKPI_OUT_PORT_MODE_TACHO_MOTOR] = {
 		/**

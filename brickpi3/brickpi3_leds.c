@@ -13,6 +13,16 @@
  * GNU General Public License for more details.
  */
 
+/**
+ * DOC: userspace
+ *
+ * The BrickPi3 has one user-controllable LED. It is turned on by default when
+ * the ``brickpi3`` module is loaded. It uses the mainline kernel `LEDs class`_
+ * subsystem. You can find it in sysfs at ``/sys/class/leds/ev3dev:amber:brickpi``.
+ *
+ * .. _LEDs class: http://lxr.free-electrons.com/source/Documentation/leds/leds-class.txt?v=4.4
+ */
+
 #include <linux/device.h>
 #include <linux/leds.h>
 #include <linux/workqueue.h>

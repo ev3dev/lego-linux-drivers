@@ -14,6 +14,18 @@
  * GNU General Public License for more details.
  */
 
+/**
+ * DOC: userspace
+ *
+ * The FatcatLab EVB has four output ports labeled A, B, C and D. These ports
+ * are used with LEGO MINDSTORMS EV3, NXT and RCX compatible motors and other
+ * devices. EV3 motors can be automatically detected when plugged in. Other
+ * motors with position feedback (such as the NXT motor) are usually detected
+ * as an EV3 Large Motor. RCX motors and LEDs cannot be automatically detected
+ * and the mode of the output port must be manually set to use these types of
+ * devices.
+ */
+
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/gpio/consumer.h>
@@ -93,7 +105,7 @@ enum evb_output_port_mode {
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new modes have the same layout. The comments
  * are also parsed to provide more information for the documentation. The
- * parser can be found in the ev3dev-kpkg repository.
+ * parser can be found in the Documentation/json/ directory.
  */
 
 static const struct lego_port_mode_info evb_output_port_mode_info[] = {
@@ -102,66 +114,62 @@ static const struct lego_port_mode_info evb_output_port_mode_info[] = {
 	 * @module: evb-ports
 	 * @connection_types: tacho-motor, dc-motor, led
 	 * @prefix: out
+	 * @module: evb_ports
 	 */
 	[EV3_OUTPUT_PORT_MODE_AUTO] = {
 		/**
-		 * [^auto-mode]: Only the EV3/NXT large motors and the EV3
-		 * medium motor can be automatically detected. All other devices
-		 * must be manually configured.
+		 * .. [#out-port-auto-mode] Only the EV3/NXT large motors and
+		 *    the EV3 medium motor can be automatically detected. All
+		 *    other devices must be manually configured.
 		 *
 		 * @description: Automatically detect motors when they are connected.
-		 * @name_footnote: [^auto-mode]
+		 * @name_footnote: [#out-port-auto-mode]_
 		 */
 		.name	= "auto",
 	},
 	[EV3_OUTPUT_PORT_MODE_TACHO_MOTOR] = {
 		/**
-		 * [^tacho-motor-mode]: Configures the port to use the
-		 * [tacho-motor] driver module. The default driver is the
-		 * EV3 Large Motor (`lego-ev3-l-motor`). You can change
-		 * the driver using the `set_device` attribute.
-		 * ^
-		 * [tacho-motor]: /docs/drivers/tacho-motor
+		 * .. [#out-port-tacho-motor-mode] Configures the port to use
+		 *    the :ref:`tacho-motor-class`. The default driver is
+		 *    the EV3 Large Motor (``lego-ev3-l-motor``). You can change
+		 *    the driver using the ``set_device`` attribute.
 		 *
-		 * @description: Load the [tacho-motor] device.
-		 * @name_footnote: [^tacho-motor-mode]
+		 * @description: Configure the port for NXT/EV3 motors.
+		 * @name_footnote: [#out-port-tacho-motor-mode]_
 		 */
 		.name	= "tacho-motor",
 	},
 	[EV3_OUTPUT_PORT_MODE_DC_MOTOR] = {
 		/**
-		 * [^dc-motor-mode]: This can be use with MINDSTORMS RCX
-		 * motors, Power Functions motors and any other 'plain' DC
-		 * motor. By 'plain', we mean the motor is just a motor without
-		 * any feedback.
-		 * ^
-		 * [dc-motor]: /docs/drivers/dc-motor
+		 * .. [#out-port-dc-motor-mode] This can be use with MINDSTORMS
+		 *    RCX motors, Power Functions motors and any other "plain"
+		 *    DC motor. By "plain", we mean the motor is just a motor
+		 *    without any feedback.
 		 *
-		 * @description: Load the [dc-motor] device.
-		 * @name_footnote: [^dc-motor-mode]
+		 * @description: Load the port for RCX/Power Functions motors.
+		 * @name_footnote: [#out-port-dc-motor-mode]_
 		 */
 		.name	= "dc-motor",
 	},
 	[EV3_OUTPUT_PORT_MODE_LED] = {
 		/**
-		 * [^led-mode]: This can be used with MINDSTORMS RCX LEDs,
-		 * Power Functions LEDs or any other LED connected to pins 1
-		 * and 2 of the output port.
-		 * ^
-		 * [led]: /docs/drivers/led
+		 * .. [#out-port-led-mode] This can be used with MINDSTORMS RCX
+		 *    LEDs, Power Functions LEDs or any other LED connected to
+		 *    pins 1 and 2 of the output port.
 		 *
-		 * @description: Load the [led] device.
-		 * @name_footnote: [^led-mode]
+		 * @description: Load the port for RCX/Power Functions LEDs.
+		 * @name_footnote: [#out-port-led-mode]_
 		 */
 		.name	= "led",
 	},
 	[EV3_OUTPUT_PORT_MODE_RAW] = {
 		/**
-		 * [^raw-mode]: Exports gpios, pwm and analog/digital converter
-		 * values to sysfs so that they can be controlled directly.
+		 * .. [#out-port-raw-mode] Exports gpios, pwm and analog/digital
+		 *    converter values to sysfs so that they can be controlled
+		 *    directly.
 		 *
 		 * @description: Provide access to low level drivers.
-		 * @name_footnote: [^raw-mode]
+		 * @name_footnote: [#out-port-raw-mode]_
 		 */
 		.name	= "raw",
 	},

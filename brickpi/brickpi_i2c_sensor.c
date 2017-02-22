@@ -13,37 +13,30 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
 /**
- * DOC: website
+ * DOC: userspace
  *
- * Dexter Industries BrickPi I2C Sensor Driver
+ * There is currently not a standard I2C adapter driver for BrickPi/BrickPi+
+ * (i.e. You will not find ``/dev/i2c-X`` for the BrickPi input ports. Instead,
+ * this driver is used for working with :ref:`nxt-i2c-sensors`.
  *
- * A `brickpi-i2c-sensor` device is loaded by the [brickpi] driver when
- * manually specified by setting the [brickpi-in-port] to `nxt-i2c` mode and
- * writing the device name and address to `set_device`. You can use any one of
- * the sensors that has the `nxt-i2c-sensor` module from the [list of supported
- * sensors]. Not all functionality of a sensor may be supported when connected
- * to a [brickpi-in-port]. For these, you should use [brickpi-in-port-5] on the
- * BrickPi (not on BrickPi+).
- * .
- * ### sysfs attributes
- * .
- * Devices bound to this driver can be found in the directory
- * `/sys/bus/lego/drivers/brickpi-i2c-sensor/`. However, these sensors use
- * the [lego-sensor class] which is where the useful stuff is. Follow the link
- * for more information.
- * .
- * [brickpi]: /docs/drivers/brickpi-ld
- * [brickpi-in-port]: /docs/ports/brickpi-in-port
- * [brickpi-in-port-5]: /docs/ports/brickpi-in-port-5
- * [list of supported sensors]: /docs/sensors#supported-sensors
- * [lego-sensor class]: ../lego-sensor-class
+ * To load this driver, set the BrickPi input port to ``nxt-i2c`` mode and then
+ * write the driver name and I2C address of the sensor to the ``set_device``
+ * attribute. You can find the driver name and default I2C address on the
+ * sensor's information page.
+ *
+ * Example::
+ *
+ *    echo "nxt-i2c" > /sys/class/lego-port/port0/mode
+ *    echo "ht-angle 0x01" > /sys/class/lego-port/port0/set_device
+ *
+ * Once the driver has been loaded, there will be a new sensor device node
+ * added in the :ref:`lego-sensor-class`.
+ *
+ * Unfortunately, some sensors require special operations that are not currently
+ * supported in this driver, so attempting to use one of those sensors will
+ * fail (check ``dmesg``). If you have a BrickPi, you can use `Input
+ * Port 5`_ instead.
  */
 
 #include <linux/device.h>

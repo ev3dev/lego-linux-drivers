@@ -86,22 +86,24 @@ static const struct wedo_hub_sensor_info wedo_hub_sensor_defs[] = {
 		.mode_info = {
 			[WEDO_HUB_MODE_HUB] = {
 				/**
-				 * [^status-bits]: Status Bits:
+				 * .. [#wedo-hub-mode0-value0] Status Bits:
 				 *
-				 * | Bit | Description |
-				 * |:---:|:-----------:|
-				 * | 0   | Echo        |
-				 * | 1   |             |
-				 * | 2   |             |
-				 * | 3   |             |
-				 * | 4   |             |
-				 * | 5   |             |
-				 * | 6   | High Power  |
-				 * | 7   | Outputs Off |
+				 *    =====  =============
+				 *     Bit    Description
+				 *    =====  =============
+				 *     0      Echo
+				 *     1
+				 *     2
+				 *     3
+				 *     4
+				 *     5
+				 *     6      High Power
+				 *     7      Outputs Off
+				 *    =====  =============
 				 *
 				 * @description: Hub status
 				 * @value0: Status bits
-				 * @value0_footnote: [^status-bits]
+				 * @value0_footnote: [#wedo-hub-mode0-value0]_
 				 * @value1: Voltage (millivolts)
 				 */
 				.name		= "HUB",

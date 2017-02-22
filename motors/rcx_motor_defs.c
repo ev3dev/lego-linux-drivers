@@ -19,7 +19,7 @@
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new motors have the same syntax. The comments
  * are also parsed to provide more information for the documentation. The
- * parser can be found in the ev3dev-kpkg repository.
+ * parser can be found in the Documentation/json/ directory.
  */
 
 const struct rcx_motor_info rcx_motor_defs[] = {
@@ -30,7 +30,7 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_part_name: Motor 9V Micromotor
 		 * @vendor_website: https://rebrickable.com/parts/2986
 		 */
-		.name			= "rcx-motor",
+		.name			= "lego-70823",
 	},
 	[LEGO_9V_MINI_MOTOR_NEWER] = {
 		/**
@@ -39,7 +39,7 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_part_name: Motor 9V Mini-motor, newer lighter weight
 		 * @vendor_website: http://rebrickable.com/parts/43362c01
 		 */
-		.name			= "rcx-motor",
+		.name			= "lego-43362",
 	},
 	[LEGO_9V_MINI_MOTOR_OLDER] = {
 		/**
@@ -48,7 +48,7 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_part_name: Motor 9V Mini-motor, older heavier weight
 		 * @vendor_website: http://rebrickable.com/parts/71427c01
 		 */
-		.name			= "rcx-motor",
+		.name			= "lego-71427",
 	},
 	[LEGO_9V_GEARED] = {
 		/**
@@ -57,7 +57,7 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_part_name: Technic Motor 9V Geared 
 		 * @vendor_website: http://rebrickable.com/parts/44486c02
 		 */
-		.name			= "rcx-motor",
+		.name			= "lego-47154",
 	},
 	[LEGO_TECHNIC_MOTOR_9V] = {
 		/**
@@ -66,16 +66,16 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_part_name: Technic Motor 9V
 		 * @vendor_website: http://rebrickable.com/parts/2838c01
 		 */
-		.name			= "rcx-motor",
+		.name			= "lego-74569",
 	},
 	[LEGO_PF_E_MOTOR] = {
 		/**
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 9670
-		 * @vendor_part_name: E-Motor
+		 * @vendor_part_name: Power Functions E-Motor
 		 * @vendor_website: https://education.lego.com/en-us/products/e-motor/9670
 		 */
-		.name			= "rcx-motor",
+		.name			= "lego-9670",
 	},
 	[LEGO_PF_L_MOTOR] = {
 		/**
@@ -84,7 +84,7 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_part_name: Power Functions L-Motor
 		 * @vendor_website: http://shop.lego.com/en-US/Power-Functions-L-Motor-88003
 		 */
-		.name			= "rcx-motor",
+		.name			= "lego-88003",
 	},
 	[LEGO_PF_M_MOTOR] = {
 		/**
@@ -93,7 +93,7 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_part_name: Power Functions M-Motor
 		 * @vendor_website: http://shop.lego.com/en-US/LEGO-Power-Functions-M-Motor-8883
 		 */
-		.name			= "rcx-motor",
+		.name			= "lego-8883",
 	},
 	[LEGO_PF_SERVO_MOTOR] = {
 		/**
@@ -102,7 +102,7 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_part_name: Power Functions Servo Motor
 		 * @vendor_website: http://shop.lego.com/en-US/Power-Functions-Servo-Motor-88004
 		 */
-		.name			= "rcx-motor",
+		.name			= "lego-88004",
 	},
 	[LEGO_PF_TRAIN_MOTOR] = {
 		/**
@@ -111,7 +111,7 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_part_name: Power Functions Train Motor
 		 * @vendor_website: http://shop.lego.com/en-US/LEGO-Power-Functions-Train-Motor-88002
 		 */
-		.name			= "rcx-motor",
+		.name			= "lego-88002",
 	},
 	[LEGO_PF_XL_MOTOR] = {
 		/**
@@ -120,6 +120,6 @@ const struct rcx_motor_info rcx_motor_defs[] = {
 		 * @vendor_part_name: Power Functions XL-Motor
 		 * @vendor_website: http://shop.lego.com/en-US/LEGO-Power-Functions-XL-Motor-8882
 		 */
-		.name			= "rcx-motor",
+		.name			= "lego-8882",
 	},
 };

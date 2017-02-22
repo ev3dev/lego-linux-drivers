@@ -14,107 +14,121 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
 /**
- * DOC: website
+ * DOC: userspace
  *
- * DC Motor Class
+ * The ``dc-motor`` class provides a uniform interface for using regular DC
+ * motors with no fancy controls or feedback. This includes LEGO MINDSTORMS RCX
+ * motors and LEGO Power Functions motors.
  *
- * The `dc-motor` class provides a uniform interface for using regular DC motors
- * with no fancy controls or feedback. This includes LEGO MINDSTORMS RCX motors
- * and LEGO Power Functions motors.
- * .
- * ### sysfs Attributes
- * .
- * DC motors can be found at `/sys/class/dc-motor/motor<N>`, where `<N>`
- * is incremented each time a motor is loaded (it is not related to which port
- * the motor is plugged in to).
- * .
- * `address`
- * : (read-only) Returns the name of the port that the motor is connected to.
- * .
- * `command`
- * : (write-only) Sets the command for the motor. Possible values are:
- * .
- * .    - `run-forever`: Causes the motor to run until another command is sent.
- * .    - `run-timed`: Runs the motor for the amount of time specified in
- * .      `time_sp` and then stops the motor using the command specified by
- * .      `stop_action`.
- * .    - `run-direct`: Runs the motor at the duty cycle specified by
- * .      `duty_cycle_sp`. Unlike other run commands, changing `duty_cycle_sp`
- * .      while running *will* take effect immediately.
- * .    - `stop`: Stops any of the run commands before they are complete using
- * .      the command specified by `stop_action`.
- * .
- * .    Not all commands may be supported. Read `commands` to find out which
- * .    commands are supported for a particular driver.
- * .
- * `commands`
- * : (read-only) Returns a space separated list of commands supported by the
- *   motor controller.
- * .
- * `driver_name`
- * : (read-only) Returns the name of the motor driver that loaded this device.
- *   See the list of [supported devices] for a list of drivers.
- * .
- * `duty_cycle`
- * : (read-only) Shows the current duty cycle of the PWM signal sent to the
- *   motor. Values are -100 to 100 (-100% to 100%).
- * .
- * `duty_cycle_sp`
- * : (read/write) Writing sets the duty cycle setpoint of the PWM signal sent to
- *   the motor. Valid values are -100 to 100 (-100% to 100%). Reading returns
- *   the current setpoint.
- * .
- * `polarity`
- * : (read/write) Sets the polarity of the motor. Valid values are:
- * .
- * .    - `normal`: Causes the motor to turn in the direction indicated by the
- * .      sign (+/-) of the `duty_cycle_sp`.
- * .    - `inversed`: Causes the motor to turn in the opposite direction of the
- * .      sign (+/-) of the `duty_cycle_sp`.
- * .
- * `state`
- * : (read-only) Gets a space separated list of flags indicating the motor
- *   status. Possible flags are:
- * .
- * .    - `running`: Indicates that the motor is powered.
- * .    - `ramping`: Indicates that the motor has not yet reached the
- * .      `duty_cycle_sp`.
- * .
- * `stop_action`
- * : (write-only) Sets the stop action that will be used when the motor stops.
- *   Possible values are:
- * .
- * .    - `coast`: Causes the motor to coast to a stop by floating the outputs.
- * .    - `brake`: Causes the motor to stop more quickly by shorting the outputs.
- * .
- * .    Not all values may be supported. Read `stop_actions` to find out which
- * .    actions are supported for a particular driver.
- * .
- * `stop_actions`
- * : (read-only) Gets a space separated list of supported stop actions.
- * .
- * `ramp_down_sp`
- * : (read/write) Sets the time in milliseconds that it take the motor to ramp
- *   down from 100% to 0%. Valid values are 0 to 10000 (10 seconds). Default is
- *   0.
- * .
- * `ramp_up_sp`
- * : (read/write) Sets the time in milliseconds that it take the motor to up
- *   ramp from 0% to 100%. Valid values are 0 to 10000 (10 seconds). Default is
- *   0.
- * .
- * `time_sp`
- * : (read/write) Sets the time setpoint used with the `run-timed` command.
- *   Units are in milliseconds. Values must not be negative.
- * .
- * [supported devices]: /docs/motors/#supported-devices
+ * Sysfs
+ * -----
+ *
+ * DC motors can be found at ``/sys/class/dc-motor/motor<N>``, where ``<N>``
+ * is incremented each time a motor is loaded.
+ *
+ * .. note:: The number ``<N>`` is **not** related to the port address.
+ *
+ * .. flat-table:: Sysfs Attributes
+ *    :widths: 1 1 5
+ *    :header-rows: 1
+ *
+ *    * - Attribute
+ *      - Access
+ *      - Description
+ *
+ *    * - ``address``
+ *      - read-only
+ *      - Returns the name of the port that the motor is connected to.
+ *
+ *    * - ``command``
+ *      - write-only
+ *      - Sets the command for the motor. Possible values are:
+ *
+ *          - ``run-forever``: Causes the motor to run until another command is
+ *            sent.
+ *          - ``run-timed``: Runs the motor for the amount of time specified in
+ *            ``time_sp`` and then stops the motor using the command specified
+ *            by ``stop_action``.
+ *          - ``run-direct``: Runs the motor at the duty cycle specified by
+ *            ``duty_cycle_sp``. Unlike other run commands, changing
+ *            ``duty_cycle_sp`` while running *will* take effect immediately.
+ *          - ``stop``: Stops any of the run commands before they are complete
+ *            using the command specified by ``stop_action``.
+ *
+ *        Not all commands may be supported. Read ``commands`` to find out
+ *        which commands are supported for a particular driver.
+ *
+ *    * - ``commands``
+ *      - read-only
+ *      -  Returns a space separated list of commands supported by the motor
+ *         controller.
+ *
+ *    * - ``driver_name``
+ *      - read-only
+ *      -  Returns the name of the motor driver that loaded this device.
+ *         See the list of `supported motors`_ for a list of drivers.
+ *
+ *    * - ``duty_cycle``
+ *      - read-only
+ *      -  Shows the current duty cycle of the PWM signal sent to the
+ *         motor. Values are -100 to 100 (-100% to 100%).
+ *
+ *    * - ``duty_cycle_sp``
+ *      - read/write
+ *      -  Writing sets the duty cycle setpoint of the PWM signal sent to the
+ *         motor. Valid values are -100 to 100 (-100% to 100%). Reading returns
+ *         the current setpoint.
+ *
+ *    * - ``polarity``
+ *      - read/write
+ *      - Sets the polarity of the motor. Valid values are:
+ *
+ *          - ``normal``: Causes the motor to turn in the direction indicated by
+ *            the sign (+/-) of the ``duty_cycle_sp``.
+ *          - ``inversed``: Causes the motor to turn in the opposite direction of
+ *            the sign (+/-) of the ``duty_cycle_sp``.
+ *
+ *    * - ``state``
+ *      - read-only
+ *      - Gets a space separated list of flags indicating the motor
+ *        status. Possible flags are:
+ *
+ *          - ``running``: Indicates that the motor is powered.
+ *          - ``ramping``: Indicates that the motor has not yet reached the
+ *            ``duty_cycle_sp``.
+ *
+ *    * - ``stop_action``
+ *      - write-only
+ *      -  Sets the stop action that will be used when the motor stops.
+ *         Possible values are:
+ *
+ *          - `coast`: Causes the motor to coast to a stop by floating the
+ *            outputs.
+ *          - `brake`: Causes the motor to stop more quickly by shorting the
+ *            outputs.
+ *
+ *         Not all values may be supported. Read `stop_actions` to find out
+ *         which actions are supported for a particular driver.
+ *
+ *    * - ``stop_actions``
+ *      - read-only
+ *      - Gets a space separated list of supported stop actions.
+ *
+ *    * - ``ramp_down_sp``
+ *      - read/write
+ *      - Sets the time in milliseconds that it take the motor to ramp down from
+ *        100% to 0%. Valid values are 0 to 10000 (10 seconds). Default is 0.
+ *
+ *    * - ``ramp_up_sp``
+ *      - read/write
+ *      - Sets the time in milliseconds that it take the motor to up ramp from
+ *        0% to 100%. Valid values are 0 to 10000 (10 seconds). Default is 0.
+ *
+ *    * - ``time_sp``
+ *      - read/write
+ *      -  Sets the time setpoint used with the ``run-timed`` command.
+ *         Units are in milliseconds. Values must not be negative.
  */
 
 #include <linux/device.h>

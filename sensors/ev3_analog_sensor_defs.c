@@ -40,7 +40,7 @@ static int lego_ev3_touch_sensor_scale(void *context,
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new sensors have the same layout. The comments
  * are also parsed to provide more information for the documentation. The
- * parser can be found in the ev3dev-kpkg repository.
+ * parser can be found in the Documentation/json/ directory.
  */
 
 const struct ev3_analog_sensor_info ev3_analog_sensor_defs[] = {
@@ -72,22 +72,25 @@ const struct ev3_analog_sensor_info ev3_analog_sensor_defs[] = {
 		 * @vendor_name: LEGO
 		 * @vendor_part_number: 45507
 		 * @vendor_part_name: EV3 Touch Sensor
+		 * @vendor_website: https://education.lego.com/en-us/products/ev3-touch-sensor/45507
 		 */
 		.name = LEGO_EV3_TOUCH_SENSOR_NAME,
 		.num_modes = 1,
 		.mode_info = {
 			[0] = {
 				/**
-				 * [^mode0-value]: Values:
+				 * .. [#lego-ev3-touch-mode0-value0] Values:
 				 *
-				 * | Value | Description |
-				 * |:-----:|:-----------:|
-				 * | `0`   | Released    |
-				 * | `1`   | Pressed     |
+				 *    =======  =============
+				 *     Value    Description
+				 *    =======  =============
+				 *     0        Released
+				 *     1        Pressed
+				 *    =======  =============
 				 *
 				 * @description: Button state
 				 * @value0: State (0 or 1)
-				 * @value0_footnote: [^mode0-value]
+				 * @value0_footnote: [#lego-ev3-touch-mode0-value0]_
 				 */
 				.name = "TOUCH",
 				.data_sets = 1,

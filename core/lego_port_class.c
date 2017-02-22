@@ -13,82 +13,90 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
 /**
- * DOC: website
+ * DOC: userspace
  *
- * LEGO Port Class Driver
- *
- * The `lego-port` class provides an interface for working with input and
+ * The ``lego-port`` class provides an interface for working with input and
  * output ports that are compatible with LEGO MINDSTORMS RCX/NXT/EV3, LEGO
  * WeDo and LEGO Power Functions sensors and motors. Supported devices include
  * the LEGO MINDSTORMS EV3 Intelligent Brick, the LEGO WeDo USB hub and
  * various sensor multiplexers from 3rd party manufacturers.
- * .
+ *
  * Some types of ports may have multiple modes of operation. For example, the
  * input ports on the EV3 brick can communicate with sensors using UART, I2C
  * or analog validate signals - but not all at the same time. Therefore there
  * are multiple modes available to connect to the different types of sensors.
- * .
+ *
  * In most cases, ports are able to automatically detect what type of sensor
  * or motor is connected. In some cases though, this must be manually specified
- * using the `mode` and `set_device` attributes. The `mode` attribute affects
- * how the port communicates with the connected device. For example the input
- * ports on the EV3 brick can communicate using UART, I2C or analog voltages,
+ * using the ``mode`` and ``set_device`` attributes. The ``mode`` attribute
+ * affects how the port communicates with the connected device. For example the
+ * input ports on the EV3 brick can communicate using UART, I2C or analog
  * but not all at the same time, so the mode must be set to the one that is
- * appropriate for the connected sensor. The `set_device` attribute is used to
- * specify the exact type of sensor that is connected. Note: the mode must be
- * correctly set before setting the sensor type.
- * .
- * ### sysfs attributes
- * .
- * Ports can be found at `/sys/class/lego-port/port<N>` where `<N>` is
- * incremented each time a new port is registered. Note: The number is not
- * related to the actual port at all - use the `address` attribute to find
- * a specific port.
- * .
- * `address`
- * : (read-only) Returns the name of the port. See individual driver
- *   documentation for the name that will be returned.
- * .
- * `driver_name`
- * : (read-only) Returns the name of the driver that loaded this device. You
- *   can find the complete list of drivers in the [list of port drivers].
- * .
- * `modes`
- * : (read-only) Returns a space separated list of the available modes of the
- *   port.
- * .
- * `mode`
- * : (read/write) Reading returns the currently selected mode. Writing sets the
- *   mode. Generally speaking when the mode changes any sensor or motor devices
- *   associated with the port will be removed new ones loaded, however this
- *   this will depend on the individual driver implementing this class.
- * .
- * `set_device`
- * : (write-only) For modes that support it, writing the name of a driver will
- *   cause a new device to be registered for that driver and attached to this
- *   port. For example, since NXT/Analog sensors cannot be auto-detected, you
- *   must use this attribute to load the correct driver (and also the I2C
- *   address). Returns `-EOPNOTSUPP` if setting a device is not supported.
- * .
- * `status`
- * : (read-only) In most cases, reading status will return the same value as
- *   `mode`. In cases where there is an `auto` mode additional values may be
- *   returned, such as `no-device` or `error`. See individual port driver
- *   documentation for the full list of possible values.
- * .
- * ### Events
- * .
- * In addition to the usual "add" and "remove" events, the kernel "change"
- * event is emitted when `mode` or `status` changes.
- * .
- * [list of port drivers]: /docs/ports/#list-of-port-drivers
+ * voltages, appropriate for the connected sensor. The ``set_device`` attribute
+ * is used to specify the exact type of sensor that is connected. Note: the
+ * mode must be correctly set before setting the sensor type.
+ *
+ * Sysfs
+ * -----
+ *
+ * Ports can be found at ``/sys/class/lego-port/port<N>`` where ``<N>`` is
+ * incremented each time a new port is registered.
+ *
+ * .. note:: The number ``<N>`` is not related to the actual port at all - use
+ *    the ``address`` attribute to find a specific port.
+ *
+ * .. flat-table:: Sysfs Attributes
+ *    :widths: 1 1 5
+ *    :header-rows: 1
+ *
+ *    * - Attribute
+ *      - Access
+ *      - Description
+ *
+ *    * - ``address``
+ *      - read-only
+ *      - Returns the name of the port. See individual driver documentation for
+ *        the name that will be returned.
+ *
+ *    * - ``driver_name``
+ *      - read-only
+ *      - Returns the name of the driver that loaded this device. You can find
+ *        the complete list of drivers in the `list of port drivers`_.
+ *
+ *    * - ``modes``
+ *      - read-only
+ *      -  Returns a space separated list of the available modes of the port.
+ *
+ *    * - ``mode``
+ *      - read/write
+ *      - Reading returns the currently selected mode. Writing sets the mode.
+ *        Generally speaking when the mode changes any sensor or motor devices
+ *        associated with the port will be removed new ones loaded, however
+ *        this will depend on the individual driver implementing this class.
+ *
+ *    * - ``set_device``
+ *      - write-only
+ *      - For modes that support it, writing the name of a driver will cause a
+ *        new device to be registered for that driver and attached to this port.
+ *        For example, since the exact type of an NXT/Analog sensor cannot be
+ *        automatically detected, you must use this attribute to load the
+ *        correct driver. For I2C sensors, you must write the I2C address in
+ *        addition to the driver name. Returns ``-EOPNOTSUPP`` if setting a
+ *        device is not supported for the current ``mode`` of the port.
+ *
+ *    * - ``status``
+ *      - read-only
+ *      - In most cases, reading status will return the same value as ``mode``.
+ *        In cases where there is an ``auto`` mode additional values may be
+ *        returned, such as ``no-device`` or ``error``. See individual port
+ *        driver documentation for the full list of possible values.
+ *
+ * Events
+ * ------
+ *
+ * In addition to the usual ``add`` and ``remove`` events, the kernel ``change``
+ * event is emitted when ``mode`` or ``status`` changes.
  */
 
 #include <linux/err.h>

@@ -13,6 +13,13 @@
  * GNU General Public License for more details.
  */
 
+/**
+ * DOC: userspace
+ *
+ * This multiplexer allows connecting three EV3 sensors to a single input port.
+ * Only LEGO brand EV3 sensors are supported - 3rd party EV3 sensors won't work.
+ */
+
 #include <linux/err.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
@@ -36,52 +43,53 @@ enum ms_ev3_smux_mode {
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new modes have the same syntax. The comments
  * are also parsed to provide more information for the documentation. The
- * parser can be found in the ev3dev-kpkg repository.
+ * parser can be found in the Documentation/json/ directory.
  */
 
 static const struct lego_port_mode_info ms_ev3_smux_port_mode_info[] = {
 	/**
-	 * [^address-prefix]: The full `address` is in the format:
-	 * ^
-	 *        [<parent-address>:]mux<n>
-	 * ^
+	 * .. [#ms-ev3-smux-prefix] The full ``address`` is in the format:
+	 *    ```[<parent-address>:]mux<n>``
+	 *
 	 *    For example, if we are looking at port 1 of this mux plugged into
-	 *    input port 2 on the EV3, the address will be `in2:i2c50:mux1`.
+	 *    input port 2 on the EV3, the address will be ``in2:i2c50:mux1``.
 	 *
 	 * @description: mindsensors.com EV3 Sensor Multiplexer Input Port
 	 * @connection_types: EV3/UART, EV3/Analog
 	 * @prefix: mux
-	 * @prefix_footnote: [^address-prefix]
+	 * @prefix_footnote: [#ms-ev3-smux-prefix]_
 	 */
 	[MS_EV3_SMUX_MODE_UART] = {
 		/**
-		 * [^uart-mode]: UART sensor types are not automatically
-		 * detected. By default, the `lego-ev3-color` driver
-		 * will be loaded when this mode is set.
-		 * Use `set_device` to load other sensor devices/drivers.
+		 * .. [#ms-ev3-smux-uart-mode] UART sensor types are not
+		 *    automatically detected. By default, the ``lego-ev3-color``
+		 *    driver will be loaded when this mode is set.
+		 *    Use ``set_device`` to load other sensor devices/drivers.
 		 *
-		 * Supported sensors are:
+		 *    Supported sensors are:
 		 *
-		 * | Sensor Name         | Device/Driver Name |
-		 * |---------------------|--------------------|
-		 * | LEGO EV3 Color      | `lego-ev3-color`   |
-		 * | LEGO EV3 Ultrasonic | `lego-ev3-us`      |
-		 * | LEGO EV3 GYRO       | `lego-ev3-gyro`    |
-		 * | LEGO EV3 Infrared   | `lego-ev3-ir`      |
+		 *    ====================  ====================
+		 *    Sensor Name           Device/Driver Name
+		 *    ====================  ====================
+		 *    LEGO EV3 Color        ``lego-ev3-color``
+		 *    LEGO EV3 Ultrasonic   ``lego-ev3-us``
+		 *    LEGO EV3 GYRO         ``lego-ev3-gyro``
+		 *    LEGO EV3 Infrared     ``lego-ev3-ir``
+		 *    ====================  ====================
 		 *
 		 * @description: EV3/UART sensor
-		 * @name_footnote: [^uart-mode]
+		 * @name_footnote: [#ms-ev3-smux-uart-mode]_
 		 */
 		.name	= "uart",
 	},
 	[MS_EV3_SMUX_MODE_ANALOG] = {
 		/**
-		 * [^analog-mode]: Currently only the LEGO EV3 Touch sensor is
-		 * supported. The `lego-ev3-touch` device/driver is loaded when
-		 * this mode is set.
+		 * .. [#ms-ev3-smux-analog-mode] Currently only the LEGO EV3
+		 *    Touch sensor is supported. The ``lego-ev3-touch`` driver
+		 *    is loaded when this mode is set.
 		 *
 		 * @description: EV3/Analog sensor
-		 * @name_footnote: [^analog-mode]
+		 * @name_footnote: [#ms-ev3-smux-analog-mode]_
 		 */
 		.name	= "analog",
 	},

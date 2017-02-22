@@ -13,19 +13,6 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
-/**
- * DOC: website
- *
- * LEGO Bus Driver
- *
- */
-
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/string.h>

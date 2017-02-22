@@ -13,29 +13,18 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) format. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
 /**
- * DOC: website
+ * DOC: userspace
  *
- * RCX/Power Functions LED Driver
- *
- * This driver provides a [leds] interface for RCX motors, Power Functions
+ * This driver provides a `leds`_ interface for RCX motors, Power Functions
  * motors or any other 9V rated LED connected to an output port. You can find
- * the sysfs device at `/sys/bus/lego/devices/<port>:rcx-led` where `<port>`
- * is the the name of the output port the motor is connected to (e.g. `outA`).
+ * the sysfs device at ``/sys/bus/lego/devices/<port>:rcx-led`` where ``<port>``
+ * is the the name of the output port the motor is connected to (e.g. ``outA``).
  * There is not much of interest there though - all the useful stuff is in the
- * [leds] class.
+ * `leds`_ class.
  * .
- * This device is loaded when an [ev3-output-port] is set to `led` mode.
+ * This device is loaded when an `ev3-output-port`_ is set to ``led`` mode.
  * It is not automatically detected.
- * .
- * [leds]: https://github.com/ev3dev/ev3dev/wiki/Using-the-LEDs
- * [ev3-output-port]: /docs/ports/legoev3-output-port
  */
 
 #include <linux/device.h>

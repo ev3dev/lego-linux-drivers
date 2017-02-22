@@ -13,6 +13,23 @@
  * GNU General Public License for more details.
  */
 
+/**
+ * DOC: userspace
+ *
+ * The BrickPi3 monitors four different voltages for the on-board regulators
+ * (these are coming from the BrickPi3 itself, not the Raspberry Pi). There
+ * is one for 3.3V, one for 5V, one for 9V and one for direct battery voltage.
+ *
+ * These voltages are read using the mainline kernel `Industrial I/O`_ driver.
+ * You can read the values at ``/sys/bus/iio/devices/iio\:device0/in_voltage_N_input``
+ * where ``N`` is one of ``3V3``, ``5V``, ``9V`` or ``VCC`` (battery).
+ *
+ * .. _Industrial I/O: http://lxr.free-electrons.com/source/drivers/staging/iio/Documentation/overview.txt?v=4.4
+ *
+ * .. tip:: You can use the `Battery`_ driver for monitoring the battery
+ *    instead of using this driver.
+ */
+
 #include <linux/device.h>
 #include <linux/iio/iio.h>
 

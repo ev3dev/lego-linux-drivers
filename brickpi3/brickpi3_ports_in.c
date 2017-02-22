@@ -13,6 +13,14 @@
  * GNU General Public License for more details.
  */
 
+/**
+ * DOC: userspace
+ *
+ * The BrickPi3 has four input ports, labeled S1, S2, S3 and S4. These ports
+ * are similar to the input ports on the EV3, but lack the ability to
+ * automatically detect sensors.
+ */
+
 #include <linux/device.h>
 #include <linux/hrtimer.h>
 #include <linux/i2c.h>
@@ -67,14 +75,20 @@ static const struct device_type brickpi3_in_port_device_types[NUM_BRICKPI3_IN_PO
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new modes have the same layout. The comments
  * are also parsed to provide more information for the documentation. The
- * parser can be found in the ev3dev-kpkg repository.
+ * parser can be found in the Documentation/json/ directory.
  */
 
 static const struct lego_port_mode_info brickpi3_in_port_mode_info[NUM_BRICKPI3_IN_PORT_MODES] = {
 	/**
+	 * .. [#in-port-prefix] The full port name includes the parent device
+	 *    node. So, the ``address`` attribute will return something like
+	 *    ``spi0.1:S1``.
+	 *
 	 * @description: Dexter Industries BrickPi3 Input Port
 	 * @connection_types: NXT/Analog, NXT/I2C, EV3/Analog, EV3/UART
-	 * @prefix: in
+	 * @prefix: S
+	 * @prefix_footnote: [#in-port-prefix]_
+	 * @module: brickpi3
 	 */
 	[BRICKPI3_IN_PORT_MODE_NONE] = {
 		/**
@@ -84,16 +98,16 @@ static const struct lego_port_mode_info brickpi3_in_port_mode_info[NUM_BRICKPI3_
 	},
 	[BRICKPI3_IN_PORT_MODE_NXT_ANALOG] = {
 		/**
-		 * [^nxt-analog-mode]: The [nxt-analog] driver will be loaded when
-		 * this mode is set. You must manually specify the correct
-		 * driver for your sensor using `set_device` if you want to use
-		 * another driver. Any driver with a connection type of
-		 * NXT/Analog is allowed.
-		 * ^
-		 * [nxt-analog]: /docs/sensors/generic-nxt-analog-sensor
+		 * .. [#nxt-analog-mode] The ``nxt-analog`` driver will be loaded
+		 *    when this mode is set. You must manually specify the
+		 *    correct driver for your sensor using ``set_device`` if you
+		 *    want to use another driver. Any driver with a connection
+		 *    type of NXT/Analog is allowed.
+		 *
+		 * .. _nxt-analog: /docs/sensors/generic-nxt-analog-sensor
 		 *
 		 * @description: NXT/Analog sensor
-		 * @name_footnote: [^nxt-analog-mode]
+		 * @name_footnote: [#nxt-analog-mode]_
 		 */
 		.name	= "nxt-analog",
 	},
@@ -105,40 +119,41 @@ static const struct lego_port_mode_info brickpi3_in_port_mode_info[NUM_BRICKPI3_
 	},
 	[BRICKPI3_IN_PORT_MODE_NXT_I2C] = {
 		/**
-		 * [^nxt-i2c-mode]: No sensors are loaded by default. You must
-		 * manually specify the sensor that is connected and its address
-		 * by using the `set_device` attribute. This is equivalent to
-		 * [manually loading] I2C devices. The sensor port address will
-		 * be the BrickPi3 port address with ":i2c" and the decimal I2C
-		 * address appended.
-		 * ^
-		 * [manually loading]: /docs/sensors/using-i2c-sensors/#manually-loading-devices
+		 * .. [#nxt-i2c-mode] No sensors are loaded by default. You
+		 *    must manually specify the sensor that is connected and
+		 *    its address by using the ``set_device`` attribute. This
+		 *    is equivalent to `manually loading`_ I2C devices. The
+		 *    sensor port address will be the BrickPi3 port address
+		 *    with ``:i2c`` and the decimal I2C address appended.
+		 *
+		 * .. _manually loading: /docs/sensors/using-i2c-sensors/#manually-loading-devices
 		 *
 		 * @description: NXT/I2C sensor
-		 * @name_footnote: [^nxt-i2c-mode]
+		 * @name_footnote: [#nxt-i2c-mode]_
 		 */
 		.name	= "nxt-i2c",
 	},
 	[BRICKPI3_IN_PORT_MODE_EV3_ANALOG] = {
 		/**
-		 * [^ev3-analog-mode]: Only the LEGO EV3 Touch sensor is supported.
-		 * The `lego-ev3-touch` sensor driver will load automatically
-		 * when this port mode is set.
+		 * .. [#ev3-analog-mode] Only the LEGO EV3 Touch sensor is
+		 *    supported. The ``lego-ev3-touch`` sensor driver will
+		 *    load automatically when this port mode is set.
 		 *
 		 * @description: EV3/Analog sensor
-		 * @name_footnote: [^ev3-analog-mode]
+		 * @name_footnote: [#ev3-analog-mode]_
 		 */
 		.name	= "ev3-analog",
 	},
 	[BRICKPI3_IN_PORT_MODE_EV3_UART] = {
 		/**
-		 * [^ev3-uart-mode]: Only the LEGO EV3 Ultrasonic, Color, Gyro,
-		 * and Infrared sensors are supported. They cannot be automatically
-		 * detected, so you must specify the sensor manually using the
-		 * `set_device` attribute. No sensor drivers are loaded by default.
+		 * .. [#ev3-uart-mode] Only the LEGO EV3 Ultrasonic, Color,
+		 *    Gyro, and Infrared sensors are supported. They cannot be
+		 *    automatically detected, so you must specify the sensor
+		 *    manually using the ``set_device`` attribute. No sensor
+		 *    drivers are loaded by default.
 		 *
 		 * @description: EV3/UART sensor
-		 * @name_footnote: [^ev3-uart-mode]
+		 * @name_footnote: [#ev3-uart-mode]_
 		 */
 		.name	= "ev3-uart",
 	},

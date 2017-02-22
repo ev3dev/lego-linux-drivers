@@ -19,26 +19,24 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
 /**
- * DOC: website
+ * DOC: userspace
  *
- * Dexter Industries BrickPi Line Discipline
+ * This driver is a tty `line discipline`_ that runs on top of a serial port.
+ * It is the core driver that facilitates communication between the Rapberry Pi
+ * and the BrickPi.
  *
- * This driver is a tty [line discipline] that runs on top of a tty. It provides
- * [lego-port] class instances for the ports themselves (excluding input port 5).
- * and [lego-sensor] and [tacho-motor] instances for the devices connected to
- * the ports.
- * .
- * [line discipline]: https://en.wikipedia.org/wiki/Line_discipline
- * [lego-port]: ../lego-port-class
- * [lego-sensor]: ../lego-sensor-class
- * [tacho-motor]: ../tacho-motor-class
+ * The driver is loaded by attaching the line discipline::
+ *
+ *    sudo ldattach 29 /dev/ttyAMA0
+ *
+ * Once this driver is successfully loaded, it will load the input and output
+ * drivers for the BrickPi.
+ *
+ * .. tip:: Technically, it is possible to use the BrickPi with any 3.3V serial
+ *    port. It does not necessarily have to be use with a Rapsberry Pi.
+ *
+ * .. _line discipline: https://en.wikipedia.org/wiki/Line_discipline
  */
 
 #include <linux/bitops.h>

@@ -338,7 +338,7 @@ static void ms_pps58_nx_set_mode_post_cb(struct nxt_i2c_sensor_data *sensor, u8 
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new sensors have the same layout. The comments
  * are also parsed to provide more information for the documentation. The
- * parser can be found in the ev3dev-kpkg repository.
+ * parser can be found in the Documentation/json/ directory.
  */
 const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 	[LEGO_NXT_ULTRASONIC_SENSOR] = {
@@ -379,13 +379,15 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[2] = {
 				/**
-				 * [^single-measurement]: The value is read when the mode is set
-				 * and does not change - even when polling is enabled. To read a
-				 * new value, set the mode again (e.g. `echo US-SI-CM > mode`).
+				 * .. [#lego-nxt-us-mode2-value0] The value is
+				 *    read when the mode is set and does not
+				 *    change - even when polling is enabled. To
+				 *    read a new value, set the mode again (e.g.
+				 *    ``echo US-SI-CM > mode``).
 				 *
 				 * @description: Single measurement
 				 * @value0: Distance (0 to 255)
-				 * @value0_footnote: [^single-measurement]
+				 * @value0_footnote: [#lego-nxt-us-mode2-value0]_
 				 * @units_description: centimeters
 				 */
 				.name	= "US-SI-CM",
@@ -395,7 +397,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				/**
 				 * @description: Single measurement
 				 * @value0: Distance (0 to 1000)
-				 * @value0_footnote: [^single-measurement]
+				 * @value0_footnote: [#lego-nxt-us-mode2-value0]_
 				 * @units_description: inches
 				 */
 				.name	= "US-SI-IN",
@@ -405,13 +407,14 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[4] = {
 				/**
-				 * [^listen-value]: A value of `1` indicates that another ultrasonic
-				 * sensor has been detected. A `1` can also be triggered by a loud
-				 * noise such as clapping.
+				 * .. [#lego-nxt-us-mode4-value0] A value of 1
+				 *    indicates that another ultrasonic sensor
+				 *    has been detected. A 1 can also be triggered
+				 *    by a loud noise such as clapping.
 				 *
 				 * @description: Listen
 				 * @value0: Presence (0 or 1)
-				 * @value0_footnote: [^listen-value]
+				 * @value0_footnote: [#lego-nxt-us-mode4-value0]_
 				 */
 				.name	= "US-LISTEN",
 				.raw_max = 1,
@@ -747,20 +750,22 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
-				 * [^values]: Direction values:
+				 * .. [#ht-nxt-ir-seek-v2-mode0-value0] Direction values:
 				 *
-				 * | Value | Description |
-				 * |-------|-------------|
-				 * | 0     | No signal   |
-				 * | 1     | Far left    |
-				 * | ...   |             |
-				 * | 5     | Center      |
-				 * | ...   |             |
-				 * | 9     | Far right   |
+				 *    =======  =============
+				 *     Value    Description
+				 *    =======  =============
+				 *     0        No signal
+				 *     1        Far left
+				 *     ...
+				 *     5        Center
+				 *     ...
+				 *     9        Far right
+				 *    =======  =============
 				 *
 				 * @description: Direction (unmodulated)
 				 * @value0: Direction (0 to 9)
-				 * @value0_footnote: [^values]
+				 * @value0_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 */
 				.name = "DC",
 				.raw_max = 9,
@@ -770,7 +775,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				/**
 				 * @description: Direction (modulated)
 				 * @value0: Direction (0 to 9)
-				 * @value0_footnote: [^values]
+				 * @value0_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 */
 				.name = "AC",
 				.raw_max = 9,
@@ -780,19 +785,19 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				/**
 				 * @description: All values (unmodulated)
 				 * @value0: Direction (0 to 9)
-				 * @value0_footnote: [^values]
+				 * @value0_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 * @value1: Sensor 1 signal strength (0 to 9)
-				 * @value1_footnote: [^values]
+				 * @value1_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 * @value2: Sensor 2 signal strength (0 to 9)
-				 * @value2_footnote: [^values]
+				 * @value2_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 * @value3: Sensor 3 signal strength (0 to 9)
-				 * @value3_footnote: [^values]
+				 * @value3_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 * @value4: Sensor 4 signal strength (0 to 9)
-				 * @value4_footnote: [^values]
+				 * @value4_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 * @value5: Sensor 5 signal strength (0 to 9)
-				 * @value5_footnote: [^values]
+				 * @value5_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 * @value6: Sensor mean (0 to 9)
-				 * @value6_footnote: [^values]
+				 * @value6_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 */
 				.name = "DC-ALL",
 				.data_sets = 7,
@@ -801,17 +806,17 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				/**
 				 * @description: All values (modulated)
 				 * @value0: Direction (0 to 9)
-				 * @value0_footnote: [^values]
+				 * @value0_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 * @value1: Sensor 1 signal strength (0 to 9)
-				 * @value1_footnote: [^values]
+				 * @value1_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 * @value2: Sensor 2 signal strength (0 to 9)
-				 * @value2_footnote: [^values]
+				 * @value2_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 * @value3: Sensor 3 signal strength (0 to 9)
-				 * @value3_footnote: [^values]
+				 * @value3_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 * @value4: Sensor 4 signal strength (0 to 9)
-				 * @value4_footnote: [^values]
+				 * @value4_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 * @value5: Sensor 5 signal strength (0 to 9)
-				 * @value5_footnote: [^values]
+				 * @value5_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 */
 				.name = "AC-ALL",
 				.data_sets = 6,
@@ -845,12 +850,14 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
-				 * [^color-value]: Color Values:<br />
-				 * ![Color chart](http://www.hitechnic.com/contents/media/Color%20Number.jpg)
+				 * .. [#ht-nxt-color-mode0-value0] Color Values:
+				 *
+				 *    .. image:: http://www.hitechnic.com/contents/media/Color%20Number.jpg
+				 *       :alt: Color chart
 				 *
 				 * @description: Color
 				 * @value0: Color (0 to 17)
-				 * @value0_footnote: [^color-value]
+				 * @value0_footnote: [#ht-nxt-color-mode0-value0]_
 				 */
 				.name	= "COLOR",
 				.raw_max = 17,
@@ -905,7 +912,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				/**
 				 * @description: All values
 				 * @value0: Color (0 to 17)
-				 * @value0_footnote: [^color-value]
+				 * @value0_footnote: [#ht-nxt-color-mode0-value0]_
 				 * @value1: Red Component (0 to 255)
 				 * @value2: Green Component (0 to 255)
 				 * @value3: Blue Component (0 to 255)
@@ -954,12 +961,14 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
-				 * [^color-value]: Color Values:<br />
-				 * ![Color chart](http://www.hitechnic.com/contents/media/Color%20Number.jpg)
+				 * .. [#ht-nxt-color-v2-mode0-value0] Color Values:
+				 *
+				 *    .. image:: http://www.hitechnic.com/contents/media/Color%20Number.jpg
+				 *       :alt: Color chart
 				 *
 				 * @description: Color
 				 * @value0: Color (0 to 17)
-				 * @value0_footnote: [^color-value]
+				 * @value0_footnote: [#ht-nxt-color-v2-mode0-value0]_
 				 */
 				.name	= "COLOR",
 				.raw_max = 17,
@@ -1143,13 +1152,14 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 * [^calibrate]: When Calibrating the sensor wait
-				 * least 25ms before further reads from the sensor.
-				 * That means disable polling by setting `poll_ms`
-				 * to 0 before sending this command.
+				 * .. [#ht-nxt-angle-cmd1] When Calibrating the
+				 *    sensor wait least 25ms before further reads
+				 *    from the sensor. That means disable polling
+				 *    by setting ``poll_ms`` to 0 before sending
+				 *    this command.
 				 *
 				 * @description: Reset angle and accumulated angle and save to EEPROM
-				 * @name_footnote: [^calibrate]
+				 * @name_footnote: [#ht-nxt-angle-cmd1]_
 				 */
 				.name = "CAL",
 			},
@@ -1213,13 +1223,21 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
-				 * [^values]: Value of -128 is brake. Speed values only occur in
-				 * discrete steps (-100, -86, -72, -58, -44, -30, -16, 0, 16, 30,
-				 * 44, 58, 72, 86 and 100).
+				 * .. [#ht-nxt-ir-receiver-mode0-value0] Value
+				 *    of -128 is brake. Speed values only occur
+				 *    in discrete steps (-100, -86, -72, -58,
+				 *    -44, -30, -16, 0, 16, 30, 44, 58, 72, 86
+				 *    and 100).
+				 *
+				 * .. [#ht-nxt-ir-receiver-mode0-value-name] In
+				 *    the description, "Motor *NX*", the number
+				 *    *N* is the channel, and the letter *X* is
+				 *    the channel. "A"" is the red/left control
+				 *    and "B"" is the blue/right control.
 				 *
 				 * @description: Single Motor Control
 				 * @value0: Motor 1A Speed (-128 and -100 to 100)
-				 * @value0_footnote: [^values]<sup>,</sup>[^value-map]
+				 * @value0_footnote: [#ht-nxt-ir-receiver-mode0-value0]_ [#ht-nxt-ir-receiver-mode0-value-name]_
 				 * @units_description: percent
 				 */
 				.name = "1-MOTOR",
@@ -1228,26 +1246,24 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 * [^value-map]: In "Motor NX", the number is the channel,
-				 * A is the red/left control and B is the blue/right control.
 				 *
 				 * @description: Eight Motor Controls
 				 * @value0: Motor 1A Speed (-128 and -100 to 100)
-				 * @value0_footnote: [^values]<sup>,</sup>[^value-map]
+				 * @value0_footnote: [#ht-nxt-ir-receiver-mode0-value0]_ [#ht-nxt-ir-receiver-mode0-value-name]_
 				 * @value1: Motor 1B Speed (-128 and -100 to 100)
-				 * @value1_footnote: [^values]<sup>,</sup>[^value-map]
+				 * @value1_footnote: [#ht-nxt-ir-receiver-mode0-value0]_ [#ht-nxt-ir-receiver-mode0-value-name]_
 				 * @value2: Motor 2A Speed (-128 and -100 to 100)
-				 * @value2_footnote: [^values]<sup>,</sup>[^value-map]
+				 * @value2_footnote: [#ht-nxt-ir-receiver-mode0-value0]_ [#ht-nxt-ir-receiver-mode0-value-name]_
 				 * @value3: Motor 2B Speed (-128 and -100 to 100)
-				 * @value3_footnote: [^values]<sup>,</sup>[^value-map]
+				 * @value3_footnote: [#ht-nxt-ir-receiver-mode0-value0]_ [#ht-nxt-ir-receiver-mode0-value-name]_
 				 * @value4: Motor 3A Speed (-128 and -100 to 100)
-				 * @value4_footnote: [^values]<sup>,</sup>[^value-map]
+				 * @value4_footnote: [#ht-nxt-ir-receiver-mode0-value0]_ [#ht-nxt-ir-receiver-mode0-value-name]_
 				 * @value5: Motor 3B Speed (-128 and -100 to 100)
-				 * @value5_footnote: [^values]<sup>,</sup>[^value-map]
+				 * @value5_footnote: [#ht-nxt-ir-receiver-mode0-value0]_ [#ht-nxt-ir-receiver-mode0-value-name]_
 				 * @value6: Motor 4A Speed (-128 and -100 to 100)
-				 * @value6_footnote: [^values]<sup>,</sup>[^value-map]
+				 * @value6_footnote: [#ht-nxt-ir-receiver-mode0-value0]_ [#ht-nxt-ir-receiver-mode0-value-name]_
 				 * @value7: Motor 4B Speed (-128 and -100 to 100)
-				 * @value7_footnote: [^values]<sup>,</sup>[^value-map]
+				 * @value7_footnote: [#ht-nxt-ir-receiver-mode0-value0]_ [#ht-nxt-ir-receiver-mode0-value-name]_
 				 * @units_description: percent
 				 */
 				.name = "8-MOTOR",
@@ -1280,30 +1296,34 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
-				 * [^mode-0-value]: Value is 8 most significant bits out of 10-bit total resolution.
+				 * .. [#ht-nxt-accel-mode0-value0] Value is 8
+				 *    most significant bits out of 10-bit total
+				 *    resolution.
 				 *
 				 * @description: Single-axis acceleration
 				 * @value0: Acceleration (coarse value)
-				 * @value0_footnote: [^mode-0-value]
+				 * @value0_footnote: [#ht-nxt-accel-mode0-value0]_
 				 */
 				.name = "ACCEL",
 			},
 			[1] = {
 				/**
-				 * [^mode-1-value]: Only the 2 most significant bits are used.
-				 * Actual value is `MSB << 2 + LSB >> 6` or `MSB << 2 + LSB & 0x03`
-				 * (can someone confirm which one?).
+				 * .. [#ht-nxt-accel-mode1-value3] Only the 2
+				 *    most significant bits are used. Actual
+				 *    value is ``MSB << 2 + LSB >> 6`` or
+				 *    ``MSB << 2 + LSB & 0x03`` (can someone
+				 *    confirm which one?).
 				 *
 				 * @description: Three-axis acceleration
 				 * @value0: X-axis acceleration (most significant byte)
 				 * @value1: Y-axis acceleration (most significant byte)
 				 * @value2: Z-axis acceleration (most significant byte)
 				 * @value3: X-axis acceleration (least significant byte)
-				 * @value3_footnote: [^mode-1-value]
+				 * @value3_footnote: [#ht-nxt-accel-mode1-value3]_
 				 * @value4: Y-axis acceleration (least significant byte)
-				 * @value4_footnote: [^mode-1-value]
+				 * @value4_footnote: [#ht-nxt-accel-mode1-value3]_
 				 * @value5: Z-axis acceleration (least significant byte)
-				 * @value5_footnote: [^mode-1-value]
+				 * @value5_footnote: [#ht-nxt-accel-mode1-value3]_
 				 */
 				.name = "ALL",
 				.data_sets = 6,
@@ -1401,18 +1421,20 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[5] = {
 				/**
-				 * [^led-states]: LED states:
+				 * .. [#ht-super-pro-mode5-value0] LED states:
 				 *
-				 * | Value | Description  |
-				 * |-------|--------------|
-				 * | 0     | None         |
-				 * | 1     | Red          |
-				 * | 2     | Blue         |
-				 * | 3     | Red and blue |
+				 *    =======  ==============
+				 *     Value    Description
+				 *    =======  ==============
+				 *     0        None
+				 *     1        Red
+				 *     2        Blue
+				 *     3        Red and blue
+				 *    =======  ==============
 				 *
 				 * @description: LED control
 				 * @value0: LED state
-				 * @value0_footnote: [^led-states]
+				 * @value0_footnote: [#ht-super-pro-mode5-value0]_
 				 */
 				.name = "LED",
 			},
@@ -1470,18 +1492,11 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 	},
 	[HT_NXT_SENSOR_MUX] = {
 		/**
-		 * [^more-devices]: The `ht-nxt-smux` driver loads more devices
-		 * in addition to the [lego-sensor] class device. See
-		 * [ht-nxt-smux-port] for more information.
-		 * ^
-		 * [ht-nxt-smux-port]: /docs/ports/ht-nxt-smux-port
-		 *
 		 * @vendor_name: HiTechnic
 		 * @vendor_part_number: NSX2020
 		 * @vendor_part_name: NXT Sensor Multiplexer
 		 * @vendor_website: http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NSX2020
 		 * @default_address: 0x08
-		 * @device_class_footnote: [^more-devices]
 		 */
 		.name		= HT_NXT_SENSOR_MUX_NAME,
 		.vendor_id	= "HiTechnc",
@@ -1497,28 +1512,32 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
-				 * [^state]: Run state:
+				 * .. [#ht-nxt-smux-mode0-value0] Run state:
 				 *
-				 * | Value | Description |
-				 * |-------|-------------|
-				 * | 0     | Halt        |
-				 * | 1     | Detect      |
-				 * | 2     | Run         |
+				 *    =======  =============
+				 *     Value    Description
+				 *    =======  =============
+				 *     0        Halt
+				 *     1        Detect
+				 *     2        Run
+				 *    =======  =============
 				 *
-				 * [^status-bits]: Status bits:
+				 * .. [#ht-nxt-smux-mode0-value1] Status bits:
 				 *
-				 * | Bit | Description    |
-				 * |-----|----------------|
-				 * | 0   | Low/no battery |
-				 * | 1   | Running        |
-				 * | 2   | Halted         |
-				 * | 3   | Error          |
+				 *    =====  ================
+				 *     Bit    Description
+				 *    =====  ================
+				 *     0      Low/no battery
+				 *     1      Running
+				 *     2      Halted
+				 *     3      Error
+				 *    =====  ================
 				 *
 				 * @description: Status
 				 * @value0: Run state
-				 * @value0_footnote: [^state]
+				 * @value0_footnote: [#ht-nxt-smux-mode0-value0]_
 				 * @value1: Status
-				 * @value1_footnote: [^status-bits]
+				 * @value1_footnote: [#ht-nxt-smux-mode0-value1]_
 				 */
 				.name = "MUX",
 				.data_sets = 2,
@@ -1551,24 +1570,24 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[1]= {
 				/**
-				 * [^auto-detect]: The sensor mux must be halted before
-				 * sending the detect command, otherwise it will result
-				 * an error (-EPERM).
+				 * .. [#ht-nxt-smux-cmd1] The sensor mux must be
+				 *    halted before sending the detect command,
+				 *    otherwise it will result an error (-EPERM).
 				 *
-				 * [^auto-detect-sensors]: Only these sensors can be
-				 * automatically detected:
+				 * .. [#ht-nxt-smux-cmd1-sensors] Only these
+				 *    sensors can be automatically detected:
 				 *
-				 * - LEGO NXT Ultrasonic
-				 * - HiTechnic NXT Compass
-				 * - HiTechnic NXT Color
-				 * - HiTechnic NXT Acceleration / Tilt
-				 * - HiTechnic NXT IR Seeker
-				 * - HiTechnic Super Pro
-				 * - HiTechnic NXT Color V2
-				 * - HiTechnic NXT IR Seeker V2
+				 *    - LEGO NXT Ultrasonic
+				 *    - HiTechnic NXT Compass
+				 *    - HiTechnic NXT Color
+				 *    - HiTechnic NXT Acceleration / Tilt
+				 *    - HiTechnic NXT IR Seeker
+				 *    - HiTechnic Super Pro
+				 *    - HiTechnic NXT Color V2
+				 *    - HiTechnic NXT IR Seeker V2
 				 *
 				 * @description: Start auto-detection
-				 * @name_footnote: [^auto-detect]<sup>,</sup>[^auto-detect-sensors]
+				 * @name_footnote: [#ht-nxt-smux-cmd1]_ [#ht-nxt-smux-cmd1-sensors]_
 				 */
 				.name = "DETECT",
 			},
@@ -1596,26 +1615,26 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 	},
 	[MS_8CH_SERVO] = {
 		/**
-		 * [^address]: The address is programmable. See manufacturer
-		 * documentation for more information.
-		 * [^servo-motor-devices]: The `ms-8ch-servo` driver loads separate
-		 * servo motor devices (one for each of the 8 channels) in addition
-		 * to the [lego-sensor class] device. See the [servo-motor class]
-		 * for more information. The `servo-motor` class `address` attribute
-		 * will return `in<X>:i2c<Y>:sv<Z>` where `<X>` is the input port
-		 * the servo controller is connected to, `<Y>` is the address and
-		 * `<Z>` is the channel as indicated on the servo controller itself.
-		 * ^
-		 * [lego-sensor class]: /docs/drivers/lego-sensor-class
-		 * [servo-motor class]: /docs/drivers/servo-motor-class
+		 * .. [#ms-8ch-servo-address] The address is programmable. See
+		 *    manufacturer documentation for more information.
+		 *
+		 * .. [#ms-8ch-servo-device-class] The ``ms-8ch-servo`` driver
+		 *    loads separate servo motor devices (one for each of the 8
+		 *    channels) in addition to the :ref:`lego-sensor-class` device.
+		 *    See the :ref:`servo-motor-class` for more information. The
+		 *    ``servo-motor`` class ``address`` attribute will return 
+		 *    ``in<X>:i2c<Y>:sv<Z>`` where ``<X>`` is the input port
+		 *    the servo controller is connected to, ``<Y>`` is the address
+		 *    and ``<Z>`` is the channel as indicated on the servo
+		 *    controller itself.
 		 *
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: NxtServo
 		 * @vendor_part_name: 8-channel Servo Controller
 		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/25-8-channel-servo-controller-for-nxt-or-ev3
 		 * @default_address: 0x58
-		 * @default_address_footnote: [^address]
-		 * @device_class_footnote: [^servo-motor-devices]
+		 * @default_address_footnote: [#ms-8ch-servo-address]_
+		 * @device_class_footnote: [#ms-8ch-servo-device-class]_
 		 */
 		.name		= MS_8CH_SERVO_NAME,
 		.vendor_id	= "mndsnsrs",
@@ -1629,14 +1648,15 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[0] = {
 				/**
 				 *
-				 * [^battery-voltage]: The current voltage scaling is based on
-				 * the manufacturers documentation, however it seems to be low.
-				 * If you are seeing this too, please open an issue on GitHub
-				 * and we will change the scaling.
+				 * .. [#ms-8ch-servo-mode0-value0] The current
+				 *    voltage scaling is based on the manufacturers
+				 *    documentation, however it seems to be low.
+				 *    If you are seeing this too, please open an
+				 *    issue on GitHub and we will change the scaling.
 				 *
 				 * @description: EV3 Compatible
 				 * @value0: Battery voltage (0 to 9400)
-				 * @value0_footnote: [^battery-voltage]
+				 * @value0_footnote: [#ms-8ch-servo-mode0-value0]_
 				 * @units_description: volts
 				 */
 				.name = "V3",
@@ -1649,14 +1669,15 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 * [^old-mode]: Older versions of this sensor have the battery
-				 * voltage at a different address. If the default mode does not
-				 * return a value, try this mode.
+				 * .. [#ms-8ch-servo-mode1] Older versions of
+				 *    this sensor have the battery voltage at a
+				 *    different address. If the default mode does
+				 *    not return a value, try this mode.
 				 *
-				 * @name_footnote: [^old-mode]
+				 * @name_footnote: [#ms-8ch-servo-mode1]_
 				 * @description: Older versions
 				 * @value0: Battery voltage (0 to 9400)
-				 * @value0_footnote: [^battery-voltage]
+				 * @value0_footnote: [#ms-8ch-servo-mode0-value0]_
 				 * @units_description: volts
 				 */
 				.name = "OLD",
@@ -1679,15 +1700,15 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 	},
 	[MS_ABSOLUTE_IMU] = {
 		/**
-		 * [^address]: The address is programmable. See manufacturer
-		 * documentation for more information.
+		 * .. [#ms-absolute-imu-address] The address is programmable.
+		 *    See manufacturer documentation for more information.
 		 *
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: AbsoluteIMU(-A/C/G)
 		 * @vendor_part_name: Gyro, MultiSensitivity Accelerometer and Compass
 		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/15-gyro-multisensitivity-accelerometer-and-compass-for-nxt-or-ev3
 		 * @default_address: 0x11
-		 * @default_address_footnote: [^address]
+		 * @default_address_footnote: [#ms-absolute-imu-address]_
 		 */
 		.name		= MS_ABSOLUTE_IMU_NAME,
 		.vendor_id	= "mndsnsrs",
@@ -1713,16 +1734,21 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 * [^accel]: Only returns data from models with an accelerometer
-				 * (AbsoluteIMU-AC/AbsoluteIMU-A).
-				 * [^gravity-units]: 1 g = 9.81 m/s<sup>2</sup>
+				 * .. [#ms-absolute-imu-mode1] Only returns data
+				 *    from models with an accelerometer
+				 *    (AbsoluteIMU-AC / AbsoluteIMU-A).
 				 *
-				 * @name_footnote: [^accel]
+				 * .. [#ms-absolute-imu-mode1-units] Standard
+				 *    gravity (*g*) is defined as 
+				 *    :math:`1 g = 9.81 m/s^2`
+				 *
+				 * @name_footnote: [#ms-absolute-imu-mode1]_
 				 * @description: Acceleration
 				 * @value0: X-axis acceleration
 				 * @value1: Y-axis acceleration
 				 * @value2: Z-axis acceleration
 				 * @units_description: Standard gravity
+				 * @units_footnote: [#ms-absolute-imu-mode1-units]_
 				 */
 				.name		= "ACCEL",
 				.data_sets	= 3,
@@ -1732,10 +1758,11 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[2] = {
 				/**
-				 * [^compass]: Only returns data from models with a compass
-				 * (AbsoluteIMU-C/AbsoluteIMU-AC/AbsoluteIMU-ACG).
+				 * .. [#ms-absolute-imu-mode2] Only returns data
+				 *    from models with a compass (AbsoluteIMU-C /
+				 *    AbsoluteIMU-AC / AbsoluteIMU-ACG).
 				 *
-				 * @name_footnote: [^compass]
+				 * @name_footnote: [#ms-absolute-imu-mode2]_
 				 * @description: Compass
 				 * @value0: Heading (0 to 360)
 				 * @units_description: degrees
@@ -1747,7 +1774,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[3] = {
 				/**
-				 * @name_footnote: [^compass]
+				 * @name_footnote: [#ms-absolute-imu-mode2]_
 				 * @description: Magnetic field
 				 * @value0: X-axis magnetic field
 				 * @value1: Y-axis magnetic field
@@ -1759,10 +1786,10 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[4] = {
 				/**
-				 * [^gyro]: Only returns data from models with a gyro
-				 * (AbsoluteIMU-ACG).
+				 * .. [#ms-absolute-imu-mode4] Only returns data
+				 *    from models with a gyro (AbsoluteIMU-ACG).
 				 *
-				 * @name_footnote: [^gyro]
+				 * @name_footnote: [#ms-absolute-imu-mode4]_
 				 * @description: Gyro
 				 * @value0: X-axis rotational speed
 				 * @value1: Y-axis rotational speed
@@ -1783,11 +1810,12 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[5] = {
 				/**
-				 * [^all]: Reads all data from the sensor. Use `bin_data`
-				 * attribute to read values. Some values will not be scaled.
-				 * See manufacturer docs for more info.
+				 * .. [#ms-absolute-imu-mode5] Reads all data
+				 *    from the sensor. Use ``bin_data`` attribute
+				 *    to read values. Some values will not be scaled.
+				 *    See manufacturer docs for more info.
 				 *
-				 * @name_footnote: [^all]
+				 * @name_footnote: [#ms-absolute-imu-mode5]_
 				 * @description: All data
 				 */
 				.name		= "ALL",
@@ -1830,31 +1858,33 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[2] = {
 				/**
-				 * [^accel-commands]: Wait 50 msec after sending command for sensor to reconfigure itself.
+				 * .. [#ms-absolute-imu-cmd2] Wait 50 msec after
+				 *    sending command for sensor to reconfigure
+				 *    itself.
 				 *
 				 * @description: Change accelerometer sensitivity to 2G and gyro sensitivity to 250 deg/sec
-				 * @name_footnote: [^accel-commands]
+				 * @name_footnote: [#ms-absolute-imu-cmd2]_
 				 */
 				.name = "ACCEL-2G",
 			},
 			[3] = {
 				/**
 				 * @description: Change accelerometer sensitivity to 4G and gyro sensitivity to 500 deg/sec
-				 * @name_footnote: [^accel-commands]
+				 * @name_footnote: [#ms-absolute-imu-cmd2]_
 				 */
 				.name = "ACCEL-4G",
 			},
 			[4] = {
 				/**
 				 * @description: Change accelerometer sensitivity to 8G and gyro sensitivity to 2000 deg/sec
-				 * @name_footnote: [^accel-commands]
+				 * @name_footnote: [#ms-absolute-imu-cmd2]_
 				 */
 				.name = "ACCEL-8G",
 			},
 			[5] = {
 				/**
 				 * @description: Change accelerometer sensitivity to 16G and gyro sensitivity to 2000 deg/sec
-				 * @name_footnote: [^accel-commands]
+				 * @name_footnote: [#ms-absolute-imu-cmd2]_
 				 */
 				.name = "ACCEL-16G",
 			},
@@ -1939,19 +1969,20 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[3] = {
 				/**
-				 * [^mode3-value1]: Angle value times 2
-				 * (i.e. value of 10 = angle of 5 degrees).
-				 * Allows for 0.5 degree precision.
-				 * [^mode3-value2]: Value needs to be converted to
-				 * 16-bit signed integer. Example:
-				 * `if (value2 > 32767) value2 = value2 - 65536`
+				 * .. [#ms-angle-mode3-value1] Angle value times
+				 *    2 (i.e. value of 10 = angle of 5 degrees).
+				 *    Allows for 0.5 degree precision.
+				 *
+				 * .. [#ms-angle-mode3-value2] Value needs to be
+				 *    converted to 16-bit signed integer. Example:
+				 *    ``if (value2 > 32767) value2 = value2 - 65536``
 				 *
 				 * @description: All values
 				 * @value0: Angle
 				 * @value1: Angle x2
-				 * @value1_footnote: [^mode3-value1]
+				 * @value1_footnote: [#ms-angle-mode3-value1]_
 				 * @value2: Rotational Speed
-				 * @value2_footnote: [^mode3-value2]
+				 * @value2_footnote: [#ms-angle-mode3-value2]_
 				 */
 				.name		= "ALL",
 				.raw_max	= 100,
@@ -1992,24 +2023,22 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 	},
 	[MS_EV3_SENSOR_MUX] = {
 		/**
-		 * [^addresses]: This sensor appears as three separate sensors,
-		 * one for each channel on the sensor mux.
-		 * [^port-and-sensor-devices]: In addition to loading three
-		 * [lego-sensor] devices for the sensor mux itself, three
-		 * [lego-port] devices are added as well. These [ms-ev3-smux-port]
-		 * devices must be used to manually specify the type of sensor
-		 * that is attached to each port.
-		 * ^
-		 * [lego-port]: /docs/drivers/lego-port-class
-		 * [ms-ev3-smux-port]: /docs/ports/ms-ev3-smux-port
+		 * .. [#ms-ev3-smux-addresses] This sensor appears as three
+		 *    separate sensors, one for each channel on the sensor mux.
+		 *
+		 * .. [#ms-ev3-smux-device-class] In addition to loading three
+		 *    [lego-sensor] devices for the sensor mux itself, three
+		 *    [lego-port] devices are added as well. These [ms-ev3-smux-port]
+		 *    devices must be used to manually specify the type of sensor
+		 *    that is attached to each port.
 		 *
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: EV3SensorMUX
 		 * @vendor_part_name: EV3 Sensor Multiplexer
 		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/23-ev3-sensor-multiplexer-for-ev3-or-nxt
 		 * @default_address: 0x50, 0x51, 0x52
-		 * @default_address_footnote: [^addresses]
-		 * @device_class_footnote: [^port-and-sensor-devices]
+		 * @default_address_footnote: [#ms-ev3-smux-addresses]_
+		 * @device_class_footnote: [#ms-ev3-smux-device-class]_
 		 */
 		.name		= MS_EV3_SENSOR_MUX_NAME,
 		.vendor_id	= "mndsnsrs",
@@ -2024,10 +2053,11 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
-				 * [^mode]: This mode does not do anything useful.
+				 * .. [#ms-ev3-smux-mode0] This mode does not do
+				 *    anything useful.
 				 *
 				 * @description: EV3 Sensor Multiplexer
-				 * @name_footnote: [^mode]
+				 * @name_footnote: [#ms-ev3-smux-mode0]_
 				 */
 				.name		= "MUX",
 				.data_sets	= 0,
@@ -2040,15 +2070,15 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 	},
 	[MS_LIGHT_SENSOR_ARRAY] = {
 		/**
-		 * [^address]: The address is programmable. See manufacturer
-		 * documentation for more information.
+		 * .. [#ms-light-array-address] The address is programmable.
+		 *    See manufacturer documentation for more information.
 		 *
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: LightSensorArray
 		 * @vendor_part_name: Light Sensor Array
 		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/47-light-sensor-array-for-nxt-or-ev3
 		 * @default_address: 0x0A
-		 * @default_address_footnote: [^address]
+		 * @default_address_footnote: [#ms-light-array-address]_
 		 */
 		.name		= MS_LIGHT_SENSOR_ARRAY_NAME,
 		.vendor_id	= "mndsnsrs",
@@ -2117,19 +2147,22 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[2] = {
 				/**
-				 * [^sleep]: `poll_ms` must be set to `0` in order for sensor to sleep.
+				 * .. [#ms-light-array-mode2] ``poll_ms`` must
+				 *    be set to 0 in order for sensor to sleep.
 				 *
-				 * @name_footnote: [^sleep]
+				 * @name_footnote: [#ms-light-array-mode2]_
 				 * @description: Put sensor to sleep
 				 */
 				.name = "SLEEP",
 			},
 			[3] = {
 				/**
-				 * [^wake]: Will return an error (-ENXIO) if sensor is actually asleep.
-				 * Completes successfully if sensor is already awake.
+				 * .. [#ms-light-array-mode3] Will return an
+				 *    error (-ENXIO) if sensor is actually
+				 *    asleep. Completes successfully if sensor
+				 *    is already awake.
 				 *
-				 * @name_footnote: [^wake]
+				 * @name_footnote: [#ms-light-array-mode3]_
 				 * @description: Wake up the sensor
 				 */
 				.name = "WAKE",
@@ -2186,15 +2219,15 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 	},
 	[MS_LINE_LEADER] = {
 		/**
-		 * [^address]: The address is programmable. See manufacturer
-		 * documentation for more information.
+		 * .. [#ms-line-leader-address] The address is programmable.
+		 *    See manufacturer documentation for more information.
 		 *
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: LineLeader
 		 * @vendor_part_name: Line Follower Sensor
 		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/48-line-follower-sensor-for-nxt-or-ev3
 		 * @default_address: 0x01
-		 * @default_address_footnote: [^address]
+		 * @default_address_footnote: [#ms-line-leader-address]_
 		 */
 		.name		= MS_LINE_LEADER_NAME,
 		.vendor_id	= "mndsnsrs",
@@ -2203,14 +2236,15 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
-				 * [^pid-mode-value0]: "Steering" is the power value
-				 * returned by the sensor to correct your course. Add
-				 * this value to your left motor and subtract from
-				 * right motor.
+				 * .. [#ms-line-leader-mode0-value0] "Steering"
+				 *    is the power value returned by the sensor
+				 *    to correct your course. Add this value to
+				 *    your left motor and subtract from right
+				 *    motor.
 				 *
 				 * @description: Line Follower
 				 * @value0: Steering (-100 to 100)
-				 * @value0_footnote: [^pid-mode-value0]
+				 * @value0_footnote: [#ms-line-leader-mode0-value0]_
 				 * @units_description: percent
 				 */
 				.name = "PID",
@@ -2219,23 +2253,26 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 * [^pid-mode-value1]: "Average" is the weighted average
-				 * of the sensor reading. The average is a weighted
-				 * average of the bits set to 1 based on the position.
-				 * i.e. left most bit has weight of 10, second bit has
-				 * weight of 20.
-				 * [^pid-mode-value2]: "Result" is a byte value of
-				 * the sensor reading. Each bit corresponding to the
-				 * sensor where the line is seen is set to 1, or else
-				 * the bit is zero.
+				 * .. [#ms-line-leader-mode1-value1] "Average"
+				 *    is the weighted average of the sensor
+				 *    reading. The average is a weighted average
+				 *    of the bits set to 1 based on the position.
+				 *    i.e. left most bit has weight of 10, second
+				 *    bit has* weight of 20.
+				 *
+				 * .. [#ms-line-leader-mode1-value2] "Result" is
+				 *    a byte value of the sensor reading. Each
+				 *    bit corresponding to the sensor where the
+				 *    line is seen is set to 1, or else the bit
+				 *    is zero.
 				 *
 				 * @description: Line Follower - all values
 				 * @value0: Steering (-100 to 100)
-				 * @value0_footnote: [^pid-mode-value0]
+				 * @value0_footnote: [#ms-line-leader-mode0-value0]_
 				 * @value1: Average (0 to 80)
-				 * @value1_footnote: [^pid-mode-value1]
+				 * @value1_footnote: [#ms-line-leader-mode1-value1]_
 				 * @value2: Result (as bits)
-				 * @value2_footnote: [^pid-mode-value2]
+				 * @value2_footnote: [#ms-line-leader-mode1-value2]_
 				 */
 				.name = "PID-ALL",
 				.data_sets = 3,
@@ -2309,19 +2346,22 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[2] = {
 				/**
-				 * [^sleep]: `poll_ms` must be set to `0` in order for sensor to sleep.
+				 * .. [#ms-line-leader-cmd2] ``poll_ms`` must be
+				 *    set to 0 in order for sensor to sleep.
 				 *
-				 * @name_footnote: [^sleep]
+				 * @name_footnote: [#ms-line-leader-cmd2]_
 				 * @description: Put sensor to sleep
 				 */
 				.name = "SLEEP",
 			},
 			[3] = {
 				/**
-				 * [^wake]: Will return an error (-ENXIO) if sensor is actually asleep.
-				 * Completes successfully if sensor is already awake.
+				 * .. [#ms-line-leader-cmd3] Will return an error
+				 *    (-ENXIO) if sensor is actually asleep.
+				 *    Completes successfully if sensor is already
+				 *    awake.
 				 *
-				 * @name_footnote: [^wake]
+				 * @name_footnote: [#ms-line-leader-cmd3]_
 				 * @description: Wake up the sensor
 				 */
 				.name = "WAKE",
@@ -2340,14 +2380,16 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[6] = {
 				/**
-				 * [^snapshot-command]: The "SNAP" command looks at the line
-				 * under the sensor and stores the width and position of the
-				 * line in sensor’s memory. Subsequently, sensor will use
-				 * these characteristics of line to track it. This command
-				 * inverts the colors if it sees a white line on black background.
-				 * (PID parameters are not affected).
+				 * .. [#ms-line-leader-cmd6] The "SNAP" command
+				 *    looks at the line under the sensor and
+				 *    stores the width and position of the line
+				 *    in sensor’s memory. Subsequently, sensor
+				 *    will use these characteristics of line to
+				 *    track it. This command inverts the colors
+				 *    if it sees a white line on black background.
+				 *    (PID parameters are not affected.)
 				 *
-				 * @name_footnote: [^snapshot-command]
+				 * @name_footnote: [#ms-line-leader-cmd6]_
 				 * @description: Take a snapshot.
 				 */
 				.name = "SNAP",
@@ -2416,24 +2458,24 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 	},
 	[MS_NXTMMX] = {
 		/**
-		 * [^address]: The address is programmable. See manufacturer
-		 * documentation for more information.
-		 * [^tacho-motor-devices]: The NxtMMX driver also loads two
-		 * [tacho-motor] class devices. Use the tacho-motor class devices
-		 * to actually control the motors. You can identify the motors
-		 * by the `address` attribute. It will be `in<X>:i2c<Y>:mux<Z>`
-		 * where `<X>` is 1-4, `<Y>` is 3 (unless you changed the address)
-		 * and `<Z>` is 1 or 2 (matches M1 or M2 printed on the NxtMMX).
-		 * ^
-		 * [tacho-motor]: /docs/drivers/tacho-motor-class
+		 * .. [#ms-nxtmmx-address] The address is programmable. See
+		 *    manufacturer documentation for more information.
+		 *
+		 * .. [#ms-nxtmmx-device-class] The NxtMMX driver also loads two
+		 *    [tacho-motor] class devices. Use the tacho-motor class
+		 *    devices to actually control the motors. You can identify
+		 *    the motors by the ``address`` attribute. It will be
+		 *    ``in<X>:i2c<Y>:mux<Z>`` where ``<X>`` is 1-4, ``<Y>`` is
+		 *    3 (unless you changed the address) and ``<Z>`` is 1 or 2
+		 *    (matches M1 or M2 printed on the NxtMMX).
 		 *
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: NXTMMX-v2
 		 * @vendor_part_name: Multiplexer for NXT/EV3 Motors
 		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/21-multiplexer-for-nxtev3-motors
 		 * @default_address: 0x03
-		 * @default_address_footnote: [^address]
-		 * @device_class_footnote: [^tacho-motor-devices]
+		 * @default_address_footnote: [#ms-nxtmmx-address]_
+		 * @device_class_footnote: [#ms-nxtmmx-device-class]_
 		 */
 		.name		= MS_NXTMMX_NAME,
 		.vendor_id	= "mndsnsrs",
@@ -2459,13 +2501,15 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 * [^status-old]: The I2C register for battery voltage
-				 * was changed for EV3 compatibility. If `STATUS` does
-				 * not seem to work, try this mode instead.
+				 * .. [#ms-nxtmmx-mode1] The I2C register for
+				 *    battery voltage was changed for EV3
+				 *    compatibility. If the ``STATUS`` mode does
+				 *    not seem to work, try this mode instead.
+				 *
 				 * @description: Status (for older firmware versions)
 				 * @value0: Battery voltage
 				 * @units_description: volts
-				 * @name_footnote: [^status-old]
+				 * @name_footnote: [#ms-nxtmmx-mode1]_
 				 */
 				.name		= "STATUS-OLD",
 				.data_sets	= 1,
@@ -2486,15 +2530,15 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 	},
 	[MS_NXTCAM] = {
 		/**
-		 * [^address]: The address is programmable. See manufacturer
-		 * documentation for more information.
+		 * .. [#ms-nxtcam-address] The address is programmable. See
+		 *    manufacturer documentation for more information.
 		 *
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: NXTCam-v4
 		 * @vendor_part_name: Vision Subsystem v4 for NXT or EV3
 		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/14-vision-subsystem-v4-for-nxt-or-ev3-nxtcam-v4
 		 * @default_address: 0x01
-		 * @default_address_footnote: [^address]
+		 * @default_address_footnote: [#ms-nxtcam-address]_
 		 */
 		.name		= MS_NXTCAM_NAME,
 		.vendor_id	= "mndsnsrs",
@@ -2503,16 +2547,17 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
-				 * [^advanced]: This driver only allows for tracking a single
-				 * object. To track more than one object and for other more
-				 * advanced uses, you can disable this driver by setting `poll_ms`
-				 * to `0` and using the `direct` attribute to directly read and
-				 * write I2C messages. See the [Using I2C Sensors] page and the
-				 * manufacturers documentation for more information.
-				 * ^
-				 * [Using I2C Sensors]: /docs/sensors/using-i2c-sensors
+				 * .. [#ms-nxtcam-mode0] This driver only allows
+				 *    for tracking a single object. To track more
+				 *    than one object and for other more advanced
+				 *    uses, you can disable this driver by setting
+				 *    ``poll_ms`` to 0 and using the ``direct``
+				 *    attribute to directly read and write I2C
+				 *    messages. See the [Using I2C Sensors] page
+				 *    and the manufacturers documentation for
+				 *    more information.
 				 *
-				 * @name_footnote: [^advanced]
+				 * @name_footnote: [#ms-nxtcam-mode0]_
 				 * @description: Tracking
 				 * @value0: Object count
 				 * @value1: Color index
@@ -2598,15 +2643,15 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 	},
 	[MS_PIXYADAPTER] = {
 		/**
-		 * [^address]: The address is programmable. See manufacturer
-		 * documentation for more information.
+		 * .. [#ms-pixy-adapter-address] The address is programmable.
+		 *    See manufacturer documentation for more information.
 		 *
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: PixyAdapter
 		 * @vendor_part_name: Pixy Adapter for MINDSTORMS EV3 or NXT
 		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/35-pixy-adapter
 		 * @default_address: 0x01
-		 * @default_address_footnote: [^address]
+		 * @default_address_footnote: [#ms-pixy-adapter-address]_
 		 */
 		.name		= MS_PIXYADAPTER_NAME,
 		.vendor_id	= "mndsnsrs",
@@ -2615,16 +2660,17 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
-				 * [^advanced]: This driver only allows for tracking a single
-				 * object. To track more than one object and for other more
-				 * advanced uses, you can disable this driver by setting `poll_ms`
-				 * to `0` and using the `direct` attribute to directly read and
-				 * write I2C messages. See the [Using I2C Sensors] page and the
-				 * manufacturers documentation for more information.
-				 * ^
-				 * [Using I2C Sensors]: /docs/sensors/using-i2c-sensors
+				 * .. [#ms-pixy-adapter-mode0] This driver only
+				 *    allows for tracking a single object. To
+				 *    track more than one object and for other
+				 *    more advanced uses, you can disable this
+				 *    driver by setting ``poll_ms`` to 0 and
+				 *    using the ``direct`` attribute to directly
+				 *    read and write I2C messages. See the [Using
+				 *    I2C Sensors] page and the manufacturers
+				 *    documentation for more information.
 				 *
-				 * @name_footnote: [^advanced]
+				 * @name_footnote: [#ms-pixy-adapter-mode0]_
 				 * @description: Tracking
 				 * @value0: Object count
 				 * @value1: Color index
@@ -2795,11 +2841,13 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
 			[0] = {
 				/**
-				 * [^zero]: The reference pressure is used to calculate the gauge pressure.
-				 * Therefore, this command only affects the `REL-*` modes.
+				 * .. [#ms-pps58-nx-cmd0] The reference pressure
+				 *    is used to calculate the gauge pressure.
+				 *    Therefore, this command only affects the
+				 *    ``REL-*`` modes.
 				 *
 				 * @description: Change Reference pressure to current absolute pressure.
-				 * @name_footnote: [^zero]
+				 * @name_footnote: [#ms-pps58-nx-cmd0]_
 				 */
 				.name = "ZERO",
 			},
@@ -2813,24 +2861,23 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 	},
 	[MI_CRUIZCORE_XG1300L] = {
 		/**
-		 * [^ids]: CruizCore XG1300L doesn't follow LEGO guidelines by
-		 * returning vendor, product and firmware version values. As a
-		 * result, this sensor can't be automatically detected. Until
-		 * we find another way to identify the sensor, the driver has to
-		 * be loaded manually.
+		 * .. [#mi-xg1300l-vid] CruizCore XG1300L doesn't follow LEGO
+		 *    guidelines by returning vendor, product and firmware
+		 *    version values. As a result, this sensor can't be
+		 *    automatically detected. Until we find another way to
+		 *    identify the sensor, the driver has to be loaded manually.
 		 *
-		 * Register I2C device:
-		 * <pre>
-		 * echo mi-xg1300l 0x01 > /sys/bus/i2c/devices/i2c-<port+2>/new_device
-		 * </pre>
+		 *    Register I2C device::
+		 *
+		 *        echo mi-xg1300l 0x01 > /sys/class/lego-port/port<N>/set_device
 		 *
 		 * @vendor_name: Microinfinity
 		 * @vendor_part_number: CruizCore XG 1300L
 		 * @vendor_part_name: Digital Gyroscope And Accelerometer
 		 * @vendor_website: http://www.minfinity.com/eng/page.php?Main=1&sub=1&tab=5
 		 * @default_address: 0x01
-		 * @vendor_id_footnote: [^ids]
-		 * @product_id_footnote: [^ids]
+		 * @vendor_id_footnote: [#mi-xg1300l-vid]_
+		 * @product_id_footnote: [#mi-xg1300l-vid]_
 		 */
 		.name		= MI_CRUIZCORE_XG1300L_NAME,
 		.vendor_id	= "mnfinity", /* The sensor doesn't return vendor_id, it can't be autodetected this way */
@@ -2869,14 +2916,14 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[2] = {
 				/**
-				 *[^gravity-units]: 1 g ~ 9.81 m/s<sup>2</sup>
+				 * .. [#mi-xg1300l-units] :math:`1 g \approx 9.81 m/s^2`
 				 *
 				 * @description: Acceleration in X, Y, Z axis
 				 * @value0: Acceleration in X axis
 				 * @value1: Acceleration in Y axis
 				 * @value2: Acceleration in Z axis
 				 * @units_description: Standard gravity
-				 * @units_footnote: [^gravity-units]
+				 * @units_footnote: [#mi-xg1300l-units]_
 				 */
 				.name		= "ACCEL",
 				.scale		= mi_xg1300l_scale,
@@ -2887,22 +2934,24 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[3] = {
 				/**
-				 * [^mode3-angle]: Two decimal places
-				 * [^mode3-speed]: Two decimal places
-				 * [^mode3-accel]: Three decimal places,
-				 * range as was set by last command
+				 * .. [#mi-xg1300l-mode3-value0] Two decimal places
+				 *
+				 * .. [#mi-xg1300l-mode3-value1] Two decimal places
+				 *
+				 * .. [#mi-xg1300l-mode3-value2] Three decimal places,
+				 *    range as was set by last command
 				 *
 				 * @description: All values
 				 * @value0: Z-axis angle (-18000 to 18000)
-				 * @value0_footnote: [^mode3-angle]
+				 * @value0_footnote: [#mi-xg1300l-mode3-value0]_
 				 * @value1: Z-axis rotational speed
-				 * @value1_footnote: [^mode3-speed]
+				 * @value1_footnote: [#mi-xg1300l-mode3-value1]_
 				 * @value2: X-axis acceleration
-				 * @value2_footnote: [^mode3-accel]
+				 * @value2_footnote: [#mi-xg1300l-mode3-value2]_
 				 * @value3: Y-axis acceleration
-				 * @value3_footnote: [^mode3-accel]
+				 * @value3_footnote: [#mi-xg1300l-mode3-value2]_
 				 * @value4: Z-axis acceleration
-				 * @value4_footnote: [^mode3-accel]
+				 * @value4_footnote: [#mi-xg1300l-mode3-value2]_
 				 */
 				.name		= "ALL",
 				.scale		= mi_xg1300l_scale,
@@ -2928,13 +2977,15 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
 			[0] = {
 				/**
-				 * [^reset-description]: Recalculate bias drift, reset accumulated angle,
-				 * set accelerometer scaling factor to 2G,
-				 * this has to be done with sensor not moving
-				 * and is strongly recommended to be called manually before work
+				 * .. [#mi-xg1300l-cmd0] Recalculate bias drift,
+				 *    reset accumulated angle, set accelerometer
+				 *    scaling factor to 2G, this has to be done
+				 *    with sensor not moving and is strongly
+				 *    recommended to be called manually before
+				 *    work.
 				 *
 				 * @description: Reset device
-				 * @name_footnote: [^reset-description]
+				 * @name_footnote: [#mi-xg1300l-cmd0]_
 				 */
 				.name		= "RESET",
 			},
@@ -2975,6 +3026,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 	[PX_PIXY] = {
 		/**
 		 * @vendor_name: Charmed Labs
+		 * @vendor_part_number: Pixy LEGO
 		 * @vendor_part_name: Pixy (CMUcam5) for LEGO
 		 * @vendor_website: http://charmedlabs.com/default/pixy-lego/
 		 * @default_address: 0x01

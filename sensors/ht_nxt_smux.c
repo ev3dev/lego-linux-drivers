@@ -13,6 +13,20 @@
  * GNU General Public License for more details.
  */
 
+/**
+ * DOC: userspace
+ *
+ * The sensor multiplexer provides 4 sensor ports via one input port. A port
+ * device is registered for each port. These can be found in ``/sys/class/lego-port/``.
+ *
+ * Any type of NXT/Analog sensor can be used with this multiplexer. Most NXT/I2C
+ * sensors can be uses as well, but they can only be operated as read-only.
+ *
+ * This device cannot detect when motors are attached or removed. However, there
+ * is a command that can be used to attempt to detect sensors after they have
+ * been attached. This only works for certain LEGO and HiTechnic NXT sensors.
+ */
+
 #include<linux/i2c.h>
 #include <linux/slab.h>
 
@@ -33,51 +47,47 @@ enum ht_nxt_smux_port_mode {
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new modes have the same syntax. The comments
  * are also parsed to provide more information for the documentation. The
- * parser can be found in the ev3dev-kpkg repository.
+ * parser can be found in the Documentation/json/ directory.
  */
 
 static const struct lego_port_mode_info ht_nxt_smux_port_mode_info[] = {
 	/**
-	 * [^address-prefix]: The full `address` is in the format:
-	 * ^
-	 *        [<parent-address>:]mux<n>
-	 * ^
+	 * .. [#ht-nxt-smux-prefix] The full ``address`` is in the format:
+	 *    ``<parent-address>:]mux<n>``.
+	 *
 	 *    For example, if we are looking at port 1 of this mux plugged into
-	 *    input port 2 on the EV3, the address will be `in2:i2c08:mux1`.
+	 *    input port 2 on the EV3, the address will be ``in2:i2c08:mux1``.
 	 *
 	 * @description: HiTechnic NXT Sensor Multiplexer Input Port
 	 * @connection_types: NXT/I2C, NXT/Analog
 	 * @prefix: mux
-	 * @prefix_footnote: [^address-prefix]
+	 * @prefix_footnote: [#ht-nxt-smux-prefix]_
 	 */
 	[HT_NXT_SMUX_PORT_MODE_ANALOG] = {
 		/**
-		 * [^analog-mode]: The [nxt-analog] driver will be loaded when
-		 * this mode is set. You must manually specify the correct
-		 * driver for your sensor using `set_device` if you want to use
-		 * another driver. Any driver with a connection type of
-		 * NXT/Analog is allowed.
-		 * ^
-		 * [nxt-analog]: /docs/sensors/generic-nxt-analog-sensor
+		 * .. [#ht-nxt-smux-analog-mode] The generic ``nxt-analog``
+		 *    driver will be loaded when this mode is set. You must
+		 *    manually specify the correct driver for your sensor using
+		 *    ``set_device`` if you want to use another driver. Any
+		 *    driver with a connection type of NXT/Analog is allowed.
 		 *
 		 * @description: NXT/Analog sensor
-		 * @name_footnote: [^analog-mode]
+		 * @name_footnote: [#ht-nxt-smux-analog-mode]_
 		 */
 		.name	= "analog",
 	},
 	[HT_NXT_SMUX_PORT_MODE_I2C] = {
 		/**
-		 * [^i2c-mode]: If one of the supported sensors was detected
-		 * by invoking the `DETECT` command on the [ht-nxt-smux]
-		 * associated with this port, then the appropriate driver will
-		 * be automatically loaded. Otherwise, you can use `set_device`
-		 * to load the correct driver for your sensor. Any driver with
-		 * a connection type of NXT/I2C is allowed.
-		 * ^
-		 * [ht-nxt-smux]: /docs/sensors/hitechnic-nxt-sensor-multiplexer
+		 * .. [#ht-nxt-smux-i2c-mode] If one of the supported sensors
+		 *    was detected by invoking the ``DETECT`` command on the
+		 *    :ref:`ht-nxt-smux` associated with this port, then the
+		 *    appropriate driver will be automatically loaded. Otherwise,
+		 *    you can use ``set_device`` to load the correct driver for
+		 *    your sensor. Most drivers with a connection type of NXT/I2C
+		 *    are allowed.
 		 *
 		 * @description: NXT/I2C sensor
-		 * @name_footnote: [^i2c-mode]
+		 * @name_footnote: [#ht-nxt-smux-i2c-mode]_
 		 */
 		.name	= "i2c",
 	},

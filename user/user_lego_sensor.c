@@ -13,42 +13,47 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
 /**
- * DOC: website
+ * DOC: userspace
  *
- * User-defined LEGO sensor devices
- *
- * The `user-lego-sensor` class provides an interface for implementing user-defined
+ * The ``user-lego-sensor`` class provides an interface for implementing user-defined
  * sensors in userspace.
- * .
- * ### Identifying sensors
- * .
- * Since the name of the `sensor<N>` device node does not correspond to the port
- * that a sensor is plugged in to, you must look at the `address` attribute if
+ *
+ * Identifying sensors
+ * -------------------
+ *
+ * Since the name of the ``sensor<N>`` device node does not correspond to the port
+ * that a sensor is plugged in to, you must look at the ``address`` attribute if
  * you need to know which port a sensor is plugged in to. This will match the
- * `address` of the corresponding sensor in the `lego-sensor` class.
- * .
- * ### sysfs Attributes
- * .
- * Sensors can be found at `/sys/class/user-lego-sensor/sensor<N>`, where `<N>`
- * is incremented each time a sensor is loaded (it is not related to which port
- * the sensor is plugged in to).
- * .
- * `bin_data`
- * : (write-only) Writing stores the data which can be read using the
- *   `bin_data` and `value<N>` attributes in the corresponding `lego-sensor`
- *    class device.
- * .
- * `text_value`
- * : (write-only) Writing stores the value which can be read using the
- *  `text_value` attribute in the corresponding `lego-sensor` class device.
- *   It is currently limited to 512 bytes in length.
+ * ``address`` of the corresponding sensor in the ``lego-sensor`` class.
+ *
+ * Sysfs
+ * -----
+ *
+ * Sensors can be found at ``/sys/class/user-lego-sensor/sensor<N>``, where ``<N>``
+ * is incremented each time a sensor is loaded.
+ *
+ * .. note:: The number ``<N>`` does **not** correspond to the address of sensor.
+ *
+ * .. flat-table:: sysfs attributes
+ *    :widths: 1 1 5
+ *    :header-rows: 1
+ *
+ *    * - Attribute
+ *      - Access
+ *      - Description
+ *
+ *    * - ``bin_data``
+ *      - write-only
+ *      - Writing stores the data which can be read using the ``bin_data``
+ *        and ``value<N>`` attributes in the corresponding ``lego-sensor``
+ *        class device.
+ *
+ *    * - ``text_value``
+ *      - write-only
+ *      - Writing stores the value which can be read using the ``text_value``
+ *        attribute in the corresponding `lego-sensor` class device.
+ *        It is currently limited to 512 bytes in length.
  */
 
 #include <linux/device.h>
