@@ -32,3 +32,4 @@ writing these attribute files.
    user
    sensor_data
    motor_data
+   i2c

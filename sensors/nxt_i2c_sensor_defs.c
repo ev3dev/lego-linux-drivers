@@ -2553,9 +2553,8 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 *    uses, you can disable this driver by setting
 				 *    ``poll_ms`` to 0 and using the ``direct``
 				 *    attribute to directly read and write I2C
-				 *    messages. See the [Using I2C Sensors] page
-				 *    and the manufacturers documentation for
-				 *    more information.
+				 *    messages. See :doc:`i2c` and the manufacturers
+				 *    documentation for more information.
 				 *
 				 * @name_footnote: [#ms-nxtcam-mode0]_
 				 * @description: Tracking

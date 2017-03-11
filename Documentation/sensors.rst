@@ -35,8 +35,8 @@ column links to the sensor's entry in *Appendix A*.
 .. [#detect-other-i2c] The automatic detection algorithm detects this sensor
    as an I2C sensor and the port is automatically put into I2C mode. However,
    the sensor does not follow the LEGO MINDSTORMS convention for I2C sensors,
-   so the exact type of sensor cannot be determined. See `Using I2C Sensors`_
-   for information on how to manually load the correct driver.
+   so the exact type of sensor cannot be determined. See :doc:`i2c` for
+   information on how to manually load the correct driver.
 
 .. [#detect-mi-xg1300l] The automatic detection algorithm detects this sensor
    as an I2C sensor and the port is automatically put into I2C mode. However,
@@ -55,7 +55,7 @@ Unsupported Sensors
 
 One of the goals of ev3dev is to support as many sensors as possible. In fact,
 **even if a manufacturer's documentation says that a device does not work with
-the EV3, chances are it *will* work with ev3dev.**
+the EV3, chances are it will work with ev3dev.**
 
 If you have a sensor that is not supported yet, let us know about it by
 `opening an issue`_ on GitHub. For many sensors adding a driver is trivial -
@@ -90,20 +90,33 @@ all. You must manually configure the input ports for all sensors.
 On PiStorms, detection of EV3/UART, EV3/Analog and NXT/I2C sensors is
 semi-automatic. If you put the input port into ``ev3-uart``, ``ev3-analog``,
 or ``i2c-thru`` mode, the specific type of sensor will be automatically detected
-(assuming it is a LEGO compatible sensor). So you don't have to write to the
-``set_mode`` attribute of the port for these sensors.
+(assuming it is a LEGO compatible sensor). So you usually don't have to write to
+the ``set_device`` attribute of the port for these sensors.
 
-General resources
-~~~~~~~~~~~~~~~~~
+MINDSTORMS Compatible Sensors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* `The LEGO Sensor (lego-sensor) Class <lego-sensor-class>`_
-* [EV3 Input Port Driver]
+Most of the supported sensors are designed to work with LEGO MINDSTORMS. These
+sensors use the `LEGO sensor class <lego-sensor-class>`_. You can find these
+in sysfs at ``/sys/class/lego-sensor/``. The sensors have *modes* that select
+what type of data is read from the sensor. Generally, you will select a mode
+and then read the data value from the sensor. Follow the link above for more
+details.
 
-I2C sensor resources (applies to both NXT/I2C and Other/I2C)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Other Sensors and Advanced Usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* [I2C Sensor Addressing]
-* [Using I2C Sensors]
+Many sensors that were not specifically designed for LEGO MINDSTORMS can be used
+with ev3dev too. You can read more about the "Other" sensor types below. Also,
+some MINDSTORMS compatible sensor may have advanced features that are not
+accessible using the ``lego-sensor`` class.
+
+When using sensors this way, often automatic detection will not work correctly,
+therefore it is usually best to manually select the mode of input port (e.g.
+``other-i2c`` or ``other-uart``).
+
+For more information on using I2C sensors, check out :doc:`i2c`.
+
 
 Types of Sensors
 ----------------
