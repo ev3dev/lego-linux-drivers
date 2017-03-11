@@ -13,32 +13,15 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
 /**
- * DOC: website
+ * DOC: userspace
  *
- * NXT Analog Sensor Driver
+ * The ``nxt-analog-sensor`` module provides all of the drivers for NXT/Analog
+ * sensors. These drivers scale the analog voltage read from the sensor to a
+ * useful value.
  *
- * The `nxt-analog-sensor` module provides all of the drivers for NXT/Analog
- * sensors. You can find the complete list [here][supported sensors]. These
- * drivers scale the analog voltage read from the sensor to a useful value.
- * .
- * ### sysfs
- * .
- * You can find the devices bound to this driver in the directory
- * `/sys/bus/lego/drivers/nxt-analog-sensor`. However, these drivers provide a
- * [lego-sensor device], which is where all the really useful attributes are.
- * .
- * `driver_names` (read-only)
- * : Returns a space-separated list of all NXT/Analog sensor driver names.
- * .
- * [lego-sensor device]: ../lego-sensor-class
- * [supported sensors]: /docs/sensors#supported-sensors
+ * You can a list of the the devices implemented by this module by reading the
+ * ``driver_names`` attribute in the ``/sys/bus/lego/drivers/nxt-analog-sensor/``.
  */
 
 #include <linux/device.h>

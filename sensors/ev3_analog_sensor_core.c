@@ -13,29 +13,14 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
 /**
- * DOC: website
+ * DOC: userspace
  *
- * EV3 Analog Sensor Driver
+ * The ``ev3-analog-sensor`` module provides all of the drivers for EV3/Analog
+ * sensors.
  *
- * The `ev3-analog-sensor` module provides all of the drivers for EV3/Analog
- * sensors. You can find the complete list [here][supported sensors].
- * .
- * ### sysfs
- * .
- * You can find all of the the devices bound to this driver in the directory
- * `/sys/bus/lego/drivers/ev3-analog-sensor/`. However, these drivers provide a
- * [lego-sensor class] device, which is where all the really useful attributes
- * are.
- * .
- * [lego-sensor class]: /docs/drivers/lego-sensor-class
- * [supported sensors]: /docs/sensors#supported-sensors
+ * You can a list of the the devices implemented by this module by reading the
+ * ``driver_names`` attribute in the ``/sys/bus/lego/drivers/ev3-analog-sensor/``.
  */
 
 #include <linux/device.h>

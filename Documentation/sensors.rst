@@ -255,3 +255,36 @@ The lego-sensor Subsytem
 
 .. kernel-doc:: sensors/lego_sensor_class.c
    :doc: userspace
+
+
+Sensor Modules
+--------------
+
+The sensor drivers are implemented in the following modules:
+
+EV3/Analog
+~~~~~~~~~~
+
+.. kernel-doc:: sensors/ev3_analog_sensor_core.c
+   :doc: userspace
+
+EV3/UART
+~~~~~~~~
+
+.. kernel-doc:: sensors/ev3_uart_sensor_ld.c
+   :doc: userspace
+
+.. kernel-doc:: sensors/ev3_uart_sensor_core.c
+   :doc: userspace
+
+NXT/Analog
+~~~~~~~~~~
+
+.. kernel-doc:: sensors/nxt_analog_sensor_core.c
+   :doc: userspace
+
+NXT/I2C
+~~~~~~~
+
+.. kernel-doc:: sensors/nxt_i2c_sensor_core.c
+   :doc: userspace

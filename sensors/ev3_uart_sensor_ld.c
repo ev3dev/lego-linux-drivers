@@ -13,40 +13,31 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
 /**
- * DOC: website
+ * DOC: userspace
  *
- * EV3 UART Sensor Line Discipline
+ * The ``ev3-uart-sensor-ld`` module is a tty `line discipline`_ that runs on
+ * top of a tty. It listens for the information data that is sent from EV3/UART
+ * sensors. When it receives valid data, it negotiates with the sensor, telling
+ * the sensor to enter data sending mode.
  *
- * This driver is a tty [line discipline] that runs on top of a tty. It listens
- * for the information data that is sent from EV3/UART sensors. When it receives
- * valid data, it negotiates with the sensor, telling the sensor to enter data
- * sending mode. After successful negotiation, it creates an [lego-sensor class]
- * that is used to monitor and control the sensor.
- * .
  * This line discipline has been assigned the number 29. To attach this line
- * discipline to a tty, run `ldattach 29 /dev/tty<N>` where `<N>` is the name
- * of the tty you want to connect to.  **NOTE:** This driver [works with any
- * tty], which means the sensor does not necessarily have to be plugged into
- * one of the input ports on the EV3.
- * .
- * EV3/UART sensors do not require individual drivers like other types of
- * sensors. Instead, all of the needed info to sent from the sensor in a common
- * format.  As a result, the name returned by the [lego-sensor][lego-sensor
- * class] `driver_name` attribute may not be a real driver name. For well-known
- * sensors (the LEGO EV3 sensors) it will return a name like `lego-ev3-color`.
- * For unknown sensors it returns `ev3-uart-<N>`, where `<N>` is the type id
+ * discipline to a tty, run ``ldattach 29 /dev/tty<N>`` where ``<N>`` is the name
+ * of the tty you want to connect to.
+ *
+ * .. note:: This driver `works with any tty`_, which means the sensor does not
+ *    necessarily have to be plugged into one of the input ports on the EV3.
+ *
+ * EV3/UART sensors do not require individual driver implementations like other
+ * types of sensors. Instead, all of the needed info to sent from the sensor in
+ * a common format.  As a result, the name returned by the ``driver_name``
+ * attribute may not be a real driver name. For well-known sensors (the LEGO
+ * EV3 sensors and FatcatLab sensors) it will return a name like ``lego-ev3-color``.
+ * For unknown sensors it returns ``ev3-uart-<N>``, where ``<N>`` is the type id
  * of the sensor.
- * .
- * [line discipline]: https://en.wikipedia.org/wiki/Line_discipline
- * [lego-sensor class]: ../lego-sensor-class
- * [works with any tty]: http://lechnology.com/2014/09/using-uart-sensors-on-any-linux/
+ *
+ * .. _line discipline: https://en.wikipedia.org/wiki/Line_discipline
+ * .. _works with any tty: http://lechnology.com/2014/09/using-uart-sensors-on-any-linux/
  */
 
 #include <linux/bitops.h>

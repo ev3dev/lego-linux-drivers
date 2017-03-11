@@ -19,13 +19,13 @@
  * A ``ht-smux-i2c-sensor`` device is loaded by the :ref:`ht-nxt-smux` driver
  * when it is detected by the sensor mux (automatic detection only works with
  * the sensors listed in the linked page) or when manually specified by setting
- * the `ht-nxt-smux-port`_ to ``i2c`` mode and writing the device name to
- * ``set_device``. You can use any one of the sensors that has the ``nxt-i2c-sensor``
- * module from the :ref:`list of supported sensors`. Keep in mind though that the
- * sensor mux operates in a read-only mode with I2C sensors. You will not be
- * able to use commands with these sensors. Additionally, some modes of I2C
- * sensors require writing data to the sensor and as a result, these modes will
- * not be usable either.
+ * the port to ``i2c`` mode and writing the device name to ``set_device``.
+ * You can use any one of the sensors that has the ``nxt-i2c-sensor`` module
+ * from the :ref:`supported-sensors`. Keep in mind though that the sensor mux
+ * operates in a read-only mode with I2C sensors. You will not be able to use
+ * commands with these sensors. Additionally, some modes of I2C sensors require
+ * writing data to the sensor and as a result, these modes will not be usable
+ * either.
  */
 
 #include <linux/device.h>

@@ -16,14 +16,10 @@
 /**
  * DOC: userspace
  *
- * This driver provides a [dc-motor] interface for RCX motors, Power Functions
- * motors or any other 9V rated DC motor connected to an output port. You can
- * find the devices bound to this driver in the directory
- * ``/sys/bus/lego/drivers/rcx-motor``. There is not much of interest there
- * though - all the useful stuff is in the `dc-motor class`_.
- * .
- * This device is loaded when an `legoev3-output-port`_ is set to ``rcx-motor``
- * mode. It is not automatically detected.
+ * The ``rcx-motor`` module provides a :ref:`dc-motor-class` interface for RCX
+ * motors, Power Functions motors or any other 9V rated DC motor connected to an
+ * output port. You can find the devices bound to this driver in the directory
+ * ``/sys/bus/lego/drivers/rcx-motor``.
  */
 
 #include <linux/device.h>

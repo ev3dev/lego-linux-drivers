@@ -13,30 +13,15 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
 /**
- * DOC: website
+ * DOC: userspace
  *
- * LEGO EV3 UART Sensor Driver
+ * The ``ev3-uart-sensor`` module provides all of the drivers for EV3/UART
+ * sensors. This module is only used on devices that can't use the line
+ * discipline.
  *
- * The `ev3-uart-sensor` module provides all of the drivers for EV3/UART
- * sensors. You can find the complete list [here][supported sensors].
- * .
- * These drivers provide a [lego-sensor class] device, which is where all the
- * really useful attributes are.
- * .
- * You can find this device at `/sys/bus/lego/devices/port<N>:<device-name>`
- * where `<N>` is the number of the lego-port class device the sensor is
- * connected to and `<device-name>` is the name of one of the drivers in the
- * `ev3-uart-sensor` module (e.g. `lego-ev3-color`).
- * .
- * [lego-sensor class]: ../lego-sensor-class
- * [supported sensors]: ../#supported-sensors
+ * You can a list of the the devices implemented by this module by reading the
+ * ``driver_names`` attribute in the ``/sys/bus/lego/drivers/ev3-uart-sensor/``.
  */
 
 #include <linux/device.h>
