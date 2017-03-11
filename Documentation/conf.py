@@ -91,10 +91,22 @@ kerneldoc_srctree = '..'
 
 if on_rtd:
     html_theme = 'default'
+    html_context = {
+        'css_files': [
+            'https://media.readthedocs.org/css/sphinx_rtd_theme.css',
+            'https://media.readthedocs.org/css/readthedocs-doc-embed.css',
+            '_static/css/theme_overrides.css',
+        ],
+    }
 else:
     import sphinx_rtd_theme
     html_theme = 'sphinx_rtd_theme'
     html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+    html_context = {
+        'css_files': [
+            '_static/css/theme_overrides.css',
+        ],
+    }
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
@@ -110,15 +122,10 @@ else:
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ['sphinx-static']
+html_static_path = ['sphinx-static']
 
 html_logo = '_images/ev3devLogo128.png'
 
-# html_context = {
-#     'css_files': [
-#         '_static/theme_overrides.css',
-#     ],
-# }
 
 # -- Options for HTMLHelp output ------------------------------------------
 
