@@ -78,6 +78,9 @@ HiTechnic Sensor Multiplexer
 
 .. lego-port:: ht_nxt_smux_port_mode_info
 
+.. kernel-doc:: sensors/ht_nxt_smux_i2c_sensor.c
+   :doc: userspace
+
 
 Mindsensors.com
 ---------------

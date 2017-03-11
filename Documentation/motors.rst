@@ -98,3 +98,24 @@ servo-motor Subsystem
 
 .. kernel-doc:: motors/servo_motor_class.c
     :doc: userspace
+
+
+Motor Modules
+-------------
+
+EV3/EVB Motors
+~~~~~~~~~~~~~~
+
+.. kernel-doc:: ev3/legoev3_motor.c
+    :doc: userspace
+
+Generic DC Motors
+~~~~~~~~~~~~~~~~~
+
+.. kernel-doc:: motors/rcx_motor.c
+    :doc: userspace
+
+Generic LEDs
+~~~~~~~~~~~~
+.. kernel-doc:: motors/rcx_led.c
+    :doc: userspace

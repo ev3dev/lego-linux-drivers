@@ -14,27 +14,11 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
 /**
- * DOC: website
+ * DOC: userspace
  *
- * EV3/NXT Tacho Motor Driver
- *
- * This driver provides a [tacho-motor] interface for EV3 and NXT motors or any
- * other compatible motor with an [incremental rotary encoder] for position
- * and direction feedback that is connected to an output port. We call them
- * "tacho" motors because that is what the LMS2012 source code calls them. You
- * can find the devices bound to this driver in the directory
- * `/sys/bus/lego/drivers/legoev3-motor /`. There is not much of interest
- * there though - all of the useful stuff is in the [tacho-motor] class.
- * .
- * [tacho-motor]: ../tacho-motor-class
- * [incremental rotary encoder]: https://en.wikipedia.org/wiki/Rotary_encoder#Incremental_rotary_encoder
+ * The ``legoev3-motor`` module is used on devices like the EV3 where motors
+ * are connected directly to the CPU rather than an external controller.
  */
 
 #include <linux/debugfs.h>

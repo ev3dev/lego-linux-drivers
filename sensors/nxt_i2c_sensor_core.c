@@ -13,43 +13,28 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
 /**
- * DOC: website
+ * DOC: userspace
  *
- * NXT I2C Sensor Driver
+ * The ``nxt-i2c-sensor`` module provides all of the drivers for NXT/I2C sensors.
  *
- * The `nxt-i2c-sensor` module provides all of the drivers for NXT/I2C
- * sensors. You can find the complete list [here][supported sensors].
- * .
- * ### Module Parameters
- * .
- * Note: These parameters can be changed at runtime at
- * `/sys/module/nxt_i2c_sensor/parameters/<parameter>`.
- * .
- * `allow_autodetect`
- * : Setting to `N` disables probing of sensors. Default is `Y`.
- * .
- * `default_poll_ms`
- * : This provides the default value for the poll_ms attribute. A value of `0`
- * .    will disable polling by default. Values of less that the minimum 50
- * .    msec will be rounded up to 50 msec. Changes only affect sensors plugged
- * .    in after the change was made. Default is 100 msec. Values must not be
- * .    negative.
- * .
- * ### sysfs
- * .
- * You can find devices bound to this driver in the directory
- * `/sys/bus/i2c/drivers/nxt-i2c-sensor/`. However, these drivers provide a
- * [lego-sensor device], which is where all the really useful attributes are.
- * .
- * [supported sensors]: /docs/sensors#supported-sensors
- * [lego-sensor device]: /docs/drivers/lego-sensor-class
+ * .. flat-table:: Module Parameters
+ *    :widths: 1 5
+ *
+ *    * - ``allow_autodetect``
+ *      - Setting to ``N`` disables probing of sensors. Default is ``Y``.
+ *
+ *    * - ``default_poll_ms``
+ *      - This provides the default value for the ``poll_ms`` attribute. A value
+ *        of 0 will disable polling by default. Changes only affect sensors
+ *        plugged in after the change was made. Default is 100 msec. Values must
+ *        not be negative.
+ *
+ * .. note:: These parameters can be changed at runtime by writing to
+ *    ``/sys/module/nxt_i2c_sensor/parameters/<parameter>``.
+ *
+ * You can a list of the the devices implemented by this module by reading the
+ * ``driver_names`` attribute in the ``/sys/bus/lego/drivers/nxt-i2c-sensor/``.
  */
 
 #include <linux/device.h>

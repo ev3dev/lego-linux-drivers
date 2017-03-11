@@ -16,15 +16,8 @@
 /**
  * DOC: userspace
  *
- * This driver provides a `leds`_ interface for RCX motors, Power Functions
- * motors or any other 9V rated LED connected to an output port. You can find
- * the sysfs device at ``/sys/bus/lego/devices/<port>:rcx-led`` where ``<port>``
- * is the the name of the output port the motor is connected to (e.g. ``outA``).
- * There is not much of interest there though - all the useful stuff is in the
- * `leds`_ class.
- * .
- * This device is loaded when an `ev3-output-port`_ is set to ``led`` mode.
- * It is not automatically detected.
+ * The ``rcx-led`` module provides a `leds`_ interface for RCX motors, Power
+ * Functions motors or any other 9V rated LED connected to an output port.
  */
 
 #include <linux/device.h>

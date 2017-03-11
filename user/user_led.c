@@ -13,18 +13,11 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Note: The comment block below is used to generate docs on the ev3dev website.
- * Use kramdown (markdown) syntax. Use a '.' as a placeholder when blank lines
- * or leading whitespace is important for the markdown syntax.
- */
-
 /**
- * DOC: website
+ * DOC: userspace
  *
- * User-defined LEDs
- *
- * TODO
+ * The ``user-led`` module provides a user-defined LED interface. This module
+ * is deprecated.
  */
 
 #include <linux/device.h>
