@@ -33,7 +33,7 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['kerneldoc', 'rstFlatTable', 'kernel_include', 'cdomain', 
+extensions = ['kerneldoc', 'rstFlatTable', 'kernel_include', 'cdomain',
               'ev3dev_json', 'sphinx.ext.mathjax']
 
 # Add any paths that contain templates here, relative to this directory.

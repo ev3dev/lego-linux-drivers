@@ -155,7 +155,7 @@
  *      - Returns a space delimited string representing sensor-specific text
  *        values. Returns ``-EOPNOTSUPP`` if a sensor does not support text
  *        values.
- * 
+ *
  * Events
  * ------
  *

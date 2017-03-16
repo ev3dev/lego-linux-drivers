@@ -33,7 +33,7 @@ Input Port 5 on the BrickPi is physically wired to the I2C pins on the Raspberry
 Pi and I2C is supported by the ``i2c_bcm2708`` kernel module (there is no
 ev3dev-specific driver for this port).
 
-Only :ref:`nxt-i2c-sensors` and :ref:`other-i2c-sensors` work on port 5. 
+Only :ref:`nxt-i2c-sensors` and :ref:`other-i2c-sensors` work on port 5.
 
 .. tip:: Sensor types are listed in the :ref:`supported-sensors` table.
 
