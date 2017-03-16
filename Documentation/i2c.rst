@@ -211,7 +211,7 @@ Using the NXT Ultrasonic Sensor::
     $ echo 0 > poll_ms
     $ cat value0 # value0 will be last value measured before polling stopped
     23
-    $ cat value 0 # move the sensor and try again
+    $ cat value0 # move the sensor and try again
     23
     $ cat mode
     [NXT-US-CM] NXT-US-IN NXT-US-SI-CM NXT-US-SI-IN NXT-US-LIST
