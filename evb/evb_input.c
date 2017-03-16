@@ -35,16 +35,16 @@
  *     * - Joystick button press
  *       - ``KEY_ENTER`` (28)
  *
- *     * - Joystic up
+ *     * - Joystick up
  *       - ``KEY_UP`` (103)
  *
- *     * - Joystic left
+ *     * - Joystick left
  *       - ``KEY_ENTER`` (105)
  *
- *     * - Joystic right
+ *     * - Joystick right
  *       - ``KEY_ENTER`` (106)
  *
- *     * - Joystic down
+ *     * - Joystick down
  *       - ``KEY_DOWN`` (108)
  */
 
