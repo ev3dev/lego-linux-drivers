@@ -151,7 +151,7 @@ the taking. There are symlinks for each I2C adapter to make finding them easy.
    I2C sensor is plugged into a port. Also, if a driver is loaded for a
    particular I2C device, you will get an error that it is in use. You should
    disable probing in the ``nxt-i2c-sensor`` module (or blacklist the driver in
-   ``/etc/modprobe/d``).
+   ``/etc/modprobe.d``).
 
 
 You can use the ``i2c-tools`` package or an I2C library in your programming
