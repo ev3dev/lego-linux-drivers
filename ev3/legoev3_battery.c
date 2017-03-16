@@ -25,7 +25,7 @@
  *      - Always returns ``System``.
  *
  *    * - ``technology``
- *      - Returns ``Unknown`` or ``Li-on`` depending on if the rechargeable 
+ *      - Returns ``Unknown`` or ``Li-on`` depending on if the rechargeable
  *        battery is present.
  *
  *    * - ``type``

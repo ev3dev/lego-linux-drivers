@@ -40,9 +40,9 @@
  *       cd /sys/kernel/config/lego_user_device
  *
  * - Create a new port called `p1`::
- * 
+ *
  *       mkdir p1
- * 
+ *
  * - Check out the new port - there should be ``live`` and ``sensors`` directories::
  *
  *       cd p1
