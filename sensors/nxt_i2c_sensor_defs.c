@@ -1622,7 +1622,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 *    loads separate servo motor devices (one for each of the 8
 		 *    channels) in addition to the :ref:`lego-sensor-class` device.
 		 *    See the :ref:`servo-motor-class` for more information. The
-		 *    ``servo-motor`` class ``address`` attribute will return 
+		 *    ``servo-motor`` class ``address`` attribute will return
 		 *    ``in<X>:i2c<Y>:sv<Z>`` where ``<X>`` is the input port
 		 *    the servo controller is connected to, ``<Y>`` is the address
 		 *    and ``<Z>`` is the channel as indicated on the servo
@@ -1739,7 +1739,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 *    (AbsoluteIMU-AC / AbsoluteIMU-A).
 				 *
 				 * .. [#ms-absolute-imu-mode1-units] Standard
-				 *    gravity (*g*) is defined as 
+				 *    gravity (*g*) is defined as
 				 *    :math:`1 g = 9.81 m/s^2`
 				 *
 				 * @name_footnote: [#ms-absolute-imu-mode1]_

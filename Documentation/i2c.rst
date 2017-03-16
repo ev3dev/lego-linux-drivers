@@ -228,10 +228,10 @@ Sample /etc/modprobe.d/nxt-i2c-sensor.conf
 ::
 
     # Module configuration for nxt-i2c-sensor
-    
+
     # Uncomment this line to disable polling
     #options nxt-i2c-sensor default_poll_ms=0
-    
+
     # Uncomment this line to disable autodetection
     #options nxt-i2c-sensor allow_autodetect=N
 

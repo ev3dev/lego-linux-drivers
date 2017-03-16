@@ -25,25 +25,25 @@
  * .. flat-table:: Button map
  *     :widths: 1 1
  *     :header-rows: 1
- * 
+ *
  *     * - Button/Direction
  *       - Linux key code (value)
- * 
+ *
  *     * - Back button press
  *       - ``KEY_BACKSPACE`` (14)
- * 
+ *
  *     * - Joystick button press
  *       - ``KEY_ENTER`` (28)
- * 
+ *
  *     * - Joystic up
  *       - ``KEY_UP`` (103)
- * 
+ *
  *     * - Joystic left
  *       - ``KEY_ENTER`` (105)
- * 
+ *
  *     * - Joystic right
  *       - ``KEY_ENTER`` (106)
- * 
+ *
  *     * - Joystic down
  *       - ``KEY_DOWN`` (108)
  */

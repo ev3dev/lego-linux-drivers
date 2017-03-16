@@ -141,7 +141,7 @@ EV3/Analog Sensors
 These are sensors that were designed specifically for the EV3 and will not work
 on the NXT because the pinout is different. They contain an ID resistor so that
 the EV3 can tell different types of sensors apart. The actual analog value is
-measured on pin6. 
+measured on pin6.
 
 .. _nxt-analog-sensors:
 
