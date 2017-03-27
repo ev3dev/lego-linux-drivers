@@ -18,7 +18,7 @@
  *
  * The BrickPi3 has one user-controllable LED. It is turned on by default when
  * the ``brickpi3`` module is loaded. It uses the mainline kernel `LEDs class`_
- * subsystem. You can find it in sysfs at ``/sys/class/leds/ev3dev:amber:brickpi``.
+ * subsystem. You can find it in sysfs at ``/sys/class/leds/brickpi3:amber:ev3dev``.
  *
  * .. _LEDs class: http://lxr.free-electrons.com/source/Documentation/leds/leds-class.txt?v=4.9
  */
@@ -68,7 +68,7 @@ int devm_brickpi3_register_leds(struct device *dev, struct brickpi3 *bp)
 		return -ENOMEM;
 
 	data->bp = bp;
-	data->cdev.name = "ev3dev:amber:brickpi3";
+	data->cdev.name = "brickpi3:amber:ev3dev";
 	data->cdev.max_brightness = BRICKPI3_LEDS_MAX_BRIGHTNESS;
 	data->cdev.brightness_set_blocking = brickpi3_leds_brightness_set_blocking;
 	data->cdev.default_trigger = "default-on";
