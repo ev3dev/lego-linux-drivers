@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# ev3dev-jessie Linux kernel drivers documentation build configuration file, created by
+# ev3dev-stretch Linux kernel drivers documentation build configuration file, created by
 # sphinx-quickstart on Wed Feb  8 23:48:12 2017.
 #
 # This file is execfile()d with the current directory set to its
@@ -49,7 +49,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'ev3dev-jessie Linux kernel drivers'
+project = 'ev3dev-stretch Linux kernel drivers'
 copyright = '2014-2017, ev3dev.org'
 author = 'David Lechner'
 
@@ -130,7 +130,7 @@ html_logo = '_images/ev3devLogo128.png'
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'ev3dev-jessieLinuxkerneldriversdoc'
+htmlhelp_basename = 'ev3dev-stretchLinuxkerneldriversdoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -157,7 +157,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'ev3dev-jessieLinuxkerneldrivers.tex', 'ev3dev-jessie Linux kernel drivers Documentation',
+    (master_doc, 'ev3dev-stretchLinuxkerneldrivers.tex', 'ev3dev-stretch Linux kernel drivers Documentation',
      'David Lechner', 'manual'),
 ]
 
@@ -167,7 +167,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'ev3dev-jessielinuxkerneldrivers', 'ev3dev-jessie Linux kernel drivers Documentation',
+    (master_doc, 'ev3dev-stretchlinuxkerneldrivers', 'ev3dev-stretch Linux kernel drivers Documentation',
      [author], 1)
 ]
 
@@ -178,8 +178,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'ev3dev-jessieLinuxkerneldrivers', 'ev3dev-jessie Linux kernel drivers Documentation',
-     author, 'ev3dev-jessieLinuxkerneldrivers', 'One line description of project.',
+    (master_doc, 'ev3dev-stretchLinuxkerneldrivers', 'ev3dev-stretch Linux kernel drivers Documentation',
+     author, 'ev3dev-stretchLinuxkerneldrivers', 'One line description of project.',
      'Miscellaneous'),
 ]
 

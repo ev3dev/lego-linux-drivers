@@ -160,7 +160,7 @@ to do this if a device is already loaded so you will want to disable
 autodetection first if the sensor is the autodetected type. Beware that many
 sensors, including the NXT Ultrasonic Sensor use an address of 0x01, which is
 illegal according to the I2C standards. ``i2c-tools`` and any library that does
-some error checking may prevent you from accessing the sensor. In ev3dev-jessie,
+some error checking may prevent you from accessing the sensor. In ev3dev-stretch,
 the ``i2c-tools`` package has been patched to work around this.
 
 

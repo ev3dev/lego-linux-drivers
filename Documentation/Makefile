@@ -4,7 +4,7 @@
 # You can set these variables from the command line.
 SPHINXOPTS    =
 SPHINXBUILD   = /usr/share/sphinx/scripts/python3/sphinx-build
-SPHINXPROJ    = ev3dev-jessieLinuxkerneldrivers
+SPHINXPROJ    = ev3dev-stretchLinuxkerneldrivers
 SOURCEDIR     = .
 BUILDDIR      = _build
 

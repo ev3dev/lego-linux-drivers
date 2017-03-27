@@ -1,9 +1,9 @@
-======================================
-Linux Kernel Drivers for ev3dev-jessie
-======================================
+=======================================
+Linux Kernel Drivers for ev3dev-stretch
+=======================================
 
 This is the documentation for the ev3dev-specific Linux kernel drivers that
-are part of the ev3dev-jessie operating system.
+are part of the ev3dev-stretch operating system.
 
 The drivers use `sysfs`_ to interact with user space (*user space* is anything
 outside of the kernel). Each hardware device is represented by a directory
