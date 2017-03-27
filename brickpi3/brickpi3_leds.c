@@ -20,7 +20,7 @@
  * the ``brickpi3`` module is loaded. It uses the mainline kernel `LEDs class`_
  * subsystem. You can find it in sysfs at ``/sys/class/leds/ev3dev:amber:brickpi``.
  *
- * .. _LEDs class: http://lxr.free-electrons.com/source/Documentation/leds/leds-class.txt?v=4.4
+ * .. _LEDs class: http://lxr.free-electrons.com/source/Documentation/leds/leds-class.txt?v=4.9
  */
 
 #include <linux/device.h>
@@ -36,45 +36,23 @@
 struct brickpi3_leds {
 	struct brickpi3 *bp;
 	struct led_classdev cdev;
-	struct work_struct brightness_set_work;
-	int brightness;
 };
 
 static inline struct brickpi3_leds *to_brickpi3_leds(struct led_classdev *cdev)
 {
 	return container_of(cdev, struct brickpi3_leds, cdev);
 }
-
-static void brickpi3_leds_brightness_set(struct led_classdev *cdev,
-					 enum led_brightness brightness)
-{
-	struct brickpi3_leds *data = to_brickpi3_leds(cdev);
-
-	data->brightness = brightness;
-	schedule_work(&data->brightness_set_work);
-}
-
-static int brickpi3_leds_brightness_set_sync(struct led_classdev *cdev,
-					     enum led_brightness brightness)
+static int brickpi3_leds_brightness_set_blocking(struct led_classdev *cdev,
+						 enum led_brightness brightness)
 {
 	struct brickpi3_leds *data = to_brickpi3_leds(cdev);
 
 	return brickpi3_write_u8(data->bp, BRICKPI3_MSG_SET_LED, brightness);
 }
-
-static void brickpi3_leds_brightness_set_work(struct work_struct *work)
-{
-	struct brickpi3_leds *data = container_of(work, struct brickpi3_leds,
-						  brightness_set_work);
-
-	brickpi3_write_u8(data->bp, BRICKPI3_MSG_SET_LED, data->brightness);
-}
-
 static void brickpi3_leds_release(struct device *dev, void *res)
 {
 	struct brickpi3_leds *data = res;
 
-	cancel_work_sync(&data->brightness_set_work);
 	led_classdev_unregister(&data->cdev);
 	brickpi3_write_u8(data->bp, BRICKPI3_MSG_SET_LED,
 			  BRICKPI3_LEDS_FIRMWARE_CONTROL);
@@ -92,11 +70,8 @@ int devm_brickpi3_register_leds(struct device *dev, struct brickpi3 *bp)
 	data->bp = bp;
 	data->cdev.name = "ev3dev:amber:brickpi3";
 	data->cdev.max_brightness = BRICKPI3_LEDS_MAX_BRIGHTNESS;
-	data->cdev.flags = SET_BRIGHTNESS_SYNC;
-	data->cdev.brightness_set = brickpi3_leds_brightness_set;
-	data->cdev.brightness_set_sync = brickpi3_leds_brightness_set_sync;
+	data->cdev.brightness_set_blocking = brickpi3_leds_brightness_set_blocking;
 	data->cdev.default_trigger = "default-on";
-	INIT_WORK(&data->brightness_set_work, brickpi3_leds_brightness_set_work);
 
 	ret = led_classdev_register(dev, &data->cdev);
 	if (ret < 0) {
