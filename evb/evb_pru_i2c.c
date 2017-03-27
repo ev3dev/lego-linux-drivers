@@ -82,7 +82,7 @@ struct evb_pru_i2c_msg_data {
 
 /* private driver data */
 struct evb_pru_i2c_algo_data {
-	struct rpmsg_channel *rpdev;
+	struct rpmsg_device *rpdev;
 	struct i2c_adapter *adap;
 	struct completion done;
 	u8 buf[MESSAGE_LIMIT][MAX_BUF_SIZE];
@@ -114,7 +114,7 @@ static int evb_pru_i2c_master_xfer(struct i2c_adapter *i2c_adap,
 		memcpy(&msg_data.msgs[i].buf, msgs[i].buf, msgs[i].len);
 	}
 
-	ret = rpmsg_trysend(adata->rpdev, &msg_data, sizeof(msg_data));
+	ret = rpmsg_trysend(adata->rpdev->ept, &msg_data, sizeof(msg_data));
 	if (ret == -ENOMEM)
 		return -EAGAIN;
 	if (ret < 0)
@@ -124,7 +124,7 @@ static int evb_pru_i2c_master_xfer(struct i2c_adapter *i2c_adap,
 	if (!ret) {
 		/* sending num_msgs == 0 puts the port in idle state */
 		msg_data.num_msgs = 0;
-		rpmsg_send(adata->rpdev, &msg_data, sizeof(msg_data));
+		rpmsg_send(adata->rpdev->ept, &msg_data, sizeof(msg_data));
 
 		return -ETIMEDOUT;
 	}
@@ -164,10 +164,10 @@ static const struct i2c_adapter_quirks evb_pru_i2c_quirks = {
 };
 
 /**
- * evb_pru_i2c_cb - rpmsg_channel message received callback
+ * evb_pru_i2c_cb - rpmsg_device message received callback
  */
-static void evb_pru_i2c_cb(struct rpmsg_channel *rpdev, void *data, int len,
-			   void *priv, u32 src)
+static int evb_pru_i2c_cb(struct rpmsg_device *rpdev, void *data, int len,
+			  void *priv, u32 src)
 {
 	struct evb_pru_i2c_algo_data *adata = dev_get_drvdata(&rpdev->dev);
 	struct evb_pru_i2c_msg_data *msg_data = data;
@@ -175,7 +175,7 @@ static void evb_pru_i2c_cb(struct rpmsg_channel *rpdev, void *data, int len,
 
 	/* If len is wrong, we probably have bad firmware - just ignore it */
 	if (len != sizeof(*msg_data))
-		return;
+		return -EINVAL;
 
 	adata->xfer_result = msg_data->xfer_result;
 	/* copy updated buffers for read messages */
@@ -185,9 +185,11 @@ static void evb_pru_i2c_cb(struct rpmsg_channel *rpdev, void *data, int len,
 			       msg_data->msgs[i].len);
 	}
 	complete(&adata->done);
+
+	return 0;
 }
 
-static int evb_pru_i2c_probe(struct rpmsg_channel *rpdev)
+static int evb_pru_i2c_probe(struct rpmsg_device *rpdev)
 {
 	struct evb_pru_i2c_algo_data *adata;
 	struct i2c_adapter *adap;
@@ -225,7 +227,7 @@ static int evb_pru_i2c_probe(struct rpmsg_channel *rpdev)
 	return 0;
 }
 
-static void evb_pru_i2c_remove(struct rpmsg_channel *rpdev)
+static void evb_pru_i2c_remove(struct rpmsg_device *rpdev)
 {
 	struct evb_pru_i2c_algo_data *adata = dev_get_drvdata(&rpdev->dev);
 

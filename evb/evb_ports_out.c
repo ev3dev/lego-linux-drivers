@@ -720,8 +720,8 @@ static void evb_output_port_debug_init(struct evb_output_port_data *data)
 	debugfs_create_u32("command", 0444, data->debug, &data->command);
 	debugfs_create_u32("pin5_mv", 0444, data->debug, &data->pin5_mv);
 	debugfs_create_u32("pwm_duty_cycle", 0444, data->debug,
-			   &data->pwm->duty_cycle);
-	debugfs_create_u32("pwm_period", 0444, data->debug, &data->pwm->period);
+			   &data->pwm->state.duty_cycle);
+	debugfs_create_u32("pwm_period", 0444, data->debug, &data->pwm->state.period);
 }
 
 int evb_output_port_probe(struct platform_device *pdev)

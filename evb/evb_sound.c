@@ -137,9 +137,9 @@ static int evb_sound_apply_tone_volume(struct evb_sound *chip)
 	 * 100% volume, hence the >> 3. Any higher and we get distortion in
 	 * the sound.
 	 */
-	duty = ((long)chip->pwm->period * chip->tone_volume / MAX_VOLUME) >> 4;
+	duty = ((u64)pwm_get_period(chip->pwm) * chip->tone_volume / MAX_VOLUME) >> 4;
 
-	return pwm_config(chip->pwm, duty, chip->pwm->period);
+	return pwm_config(chip->pwm, duty, pwm_get_period(chip->pwm));
 }
 
 static int evb_sound_do_tone(struct evb_sound *chip, int hz)
@@ -151,7 +151,7 @@ static int evb_sound_do_tone(struct evb_sound *chip, int hz)
 		return -EBUSY;
 
 	if (hz <= 0) {
-		err = pwm_config(chip->pwm, 0, chip->pwm->period);
+		err = pwm_config(chip->pwm, 0, pwm_get_period(chip->pwm));
 		if (err < 0)
 			return err;
 		evb_sound_disable(chip);
@@ -286,7 +286,7 @@ static enum hrtimer_restart evb_sound_pcm_timer_callback(struct hrtimer *timer)
 	duty /= MAX_VOLUME;
 	/* then convert to unsigned and scale to pwm period */
 	duty += SHRT_MAX;
-	duty *= pwm->period;
+	duty *= pwm_get_period(pwm);
 	duty /= USHRT_MAX;
 
 	/*
@@ -296,7 +296,7 @@ static enum hrtimer_restart evb_sound_pcm_timer_callback(struct hrtimer *timer)
 	 */
 	*(short *)(runtime->dma_area + chip->pcm_playback_ptr) = 0;
 
-	pwm_config(pwm, duty, pwm->period);
+	pwm_config(pwm, duty, pwm_get_period(pwm));
 
 	chip->pcm_playback_ptr += frames_to_bytes(runtime, 1);
 	if (chip->pcm_playback_ptr >= snd_pcm_lib_buffer_bytes(substream))
