@@ -544,7 +544,8 @@ static int brickpi3_detect(struct brickpi3 *bp)
 			BRICKPI3_REQUIRED_FIRMWARE_VERSION % 1000);
 	  return -EINVAL;
 	}
-	ret = brickpi3_read_string(bp, BRICKPI3_MSG_READ_ID, string, BRICKPI3_ID_MSG_SIZE);
+	ret = brickpi3_read_string(bp, BRICKPI3_MSG_READ_ID,
+				   string, BRICKPI3_ID_MSG_SIZE);
 	if (ret < 0)
 		return ret;
 
