@@ -24,7 +24,8 @@
 
 #include "brickpi3.h"
 
-#define BRICKPI3_MIN_FIRMWARE_VERSION	1002000 /* 1.2.0 */
+//define BRICKPI3_MIN_FIRMWARE_VERSION	1002000 /* 1.2.0 */
+#define BRICKPI3_REQUIRED_FIRMWARE_VERSION	1002000 /* 1.2.0 */
 #define BRICKPI3_HEADER_SIZE		4
 #define BRICKPI3_ID_MSG_SIZE		16
 #define BRICKPI3_STRING_MSG_SIZE	20
@@ -536,8 +537,12 @@ static int brickpi3_detect(struct brickpi3 *bp)
 
 	dev_info(dev, "FW: %u.%u.%u\n", value / 1000000 % 1000000,
 		 value / 1000 % 1000, value % 1000);
-	if (value < BRICKPI3_MIN_FIRMWARE_VERSION)
-		return -EINVAL;
+///	if (value < BRICKPI3_MIN_FIRMWARE_VERSION)
+	if (value < BRICKPI3_REQUIRED_FIRMWARE_VERSION || value > BRICKPI3_REQUIRED_FIRMWARE_VERSION + 999) {
+	  dev_err(dev, "Unsupported firmware version, expecting %u.%u.%u", BRICKPI3_REQUIRED_FIRMWARE_VERSION / 1000000 % 1000000,
+		  BRICKPI3_REQUIRED_FIRMWARE_VERSION / 1000 % 1000, BRICKPI3_REQUIRED_FIRMWARE_VERSION % 1000);
+	  return -EINVAL;
+        }
 
 	ret = brickpi3_read_string(bp, BRICKPI3_MSG_READ_ID, string,
 				   BRICKPI3_ID_MSG_SIZE);
