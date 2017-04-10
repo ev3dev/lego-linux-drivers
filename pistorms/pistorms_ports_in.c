@@ -146,10 +146,10 @@ static const struct lego_port_mode_info pistorms_in_port_mode_info[NUM_PS_IN_POR
 	/**
 	 * .. [#in-port-prefix] The full ``address`` is in the format::
 	 *
-	 *        pistorms:B<b>:<prefix><n>
+	 *        pistorms:B<b><prefix><n>
 	 *
 	 *    For example, if we are looking at the port labeled "BBS2" on the
-	 *    PiStorms, the address will be ``pistorms:BB:S2``.
+	 *    PiStorms, the address will be ``pistorms:BBS2``.
 	 *
 	 * @description: mindsensors.com PiStorms Input Port
 	 * @connection_types: NXT/Analog, NXT/Color, NXT/I2C, Other/I2C, EV3/Analog, EV3/UART
