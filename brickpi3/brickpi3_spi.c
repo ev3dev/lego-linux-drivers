@@ -538,7 +538,7 @@ static int brickpi3_detect(struct brickpi3 *bp)
 		 value / 1000 % 1000, value % 1000);
 	if (value < BRICKPI3_REQUIRED_FIRMWARE_VERSION ||
 	    value > BRICKPI3_REQUIRED_FIRMWARE_VERSION + 999) {
-		dev_err(dev, "Unsupported firmware version, expecting %u.%u.x",
+		dev_err(dev, "Unsupported firmware version, expecting %u.%u.x\n",
 			BRICKPI3_REQUIRED_FIRMWARE_VERSION / 1000000 % 1000000,
 			BRICKPI3_REQUIRED_FIRMWARE_VERSION / 1000 % 1000,
 			BRICKPI3_REQUIRED_FIRMWARE_VERSION % 1000);
