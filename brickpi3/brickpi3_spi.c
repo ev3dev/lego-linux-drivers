@@ -539,8 +539,7 @@ static int brickpi3_detect(struct brickpi3 *bp)
 	if (value < BRICKPI3_REQUIRED_FIRMWARE_VERSION || value > BRICKPI3_REQUIRED_FIRMWARE_VERSION + 999) {
 	  dev_err(dev, "Unsupported firmware version, expecting %u.%u.%u", BRICKPI3_REQUIRED_FIRMWARE_VERSION / 1000000 % 1000000, BRICKPI3_REQUIRED_FIRMWARE_VERSION / 1000 % 1000, BRICKPI3_REQUIRED_FIRMWARE_VERSION % 1000);
 	  return -EINVAL;
-        }
- 
+	}
 	ret = brickpi3_read_string(bp, BRICKPI3_MSG_READ_ID, string, BRICKPI3_ID_MSG_SIZE);
 	if (ret < 0)
 		return ret;
