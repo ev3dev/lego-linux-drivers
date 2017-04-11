@@ -1,4 +1,16 @@
 
+config FB_ST7586_EV3DEV
+	tristate "ST7586 framebuffer support"
+	depends on FB && SPI
+	select FB_SYS_FILLRECT
+	select FB_SYS_COPYAREA
+	select FB_SYS_IMAGEBLIT
+	select FB_SYS_FOPS
+	select FB_DEFERRED_IO
+	help
+	  This driver implements support for the ST7586 display controller
+	  in SPI mode.
+
 config IIO_HRTIMER_TRIGGER_EV3DEV
   tristate "High resolution timer trigger"
   help
