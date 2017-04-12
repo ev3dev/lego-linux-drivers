@@ -388,9 +388,8 @@ static int brickpi3_in_port_set_mode(void *context, u8 mode)
 	case BRICKPI3_IN_PORT_MODE_EV3_UART:
 		/* We don't want to load the wrong UART sensor. */
 		data->sensor_type = BRICKPI3_SENSOR_TYPE_NONE;
-		return brickpi3_write_u8(data->bp,
-				BRICKPI3_MSG_SET_SENSOR_TYPE + data->index,
-				BRICKPI3_SENSOR_TYPE_NONE);
+		return brickpi3_set_sensor_type(data->bp,
+				data->index, BRICKPI3_SENSOR_TYPE_NONE);
 	case BRICKPI3_IN_PORT_MODE_NXT_ANALOG:
 		data->sensor_type = BRICKPI3_SENSOR_TYPE_CUSTOM;
 		ret = brickpi3_set_sensor_custom(data->bp, data->index,
@@ -406,9 +405,9 @@ static int brickpi3_in_port_set_mode(void *context, u8 mode)
 		/* TODO: probe for I2C sensors here */
 	case BRICKPI3_IN_PORT_MODE_EV3_ANALOG:
 		data->sensor_type = BRICKPI3_SENSOR_TYPE_EV3_TOUCH;
-		ret = brickpi3_write_u8(data->bp,
-				BRICKPI3_MSG_SET_SENSOR_TYPE + data->index,
-				BRICKPI3_SENSOR_TYPE_EV3_TOUCH);
+		ret = brickpi3_set_sensor_type(data->bp,
+					       data->index,
+					       BRICKPI3_SENSOR_TYPE_EV3_TOUCH);
 		if (ret < 0)
 			return ret;
 		name = LEGO_EV3_TOUCH_SENSOR_NAME;
@@ -486,9 +485,8 @@ static int brickpi3_in_port_set_ev3_uart_sensor_mode(void *context, u8 type_id,
 	else
 		return -EINVAL;
 
-	return brickpi3_write_u8(data->bp,
-				 BRICKPI3_MSG_SET_SENSOR_TYPE + data->index,
-				 data->sensor_type);
+	return brickpi3_set_sensor_type(data->bp,
+				 data->index, data->sensor_type);
 }
 
 static const struct lego_port_ev3_uart_ops brickpi3_ev3_uart_ops = {
