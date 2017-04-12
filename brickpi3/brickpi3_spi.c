@@ -24,7 +24,7 @@
 
 #include "brickpi3.h"
 
-#define BRICKPI3_REQUIRED_FIRMWARE_VERSION	1002000 /* 1.2.0 */
+#define BRICKPI3_REQUIRED_FIRMWARE_VERSION	1004000 /* 1.4.x */
 #define BRICKPI3_HEADER_SIZE		4
 #define BRICKPI3_ID_MSG_SIZE		16
 #define BRICKPI3_STRING_MSG_SIZE	20
@@ -129,6 +129,70 @@ int brickpi3_write_u16(struct brickpi3 *bp, enum brickpi3_message msg,
 	bp->buf[1] = msg;
 	bp->buf[2] = (value >> 8) & 0xff;
 	bp->buf[3] = value & 0xff;
+	bp->xfer.len = 4;
+
+	ret = spi_sync(bp->spi, &bp->msg);
+
+	mutex_unlock(&bp->xfer_lock);
+
+	return ret;
+}
+
+int brickpi3_write_u8_u16(struct brickpi3 *bp, enum brickpi3_message msg,
+			u8 value1, u16 value2)
+{
+	int ret;
+
+	mutex_lock(&bp->xfer_lock);
+
+	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[1] = msg;
+	bp->buf[2] = value1;
+	bp->buf[3] = (value2 >> 8) & 0xff;
+	bp->buf[4] = value2 & 0xff;
+	bp->xfer.len = 5;
+
+	ret = spi_sync(bp->spi, &bp->msg);
+
+	mutex_unlock(&bp->xfer_lock);
+
+	return ret;
+}
+
+int brickpi3_set_motor_limits(struct brickpi3 *bp,
+			      enum brickpi3_output_port port,
+			      u8 duty_cycle_sp, u16 speed)
+{
+	int ret;
+
+	mutex_lock(&bp->xfer_lock);
+
+	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[1] = BRICKPI3_MSG_SET_MOTOR_LIMITS;
+	bp->buf[2] = BIT(port);
+	bp->buf[3] = duty_cycle_sp;
+	bp->buf[4] = (speed >> 8) & 0xff;
+	bp->buf[5] = speed & 0xff;
+	bp->xfer.len = 6;
+
+	ret = spi_sync(bp->spi, &bp->msg);
+
+	mutex_unlock(&bp->xfer_lock);
+
+	return ret;
+}
+
+int brickpi3_write_u8_u8(struct brickpi3 *bp, enum brickpi3_message msg,
+			 u8 value1, u8 value2)
+{
+	int ret;
+
+	mutex_lock(&bp->xfer_lock);
+
+	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[1] = msg;
+	bp->buf[2] = value1;
+	bp->buf[3] = value2;
 	bp->xfer.len = 4;
 
 	ret = spi_sync(bp->spi, &bp->msg);
@@ -243,6 +307,29 @@ int brickpi3_write_u32(struct brickpi3 *bp, enum brickpi3_message msg,
 	return ret;
 }
 
+int brickpi3_write_u8_u32(struct brickpi3 *bp, enum brickpi3_message msg,
+			  u8 value1, u32 value2)
+{
+	int ret;
+
+	mutex_lock(&bp->xfer_lock);
+
+	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[1] = msg;
+	bp->buf[2] = value1;
+	bp->buf[3] = (value2 >> 24) & 0xff;
+	bp->buf[4] = (value2 >> 16) & 0xff;
+	bp->buf[5] = (value2 >> 8) & 0xff;
+	bp->buf[6] = value2 & 0xff;
+	bp->xfer.len = 7;
+
+	ret = spi_sync(bp->spi, &bp->msg);
+
+	mutex_unlock(&bp->xfer_lock);
+
+	return ret;
+}
+
 /**
  * brickpi3_read_string - Read message with arbitrary bytes of bp
  *
@@ -304,7 +391,7 @@ int brickpi3_read_sensor(struct brickpi3 *bp, enum brickpi3_input_port port,
 	mutex_lock(&bp->xfer_lock);
 
 	bp->buf[0] = bp->spi->chip_select;
-	bp->buf[1] = BRICKPI3_MSG_READ_SENSOR + port;
+	bp->buf[1] = BRICKPI3_MSG_GET_SENSOR + port;
 	bp->buf[2] = 0;
 	bp->buf[3] = 0;
 	bp->buf[4] = 0;
@@ -357,11 +444,12 @@ int brickpi3_set_sensor_custom(struct brickpi3 *bp,
 	mutex_lock(&bp->xfer_lock);
 
 	bp->buf[0] = bp->spi->chip_select;
-	bp->buf[1] = BRICKPI3_MSG_SET_SENSOR_TYPE + port;
-	bp->buf[2] = BRICKPI3_SENSOR_TYPE_CUSTOM;
-	bp->buf[3] = (flags >> 8) & 0xff;
-	bp->buf[4] = flags & 0xff;
-	bp->xfer.len = 5;
+	bp->buf[1] = BRICKPI3_MSG_SET_SENSOR_TYPE;
+	bp->buf[2] = BIT(port);
+	bp->buf[3] = BRICKPI3_SENSOR_TYPE_CUSTOM;
+	bp->buf[4] = (flags >> 8) & 0xff;
+	bp->buf[5] = flags & 0xff;
+	bp->xfer.len = 6;
 
 	ret = spi_sync(bp->spi, &bp->msg);
 
@@ -390,11 +478,12 @@ int brickpi3_set_sensor_i2c(struct brickpi3 *bp,
 	mutex_lock(&bp->xfer_lock);
 
 	bp->buf[0] = bp->spi->chip_select;
-	bp->buf[1] = BRICKPI3_MSG_SET_SENSOR_TYPE + port;
-	bp->buf[2] = BRICKPI3_SENSOR_TYPE_I2C;
-	bp->buf[3] = flags;
-	bp->buf[4] = speed;
-	bp->xfer.len = 5;
+	bp->buf[1] = BRICKPI3_MSG_SET_SENSOR_TYPE;
+	bp->buf[2] = BIT(port);
+	bp->buf[3] = BRICKPI3_SENSOR_TYPE_I2C;
+	bp->buf[4] = flags;
+	bp->buf[5] = speed;
+	bp->xfer.len = 6;
 	/* TODO: handle extra params for (flags & BRICKPI3_I2C_SAME) */
 
 	ret = spi_sync(bp->spi, &bp->msg);
@@ -465,7 +554,7 @@ int brickpi3_i2c_transact(struct brickpi3 *bp, enum brickpi3_input_port port,
 		msleep(write_size + read_size + 2);
 
 		bp->buf[0] = bp->spi->chip_select;
-		bp->buf[1] = BRICKPI3_MSG_READ_SENSOR + port;
+		bp->buf[1] = BRICKPI3_MSG_GET_SENSOR + port;
 		memset(&bp->buf[2], 0, 4 + read_size);
 		bp->xfer.len = 6 + read_size;
 
@@ -505,7 +594,7 @@ static int brickpi3_detect(struct brickpi3 *bp)
 	/* ensure null terminator */
 	string[BRICKPI3_STRING_MSG_SIZE] = 0;
 
-	ret = brickpi3_read_string(bp, BRICKPI3_MSG_READ_MANUFACTURER,
+	ret = brickpi3_read_string(bp, BRICKPI3_MSG_GET_MANUFACTURER,
 				   string, BRICKPI3_STRING_MSG_SIZE);
 	if (ret < 0)
 		return ret;
@@ -514,7 +603,7 @@ static int brickpi3_detect(struct brickpi3 *bp)
 	if (strncmp(string, "Dexter Industries", BRICKPI3_STRING_MSG_SIZE) != 0)
 		return -EINVAL;
 
-	ret = brickpi3_read_string(bp, BRICKPI3_MSG_READ_NAME,
+	ret = brickpi3_read_string(bp, BRICKPI3_MSG_GET_NAME,
 				   string, BRICKPI3_STRING_MSG_SIZE);
 	if (ret < 0)
 		return ret;
@@ -523,14 +612,14 @@ static int brickpi3_detect(struct brickpi3 *bp)
 	if (strncmp(string, "BrickPi3", BRICKPI3_STRING_MSG_SIZE) != 0)
 		return -EINVAL;
 
-	ret = brickpi3_read_u32(bp, BRICKPI3_MSG_READ_HARDWARE_VERSION, &value);
+	ret = brickpi3_read_u32(bp, BRICKPI3_MSG_GET_HARDWARE_VERSION, &value);
 	if (ret < 0)
 		return ret;
 
 	dev_info(dev, "HW: %u.%u.%u\n", value / 1000000 % 1000000,
 		 value / 1000 % 1000, value % 1000);
 
-	ret = brickpi3_read_u32(bp, BRICKPI3_MSG_READ_FIRMWARE_VERSION, &value);
+	ret = brickpi3_read_u32(bp, BRICKPI3_MSG_GET_FIRMWARE_VERSION, &value);
 	if (ret < 0)
 		return ret;
 
@@ -543,7 +632,7 @@ static int brickpi3_detect(struct brickpi3 *bp)
 			BRICKPI3_REQUIRED_FIRMWARE_VERSION / 1000 % 1000);
 		return -EINVAL;
 	}
-	ret = brickpi3_read_string(bp, BRICKPI3_MSG_READ_ID, string,
+	ret = brickpi3_read_string(bp, BRICKPI3_MSG_GET_ID, string,
 				   BRICKPI3_ID_MSG_SIZE);
 	if (ret < 0)
 		return ret;

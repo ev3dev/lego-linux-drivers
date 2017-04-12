@@ -247,7 +247,10 @@ static int brickpi3_out_port_run_to_pos(void *context, int pos, int speed,
 	struct brickpi3_out_port *data = context;
 	int ret;
 
-	/* FIXME: speed and stop action are ignored */
+	ret = brickpi3_set_motor_limits(data->bp, data->index, 0, speed);
+	if (ret < 0)
+		return ret;
+	/* FIXME: stop action is ignored */
 	ret = brickpi3_run_to_position(data->bp, data->index, pos);
 	if (ret < 0)
 		return ret;
