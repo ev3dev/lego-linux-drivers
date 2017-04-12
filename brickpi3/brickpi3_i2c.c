@@ -43,7 +43,7 @@ static int brickpi3_i2c_master_xfer(struct i2c_adapter *adap,
 
 	/*
 	 * Hopefully i2c core is doing lots of checking for us based on
-	 * I2C_AQ_COMB_WRITE_THEN_READ. We only support one or two messages,
+	 * I2C_AQ_COMB_READ_THEN_READ. We only support one or two messages,
 	 * the first is a write and the second is a read. Both are limited
 	 * in size to < SMBUS standard.
 	 */

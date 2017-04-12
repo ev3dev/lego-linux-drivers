@@ -67,7 +67,7 @@ static int brickpi3_iio_read_raw(struct iio_dev *iio,
 	.type = IIO_VOLTAGE,					\
 	.channel = index,					\
 	.info_mask_separate = BIT(IIO_CHAN_INFO_PROCESSED),	\
-	.address = BRICKPI3_MSG_READ_VOLTAGE_##name,		\
+	.address = BRICKPI3_MSG_GET_VOLTAGE_##name,		\
 	.datasheet_name = __stringify(name),			\
 	.extend_name = __stringify(name),			\
 	.scan_index = index,					\
