@@ -71,8 +71,8 @@ static const struct i2c_algorithm brickpi3_i2c_algo = {
 
 static const struct i2c_adapter_quirks brickpi3_i2c_quirks = {
 	.flags			= I2C_AQ_COMB_WRITE_THEN_READ,
-	.max_write_len		= BRICKPI3_I2C_MAX_WRITE_SIZE,
-	.max_read_len		= BRICKPI3_I2C_MAX_READ_SIZE,
+	.max_write_len		= BRICKPI3_I2C_MAX_SET_SIZE,
+	.max_read_len		= BRICKPI3_I2C_MAX_GET_SIZE,
 };
 
 static void brickpi3_i2c_release(struct device *dev, void *res)

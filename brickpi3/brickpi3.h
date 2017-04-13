@@ -37,87 +37,52 @@ enum brickpi3_output_port {
 
 enum brickpi3_message {
 	BRICKPI3_MSG_NONE,
-	BRICKPI3_MSG_READ_MANUFACTURER,
-	BRICKPI3_MSG_READ_NAME,
-	BRICKPI3_MSG_READ_HARDWARE_VERSION,
-	BRICKPI3_MSG_READ_FIRMWARE_VERSION,
-	BRICKPI3_MSG_READ_ID,
+	BRICKPI3_MSG_GET_MANUFACTURER,
+	BRICKPI3_MSG_GET_NAME,
+	BRICKPI3_MSG_GET_HARDWARE_VERSION,
+	BRICKPI3_MSG_GET_FIRMWARE_VERSION,
+	BRICKPI3_MSG_GET_ID,
 	BRICKPI3_MSG_SET_LED,
-	BRICKPI3_MSG_READ_VOLTAGE_3V3,
-	BRICKPI3_MSG_READ_VOLTAGE_5V,
-	BRICKPI3_MSG_READ_VOLTAGE_9V,
-	BRICKPI3_MSG_READ_VOLTAGE_VCC,
-#define	BRICKPI3_MSG_SET_SENSOR_TYPE \
-	BRICKPI3_MSG_SET_SENSOR_1_TYPE
-	BRICKPI3_MSG_SET_SENSOR_1_TYPE = 20,
-	BRICKPI3_MSG_SET_SENSOR_2_TYPE,
-	BRICKPI3_MSG_SET_SENSOR_3_TYPE,
-	BRICKPI3_MSG_SET_SENSOR_4_TYPE,
-#define	BRICKPI3_MSG_READ_SENSOR \
-	BRICKPI3_MSG_READ_SENSOR_1
-	BRICKPI3_MSG_READ_SENSOR_1 = 24,
-	BRICKPI3_MSG_READ_SENSOR_2,
-	BRICKPI3_MSG_READ_SENSOR_3,
-	BRICKPI3_MSG_READ_SENSOR_4,
-#define	BRICKPI3_MSG_WRITE_MOTOR_SPEED \
-	BRICKPI3_MSG_WRITE_MOTOR_A_SPEED
-	BRICKPI3_MSG_WRITE_MOTOR_A_SPEED = 28,
-	BRICKPI3_MSG_WRITE_MOTOR_B_SPEED,
-	BRICKPI3_MSG_WRITE_MOTOR_C_SPEED,
-	BRICKPI3_MSG_WRITE_MOTOR_D_SPEED,
-#define	BRICKPI3_MSG_WRITE_MOTOR_POSITION \
-	BRICKPI3_MSG_WRITE_MOTOR_A_POSITION
-	BRICKPI3_MSG_WRITE_MOTOR_A_POSITION = 32,
-	BRICKPI3_MSG_WRITE_MOTOR_B_POSITION,
-	BRICKPI3_MSG_WRITE_MOTOR_C_POSITION,
-	BRICKPI3_MSG_WRITE_MOTOR_D_POSITION,
-#define	BRICKPI3_MSG_WRITE_MOTOR_POSITION_KP \
-	BRICKPI3_MSG_WRITE_MOTOR_A_POSITION_KP
-	BRICKPI3_MSG_WRITE_MOTOR_A_POSITION_KP = 36,
-	BRICKPI3_MSG_WRITE_MOTOR_B_POSITION_KP,
-	BRICKPI3_MSG_WRITE_MOTOR_C_POSITION_KP,
-	BRICKPI3_MSG_WRITE_MOTOR_D_POSITION_KP,
-#define	BRICKPI3_MSG_WRITE_MOTOR_POSITION_KD \
-	BRICKPI3_MSG_WRITE_MOTOR_A_POSITION_KD
-	BRICKPI3_MSG_WRITE_MOTOR_A_POSITION_KD = 40,
-	BRICKPI3_MSG_WRITE_MOTOR_B_POSITION_KD,
-	BRICKPI3_MSG_WRITE_MOTOR_C_POSITION_KD,
-	BRICKPI3_MSG_WRITE_MOTOR_D_POSITION_KD,
-#define	BRICKPI3_MSG_WRITE_MOTOR_DPS \
-	BRICKPI3_MSG_WRITE_MOTOR_A_DPS
-	BRICKPI3_MSG_WRITE_MOTOR_A_DPS = 44,
-	BRICKPI3_MSG_WRITE_MOTOR_B_DPS,
-	BRICKPI3_MSG_WRITE_MOTOR_C_DPS,
-	BRICKPI3_MSG_WRITE_MOTOR_D_DPS,
-#define	BRICKPI3_MSG_WRITE_MOTOR_DPS_KP \
-	BRICKPI3_MSG_WRITE_MOTOR_A_DPS_KP
-	BRICKPI3_MSG_WRITE_MOTOR_A_DPS_KP = 48,
-	BRICKPI3_MSG_WRITE_MOTOR_B_DPS_KP,
-	BRICKPI3_MSG_WRITE_MOTOR_C_DPS_KP,
-	BRICKPI3_MSG_WRITE_MOTOR_D_DPS_KP,
-#define	BRICKPI3_MSG_WRITE_MOTOR_DPS_KD \
-	BRICKPI3_MSG_WRITE_MOTOR_A_DPS_KD
-	BRICKPI3_MSG_WRITE_MOTOR_A_DPS_KD = 52,
-	BRICKPI3_MSG_WRITE_MOTOR_B_DPS_KD,
-	BRICKPI3_MSG_WRITE_MOTOR_C_DPS_KD,
-	BRICKPI3_MSG_WRITE_MOTOR_D_DPS_KD,
-#define	BRICKPI3_MSG_OFFSET_MOTOR_ENCODER \
-	BRICKPI3_MSG_OFFSET_MOTOR_A_ENCODER
-	BRICKPI3_MSG_OFFSET_MOTOR_A_ENCODER = 56,
-	BRICKPI3_MSG_OFFSET_MOTOR_B_ENCODER,
-	BRICKPI3_MSG_OFFSET_MOTOR_C_ENCODER,
-#define	BRICKPI3_MSG_READ_MOTOR_ENCODER \
-	BRICKPI3_MSG_READ_MOTOR_A_ENCODER
-	BRICKPI3_MSG_READ_MOTOR_A_ENCODER = 60,
-	BRICKPI3_MSG_READ_MOTOR_B_ENCODER,
-	BRICKPI3_MSG_READ_MOTOR_C_ENCODER,
-	BRICKPI3_MSG_READ_MOTOR_D_ENCODER,
+	BRICKPI3_MSG_GET_VOLTAGE_3V3,
+	BRICKPI3_MSG_GET_VOLTAGE_5V,
+	BRICKPI3_MSG_GET_VOLTAGE_9V,
+	BRICKPI3_MSG_GET_VOLTAGE_VCC,
+	BRICKPI3_MSG_SET_ADDRESS,
+	BRICKPI3_MSG_SET_SENSOR_TYPE,
+
+#define	BRICKPI3_MSG_GET_SENSOR \
+	BRICKPI3_MSG_GET_SENSOR_1
+	BRICKPI3_MSG_GET_SENSOR_1,
+	BRICKPI3_MSG_GET_SENSOR_2,
+	BRICKPI3_MSG_GET_SENSOR_3,
+	BRICKPI3_MSG_GET_SENSOR_4,
 #define	BRICKPI3_MSG_I2C_TRANSACT \
 	BRICKPI3_MSG_I2C_TRANSACT_1
-	BRICKPI3_MSG_I2C_TRANSACT_1 = 64,
+	BRICKPI3_MSG_I2C_TRANSACT_1,
 	BRICKPI3_MSG_I2C_TRANSACT_2,
 	BRICKPI3_MSG_I2C_TRANSACT_3,
 	BRICKPI3_MSG_I2C_TRANSACT_4,
+	BRICKPI3_MSG_SET_MOTOR_POWER,
+	BRICKPI3_MSG_SET_MOTOR_POSITION,
+	BRICKPI3_MSG_SET_MOTOR_POSITION_KP,
+	BRICKPI3_MSG_SET_MOTOR_POSITION_KD,
+	BRICKPI3_MSG_SET_MOTOR_DPS,
+	BRICKPI3_MSG_SET_MOTOR_DPS_KP,
+	BRICKPI3_MSG_SET_MOTOR_DPS_KD,
+	BRICKPI3_MSG_SET_MOTOR_LIMITS,
+	BRICKPI3_MSG_OFFSET_MOTOR_ENCODER,
+#define	BRICKPI3_MSG_GET_MOTOR_ENCODER \
+	BRICKPI3_MSG_GET_MOTOR_A_ENCODER
+	BRICKPI3_MSG_GET_MOTOR_A_ENCODER,
+	BRICKPI3_MSG_GET_MOTOR_B_ENCODER,
+	BRICKPI3_MSG_GET_MOTOR_C_ENCODER,
+	BRICKPI3_MSG_GET_MOTOR_D_ENCODER,
+#define	BRICKPI3_MSG_GET_MOTOR_STATUS \
+	BRICKPI3_MSG_GET_MOTOR_A_STATUS
+	BRICKPI3_MSG_GET_MOTOR_A_STATUS,
+	BRICKPI3_MSG_GET_MOTOR_B_STATUS,
+	BRICKPI3_MSG_GET_MOTOR_C_STATUS,
+	BRICKPI3_MSG_GET_MOTOR_D_STATUS,
 };
 
 enum brickpi3_sensor_type {
@@ -156,6 +121,7 @@ enum brickpi3_sensor_state {
 	BRICKPI3_SENSOR_STATE_NOT_CONFIGURED,
 	BRICKPI3_SENSOR_STATE_CONFIGURING,
 	BRICKPI3_SENSOR_STATE_NO_DATA,
+	BRICKPI3_SENSOR_STATE_I2C_ERROR,
 };
 
 enum brickpi3_sensor_pin_flags {
@@ -174,8 +140,12 @@ enum brickpi3_i2c_flags {
 	BRICKPI3_I2C_SAME	= 0x04,
 };
 
-#define BRICKPI3_I2C_MAX_WRITE_SIZE	16
-#define BRICKPI3_I2C_MAX_READ_SIZE	14
+enum brickpi3_motor_status {
+	BRICKPI3_MOTOR_STATUS_LOW_VOLTAGE_FLOAT = 0x01,
+};
+
+#define BRICKPI3_I2C_MAX_SET_SIZE	16
+#define BRICKPI3_I2C_MAX_GET_SIZE	14
 
 enum brickpi3_result {
 	BRICKPI3_RESULT_SUCCESS,
@@ -205,16 +175,22 @@ struct brickpi3;
 
 int brickpi3_write_u8(struct brickpi3 *bp, enum brickpi3_message msg,
 		      u8 value);
+int brickpi3_write_u8_u8(struct brickpi3 *bp, enum brickpi3_message msg,
+		      u8 value1, u8 value2);
 int brickpi3_read_u16(struct brickpi3 *bp, enum brickpi3_message msg,
 		      u16 *value);
 int brickpi3_write_u16(struct brickpi3 *bp, enum brickpi3_message msg,
 		        u16 value);
+int brickpi3_write_u8_u16(struct brickpi3 *bp, enum brickpi3_message msg,
+		       u8 value1, u16 value2);
 int brickpi3_write_u24(struct brickpi3 *bp, enum brickpi3_message msg,
 		       u32 value);
 int brickpi3_read_u32(struct brickpi3 *bp, enum brickpi3_message msg,
 		      u32 *value);
 int brickpi3_write_u32(struct brickpi3 *bp, enum brickpi3_message msg,
 		       u32 value);
+int brickpi3_write_u8_u32(struct brickpi3 *bp, enum brickpi3_message msg,
+		       u8 value1, u32 value2);
 int brickpi3_read_string(struct brickpi3 *bp, enum brickpi3_message msg,
 			 char *value, size_t len);
 int brickpi3_read_sensor(struct brickpi3 *bp, enum brickpi3_input_port port,
@@ -230,12 +206,23 @@ int brickpi3_set_sensor_i2c(struct brickpi3 *bp,
 int brickpi3_i2c_transact(struct brickpi3 *bp, enum brickpi3_input_port port,
 			  u8 addr, u8 *write_buf, u8 write_size,
 			  u8 *read_buf, u8 read_size);
+int brickpi3_set_motor_limits(struct brickpi3 *bp, enum brickpi3_output_port,
+			   u8 duty_cycle_sp, u16 speed);
+
+static inline int brickpi3_set_sensor_type(struct brickpi3 *bp,
+					   enum brickpi3_input_port port,
+					   enum brickpi3_sensor_type type)
+{
+	return brickpi3_write_u8_u8(bp,
+				 BRICKPI3_MSG_SET_SENSOR_TYPE,  BIT(port),
+				 type);
+}
 
 static inline int brickpi3_get_motor_encoder(struct brickpi3 *bp,
 					     enum brickpi3_output_port port,
 					     s32 *value)
 {
-	return brickpi3_read_u32(bp, BRICKPI3_MSG_READ_MOTOR_ENCODER + port,
+	return brickpi3_read_u32(bp, BRICKPI3_MSG_GET_MOTOR_ENCODER + port,
 				 value);
 }
 
@@ -243,15 +230,15 @@ static inline int brickpi3_set_motor_offset(struct brickpi3 *bp,
 					    enum brickpi3_output_port port,
 					    s32 value)
 {
-	return brickpi3_write_u32(bp, BRICKPI3_MSG_OFFSET_MOTOR_ENCODER + port,
-				  value);
+	return brickpi3_write_u8_u32(bp, BRICKPI3_MSG_OFFSET_MOTOR_ENCODER,
+				     BIT(port), value);
 }
 
 static inline int brickpi3_run_unregulated(struct brickpi3 *bp,
 					   enum brickpi3_output_port port,
 					   s8 duty_cycle)
 {
-	return brickpi3_write_u8(bp, BRICKPI3_MSG_WRITE_MOTOR_SPEED + port,
+	return brickpi3_write_u8_u8(bp, BRICKPI3_MSG_SET_MOTOR_POWER, BIT(port),
 				 duty_cycle);
 }
 
@@ -259,7 +246,7 @@ static inline int brickpi3_run_regulated(struct brickpi3 *bp,
 					 enum brickpi3_output_port port,
 					 s16 speed)
 {
-	return brickpi3_write_u16(bp, BRICKPI3_MSG_WRITE_MOTOR_DPS + port,
+	return brickpi3_write_u8_u16(bp, BRICKPI3_MSG_SET_MOTOR_DPS, BIT(port),
 				  speed);
 }
 
@@ -267,8 +254,8 @@ static inline int brickpi3_run_to_position(struct brickpi3 *bp,
 					   enum brickpi3_output_port port,
 					   s32 position)
 {
-	return brickpi3_write_u32(bp, BRICKPI3_MSG_WRITE_MOTOR_POSITION + port,
-				  position);
+	return brickpi3_write_u8_u32(bp, BRICKPI3_MSG_SET_MOTOR_POSITION,
+				     BIT(port), position);
 }
 
 int devm_brickpi3_register_i2c(struct device *dev, struct brickpi3 *bp);
