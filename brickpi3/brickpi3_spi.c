@@ -45,12 +45,12 @@ struct brickpi3 {
 };
 
 /**
- * brickpi3_write_u8 - Write message with one byte of bp
+ * brickpi3_write_u8 - Write message with one byte of data
  *
- * @bp: The private driver bp
+ * @bp: The private driver data
  * @address: The BrickPi3 address
  * @msg: The command to send
- * @value: The message bp
+ * @value: The message data
  *
  * Returns 0 on success or negative error code.
  */
@@ -94,12 +94,12 @@ int brickpi3_write_u8_u8(struct brickpi3 *bp, u8 address,
 }
 
 /**
- * brickpi3_read_u16 - Read message with two bytes of bp
+ * brickpi3_read_u16 - Read message with two bytes of data
  *
- * @bp: The private driver bp
+ * @bp: The private driver data
  * @address: The BrickPi3 address
  * @msg: The command to send
- * @value: The returned message bp
+ * @value: The returned message data
  *
  * Returns 0 on success or negative error code.
  */
@@ -136,12 +136,12 @@ out:
 }
 
 /**
- * brickpi3_write_u16 - Write message with two bytes of bp
+ * brickpi3_write_u16 - Write message with two bytes of data
  *
- * @bp: The private driver bp
+ * @bp: The private driver data
  * @address: The BrickPi3 address
  * @msg: The command to send
- * @value: The message bp
+ * @value: The message data
  *
  * Returns 0 on success or negative error code.
  */
@@ -187,12 +187,12 @@ int brickpi3_write_u8_u16(struct brickpi3 *bp, u8 address,
 }
 
 /**
- * brickpi3_write_u24 - Write message with three bytes of bp
+ * brickpi3_write_u24 - Write message with three bytes of data
  *
- * @bp: The private driver bp
+ * @bp: The private driver data
  * @address: The BrickPi3 address
  * @msg: The command to send
- * @value: The message bp
+ * @value: The message data
  *
  * Returns 0 on success or negative error code.
  */
@@ -218,12 +218,12 @@ int brickpi3_write_u24(struct brickpi3 *bp, u8 address,
 }
 
 /**
- * brickpi3_read_u32 - Read message with four bytes of bp
+ * brickpi3_read_u32 - Read message with four bytes of data
  *
- * @bp: The private driver bp
+ * @bp: The private driver data
  * @address: The BrickPi3 address
  * @msg: The command to send
- * @value: The returned message bp
+ * @value: The returned message data
  *
  * Returns 0 on success or negative error code.
  */
@@ -263,12 +263,12 @@ out:
 }
 
 /**
- * brickpi3_write_u32 - Write message with four bytes of bp
+ * brickpi3_write_u32 - Write message with four bytes of data
  *
- * @bp: The private driver bp
+ * @bp: The private driver data
  * @address: The BrickPi3 address
  * @msg: The command to send
- * @value: The message bp
+ * @value: The message data
  *
  * Returns 0 on success or negative error code.
  */
@@ -318,12 +318,12 @@ int brickpi3_write_u8_u32(struct brickpi3 *bp, u8 address,
 }
 
 /**
- * brickpi3_read_string - Read message with arbitrary bytes of bp
+ * brickpi3_read_string - Read message with arbitrary bytes of data
  *
- * @bp: The private driver bp
+ * @bp: The private driver data
  * @address: The BrickPi3 address
  * @msg: The command to send
- * @value: Caller-allocated array to hold the returned message bp
+ * @value: Caller-allocated array to hold the returned message data
  * @len: The length of the array - must be <= BRICKPI3_STRING_MSG_SIZE
  *
  * Returns 0 on success or negative error code.
@@ -379,13 +379,13 @@ static int brickpi3_set_address(struct brickpi3 *bp, u8 address, u8 id[16])
 }
 
 /**
- * brickpi3_read_sensor - Read sensor bp
+ * brickpi3_read_sensor - Read sensor data
  *
- * @bp: The private driver bp
+ * @bp: The private driver data
  * @address: The BrickPi3 address
  * @port: The input port index
  * @type: The input port type
- * @value: Caller-allocated array to hold the returned message bp
+ * @value: Caller-allocated array to hold the returned message data
  * @len: The length of the array - must be <= BRICKPI3_MAX_MSG_SIZE - 6
  *
  * Returns 0 on success or negative error code.
@@ -438,7 +438,7 @@ out:
 /**
  * brickpi3_set_sensor_custom - Sets input port to custom type
  *
- * @bp: The private driver bp
+ * @bp: The private driver data
  * @address: The BrickPi3 address
  * @port: The index of the input port
  * @flags: Flags for configuring the input port
@@ -471,7 +471,7 @@ int brickpi3_set_sensor_custom(struct brickpi3 *bp, u8 address,
 /**
  * brickpi3_set_sensor_i2c - Sets input port to I2C type
  *
- * @bp: The private driver bp
+ * @bp: The private driver data
  * @address: The BrickPi3 address
  * @port: The index of the input port
  * @flags: Flags for configuring the input port
@@ -507,13 +507,13 @@ int brickpi3_set_sensor_i2c(struct brickpi3 *bp, u8 address,
 /**
  * brickpi3_i2c_transact - Do and I2C transaction
  *
- * @bp: The private driver bp
+ * @bp: The private driver data
  * @address: The BrickPi3 address
  * @port: The input port
  * @i2c_addr: The I2C address
- * @write_buf: Array of bp to write
+ * @write_buf: Array of data to write
  * @write_size: The number of bytes to write (<= BRICKPI3_I2C_MAX_WRITE_SIZE)
- * @read_buf: The buffer to store the read bp
+ * @read_buf: The buffer to store the read data
  * @read_size: The number of bytes to read (<= BRICKPI3_I2C_MAX_READ_SIZE)
  *
  * Returns 0 on success or negative error code.
