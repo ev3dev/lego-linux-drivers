@@ -172,94 +172,98 @@ enum brickpi3_out_port_mode {
 
 struct brickpi3;
 
-int brickpi3_write_u8(struct brickpi3 *bp, enum brickpi3_message msg,
-		      u8 value);
-int brickpi3_write_u8_u8(struct brickpi3 *bp, enum brickpi3_message msg,
-		      u8 value1, u8 value2);
-int brickpi3_read_u16(struct brickpi3 *bp, enum brickpi3_message msg,
-		      u16 *value);
-int brickpi3_write_u16(struct brickpi3 *bp, enum brickpi3_message msg,
-		       u16 value);
-int brickpi3_write_u8_u16(struct brickpi3 *bp, enum brickpi3_message msg,
-			  u8 value1, u16 value2);
-int brickpi3_write_u24(struct brickpi3 *bp, enum brickpi3_message msg,
-		       u32 value);
-int brickpi3_read_u32(struct brickpi3 *bp, enum brickpi3_message msg,
-		      u32 *value);
-int brickpi3_write_u32(struct brickpi3 *bp, enum brickpi3_message msg,
-		       u32 value);
-int brickpi3_write_u8_u32(struct brickpi3 *bp, enum brickpi3_message msg,
-			  u8 value1, u32 value2);
-int brickpi3_read_string(struct brickpi3 *bp, enum brickpi3_message msg,
-			 char *value, size_t len);
-int brickpi3_read_sensor(struct brickpi3 *bp, enum brickpi3_input_port port,
+int brickpi3_write_u8(struct brickpi3 *bp, u8 address,
+		      enum brickpi3_message msg, u8 value);
+int brickpi3_write_u8_u8(struct brickpi3 *bp, u8 address,
+			 enum brickpi3_message msg, u8 value1, u8 value2);
+int brickpi3_read_u16(struct brickpi3 *bp, u8 address,
+		      enum brickpi3_message msg, u16 *value);
+int brickpi3_write_u16(struct brickpi3 *bp, u8 address,
+		       enum brickpi3_message msg, u16 value);
+int brickpi3_write_u8_u16(struct brickpi3 *bp, u8 address,
+			  enum brickpi3_message msg, u8 value1, u16 value2);
+int brickpi3_write_u24(struct brickpi3 *bp, u8 address,
+		       enum brickpi3_message msg, u32 value);
+int brickpi3_read_u32(struct brickpi3 *bp, u8 address,
+		      enum brickpi3_message msg, u32 *value);
+int brickpi3_write_u32(struct brickpi3 *bp, u8 address,
+		       enum brickpi3_message msg, u32 value);
+int brickpi3_write_u8_u32(struct brickpi3 *bp, u8 address,
+			  enum brickpi3_message msg, u8 value1, u32 value2);
+int brickpi3_read_string(struct brickpi3 *bp, u8 address,
+			 enum brickpi3_message msg, char *value, size_t len);
+int brickpi3_read_sensor(struct brickpi3 *bp, u8 address,
+			 enum brickpi3_input_port port,
 			 enum brickpi3_sensor_type type, char *value,
 			 size_t len);
-int brickpi3_set_sensor_custom(struct brickpi3 *bp,
+int brickpi3_set_sensor_custom(struct brickpi3 *bp, u8 address,
 			       enum brickpi3_input_port port,
 			       enum brickpi3_sensor_pin_flags flags);
-int brickpi3_set_sensor_i2c(struct brickpi3 *bp,
+int brickpi3_set_sensor_i2c(struct brickpi3 *bp, u8 address,
 			    enum brickpi3_input_port port,
 			    enum brickpi3_i2c_flags flags,
 			    u8 speed);
-int brickpi3_i2c_transact(struct brickpi3 *bp, enum brickpi3_input_port port,
-			  u8 addr, u8 *write_buf, u8 write_size,
-			  u8 *read_buf, u8 read_size);
-int brickpi3_set_motor_limits(struct brickpi3 *bp, enum brickpi3_output_port,
-			      u8 duty_cycle_sp, u16 speed);
+int brickpi3_i2c_transact(struct brickpi3 *bp, u8 address,
+			  enum brickpi3_input_port port, u8 addr, u8 *write_buf,
+			  u8 write_size, u8 *read_buf, u8 read_size);
+int brickpi3_set_motor_limits(struct brickpi3 *bp, u8 address,
+			      enum brickpi3_output_port, u8 duty_cycle_sp,
+			      u16 speed);
 
-static inline int brickpi3_set_sensor_type(struct brickpi3 *bp,
+static inline int brickpi3_set_sensor_type(struct brickpi3 *bp, u8 address,
 					   enum brickpi3_input_port port,
 					   enum brickpi3_sensor_type type)
 {
-	return brickpi3_write_u8_u8(bp, BRICKPI3_MSG_SET_SENSOR_TYPE, BIT(port),
-				    type);
+	return brickpi3_write_u8_u8(bp, address, BRICKPI3_MSG_SET_SENSOR_TYPE,
+				    BIT(port), type);
 }
 
-static inline int brickpi3_get_motor_encoder(struct brickpi3 *bp,
+static inline int brickpi3_get_motor_encoder(struct brickpi3 *bp, u8 address,
 					     enum brickpi3_output_port port,
 					     s32 *value)
 {
-	return brickpi3_read_u32(bp, BRICKPI3_MSG_GET_MOTOR_ENCODER + port,
-				 value);
+	return brickpi3_read_u32(bp, address,
+				 BRICKPI3_MSG_GET_MOTOR_ENCODER + port, value);
 }
 
-static inline int brickpi3_set_motor_offset(struct brickpi3 *bp,
+static inline int brickpi3_set_motor_offset(struct brickpi3 *bp, u8 address,
 					    enum brickpi3_output_port port,
 					    s32 value)
 {
-	return brickpi3_write_u8_u32(bp, BRICKPI3_MSG_OFFSET_MOTOR_ENCODER,
+	return brickpi3_write_u8_u32(bp, address,
+				     BRICKPI3_MSG_OFFSET_MOTOR_ENCODER,
 				     BIT(port), value);
 }
 
-static inline int brickpi3_run_unregulated(struct brickpi3 *bp,
+static inline int brickpi3_run_unregulated(struct brickpi3 *bp, u8 address,
 					   enum brickpi3_output_port port,
 					   s8 duty_cycle)
 {
-	return brickpi3_write_u8_u8(bp, BRICKPI3_MSG_SET_MOTOR_POWER, BIT(port),
-				    duty_cycle);
+	return brickpi3_write_u8_u8(bp, address, BRICKPI3_MSG_SET_MOTOR_POWER,
+				    BIT(port), duty_cycle);
 }
 
-static inline int brickpi3_run_regulated(struct brickpi3 *bp,
+static inline int brickpi3_run_regulated(struct brickpi3 *bp, u8 address,
 					 enum brickpi3_output_port port,
 					 s16 speed)
 {
-	return brickpi3_write_u8_u16(bp, BRICKPI3_MSG_SET_MOTOR_DPS, BIT(port),
-				     speed);
+	return brickpi3_write_u8_u16(bp, address, BRICKPI3_MSG_SET_MOTOR_DPS,
+				     BIT(port), speed);
 }
 
-static inline int brickpi3_run_to_position(struct brickpi3 *bp,
+static inline int brickpi3_run_to_position(struct brickpi3 *bp, u8 address,
 					   enum brickpi3_output_port port,
 					   s32 position)
 {
-	return brickpi3_write_u8_u32(bp, BRICKPI3_MSG_SET_MOTOR_POSITION,
+	return brickpi3_write_u8_u32(bp, address,
+				     BRICKPI3_MSG_SET_MOTOR_POSITION,
 				     BIT(port), position);
 }
 
-int devm_brickpi3_register_i2c(struct device *dev, struct brickpi3 *bp);
-int devm_brickpi3_register_iio(struct device *dev, struct brickpi3 *bp);
-int devm_brickpi3_register_leds(struct device *dev, struct brickpi3 *bp);
-int devm_brickpi3_register_in_ports(struct device *dev, struct brickpi3 *bp);
-int devm_brickpi3_register_out_ports(struct device *dev, struct brickpi3 *bp);
+int devm_brickpi3_register_i2c(struct device *dev, struct brickpi3 *bp, u8 address);
+int devm_brickpi3_register_iio(struct device *dev, struct brickpi3 *bp, u8 address);
+int devm_brickpi3_register_leds(struct device *dev, struct brickpi3 *bp, u8 address);
+int devm_brickpi3_register_in_ports(struct device *dev, struct brickpi3 *bp, u8 address);
+int devm_brickpi3_register_out_ports(struct device *dev, struct brickpi3 *bp, u8 address);
 
 #endif /* _BRICKPI3_H_ */

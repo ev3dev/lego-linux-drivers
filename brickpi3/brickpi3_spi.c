@@ -19,6 +19,7 @@
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
+#include <linux/of.h>
 #include <linux/spi/spi.h>
 #include <linux/string.h>
 
@@ -28,6 +29,9 @@
 #define BRICKPI3_HEADER_SIZE		4
 #define BRICKPI3_ID_MSG_SIZE		16
 #define BRICKPI3_STRING_MSG_SIZE	20
+#define BRICKPI3_MIN_ADDRESS		1
+/* technically max address is 255, but we want a reasonable number to probe */
+#define BRICKPI3_MAX_ADDRESS		4
 #define BRICKPI3_MAX_MSG_SIZE (BRICKPI3_HEADER_SIZE + BRICKPI3_STRING_MSG_SIZE)
 
 #define BRICKPI3_READ_FAILED(b)	((b)[3] != 0xA5)
@@ -44,19 +48,20 @@ struct brickpi3 {
  * brickpi3_write_u8 - Write message with one byte of bp
  *
  * @bp: The private driver bp
+ * @address: The BrickPi3 address
  * @msg: The command to send
  * @value: The message bp
  *
  * Returns 0 on success or negative error code.
  */
-int brickpi3_write_u8(struct brickpi3 *bp, enum brickpi3_message msg,
+int brickpi3_write_u8(struct brickpi3 *bp, u8 address, enum brickpi3_message msg,
 		      u8 value)
 {
 	int ret;
 
 	mutex_lock(&bp->xfer_lock);
 
-	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[0] = address;
 	bp->buf[1] = msg;
 	bp->buf[2] = value;
 	bp->xfer.len = 3;
@@ -72,19 +77,20 @@ int brickpi3_write_u8(struct brickpi3 *bp, enum brickpi3_message msg,
  * brickpi3_read_u16 - Read message with two bytes of bp
  *
  * @bp: The private driver bp
+ * @address: The BrickPi3 address
  * @msg: The command to send
  * @value: The returned message bp
  *
  * Returns 0 on success or negative error code.
  */
-int brickpi3_read_u16(struct brickpi3 *bp, enum brickpi3_message msg,
+int brickpi3_read_u16(struct brickpi3 *bp, u8 address, enum brickpi3_message msg,
 		      u16 *value)
 {
 	int ret = 0;
 
 	mutex_lock(&bp->xfer_lock);
 
-	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[0] = address;
 	bp->buf[1] = msg;
 	bp->buf[2] = 0;
 	bp->buf[3] = 0;
@@ -113,19 +119,20 @@ out:
  * brickpi3_write_u16 - Write message with two bytes of bp
  *
  * @bp: The private driver bp
+ * @address: The BrickPi3 address
  * @msg: The command to send
  * @value: The message bp
  *
  * Returns 0 on success or negative error code.
  */
-int brickpi3_write_u16(struct brickpi3 *bp, enum brickpi3_message msg,
-		        u16 value)
+int brickpi3_write_u16(struct brickpi3 *bp, u8 address,
+		       enum brickpi3_message msg, u16 value)
 {
 	int ret;
 
 	mutex_lock(&bp->xfer_lock);
 
-	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[0] = address;
 	bp->buf[1] = msg;
 	bp->buf[2] = (value >> 8) & 0xff;
 	bp->buf[3] = value & 0xff;
@@ -138,14 +145,14 @@ int brickpi3_write_u16(struct brickpi3 *bp, enum brickpi3_message msg,
 	return ret;
 }
 
-int brickpi3_write_u8_u16(struct brickpi3 *bp, enum brickpi3_message msg,
-			u8 value1, u16 value2)
+int brickpi3_write_u8_u16(struct brickpi3 *bp, u8 address,
+			  enum brickpi3_message msg, u8 value1, u16 value2)
 {
 	int ret;
 
 	mutex_lock(&bp->xfer_lock);
 
-	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[0] = address;
 	bp->buf[1] = msg;
 	bp->buf[2] = value1;
 	bp->buf[3] = (value2 >> 8) & 0xff;
@@ -159,7 +166,26 @@ int brickpi3_write_u8_u16(struct brickpi3 *bp, enum brickpi3_message msg,
 	return ret;
 }
 
-int brickpi3_set_motor_limits(struct brickpi3 *bp,
+static int brickpi3_set_address(struct brickpi3 *bp, u8 address, u8 id[16])
+{
+	int ret;
+
+	mutex_lock(&bp->xfer_lock);
+
+	bp->buf[0] = 0;
+	bp->buf[1] = BRICKPI3_MSG_SET_ADDRESS;
+	bp->buf[2] = address;
+	strncpy(&bp->buf[3], id, 16);
+	bp->xfer.len = 19;
+
+	ret = spi_sync(bp->spi, &bp->msg);
+
+	mutex_unlock(&bp->xfer_lock);
+
+	return ret;
+}
+
+int brickpi3_set_motor_limits(struct brickpi3 *bp, u8 address,
 			      enum brickpi3_output_port port,
 			      u8 duty_cycle_sp, u16 speed)
 {
@@ -167,7 +193,7 @@ int brickpi3_set_motor_limits(struct brickpi3 *bp,
 
 	mutex_lock(&bp->xfer_lock);
 
-	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[0] = address;
 	bp->buf[1] = BRICKPI3_MSG_SET_MOTOR_LIMITS;
 	bp->buf[2] = BIT(port);
 	bp->buf[3] = duty_cycle_sp;
@@ -182,14 +208,14 @@ int brickpi3_set_motor_limits(struct brickpi3 *bp,
 	return ret;
 }
 
-int brickpi3_write_u8_u8(struct brickpi3 *bp, enum brickpi3_message msg,
-			 u8 value1, u8 value2)
+int brickpi3_write_u8_u8(struct brickpi3 *bp, u8 address,
+			 enum brickpi3_message msg, u8 value1, u8 value2)
 {
 	int ret;
 
 	mutex_lock(&bp->xfer_lock);
 
-	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[0] = address;
 	bp->buf[1] = msg;
 	bp->buf[2] = value1;
 	bp->buf[3] = value2;
@@ -206,19 +232,20 @@ int brickpi3_write_u8_u8(struct brickpi3 *bp, enum brickpi3_message msg,
  * brickpi3_write_u24 - Write message with three bytes of bp
  *
  * @bp: The private driver bp
+ * @address: The BrickPi3 address
  * @msg: The command to send
  * @value: The message bp
  *
  * Returns 0 on success or negative error code.
  */
-int brickpi3_write_u24(struct brickpi3 *bp, enum brickpi3_message msg,
-		       u32 value)
+int brickpi3_write_u24(struct brickpi3 *bp, u8 address,
+		       enum brickpi3_message msg, u32 value)
 {
 	int ret;
 
 	mutex_lock(&bp->xfer_lock);
 
-	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[0] = address;
 	bp->buf[1] = msg;
 	bp->buf[2] = (value >> 16) & 0xff;
 	bp->buf[3] = (value >> 8) & 0xff;
@@ -236,19 +263,20 @@ int brickpi3_write_u24(struct brickpi3 *bp, enum brickpi3_message msg,
  * brickpi3_read_u32 - Read message with four bytes of bp
  *
  * @bp: The private driver bp
+ * @address: The BrickPi3 address
  * @msg: The command to send
  * @value: The returned message bp
  *
  * Returns 0 on success or negative error code.
  */
-int brickpi3_read_u32(struct brickpi3 *bp, enum brickpi3_message msg,
-		      u32 *value)
+int brickpi3_read_u32(struct brickpi3 *bp, u8 address,
+		      enum brickpi3_message msg, u32 *value)
 {
 	int ret = 0;
 
 	mutex_lock(&bp->xfer_lock);
 
-	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[0] = address;
 	bp->buf[1] = msg;
 	bp->buf[2] = 0;
 	bp->buf[3] = 0;
@@ -280,19 +308,20 @@ out:
  * brickpi3_write_u32 - Write message with four bytes of bp
  *
  * @bp: The private driver bp
+ * @address: The BrickPi3 address
  * @msg: The command to send
  * @value: The message bp
  *
  * Returns 0 on success or negative error code.
  */
-int brickpi3_write_u32(struct brickpi3 *bp, enum brickpi3_message msg,
-		       u32 value)
+int brickpi3_write_u32(struct brickpi3 *bp, u8 address,
+		       enum brickpi3_message msg, u32 value)
 {
 	int ret;
 
 	mutex_lock(&bp->xfer_lock);
 
-	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[0] = address;
 	bp->buf[1] = msg;
 	bp->buf[2] = (value >> 24) & 0xff;
 	bp->buf[3] = (value >> 16) & 0xff;
@@ -307,14 +336,14 @@ int brickpi3_write_u32(struct brickpi3 *bp, enum brickpi3_message msg,
 	return ret;
 }
 
-int brickpi3_write_u8_u32(struct brickpi3 *bp, enum brickpi3_message msg,
-			  u8 value1, u32 value2)
+int brickpi3_write_u8_u32(struct brickpi3 *bp, u8 address,
+			  enum brickpi3_message msg, u8 value1, u32 value2)
 {
 	int ret;
 
 	mutex_lock(&bp->xfer_lock);
 
-	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[0] = address;
 	bp->buf[1] = msg;
 	bp->buf[2] = value1;
 	bp->buf[3] = (value2 >> 24) & 0xff;
@@ -334,20 +363,21 @@ int brickpi3_write_u8_u32(struct brickpi3 *bp, enum brickpi3_message msg,
  * brickpi3_read_string - Read message with arbitrary bytes of bp
  *
  * @bp: The private driver bp
+ * @address: The BrickPi3 address
  * @msg: The command to send
  * @value: Caller-allocated array to hold the returned message bp
  * @len: The length of the array - must be <= BRICKPI3_STRING_MSG_SIZE
  *
  * Returns 0 on success or negative error code.
  */
-int brickpi3_read_string(struct brickpi3 *bp, enum brickpi3_message msg,
-			 char *value, size_t len)
+int brickpi3_read_string(struct brickpi3 *bp, u8 address,
+			 enum brickpi3_message msg, char *value, size_t len)
 {
 	int ret = 0;
 
 	mutex_lock(&bp->xfer_lock);
 
-	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[0] = address;
 	bp->buf[1] = msg;
 	bp->buf[2] = 0;
 	bp->buf[3] = 0;
@@ -375,6 +405,7 @@ out:
  * brickpi3_read_sensor - Read sensor bp
  *
  * @bp: The private driver bp
+ * @address: The BrickPi3 address
  * @port: The input port index
  * @type: The input port type
  * @value: Caller-allocated array to hold the returned message bp
@@ -382,7 +413,8 @@ out:
  *
  * Returns 0 on success or negative error code.
  */
-int brickpi3_read_sensor(struct brickpi3 *bp, enum brickpi3_input_port port,
+int brickpi3_read_sensor(struct brickpi3 *bp, u8 address,
+			 enum brickpi3_input_port port,
 			 enum brickpi3_sensor_type type, char *value,
 			 size_t len)
 {
@@ -390,7 +422,7 @@ int brickpi3_read_sensor(struct brickpi3 *bp, enum brickpi3_input_port port,
 
 	mutex_lock(&bp->xfer_lock);
 
-	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[0] = address;
 	bp->buf[1] = BRICKPI3_MSG_GET_SENSOR + port;
 	bp->buf[2] = 0;
 	bp->buf[3] = 0;
@@ -430,12 +462,13 @@ out:
  * brickpi3_set_sensor_custom - Sets input port to custom type
  *
  * @bp: The private driver bp
+ * @address: The BrickPi3 address
  * @port: The index of the input port
  * @flags: Flags for configuring the input port
  *
  * Returns 0 on success or negative error code.
  */
-int brickpi3_set_sensor_custom(struct brickpi3 *bp,
+int brickpi3_set_sensor_custom(struct brickpi3 *bp, u8 address,
 			       enum brickpi3_input_port port,
 			       enum brickpi3_sensor_pin_flags flags)
 {
@@ -443,7 +476,7 @@ int brickpi3_set_sensor_custom(struct brickpi3 *bp,
 
 	mutex_lock(&bp->xfer_lock);
 
-	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[0] = address;
 	bp->buf[1] = BRICKPI3_MSG_SET_SENSOR_TYPE;
 	bp->buf[2] = BIT(port);
 	bp->buf[3] = BRICKPI3_SENSOR_TYPE_CUSTOM;
@@ -462,13 +495,14 @@ int brickpi3_set_sensor_custom(struct brickpi3 *bp,
  * brickpi3_set_sensor_i2c - Sets input port to I2C type
  *
  * @bp: The private driver bp
+ * @address: The BrickPi3 address
  * @port: The index of the input port
  * @flags: Flags for configuring the input port
  * @speed: The I2C bus speed (in microseconds???)
  *
  * Returns 0 on success or negative error code.
  */
-int brickpi3_set_sensor_i2c(struct brickpi3 *bp,
+int brickpi3_set_sensor_i2c(struct brickpi3 *bp, u8 address,
 			    enum brickpi3_input_port port,
 			    enum brickpi3_i2c_flags flags,
 			    u8 speed)
@@ -477,7 +511,7 @@ int brickpi3_set_sensor_i2c(struct brickpi3 *bp,
 
 	mutex_lock(&bp->xfer_lock);
 
-	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[0] = address;
 	bp->buf[1] = BRICKPI3_MSG_SET_SENSOR_TYPE;
 	bp->buf[2] = BIT(port);
 	bp->buf[3] = BRICKPI3_SENSOR_TYPE_I2C;
@@ -497,6 +531,7 @@ int brickpi3_set_sensor_i2c(struct brickpi3 *bp,
  * brickpi3_i2c_transact - Do and I2C transaction
  *
  * @bp: The private driver bp
+ * @address: The BrickPi3 address
  * @port: The input port
  * @i2c_addr: The I2C address
  * @write_buf: Array of bp to write
@@ -506,8 +541,9 @@ int brickpi3_set_sensor_i2c(struct brickpi3 *bp,
  *
  * Returns 0 on success or negative error code.
  */
-int brickpi3_i2c_transact(struct brickpi3 *bp, enum brickpi3_input_port port,
-			  u8 addr, u8 *write_buf, u8 write_size,
+int brickpi3_i2c_transact(struct brickpi3 *bp, u8 address,
+			  enum brickpi3_input_port port, u8 i2c_addr,
+			  u8 *write_buf, u8 write_size,
 			  u8 *read_buf, u8 read_size)
 {
 	int ret = 0;
@@ -525,9 +561,9 @@ int brickpi3_i2c_transact(struct brickpi3 *bp, enum brickpi3_input_port port,
 	 * read back the response if the mode was not set.
 	 */
 
-	bp->buf[0] = bp->spi->chip_select;
+	bp->buf[0] = address;
 	bp->buf[1] = BRICKPI3_MSG_I2C_TRANSACT + port;
-	bp->buf[2] = addr << 1;
+	bp->buf[2] = i2c_addr << 1;
 	bp->buf[3] = read_size;
 	bp->buf[4] = write_size;
 	memcpy(&bp->buf[5], write_buf, write_size);
@@ -553,7 +589,7 @@ int brickpi3_i2c_transact(struct brickpi3 *bp, enum brickpi3_input_port port,
 		 */
 		msleep(write_size + read_size + 2);
 
-		bp->buf[0] = bp->spi->chip_select;
+		bp->buf[0] = address;
 		bp->buf[1] = BRICKPI3_MSG_GET_SENSOR + port;
 		memset(&bp->buf[2], 0, 4 + read_size);
 		bp->xfer.len = 6 + read_size;
@@ -584,7 +620,7 @@ out:
 	return ret;
 }
 
-static int brickpi3_detect(struct brickpi3 *bp)
+static int brickpi3_detect(struct brickpi3 *bp, u8 address)
 {
 	struct device *dev = &bp->spi->dev;
 	char string[BRICKPI3_STRING_MSG_SIZE + 1];
@@ -594,16 +630,17 @@ static int brickpi3_detect(struct brickpi3 *bp)
 	/* ensure null terminator */
 	string[BRICKPI3_STRING_MSG_SIZE] = 0;
 
-	ret = brickpi3_read_string(bp, BRICKPI3_MSG_GET_MANUFACTURER,
+	ret = brickpi3_read_string(bp, address, BRICKPI3_MSG_GET_MANUFACTURER,
 				   string, BRICKPI3_STRING_MSG_SIZE);
 	if (ret < 0)
 		return ret;
 
+	dev_info(dev, "Address: %u\n", address);
 	dev_info(dev, "Mfg: %s\n", string);
 	if (strncmp(string, "Dexter Industries", BRICKPI3_STRING_MSG_SIZE) != 0)
 		return -EINVAL;
 
-	ret = brickpi3_read_string(bp, BRICKPI3_MSG_GET_NAME,
+	ret = brickpi3_read_string(bp, address, BRICKPI3_MSG_GET_NAME,
 				   string, BRICKPI3_STRING_MSG_SIZE);
 	if (ret < 0)
 		return ret;
@@ -612,14 +649,16 @@ static int brickpi3_detect(struct brickpi3 *bp)
 	if (strncmp(string, "BrickPi3", BRICKPI3_STRING_MSG_SIZE) != 0)
 		return -EINVAL;
 
-	ret = brickpi3_read_u32(bp, BRICKPI3_MSG_GET_HARDWARE_VERSION, &value);
+	ret = brickpi3_read_u32(bp, address, BRICKPI3_MSG_GET_HARDWARE_VERSION,
+				&value);
 	if (ret < 0)
 		return ret;
 
 	dev_info(dev, "HW: %u.%u.%u\n", value / 1000000 % 1000000,
 		 value / 1000 % 1000, value % 1000);
 
-	ret = brickpi3_read_u32(bp, BRICKPI3_MSG_GET_FIRMWARE_VERSION, &value);
+	ret = brickpi3_read_u32(bp, address, BRICKPI3_MSG_GET_FIRMWARE_VERSION,
+				&value);
 	if (ret < 0)
 		return ret;
 
@@ -632,7 +671,7 @@ static int brickpi3_detect(struct brickpi3 *bp)
 			BRICKPI3_REQUIRED_FIRMWARE_VERSION / 1000 % 1000);
 		return -EINVAL;
 	}
-	ret = brickpi3_read_string(bp, BRICKPI3_MSG_GET_ID, string,
+	ret = brickpi3_read_string(bp, address, BRICKPI3_MSG_GET_ID, string,
 				   BRICKPI3_ID_MSG_SIZE);
 	if (ret < 0)
 		return ret;
@@ -647,11 +686,49 @@ static int brickpi3_detect(struct brickpi3 *bp)
 	return 0;
 }
 
+static void brickpi3_set_addresses(struct brickpi3 *bp) {
+	struct device *dev = &bp->spi->dev;
+	char id_property[20];
+	const char *id;
+	char ids[3];
+	u8 idn[16];
+	int i, j, ret;
+
+	for (i = BRICKPI3_MIN_ADDRESS; i <= BRICKPI3_MAX_ADDRESS; i++) {
+		snprintf(id_property, 20, "ev3dev,brickpi3-id%d", i);
+
+		ret = of_property_read_string(dev->of_node, id_property, &id);
+		if (ret < 0)
+			continue;
+
+		if (strlen(id) != 32) {
+			dev_warn(dev, "id%d must be 32 chars, skipping\n", i);
+			continue;
+		}
+
+		for (j = 0; j < 16; j++) {
+			ids[0] = id[2 * j];
+			ids[1] = id[2 * j + 1];
+			ids[2] = '\0';
+			ret = sscanf(ids, "%hhX", &idn[j]);
+			if (ret != 1) {
+				dev_warn(dev, "Bad id%d: %s, skipping\n", i, id);
+				break;
+			}
+		}
+		if (j != 16)
+			continue;
+
+		brickpi3_set_address(bp, i, idn);
+	}
+}
+
 static int brickpi3_probe(struct spi_device *spi)
 {
 	struct device *dev = &spi->dev;
 	struct brickpi3 *bp;
-	int ret;
+	int i, ret;
+	bool ok = false;
 
 	bp = devm_kzalloc(dev, sizeof(*bp), GFP_KERNEL);
 	if (!bp)
@@ -665,27 +742,37 @@ static int brickpi3_probe(struct spi_device *spi)
 	spi_message_init_with_transfers(&bp->msg, &bp->xfer, 1);
 	mutex_init(&bp->xfer_lock);
 
-	ret = brickpi3_detect(bp);
-	if (ret < 0)
-		return ret;
+	brickpi3_set_addresses(bp);
 
-	ret = devm_brickpi3_register_leds(dev, bp);
-	if (ret < 0)
-		return ret;
+	for (i = BRICKPI3_MIN_ADDRESS; i <= BRICKPI3_MAX_ADDRESS; i++) {
+		ret = brickpi3_detect(bp, i);
+		if (ret < 0)
+			continue;
 
-	ret = devm_brickpi3_register_iio(dev, bp);
-	if (ret < 0)
-		return ret;
+		ret = devm_brickpi3_register_leds(dev, bp, i);
+		if (ret < 0)
+			return ret;
 
-	ret = devm_brickpi3_register_i2c(dev, bp);
-	if (ret < 0)
-		return ret;
+		ret = devm_brickpi3_register_iio(dev, bp, i);
+		if (ret < 0)
+			return ret;
 
-	ret = devm_brickpi3_register_in_ports(dev, bp);
-	if (ret < 0)
-		return ret;
+		ret = devm_brickpi3_register_i2c(dev, bp, i);
+		if (ret < 0)
+			return ret;
 
-	return devm_brickpi3_register_out_ports(dev, bp);
+		ret = devm_brickpi3_register_in_ports(dev, bp, i);
+		if (ret < 0)
+			return ret;
+
+		ret = devm_brickpi3_register_out_ports(dev, bp, i);
+		if (ret < 0)
+			return ret;
+
+		ok = true;
+	}
+
+	return ok ? 0 : -ENODEV;
 }
 
 const static struct of_device_id brickpi3_of_match_table[] = {

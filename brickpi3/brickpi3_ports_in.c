@@ -43,6 +43,7 @@ struct brickpi3_in_port {
 	struct nxt_i2c_sensor_platform_data i2c_pdata;
 	enum brickpi3_input_port index;
 	enum brickpi3_sensor_type sensor_type;
+	u8 address;
 };
 
 const struct device_type brickpi3_in_port_type = {
@@ -169,7 +170,7 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 
 	switch (data->sensor_type) {
 	case BRICKPI3_SENSOR_TYPE_CUSTOM:
-		ret = brickpi3_read_sensor(data->bp, data->index,
+		ret = brickpi3_read_sensor(data->bp, data->address, data->index,
 					   data->sensor_type, msg, 4);
 		if (ret < 0)
 			return;
@@ -182,7 +183,7 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 		}
 		break;
 	case BRICKPI3_SENSOR_TYPE_EV3_TOUCH:
-		ret = brickpi3_read_sensor(data->bp, data->index,
+		ret = brickpi3_read_sensor(data->bp, data->address, data->index,
 					   data->sensor_type, msg, 1);
 		if (ret < 0)
 			return;
@@ -197,7 +198,7 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 	case BRICKPI3_SENSOR_TYPE_EV3_ULTRASONIC_LISTEN:
 	case BRICKPI3_SENSOR_TYPE_EV3_INFRARED_PROXIMITY:
 	case BRICKPI3_SENSOR_TYPE_EV3_INFRARED_REMOTE:
-		ret = brickpi3_read_sensor(data->bp, data->index,
+		ret = brickpi3_read_sensor(data->bp, data->address, data->index,
 					   data->sensor_type, msg, 1);
 		if (ret < 0)
 			return;
@@ -209,7 +210,7 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 	case BRICKPI3_SENSOR_TYPE_EV3_GYRO_DPS:
 	case BRICKPI3_SENSOR_TYPE_EV3_ULTRASONIC_CM:
 	case BRICKPI3_SENSOR_TYPE_EV3_ULTRASONIC_INCHES:
-		ret = brickpi3_read_sensor(data->bp, data->index,
+		ret = brickpi3_read_sensor(data->bp, data->address, data->index,
 					   data->sensor_type, msg, 2);
 		if (ret < 0)
 			return;
@@ -221,7 +222,7 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 		break;
 	case BRICKPI3_SENSOR_TYPE_EV3_GYRO_ABS_DPS:
 	case BRICKPI3_SENSOR_TYPE_EV3_COLOR_RAW_REFLECTED:
-		ret = brickpi3_read_sensor(data->bp, data->index,
+		ret = brickpi3_read_sensor(data->bp, data->address, data->index,
 					   data->sensor_type, msg, 4);
 		if (ret < 0)
 			return;
@@ -234,7 +235,7 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 		}
 		break;
 	case BRICKPI3_SENSOR_TYPE_EV3_COLOR_COLOR_COMPONENTS:
-		ret = brickpi3_read_sensor(data->bp, data->index,
+		ret = brickpi3_read_sensor(data->bp, data->address, data->index,
 					   data->sensor_type, msg, 8);
 		if (ret < 0)
 			return;
@@ -251,7 +252,7 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 		}
 		break;
 	case BRICKPI3_SENSOR_TYPE_EV3_INFRARED_SEEK:
-		ret = brickpi3_read_sensor(data->bp, data->index,
+		ret = brickpi3_read_sensor(data->bp, data->address, data->index,
 					   data->sensor_type, msg, 8);
 		if (ret < 0)
 			return;
@@ -388,25 +389,25 @@ static int brickpi3_in_port_set_mode(void *context, u8 mode)
 	case BRICKPI3_IN_PORT_MODE_EV3_UART:
 		/* We don't want to load the wrong UART sensor. */
 		data->sensor_type = BRICKPI3_SENSOR_TYPE_NONE;
-		return brickpi3_set_sensor_type(data->bp, data->index,
-						data->sensor_type);
+		return brickpi3_set_sensor_type(data->bp, data->address,
+						data->index, data->sensor_type);
 	case BRICKPI3_IN_PORT_MODE_NXT_ANALOG:
 		data->sensor_type = BRICKPI3_SENSOR_TYPE_CUSTOM;
-		ret = brickpi3_set_sensor_custom(data->bp, data->index,
-						 BRICKPI3_SENSOR_PIN1_ADC);
+		ret = brickpi3_set_sensor_custom(data->bp, data->address,
+					data->index, BRICKPI3_SENSOR_PIN1_ADC);
 		if (ret < 0)
 			return ret;
 		name = GENERIC_NXT_ANALOG_SENSOR_NAME;
 		break;
 	case BRICKPI3_IN_PORT_MODE_NXT_I2C:
 		data->sensor_type = BRICKPI3_SENSOR_TYPE_I2C;
-		return brickpi3_set_sensor_i2c(data->bp, data->index,
-					       BRICKPI3_I2C_MID_CLOCK, 0);
+		return brickpi3_set_sensor_i2c(data->bp, data->address,
+					data->index, BRICKPI3_I2C_MID_CLOCK, 0);
 		/* TODO: probe for I2C sensors here */
 	case BRICKPI3_IN_PORT_MODE_EV3_ANALOG:
 		data->sensor_type = BRICKPI3_SENSOR_TYPE_EV3_TOUCH;
-		ret = brickpi3_set_sensor_type(data->bp, data->index,
-					       data->sensor_type);
+		ret = brickpi3_set_sensor_type(data->bp, data->address,
+					       data->index, data->sensor_type);
 		if (ret < 0)
 			return ret;
 		name = LEGO_EV3_TOUCH_SENSOR_NAME;
@@ -444,7 +445,8 @@ static int brickpi3_in_port_set_pin5_gpio(void *context,
 		break;
 	}
 
-	return brickpi3_set_sensor_custom(data->bp, data->index, flags);
+	return brickpi3_set_sensor_custom(data->bp, data->address, data->index,
+					  flags);
 }
 
 static struct lego_port_nxt_analog_ops brickpi3_in_port_nxt_analog_ops = {
@@ -461,7 +463,8 @@ static int brickpi3_in_port_set_pin1_gpio(void *context,
 	if (state == LEGO_PORT_GPIO_HIGH)
 		flags |= BRICKPI3_I2C_PIN1_9V;
 
-	return brickpi3_set_sensor_i2c(data->bp, data->index, flags, 0);
+	return brickpi3_set_sensor_i2c(data->bp, data->address, data->index,
+				       flags, 0);
 }
 
 static const struct lego_port_nxt_i2c_ops brickpi3_in_port_nxt_i2c_ops = {
@@ -484,8 +487,8 @@ static int brickpi3_in_port_set_ev3_uart_sensor_mode(void *context, u8 type_id,
 	else
 		return -EINVAL;
 
-	return brickpi3_set_sensor_type(data->bp,
-				 data->index, data->sensor_type);
+	return brickpi3_set_sensor_type(data->bp, data->address, data->index,
+					data->sensor_type);
 }
 
 static const struct lego_port_ev3_uart_ops brickpi3_ev3_uart_ops = {
@@ -502,6 +505,7 @@ static void brickpi3_ports_in_release(struct device *dev, void *res)
 
 static int devm_brickpi3_port_in_register_one(struct device *dev,
 					      struct brickpi3 *bp,
+					      u8 address,
 					      enum brickpi3_input_port port)
 {
 	struct brickpi3_in_port *data;
@@ -512,6 +516,7 @@ static int devm_brickpi3_port_in_register_one(struct device *dev,
 		return -ENOMEM;
 
 	data->bp = bp;
+	data->address = address;
 	data->index = port;
 	INIT_WORK(&data->poll_work, brickpi3_in_port_poll_work);
 	hrtimer_init(&data->poll_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
@@ -537,7 +542,7 @@ static int devm_brickpi3_port_in_register_one(struct device *dev,
 
 	data->port.name = brickpi3_in_port_type.name;
 	snprintf(data->port.address, LEGO_NAME_SIZE, "%s:S%d", dev_name(dev),
-		 port + 1);
+		 (address - 1) * 4 + port + 1);
 	data->port.num_modes = NUM_BRICKPI3_IN_PORT_MODES;
 	data->port.supported_modes = LEGO_PORT_ALL_MODES;
 	data->port.mode_info = brickpi3_in_port_mode_info;
@@ -560,12 +565,13 @@ static int devm_brickpi3_port_in_register_one(struct device *dev,
 	return 0;
 }
 
-int devm_brickpi3_register_in_ports(struct device *dev, struct brickpi3 *bp)
+int devm_brickpi3_register_in_ports(struct device *dev, struct brickpi3 *bp,
+				    u8 address)
 {
 	int i, ret;
 
 	for (i = 0; i < NUM_BRICKPI3_INPUT_PORTS; i++) {
-		ret = devm_brickpi3_port_in_register_one(dev, bp, i);
+		ret = devm_brickpi3_port_in_register_one(dev, bp, address, i);
 		if (ret < 0)
 			return ret;
 	}

@@ -43,6 +43,7 @@ struct brickpi3_out_port {
 	enum brickpi3_output_port index;
 	s8 duty_cycle;
 	bool running;
+	u8 address;
 };
 
 const struct device_type brickpi3_out_port_type = {
@@ -155,7 +156,8 @@ static int brickpi3_out_port_set_command(void *context,
 		return -EINVAL;
 	}
 
-	return brickpi3_run_unregulated(data->bp, data->index, data->duty_cycle);
+	return brickpi3_run_unregulated(data->bp, data->address, data->index,
+					data->duty_cycle);
 }
 
 static unsigned brickpi3_out_port_get_duty_cycle(void *context)
@@ -177,7 +179,8 @@ static int brickpi3_out_port_set_duty_cycle(void *context, unsigned duty)
 	else
 		data->duty_cycle = duty;
 
-	return brickpi3_run_unregulated(data->bp, data->index, data->duty_cycle);
+	return brickpi3_run_unregulated(data->bp, data->address, data->index,
+					data->duty_cycle);
 }
 
 static struct dc_motor_ops brickpi3_out_port_dc_motor_ops = {
@@ -193,7 +196,8 @@ static int brickpi3_out_port_get_position(void *context, int *position)
 {
 	struct brickpi3_out_port *data = context;
 
-	return brickpi3_get_motor_encoder(data->bp, data->index, position);
+	return brickpi3_get_motor_encoder(data->bp, data->address, data->index,
+					  position);
 }
 
 static int brickpi3_out_port_set_position(void *context, int position)
@@ -201,13 +205,15 @@ static int brickpi3_out_port_set_position(void *context, int position)
 	struct brickpi3_out_port *data = context;
 	int current_pos, ret;
 
-	ret = brickpi3_get_motor_encoder(data->bp, data->index, &current_pos);
+	ret = brickpi3_get_motor_encoder(data->bp, data->address, data->index,
+					 &current_pos);
 	if (ret < 0)
 		return ret;
 
 	position += current_pos;
 
-	return brickpi3_set_motor_offset(data->bp, data->index, position);
+	return brickpi3_set_motor_offset(data->bp, data->address, data->index,
+					 position);
 }
 
 static int brickpi3_out_port_run_unregulated(void *context, int duty_cycle)
@@ -218,7 +224,8 @@ static int brickpi3_out_port_run_unregulated(void *context, int duty_cycle)
 	if (duty_cycle == 0)
 		duty_cycle = BRICKPI3_MOTOR_COAST;
 
-	ret = brickpi3_run_unregulated(data->bp, data->index, duty_cycle);
+	ret = brickpi3_run_unregulated(data->bp, data->address, data->index,
+				       duty_cycle);
 	if (ret < 0)
 		return ret;
 
@@ -232,7 +239,7 @@ static int brickpi3_out_port_run_regulated(void *context, int speed)
 	struct brickpi3_out_port *data = context;
 	int ret;
 
-	ret = brickpi3_run_regulated(data->bp, data->index, speed);
+	ret = brickpi3_run_regulated(data->bp, data->address, data->index, speed);
 	if (ret < 0)
 		return ret;
 
@@ -247,11 +254,12 @@ static int brickpi3_out_port_run_to_pos(void *context, int pos, int speed,
 	struct brickpi3_out_port *data = context;
 	int ret;
 
-	ret = brickpi3_set_motor_limits(data->bp, data->index, 0, speed);
+	ret = brickpi3_set_motor_limits(data->bp, data->address, data->index, 0,
+					speed);
 	if (ret < 0)
 		return ret;
 	/* FIXME: stop action is ignored */
-	ret = brickpi3_run_to_position(data->bp, data->index, pos);
+	ret = brickpi3_run_to_position(data->bp, data->address, data->index, pos);
 	if (ret < 0)
 		return ret;
 
@@ -280,18 +288,20 @@ static int brickpi3_out_port_stop(void *context, enum tm_stop_action stop_action
 
 	switch(stop_action) {
 	case TM_STOP_ACTION_COAST:
-		ret = brickpi3_run_unregulated(data->bp, data->index,
-					       BRICKPI3_MOTOR_COAST);
+		ret = brickpi3_run_unregulated(data->bp, data->address,
+					       data->index, BRICKPI3_MOTOR_COAST);
 		break;
 	case TM_STOP_ACTION_BRAKE:
-		ret = brickpi3_run_unregulated(data->bp, data->index,
-					       BRICKPI3_MOTOR_BRAKE);
+		ret = brickpi3_run_unregulated(data->bp, data->address,
+					       data->index, BRICKPI3_MOTOR_BRAKE);
 		break;
 	case TM_STOP_ACTION_HOLD:
-		ret = brickpi3_get_motor_encoder(data->bp, data->index, &pos);
+		ret = brickpi3_get_motor_encoder(data->bp, data->address,
+						 data->index, &pos);
 		if (ret < 0)
 			return ret;
-		ret = brickpi3_run_to_position(data->bp, data->index, pos);
+		ret = brickpi3_run_to_position(data->bp, data->address,
+					       data->index, pos);
 		break;
 	default:
 		return -EINVAL;
@@ -357,7 +367,7 @@ static void brickpi3_out_port_unregister_motor(struct brickpi3_out_port *data)
 	if (data->motor) {
 		lego_device_unregister(data->motor);
 		data->motor = NULL;
-		brickpi3_run_unregulated(data->bp, data->index,
+		brickpi3_run_unregulated(data->bp, data->address, data->index,
 					 BRICKPI3_MOTOR_COAST);
 	}
 }
@@ -383,6 +393,7 @@ static void brickpi3_out_port_release(struct device *dev, void *res)
 
 static int devm_brickpi3_out_port_register_one(struct device *dev,
 					       struct brickpi3 *bp,
+					       u8 address,
 					       enum brickpi3_output_port port)
 {
 	struct brickpi3_out_port *data;
@@ -393,11 +404,12 @@ static int devm_brickpi3_out_port_register_one(struct device *dev,
 		return -ENOMEM;
 
 	data->bp = bp;
+	data->address = address;
 	data->index = port;
 
 	data->port.name = brickpi3_out_port_type.name;
 	snprintf(data->port.address, LEGO_NAME_SIZE, "%s:M%c", dev_name(dev),
-		 port + 'A');
+		 (address - 1) * 4 + port + 'A');
 	data->port.num_modes = NUM_BRICKPI3_OUT_PORT_MODES;
 	data->port.supported_modes = LEGO_PORT_ALL_MODES;
 	data->port.mode_info = brickpi3_out_port_mode_info;
@@ -425,12 +437,13 @@ static int devm_brickpi3_out_port_register_one(struct device *dev,
 }
 
 
-int devm_brickpi3_register_out_ports(struct device *dev, struct brickpi3 *bp)
+int devm_brickpi3_register_out_ports(struct device *dev, struct brickpi3 *bp,
+				     u8 address)
 {
 	int i, ret;
 
 	for (i = 0; i < NUM_BRICKPI3_OUTPUT_PORTS; i++) {
-		ret = devm_brickpi3_out_port_register_one (dev, bp, i);
+		ret = devm_brickpi3_out_port_register_one (dev, bp, address, i);
 		if (ret < 0)
 			return ret;
 	}
