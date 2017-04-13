@@ -32,6 +32,7 @@ struct brickpi3_i2c {
 	struct brickpi3 *bp;
 	struct i2c_adapter adap;
 	enum brickpi3_input_port port;
+	u8 address;
 };
 
 static int brickpi3_i2c_master_xfer(struct i2c_adapter *adap,
@@ -50,8 +51,8 @@ static int brickpi3_i2c_master_xfer(struct i2c_adapter *adap,
 	write_size = msgs[0].len;
 	read_size = num == 2 ? msgs[1].len : 0;
 
-	ret = brickpi3_i2c_transact(data->bp, data->port, msgs[0].addr,
-				    msgs[0].buf, write_size,
+	ret = brickpi3_i2c_transact(data->bp, data->address, data->port,
+				    msgs[0].addr, msgs[0].buf, write_size,
 				    num == 2 ? msgs[1].buf : NULL, read_size);
 	if (ret < 0)
 		return ret;
@@ -83,7 +84,7 @@ static void brickpi3_i2c_release(struct device *dev, void *res)
 }
 
 static int devm_brickpi3_i2c_register_one(struct device *dev,
-					  struct brickpi3 *bp,
+					  struct brickpi3 *bp, u8 address,
 					  enum brickpi3_input_port port)
 {
 	struct brickpi3_i2c *data;
@@ -94,6 +95,7 @@ static int devm_brickpi3_i2c_register_one(struct device *dev,
 		return -ENOMEM;
 
 	data->bp = bp;
+	data->address = address;
 	data->port = port;
 
 	data->adap.owner = THIS_MODULE;
@@ -114,12 +116,13 @@ static int devm_brickpi3_i2c_register_one(struct device *dev,
 	return 0;
 }
 
-int devm_brickpi3_register_i2c(struct device *dev, struct brickpi3 *bp)
+int devm_brickpi3_register_i2c(struct device *dev, struct brickpi3 *bp,
+			       u8 address)
 {
 	int i, ret;
 
 	for (i = 0; i < NUM_BRICKPI3_INPUT_PORTS; i++) {
-		ret = devm_brickpi3_i2c_register_one(dev, bp, i);
+		ret = devm_brickpi3_i2c_register_one(dev, bp, address, i);
 		if (ret < 0)
 			return ret;
 	}

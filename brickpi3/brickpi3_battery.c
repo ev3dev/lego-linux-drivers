@@ -44,7 +44,6 @@
 
 
 struct brickpi3_battery {
-	struct brikpi3 *bp;
 	struct iio_channel *iio;
 	struct power_supply *psy;
 };

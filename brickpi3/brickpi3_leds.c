@@ -38,6 +38,7 @@ struct brickpi3_leds {
 	struct led_classdev cdev;
 	struct work_struct brightness_set_work;
 	int brightness;
+	u8 address;
 };
 
 static inline struct brickpi3_leds *to_brickpi3_leds(struct led_classdev *cdev)
@@ -59,7 +60,8 @@ static int brickpi3_leds_brightness_set_sync(struct led_classdev *cdev,
 {
 	struct brickpi3_leds *data = to_brickpi3_leds(cdev);
 
-	return brickpi3_write_u8(data->bp, BRICKPI3_MSG_SET_LED, brightness);
+	return brickpi3_write_u8(data->bp, data->address, BRICKPI3_MSG_SET_LED,
+				 brightness);
 }
 
 static void brickpi3_leds_brightness_set_work(struct work_struct *work)
@@ -67,7 +69,8 @@ static void brickpi3_leds_brightness_set_work(struct work_struct *work)
 	struct brickpi3_leds *data = container_of(work, struct brickpi3_leds,
 						  brightness_set_work);
 
-	brickpi3_write_u8(data->bp, BRICKPI3_MSG_SET_LED, data->brightness);
+	brickpi3_write_u8(data->bp, data->address, BRICKPI3_MSG_SET_LED,
+			  data->brightness);
 }
 
 static void brickpi3_leds_release(struct device *dev, void *res)
@@ -76,11 +79,12 @@ static void brickpi3_leds_release(struct device *dev, void *res)
 
 	cancel_work_sync(&data->brightness_set_work);
 	led_classdev_unregister(&data->cdev);
-	brickpi3_write_u8(data->bp, BRICKPI3_MSG_SET_LED,
+	brickpi3_write_u8(data->bp, data->address, BRICKPI3_MSG_SET_LED,
 			  BRICKPI3_LEDS_FIRMWARE_CONTROL);
 }
 
-int devm_brickpi3_register_leds(struct device *dev, struct brickpi3 *bp)
+int devm_brickpi3_register_leds(struct device *dev, struct brickpi3 *bp,
+				u8 address)
 {
 	struct brickpi3_leds *data;
 	int ret;
@@ -90,6 +94,7 @@ int devm_brickpi3_register_leds(struct device *dev, struct brickpi3 *bp)
 		return -ENOMEM;
 
 	data->bp = bp;
+	data->address = address;
 	data->cdev.name = "ev3dev:amber:brickpi3";
 	data->cdev.max_brightness = BRICKPI3_LEDS_MAX_BRIGHTNESS;
 	data->cdev.flags = SET_BRIGHTNESS_SYNC;

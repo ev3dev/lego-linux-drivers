@@ -38,6 +38,7 @@
 struct brickpi3_iio {
 	struct iio_dev *iio;
 	struct brickpi3 *bp;
+	u8 address;
 };
 
 static int brickpi3_iio_read_raw(struct iio_dev *iio,
@@ -50,7 +51,8 @@ static int brickpi3_iio_read_raw(struct iio_dev *iio,
 
 	switch (mask) {
 	case IIO_CHAN_INFO_PROCESSED:
-		ret = brickpi3_read_u16(data->bp, chan->address, &value);
+		ret = brickpi3_read_u16(data->bp, data->address, chan->address,
+					&value);
 		if (ret < 0)
 			return ret;
 
@@ -92,7 +94,8 @@ static const struct iio_info brickpi3_iio_info = {
 	.read_raw = &brickpi3_iio_read_raw,
 };
 
-int devm_brickpi3_register_iio(struct device *dev, struct brickpi3 *bp)
+int devm_brickpi3_register_iio(struct device *dev, struct brickpi3 *bp,
+			       u8 address)
 {
 	struct brickpi3_iio *data;
 	struct iio_dev *iio;
@@ -105,8 +108,9 @@ int devm_brickpi3_register_iio(struct device *dev, struct brickpi3 *bp)
 	data = iio_priv(iio);
 	data->iio = iio;
 	data->bp = bp;
+	data->address = address;
 
-	iio->name = "BrickPi3";
+	iio->name = "brickpi3";
 	iio->dev.parent = dev;
 	iio->modes = INDIO_DIRECT_MODE;
 	iio->channels = brickpi3_iio_channels;
