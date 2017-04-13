@@ -175,10 +175,9 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 		if (ret < 0)
 			return;
 
-		/* for now, just handling NXT analog */
+		/* for now, just handling NXT analog (pin 1) */
 		if (raw_data) {
-			u16 raw = be16_to_cpu(*(__be16 *)msg);
-
+			u16 raw = ((msg[2] & 0x0f) << 8) | msg[3];
 			*(u16 *)raw_data = (raw * 5001) >> 12;
 		}
 		break;
@@ -428,20 +427,16 @@ static int brickpi3_in_port_set_pin5_gpio(void *context,
 	struct brickpi3_in_port *data = context;
 	enum brickpi3_sensor_pin_flags flags;
 
-	/*
-	 * FIXME: It is not clear how to actually set the pin high or low.
-	 * Perhaps we need to use BRICKPI3_SENSOR_TYPE_NXT_LIGHT_ON/OFF.
-	 */
 	flags = BRICKPI3_SENSOR_PIN1_ADC;
 	switch (state) {
 	case LEGO_PORT_GPIO_FLOAT:
-		flags |= BRICKPI3_SENSOR_PIN5_STATE;
 		break;
 	case LEGO_PORT_GPIO_LOW:
 		flags |= BRICKPI3_SENSOR_PIN5_OUT;
 		break;
 	case LEGO_PORT_GPIO_HIGH:
 		flags |= BRICKPI3_SENSOR_PIN5_OUT;
+		flags |= BRICKPI3_SENSOR_PIN5_STATE;
 		break;
 	}
 
