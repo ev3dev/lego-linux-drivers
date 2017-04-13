@@ -73,6 +73,26 @@ int brickpi3_write_u8(struct brickpi3 *bp, u8 address, enum brickpi3_message msg
 	return ret;
 }
 
+int brickpi3_write_u8_u8(struct brickpi3 *bp, u8 address,
+			 enum brickpi3_message msg, u8 value1, u8 value2)
+{
+	int ret;
+
+	mutex_lock(&bp->xfer_lock);
+
+	bp->buf[0] = address;
+	bp->buf[1] = msg;
+	bp->buf[2] = value1;
+	bp->buf[3] = value2;
+	bp->xfer.len = 4;
+
+	ret = spi_sync(bp->spi, &bp->msg);
+
+	mutex_unlock(&bp->xfer_lock);
+
+	return ret;
+}
+
 /**
  * brickpi3_read_u16 - Read message with two bytes of bp
  *
@@ -158,68 +178,6 @@ int brickpi3_write_u8_u16(struct brickpi3 *bp, u8 address,
 	bp->buf[3] = (value2 >> 8) & 0xff;
 	bp->buf[4] = value2 & 0xff;
 	bp->xfer.len = 5;
-
-	ret = spi_sync(bp->spi, &bp->msg);
-
-	mutex_unlock(&bp->xfer_lock);
-
-	return ret;
-}
-
-static int brickpi3_set_address(struct brickpi3 *bp, u8 address, u8 id[16])
-{
-	int ret;
-
-	mutex_lock(&bp->xfer_lock);
-
-	bp->buf[0] = 0;
-	bp->buf[1] = BRICKPI3_MSG_SET_ADDRESS;
-	bp->buf[2] = address;
-	strncpy(&bp->buf[3], id, 16);
-	bp->xfer.len = 19;
-
-	ret = spi_sync(bp->spi, &bp->msg);
-
-	mutex_unlock(&bp->xfer_lock);
-
-	return ret;
-}
-
-int brickpi3_set_motor_limits(struct brickpi3 *bp, u8 address,
-			      enum brickpi3_output_port port,
-			      u8 duty_cycle_sp, u16 speed)
-{
-	int ret;
-
-	mutex_lock(&bp->xfer_lock);
-
-	bp->buf[0] = address;
-	bp->buf[1] = BRICKPI3_MSG_SET_MOTOR_LIMITS;
-	bp->buf[2] = BIT(port);
-	bp->buf[3] = duty_cycle_sp;
-	bp->buf[4] = (speed >> 8) & 0xff;
-	bp->buf[5] = speed & 0xff;
-	bp->xfer.len = 6;
-
-	ret = spi_sync(bp->spi, &bp->msg);
-
-	mutex_unlock(&bp->xfer_lock);
-
-	return ret;
-}
-
-int brickpi3_write_u8_u8(struct brickpi3 *bp, u8 address,
-			 enum brickpi3_message msg, u8 value1, u8 value2)
-{
-	int ret;
-
-	mutex_lock(&bp->xfer_lock);
-
-	bp->buf[0] = address;
-	bp->buf[1] = msg;
-	bp->buf[2] = value1;
-	bp->buf[3] = value2;
-	bp->xfer.len = 4;
 
 	ret = spi_sync(bp->spi, &bp->msg);
 
@@ -396,6 +354,25 @@ int brickpi3_read_string(struct brickpi3 *bp, u8 address,
 	memcpy(value, &bp->buf[BRICKPI3_HEADER_SIZE], len);
 
 out:
+	mutex_unlock(&bp->xfer_lock);
+
+	return ret;
+}
+
+static int brickpi3_set_address(struct brickpi3 *bp, u8 address, u8 id[16])
+{
+	int ret;
+
+	mutex_lock(&bp->xfer_lock);
+
+	bp->buf[0] = 0;
+	bp->buf[1] = BRICKPI3_MSG_SET_ADDRESS;
+	bp->buf[2] = address;
+	strncpy(&bp->buf[3], id, 16);
+	bp->xfer.len = 19;
+
+	ret = spi_sync(bp->spi, &bp->msg);
+
 	mutex_unlock(&bp->xfer_lock);
 
 	return ret;
@@ -615,6 +592,29 @@ int brickpi3_i2c_transact(struct brickpi3 *bp, u8 address,
 	}
 
 out:
+	mutex_unlock(&bp->xfer_lock);
+
+	return ret;
+}
+
+int brickpi3_set_motor_limits(struct brickpi3 *bp, u8 address,
+			      enum brickpi3_output_port port,
+			      u8 duty_cycle_sp, u16 speed)
+{
+	int ret;
+
+	mutex_lock(&bp->xfer_lock);
+
+	bp->buf[0] = address;
+	bp->buf[1] = BRICKPI3_MSG_SET_MOTOR_LIMITS;
+	bp->buf[2] = BIT(port);
+	bp->buf[3] = duty_cycle_sp;
+	bp->buf[4] = (speed >> 8) & 0xff;
+	bp->buf[5] = speed & 0xff;
+	bp->xfer.len = 6;
+
+	ret = spi_sync(bp->spi, &bp->msg);
+
 	mutex_unlock(&bp->xfer_lock);
 
 	return ret;
