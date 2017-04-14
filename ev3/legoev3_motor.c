@@ -96,6 +96,7 @@ struct legoev3_motor_data {
 	enum legoev3_motor_state state;
 	enum tm_stop_action run_to_pos_stop_action;
 	bool run_to_pos_active;
+	bool hold_pos_sp;
 	bool speed_pid_ena;
 	bool hold_pid_ena;
 
@@ -300,12 +301,13 @@ static int legoev3_motor_stop(void *context, enum tm_stop_action action)
 	struct legoev3_motor_data *ev3_tm = context;
 	const struct dc_motor_ops *motor_ops = ev3_tm->ldev->port->dc_motor_ops;
 	void *dc_ctx = ev3_tm->ldev->port->context;
-	bool use_pos_sp_for_hold = ev3_tm->run_to_pos_active;
+	bool use_pos_sp_for_hold = ev3_tm->hold_pos_sp;
 	unsigned long flags;
 
 	spin_lock_irqsave(&lock, flags);
 
 	ev3_tm->run_to_pos_active = false;
+	ev3_tm->hold_pos_sp = false;
 	ev3_tm->speed_pid_ena = false;
 	ev3_tm->hold_pid_ena = false;
 	ev3_tm->duty_cycle = 0;
@@ -687,6 +689,7 @@ static void update_position(struct legoev3_motor_data *ev3_tm)
 
 		if (ev3_tm->position >= ev3_tm->position_sp) {
 			schedule_work(&ev3_tm->notify_position_ramp_down_work);
+			ev3_tm->hold_pos_sp = true;
 			legoev3_motor_stop(ev3_tm,
 					   ev3_tm->run_to_pos_stop_action);
 			ev3_tm->ramping = false;
@@ -699,6 +702,7 @@ static void update_position(struct legoev3_motor_data *ev3_tm)
 
 		if (ev3_tm->position <= ev3_tm->position_sp) {
 			schedule_work(&ev3_tm->notify_position_ramp_down_work);
+			ev3_tm->hold_pos_sp = true;
 			legoev3_motor_stop(ev3_tm,
 					   ev3_tm->run_to_pos_stop_action);
 			ev3_tm->ramping = false;
