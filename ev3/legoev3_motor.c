@@ -333,7 +333,7 @@ static int legoev3_motor_stop(void *context, enum tm_stop_action action)
 		ev3_tm->hold_pid_ena = true;
 		break;
 	default:
-		BUG();
+		WARN(true, "bad action: %d\n", action);
 	}
 
 	ev3_tm->state = STATE_STOPPED;
