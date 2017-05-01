@@ -31,12 +31,6 @@ config LEGOEV3_ANALOG
 	help
 	  Select Y to enable the EV3's built-in analog/digital converter.
 
-config LEGOEV3_BATTERY
-	tristate "LEGO MINDSTORMS EV3 battery driver"
-	depends on LEGOEV3_ANALOG
-	help
-	  Say Y here to enable the driver for the LEGO MINDSTORMS EV3 battery.
-
 config LEGOEV3_BLUETOOTH
 	tristate "On-board Bluetooth"
 	default y

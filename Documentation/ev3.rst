@@ -100,5 +100,29 @@ Sound
 Battery
 -------
 
-.. kernel-doc:: ev3/legoev3_battery.c
-    :doc: userspace
+- This driver is used to get information about the EV3 battery.
+- It uses the `power_supply`_ subsytem.
+- It registers a sysfs device node at ``/sys/class/power_supply/lego-ev3-battery/``.
+
+.. flat-table:: Sysfs Attributes
+    :widths: 1 3
+    * - ``current_now``
+      - Returns the battery current in microamps.
+    * - ``scope``
+      - Always returns ``System``.
+    * - ``technology``
+      - Returns ``Unknown`` or ``Li-ion`` depending on if the rechargeable
+        battery is present. If the technology is ``Unknown``, you can write
+        ``NiMH`` to this attribute if you are using rechargeable NiMH batteries.
+    * - ``type``
+      - Always returns ``Battery``.
+    * - ``voltage_max_design``
+      - Returns the nominal "full" battery voltage. The value returned
+        depends on ``technology``.
+    * - ``voltage_min_design``
+      - Returns the nominal "empty" battery voltage. The value returned
+        depends on ``technology``.
+    * - ``voltage_now``
+      - Returns the battery voltage in microvolts.
+
+.. _power_supply: http://lxr.free-electrons.com/source/Documentation/power/power_supply_class.txt?v=4.9
