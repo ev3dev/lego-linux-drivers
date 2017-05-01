@@ -101,7 +101,7 @@ Battery
 -------
 
 - This driver is used to get information about the EV3 battery.
-- It uses the `power_supply`_ subsytem.
+- It uses the `power_supply`_ subsystem.
 - It registers a sysfs device node at ``/sys/class/power_supply/lego-ev3-battery/``.
 
 .. flat-table:: Sysfs Attributes
