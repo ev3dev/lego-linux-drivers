@@ -12,7 +12,7 @@
  * DOC: userspace
  *
  * - This driver is used to get information about the EV3 battery.
- * - It uses the `power_supply`_ subsytem.
+ * - It uses the `power_supply`_ subsystem.
  * - It registers a sysfs device node at ``/sys/class/power_supply/legoev3-battery/``.
  *
  * .. flat-table:: Sysfs Attributes
@@ -25,7 +25,7 @@
  *      - Always returns ``System``.
  *
  *    * - ``technology``
- *      - Returns ``Unknown`` or ``Li-on`` depending on if the rechargeable
+ *      - Returns ``Unknown`` or ``Li-ion`` depending on if the rechargeable
  *        battery is present.
  *
  *    * - ``type``
