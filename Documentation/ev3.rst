@@ -106,6 +106,7 @@ Battery
 
 .. flat-table:: Sysfs Attributes
     :widths: 1 3
+
     * - ``current_now``
       - Returns the battery current in microamps.
     * - ``scope``
