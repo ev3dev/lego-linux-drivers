@@ -803,7 +803,7 @@ static struct miscdevice Device1 = {
 	.fops	= &Device1Entries,
 };
 
-static int Device1Init(void)
+static int Device1Init(struct device * parent)
 {
 	IIC *pTmp;
 	UBYTE Port;
@@ -838,6 +838,7 @@ static int Device1Init(void)
 		IicStrings[Port].SensorType[0] = 0;
 	}
 
+	Device1.parent = parent;
 	ret = misc_register(&Device1);
 	if (ret)
 		goto err1;
@@ -884,7 +885,7 @@ static int d_iic_probe(struct platform_device *pdev)
 {
 	int ret;
 
-	ret = Device1Init();
+	ret = Device1Init(&pdev->dev);
 	if (ret < 0)
 		return ret;
 

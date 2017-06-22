@@ -693,7 +693,7 @@ static const struct file_operations device1_debug_fops = {
 	.release	= single_release,
 };
 
-static int Device1Init(void)
+static int Device1Init(struct device * parent)
 {
 	u16 *pTmp;
 	int  ret, i;
@@ -736,6 +736,7 @@ static int Device1Init(void)
 	SpiUpdate(0x400F);
 	SpiUpdate(0x400F);
 
+	Device1.parent = parent;
 	ret = misc_register(&Device1);
 	if (ret < 0) {
 		for (i = 0; i < NPAGES * PAGE_SIZE; i+= PAGE_SIZE) {
@@ -1708,7 +1709,7 @@ static const struct file_operations device3_debug_fops = {
 	.release	= single_release,
 };
 
-static int Device3Init(void)
+static int Device3Init(struct device * parent)
 {
 	int ret, Tmp;
 
@@ -1720,6 +1721,7 @@ static int Device3Init(void)
 	Device3State = 0;
 	TestMode     = 0;
 
+	Device3.parent = parent;
 	ret = misc_register(&Device3);
 	if (ret < 0)
 		return ret;
@@ -1767,10 +1769,10 @@ static int d_analog_probe(struct platform_device *pdev)
 {
 	int ret;
 
-	ret = Device1Init();
+	ret = Device1Init(&pdev->dev);
 	if (ret < 0)
 		return ret;
-	ret = Device3Init();
+	ret = Device3Init(&pdev->dev);
 	if (ret < 0)
 		goto err0;
 

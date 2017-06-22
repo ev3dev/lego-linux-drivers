@@ -1835,7 +1835,7 @@ static struct miscdevice Device1 = {
 	&Device1Entries
 };
 
-static int Device1Init(void)
+static int Device1Init(struct device *parent)
 {
 	UWORD *pTmp;
 	int ret, i, Tmp;
@@ -1878,6 +1878,7 @@ static int Device1Init(void)
 		}
 	}
 
+	Device1.parent = parent;
 	ret = misc_register(&Device1);
 	if (ret)
 		goto err1;
@@ -2026,7 +2027,7 @@ static int d_uart_probe(struct platform_device *pdev)
 {
 	int ret;
 
-	ret = Device1Init();
+	ret = Device1Init(&pdev->dev);
 
 	/*
 	 * Technically, this should be in module init, but since there is only

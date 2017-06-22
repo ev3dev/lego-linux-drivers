@@ -2401,7 +2401,7 @@ static const struct file_operations device1_debug_fops = {
 
 static struct dentry *device1_debug;
 
-static int Device1Init(void)
+static int Device1Init(struct device * parent)
 {
 	int ret;
 	UBYTE Tmp = 0;
@@ -2485,6 +2485,7 @@ static int Device1Init(void)
 	if (ret < 0)
 		goto err4;
 
+	Device1.parent = parent;
 	ret = misc_register(&Device1);
 	if (ret < 0)
 		goto err5;
@@ -2641,7 +2642,7 @@ static struct miscdevice Device2 = {
 	.fops	= &Device2Entries,
 };
 
-static int Device2Init(void)
+static int Device2Init(struct device *parent)
 {
 	MOTORDATA *pTmp;
 	int i, ret;
@@ -2657,6 +2658,7 @@ static int Device2Init(void)
 	pMotor = pTmp;
 	memset(pMotor, 0, sizeof(MotorData));
 
+	Device2.parent = parent;
 	ret = misc_register(&Device2);
 	if (ret < 0) {
 		kfree(kmalloc_ptr);
@@ -2687,11 +2689,11 @@ static int d_pwm_probe(struct platform_device *pdev)
 {
 	int ret;
 
-	ret = Device1Init();
+	ret = Device1Init(&pdev->dev);
 	if (ret < 0)
 		return ret;
 
-	ret = Device2Init();
+	ret = Device2Init(&pdev->dev);
 	if (ret < 0) {
 		Device1Exit();
 		return ret;
