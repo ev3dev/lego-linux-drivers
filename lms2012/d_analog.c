@@ -1774,13 +1774,15 @@ static int d_analog_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err0;
 
-	bat = lms2012_battery_probe(Device1Lms2012CompatDev,
-		Device1Lms2012Compat->adc_gpios->desc[ADC_VOLT_ENA_GPIO],
-		Device1Lms2012Compat->adc_gpios->desc[ADC_BATT_TYPE_GPIO],
-		d_analog_get_volts, d_analog_get_amps, NULL);
-	ret = PTR_ERR_OR_ZERO(bat);
-	if (ret < 0)
-		goto err1;
+	if (Device1Lms2012Compat->adc_gpios) {
+		bat = lms2012_battery_probe(Device1Lms2012CompatDev,
+			Device1Lms2012Compat->adc_gpios->desc[ADC_VOLT_ENA_GPIO],
+			Device1Lms2012Compat->adc_gpios->desc[ADC_BATT_TYPE_GPIO],
+			d_analog_get_volts, d_analog_get_amps, NULL);
+		ret = PTR_ERR_OR_ZERO(bat);
+		if (ret < 0)
+			goto err1;
+	}
 
 	pr_info("d_analog registered\n");
 
@@ -1796,7 +1798,8 @@ err0:
 
 static int d_analog_remove(struct platform_device *pdev)
 {
-	lms2012_battery_remove(bat);
+	if (bat)
+		lms2012_battery_remove(bat);
 	Device3Exit();
 	Device1Exit();
 
