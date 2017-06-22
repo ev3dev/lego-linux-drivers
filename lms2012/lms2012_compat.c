@@ -50,6 +50,53 @@ static void lms2012_compat_release_i2c_adapter(struct device *dev, void *res)
 	i2c_put_adapter(adapter->adapter);
 }
 
+static ssize_t in1_tty_show(struct device *dev, struct device_attribute *attr,
+			    char *buf)
+{
+	struct lms2012_compat *lms = dev_get_drvdata(dev->parent);
+
+	return sprintf(buf, "%s\n", lms->tty_names[0]);
+}
+
+static ssize_t in2_tty_show(struct device *dev, struct device_attribute *attr,
+			    char *buf)
+{
+	struct lms2012_compat *lms = dev_get_drvdata(dev->parent);
+
+	return sprintf(buf, "%s\n", lms->tty_names[1]);
+}
+
+static ssize_t in3_tty_show(struct device *dev, struct device_attribute *attr,
+			    char *buf)
+{
+	struct lms2012_compat *lms = dev_get_drvdata(dev->parent);
+
+	return sprintf(buf, "%s\n", lms->tty_names[2]);
+}
+
+static ssize_t in4_tty_show(struct device *dev, struct device_attribute *attr,
+			    char *buf)
+{
+	struct lms2012_compat *lms = dev_get_drvdata(dev->parent);
+
+	return sprintf(buf, "%s\n", lms->tty_names[3]);
+}
+
+DEVICE_ATTR_RO(in1_tty);
+DEVICE_ATTR_RO(in2_tty);
+DEVICE_ATTR_RO(in3_tty);
+DEVICE_ATTR_RO(in4_tty);
+
+static struct attribute *d_uart_attrs[] = {
+	&dev_attr_in1_tty.attr,
+	&dev_attr_in2_tty.attr,
+	&dev_attr_in3_tty.attr,
+	&dev_attr_in4_tty.attr,
+	NULL,
+};
+
+ATTRIBUTE_GROUPS(d_uart);
+
 static int lms2012_compat_probe(struct platform_device *pdev)
 {
 	struct lms2012_compat *lms;
@@ -242,10 +289,14 @@ static int lms2012_compat_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, lms);
 	global_dev = &pdev->dev;
 
-	lms->d_analog = platform_device_register_simple("d_analog", -1, NULL, 0);
-	lms->d_iic = platform_device_register_simple("d_iic", -1, NULL, 0);
-	lms->d_uart = platform_device_register_simple("d_uart", -1, NULL, 0);
-	lms->d_pwm = platform_device_register_simple("d_pwm", -1, NULL, 0);
+	lms->d_analog = platform_device_register_data(&pdev->dev, "d_analog", -1, NULL, 0);
+	lms->d_iic = platform_device_register_data(&pdev->dev, "d_iic", -1, NULL, 0);
+	lms->d_pwm = platform_device_register_data(&pdev->dev, "d_pwm", -1, NULL, 0);
+
+	lms->d_uart = platform_device_alloc("d_uart", -1);
+	lms->d_uart->dev.parent = &pdev->dev;
+	lms->d_uart->dev.groups = d_uart_groups;
+	platform_device_add(lms->d_uart);
 
 	if (!lms->adc_gpios)
 		dev_warn(&pdev->dev, "No adc gpios\n");
