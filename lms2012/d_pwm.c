@@ -54,10 +54,11 @@
 
 //#define MAX_PWM_CNT		(10000)
 // MAX_PWM_CNT was based on 132MHz clock, so, 10000 / 132MHz = 75758 ns
-/* TODO: we should get this value from device tree */
-#define PWM_PERIOD		75758	/* 13.2 kHz */
+// This value (75758) must be set in the device tree
+
+#define MAX_POWER		(10000)
 #define MAX_SPEED		(100)
-#define SPEED_PWMCNT_REL	(PWM_PERIOD / MAX_SPEED)
+#define SPEED_PWMCNT_REL	(MAX_POWER / MAX_SPEED)
 #define RAMP_FACTOR		(1000)
 #define MAX_SYNC_MOTORS		(2)
 
@@ -474,7 +475,10 @@ static inline UWORD GetTachoInt(UBYTE Port)
 
 static inline void SetDuty(UBYTE Port, ULONG Duty)
 {
-	pwm_config(Device1Lms2012Compat->out_pwms[Port], Duty, PWM_PERIOD);
+	pwm_set_relative_duty_cycle(&Device1Lms2012Compat->out_pwm_states[Port],
+				    Duty, MAX_POWER);
+	pwm_apply_state(Device1Lms2012Compat->out_pwms[Port],
+			&Device1Lms2012Compat->out_pwm_states[Port]);
 }
 
 /**
@@ -486,19 +490,19 @@ static inline void SetDuty(UBYTE Port, ULONG Duty)
  */
 static inline SLONG adjust_for_min_pct(SLONG Power, UBYTE Pct)
 {
-	SLONG min = PWM_PERIOD * Pct / 100;
+	SLONG min = MAX_POWER * Pct / 100;
 
 	return Power * (100 - Pct) / 100 + min;
 }
 
 static void SetPower(UBYTE Port, SLONG Power)
 {
-	if (PWM_PERIOD < Power) {
-		Power             = PWM_PERIOD;
+	if (MAX_POWER < Power) {
+		Power = MAX_POWER;
 		Motor[Port].Power = Power;
 	}
-	if (-PWM_PERIOD > Power) {
-		Power             = -PWM_PERIOD;
+	if (-MAX_POWER > Power) {
+		Power = -MAX_POWER;
 		Motor[Port].Power = Power;
 	}
 
@@ -530,12 +534,12 @@ static void SetPower(UBYTE Port, SLONG Power)
 
 static void SetRegulationPower(UBYTE Port, SLONG Power)
 {
-	if (PWM_PERIOD < Power) {
-		Power             = PWM_PERIOD;
+	if (MAX_POWER < Power) {
+		Power = MAX_POWER;
 		Motor[Port].Power = Power;
 	}
-	if (-PWM_PERIOD > Power) {
-		Power             = -PWM_PERIOD;
+	if (-MAX_POWER > Power) {
+		Power = -MAX_POWER;
 		Motor[Port].Power = Power;
 	}
 
@@ -824,13 +828,12 @@ static void dRegulateSpeed(UBYTE No)
 
 	Motor[No].Power = Motor[No].Power + ((Motor[No].PVal + Motor[No].IVal + Motor[No].DVal));
 
-	if (Motor[No].Power > PWM_PERIOD) {
-		Motor[No].Power = PWM_PERIOD;
-	}
+	if (Motor[No].Power > MAX_POWER)
+		Motor[No].Power = MAX_POWER;
 
-	if (Motor[No].Power < -PWM_PERIOD) {
-		Motor[No].Power = -PWM_PERIOD;
-	}
+	if (Motor[No].Power < -MAX_POWER)
+		Motor[No].Power = -MAX_POWER;
+
 	Motor[No].OldSpeedErr = SpeedErr;
 
 	if (((Motor[No].TargetSpeed) > 0) && (Motor[No].Power < 0)) {
@@ -852,12 +855,11 @@ static void BrakeMotor(UBYTE No, SLONG TachoCnt)
 
 	TmpTacho <<= 2;
 
-	if (TmpTacho > PWM_PERIOD) {
-		TmpTacho = PWM_PERIOD;
-	}
-	if (TmpTacho < -PWM_PERIOD) {
-		TmpTacho = -PWM_PERIOD;
-	}
+	if (TmpTacho > MAX_POWER)
+		TmpTacho = MAX_POWER;
+
+	if (TmpTacho < -MAX_POWER)
+		TmpTacho = -MAX_POWER;
 
 	Motor[No].Power = 0 - TmpTacho;
 	SetRegulationPower(No, Motor[No].Power);
@@ -1277,7 +1279,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 
 				Status  = FALSE;
 
-				if ((Motor[SyncMNos[0]].Power > (PWM_PERIOD - 100)) || (Motor[SyncMNos[0]].Power < (-PWM_PERIOD + 100))) {
+				if ((Motor[SyncMNos[0]].Power > (MAX_POWER - 100)) || (Motor[SyncMNos[0]].Power < (-MAX_POWER + 100))) {
 					// Regulation is stretched to the limit....... Checked in both directions
 					Status = TRUE;
 					if (TRUE == CheckLessThanSpecial((SLONG)(Motor[SyncMNos[0]].Speed), (SLONG)(Motor[SyncMNos[0]].TargetSpeed), Motor[SyncMNos[0]].Dir)) {
@@ -1291,7 +1293,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 						}
 					}
 				}
-				if ((Motor[SyncMNos[1]].Power > (PWM_PERIOD - 100)) || (Motor[SyncMNos[1]].Power < (-PWM_PERIOD + 100))) {
+				if ((Motor[SyncMNos[1]].Power > (MAX_POWER - 100)) || (Motor[SyncMNos[1]].Power < (-MAX_POWER + 100))) {
 					// Regulation is stretched to the limit....... Checked in both directions
 					Status = TRUE;
 					if (TRUE == CheckLessThanSpecial((SLONG)(Motor[SyncMNos[1]].Speed), (SLONG)(Motor[SyncMNos[1]].TargetSpeed), (Motor[SyncMNos[0]].Dir * Motor[SyncMNos[1]].Dir))) {
@@ -1357,7 +1359,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 
 				Status  = FALSE;
 
-				if ((Motor[SyncMNos[0]].Power > (PWM_PERIOD - 100)) || (Motor[SyncMNos[0]].Power < (-PWM_PERIOD + 100))) {
+				if ((Motor[SyncMNos[0]].Power > (MAX_POWER - 100)) || (Motor[SyncMNos[0]].Power < (-MAX_POWER + 100))) {
 					// Regulation is stretched to the limit....... in both directions
 					Status = TRUE;
 					if (TRUE == CheckLessThanSpecial((SLONG)(Motor[SyncMNos[0]].Speed), (SLONG)(Motor[SyncMNos[0]].TargetSpeed), Motor[SyncMNos[0]].Dir)) {
@@ -1372,7 +1374,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 					}
 				}
 
-				if ((Motor[SyncMNos[1]].Power > (PWM_PERIOD - 100)) || (Motor[SyncMNos[1]].Power < (-PWM_PERIOD + 100))) {
+				if ((Motor[SyncMNos[1]].Power > (MAX_POWER - 100)) || (Motor[SyncMNos[1]].Power < (-MAX_POWER + 100))) {
 					// Regulation is stretched to the limit....... in both directions
 					Status = TRUE;
 					if (TRUE == CheckLessThanSpecial((SLONG)(Motor[SyncMNos[1]].Speed), (SLONG)(Motor[SyncMNos[1]].TargetSpeed), (Motor[SyncMNos[1]].Dir * Motor[SyncMNos[0]].Dir))) {
@@ -1757,8 +1759,7 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 		for (Tmp = 0;Tmp < OUTPUTS;Tmp++) {
 			if (Buf[1] & BIT(Tmp)) {
 				Motor[Tmp].Mutex       = TRUE;
-				Motor[Tmp].TargetPower = (SLONG)(Buf[2]) * (SLONG)(Motor[Tmp].Pol) * (SLONG)SPEED_PWMCNT_REL;
-
+				Motor[Tmp].TargetPower = (SLONG)(Buf[2]) * (SLONG)(Motor[Tmp].Pol) * SPEED_PWMCNT_REL;
 				if ((IDLE == Motor[Tmp].State) || (BRAKED == Motor[Tmp].State)) {
 					Motor[Tmp].TargetState = UNLIMITED_UNREG;
 				}
@@ -2432,8 +2433,10 @@ static int Device1Init(struct device * parent)
 
 	/* Float the tacho inputs */
 	for (Tmp = 0; Tmp < OUTPUTS; Tmp++) {
-		pwm_config(Device1Lms2012Compat->out_pwms[Tmp], 0, PWM_PERIOD);
-		pwm_enable(Device1Lms2012Compat->out_pwms[Tmp]);
+		Device1Lms2012Compat->out_pwm_states[Tmp].duty_cycle = 0;
+		Device1Lms2012Compat->out_pwm_states[Tmp].enabled = true;
+		pwm_apply_state(Device1Lms2012Compat->out_pwms[Tmp],
+				&Device1Lms2012Compat->out_pwm_states[Tmp]);
 		OutputFloat(Tmp, OUTPUT_PORT_PIN6);
 		OutputFloat(Tmp, OUTPUT_PORT_PIN5R);
 		SetCoast(Tmp);

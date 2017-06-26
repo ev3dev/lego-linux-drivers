@@ -421,6 +421,7 @@ struct lms2012_compat {
     const char *tty_names[INPUTS];
     struct gpio_descs *out_pins[OUTPUTS];
     struct pwm_device *out_pwms[OUTPUTS];
+    struct pwm_state out_pwm_states[OUTPUTS];
     int motor_irqs[OUTPUTS];
 };
 
