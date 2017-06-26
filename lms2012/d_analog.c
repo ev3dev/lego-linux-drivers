@@ -2,7 +2,7 @@
  * LEGO® MINDSTORMS EV3
  *
  * Copyright (C) 2010-2013 The LEGO Group
- * Copyright (C) 2016 David Lechner <david@lechnology.com>
+ * Copyright (C) 2016-2017 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1076,11 +1076,17 @@ static enum hrtimer_restart Device3TimerInterrupt1(struct hrtimer *pTimer)
 				// pins floating - check and for connection event
 
 				Event = 0;
-				if (!PIN2Read(Port))
+				if (!PIN2Read(Port)) {
+					/* pin 2 low */
 					Event |= 0x01 << INPUT_PORT_PIN2;
-				if ((pAnalog->InPin1[Port]) < VtoC(IN1_NEAR_5V))	//<3931
-				{ // pin 1 loaded
-
+				} else if (pAnalog->InPin1[Port] < VtoC(IN1_NEAR_5V)) {
+					/*
+					 * Using "else if" here filter out noise from LEGO NXT
+					 * Ultrasonic sensor. With this sensor, pin 1 can constantly
+					 * fluctuate above and below IN1_NEAR_5V, causing the sensor
+					 * to not be detected otherwise.
+					 */
+					/* pin2 high and pin 1 loaded */
 					Event |=  (0x01 << INPUT_PORT_VALUE);
 				}
 				if (!(PINRead(Port, INPUT_PORT_PIN5))) { // pin 5 low
