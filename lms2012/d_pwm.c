@@ -19,6 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#include <linux/bitops.h>
 #include <linux/debugfs.h>
 #include <linux/fs.h>
 #include <linux/hrtimer.h>
@@ -603,8 +604,8 @@ static void StepPowerStopMotor(UBYTE No, SLONG AdjustTachoValue)
 	if (SyncMNos[1] == No) {
 		SyncMNos[1] = UNUSED_SYNC_MOTOR;
 	}
-	ReadyStatus &= ~(0x01 << No);             // Clear ready flag
-	TestStatus  &= ~(0x01 << No);             // Clear ready flag
+	ReadyStatus &= ~BIT(No); // Clear ready flag
+	TestStatus &= ~BIT(No); // Clear ready flag
 }
 
 /*
@@ -911,8 +912,8 @@ static void GetCompareCounts(UBYTE No, SLONG *Counts, SLONG *CompareCounts)
 
 static void StopAndBrakeMotor(UBYTE MotorNo)
 {
-	ReadyStatus            &= ~(0x01 << MotorNo);
-	TestStatus             &= ~(0x01 << MotorNo);
+	ReadyStatus &= ~BIT(MotorNo);
+	TestStatus &= ~BIT(MotorNo);
 	Motor[MotorNo].Power    = 0;
 	Motor[MotorNo].Speed    = 0;
 	Motor[MotorNo].TachoCnt = 0;
@@ -924,8 +925,8 @@ static void StopAndBrakeMotor(UBYTE MotorNo)
 
 static void StopAndFloatMotor(UBYTE MotorNo)
 {
-	ReadyStatus            &= ~(0x01 << MotorNo);
-	TestStatus             &= ~(0x01 << MotorNo);
+	ReadyStatus &= ~BIT(MotorNo);
+	TestStatus &= ~BIT(MotorNo);
 	Motor[MotorNo].Power    = 0;
 	Motor[MotorNo].Speed    = 0;
 	Motor[MotorNo].TachoCnt = 0;
@@ -964,23 +965,23 @@ static void TestAndFloatSyncedMotors(UBYTE MotorBitField, UBYTE SyncCmd)
 	if ((SyncMNos[0] != UNUSED_SYNC_MOTOR) && (SyncMNos[1] != UNUSED_SYNC_MOTOR)) {
 		if (TRUE == SyncCmd) {
 			//This is new sync'ed motor command
-			if (((MotorBitField & (0x01 << SyncMNos[0])) && (MotorBitField & (0x01 << SyncMNos[1])))) {
+			if ((MotorBitField & BIT(SyncMNos[0])) && (MotorBitField & BIT(SyncMNos[1]))) {
 				// Same motors used -> don't stop motors
 			} else {
 				// Only 2 motors can be sync'ed at a time -> stop sync'ed command
 				FloatSyncedMotors();
 			}
 		} else {
-			if ((MotorBitField & (0x01 << SyncMNos[0])) || (MotorBitField & (0x01 << SyncMNos[1]))) {
+			if ((MotorBitField & BIT(SyncMNos[0])) || (MotorBitField & BIT(SyncMNos[1]))) {
 				// Same motors used -> stop sync'ed command
 				FloatSyncedMotors();
 			}
 		}
 #if 0
 		// Check if new sync'ed motor command uses same motors as previous sync cmd
-		if ((MotorBitField & (0x01 << SyncMNos[0])) && (MotorBitField & (0x01 << SyncMNos[1]))) {
+		if ((MotorBitField & BIT(SyncMNos[0])) && (MotorBitField & BIT(SyncMNos[1]))) {
 			// Check if only one of the sync'ed motors are affected by the new motor cmd
-			if (((MotorBitField & (0x01 << SyncMNos[0])) || (MotorBitField & (0x01 << SyncMNos[1]))) || (TRUE == SyncCmd)) {
+			if (((MotorBitField & BIT(SyncMNos[0])) || (MotorBitField & BIT(SyncMNos[1]))) || SyncCmd) {
 				UBYTE TmpNo0, TmpNo1;
 
 				// The motor is in sync'ed mode -> float both sync'ed motors
@@ -1646,8 +1647,8 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 		for (Tmp = 0; Tmp < OUTPUTS; Tmp++) {
 
 			Motor[Tmp].Mutex  = TRUE;
-			ReadyStatus      &= ~(0x01 << Tmp);   // Clear Ready flag
-			TestStatus       &= ~(0x01 << Tmp);   // Clear Test flag
+			ReadyStatus &= ~BIT(Tmp); // Clear Ready flag
+			TestStatus &= ~BIT(Tmp); // Clear Test flag
 
 			Motor[Tmp].Power       = 0;
 			Motor[Tmp].Speed       = 0;
@@ -1709,7 +1710,7 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 		TestAndFloatSyncedMotors(Buf[1], FALSE);
 
 		for (Tmp = 0;Tmp < OUTPUTS;Tmp++) {
-			if (Buf[1] & (1 << Tmp)) {
+			if (Buf[1] & BIT(Tmp)) {
 				Motor[Tmp].Mutex        = TRUE;
 				Motor[Tmp].TachoCnt     = 0;
 				pMotor[Tmp].TachoCounts = 0;
@@ -1721,7 +1722,7 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 
 	case opOUTPUT_CLR_COUNT:
 		for (Tmp = 0;Tmp < OUTPUTS;Tmp++) {
-			if (Buf[1] & (1 << Tmp)) {
+			if (Buf[1] & BIT(Tmp)) {
 				Motor[Tmp].Mutex        = TRUE;
 				pMotor[Tmp].TachoSensor = 0;
 				Motor[Tmp].TachoSensor  = 0;
@@ -1734,7 +1735,7 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 		TestAndFloatSyncedMotors(Buf[1], FALSE);
 
 		for (Tmp = 0;Tmp < OUTPUTS;Tmp++) {
-			if (Buf[1] & (1 << Tmp)) {
+			if (Buf[1] & BIT(Tmp)) {
 				Motor[Tmp].Mutex     = TRUE;
 
 				if (Buf[2]) {
@@ -1754,7 +1755,7 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 		CheckSpeedPowerLimits(&(Buf[2]));
 
 		for (Tmp = 0;Tmp < OUTPUTS;Tmp++) {
-			if (Buf[1] & (1 << Tmp)) {
+			if (Buf[1] & BIT(Tmp)) {
 				Motor[Tmp].Mutex       = TRUE;
 				Motor[Tmp].TargetPower = (SLONG)(Buf[2]) * (SLONG)(Motor[Tmp].Pol) * (SLONG)SPEED_PWMCNT_REL;
 
@@ -1772,7 +1773,7 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 		CheckSpeedPowerLimits(&(Buf[2]));
 
 		for (Tmp = 0;Tmp < OUTPUTS;Tmp++) {
-			if (Buf[1] & (1 << Tmp)) {
+			if (Buf[1] & BIT(Tmp)) {
 				Motor[Tmp].Mutex        = TRUE;
 				Motor[Tmp].TargetSpeed  = (Buf[2]) * (Motor[Tmp].Pol);
 				if ((IDLE == Motor[Tmp].State) || (BRAKED == Motor[Tmp].State)) {
@@ -1785,7 +1786,7 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 
 	case opOUTPUT_START:
 		for (Tmp = 0;Tmp < OUTPUTS;Tmp++) {
-			if (Buf[1] & (1 << Tmp)) {
+			if (Buf[1] & BIT(Tmp)) {
 				Motor[Tmp].Mutex = TRUE;
 				if ((IDLE == Motor[Tmp].State) || (BRAKED == Motor[Tmp].State)) {
 					Motor[Tmp].State  = Motor[Tmp].TargetState;
@@ -1799,7 +1800,7 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 		TestAndFloatSyncedMotors(Buf[1], FALSE);
 
 		for (Tmp = 0;Tmp < OUTPUTS;Tmp++) {
-			if (Buf[1] & (1 << Tmp)) {
+			if (Buf[1] & BIT(Tmp)) {
 				Motor[Tmp].Mutex = TRUE;
 				if (0 == (SBYTE)Buf[2]) {
 					/* 0 == Toggle */
@@ -1845,13 +1846,13 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 		}
 
 		for (Tmp = 0;Tmp < OUTPUTS;Tmp++) {
-			if (StepPower.Nos & (1 << Tmp)) {
+			if (StepPower.Nos & BIT(Tmp)) {
 				Motor[Tmp].Mutex = TRUE;
 
 				StepPowerSteps[Tmp] = TachoSteps[Tmp];
 
-				ReadyStatus |= (0x01 << Tmp);   // Set Ready flag
-				TestStatus  |= (0x01 << Tmp);   // Set Test flag
+				ReadyStatus |= BIT(Tmp);   // Set Ready flag
+				TestStatus |= BIT(Tmp);   // Set Test flag
 
 				Motor[Tmp].TargetPower   = StepPower.Power * SPEED_PWMCNT_REL * (Motor[Tmp].Pol);
 				Motor[Tmp].TachoCntUp    = StepPower.Step1 * (Motor[Tmp].Pol);
@@ -1903,15 +1904,15 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 		}
 
 		for (Tmp = 0;Tmp < OUTPUTS;Tmp++) {
-			if (TimePower.Nos & (1 << Tmp)) {
+			if (TimePower.Nos & BIT(Tmp)) {
 				Motor[Tmp].Mutex = TRUE;
 
 				StepPowerSteps[Tmp]  = TimerSteps[Tmp];
 				Motor[Tmp].TimeInc   = Inc * (Motor[Tmp].Pol);
 				*StepPowerSteps[Tmp] = 0;
 
-				ReadyStatus |= (0x01 << Tmp);   // Set Ready flag
-				TestStatus  |= (0x01 << Tmp);   // Set Test flag
+				ReadyStatus |= BIT(Tmp);   // Set Ready flag
+				TestStatus |= BIT(Tmp);   // Set Test flag
 
 				Motor[Tmp].TargetPower   = TimePower.Power * SPEED_PWMCNT_REL * (Motor[Tmp].Pol);
 				Motor[Tmp].TachoCntUp    = TimePower.Time1 * (Motor[Tmp].Pol);
@@ -1959,13 +1960,13 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 		}
 
 		for (Tmp = 0;Tmp < OUTPUTS;Tmp++) {
-			if (StepSpeed.Nos & (1 << Tmp)) {
+			if (StepSpeed.Nos & BIT(Tmp)) {
 				Motor[Tmp].Mutex = TRUE;
 
 				StepPowerSteps[Tmp] = TachoSteps[Tmp];
 
-				ReadyStatus |= (0x01 << Tmp);   // Set Ready flag
-				TestStatus  |= (0x01 << Tmp);   // Set Test flag
+				ReadyStatus |= BIT(Tmp);   // Set Ready flag
+				TestStatus |= BIT(Tmp);   // Set Test flag
 
 				Motor[Tmp].TargetPower   = StepSpeed.Speed * (Motor[Tmp].Pol);
 				Motor[Tmp].TachoCntUp    = StepSpeed.Step1 * (Motor[Tmp].Pol);
@@ -2021,15 +2022,15 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 		}
 
 		for (Tmp = 0;Tmp < OUTPUTS;Tmp++) {
-			if (TimeSpeed.Nos & (1 << Tmp)) {
+			if (TimeSpeed.Nos & BIT(Tmp)) {
 				Motor[Tmp].Mutex = TRUE;
 
 				StepPowerSteps[Tmp]  = TimerSteps[Tmp];
 				Motor[Tmp].TimeInc   = Inc * (Motor[Tmp].Pol);
 				*StepPowerSteps[Tmp] = 0;
 
-				ReadyStatus |= (0x01 << Tmp);   // Set Ready flag
-				TestStatus  |= (0x01 << Tmp);   // Set Test flag
+				ReadyStatus |= BIT(Tmp);   // Set Ready flag
+				TestStatus |= BIT(Tmp);   // Set Test flag
 
 				Motor[Tmp].TargetPower   = TimeSpeed.Speed * (Motor[Tmp].Pol);
 				Motor[Tmp].TachoCntUp    = TimeSpeed.Time1 * (Motor[Tmp].Pol);
@@ -2078,11 +2079,11 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 
 		for (Tmp = 0;Tmp < OUTPUTS;Tmp++) {
 
-			if (StepSync.Nos & (1 << Tmp)) {
+			if (StepSync.Nos & BIT(Tmp)) {
 				Motor[Tmp].Mutex = TRUE;
 
-				ReadyStatus           |= (0x01 << Tmp);   // Set Ready flag
-				TestStatus            |= (0x01 << Tmp);   // Set Test flag
+				ReadyStatus |= BIT(Tmp);   // Set Ready flag
+				TestStatus |= BIT(Tmp);   // Set Test flag
 				StepPowerSteps[Tmp]    = TachoSteps[Tmp];
 				Motor[Tmp].TargetBrake =  StepSync.Brake;
 
@@ -2207,11 +2208,11 @@ static ssize_t Device1Write(struct file *File, const char *Buffer, size_t Count,
 		}
 
 		for (Tmp = 0;Tmp < OUTPUTS;Tmp++) {
-			if (TimeSync.Nos & (1 << Tmp)) {
+			if (TimeSync.Nos & BIT(Tmp)) {
 				Motor[Tmp].Mutex      = TRUE;
 
-				ReadyStatus          |= (0x01 << Tmp);   // Set Ready flag
-				TestStatus           |= (0x01 << Tmp);   // Set Test flag
+				ReadyStatus |= BIT(Tmp);   // Set Ready flag
+				TestStatus |= BIT(Tmp);   // Set Test flag
 
 				StepPowerSteps[Tmp]   = TimerSteps[Tmp];
 				Motor[Tmp].TimeInc    = Inc;
