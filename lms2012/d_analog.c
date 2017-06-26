@@ -19,6 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#include <linux/bitops.h>
 #include <linux/debugfs.h>
 #include <linux/device.h>
 #include <linux/fs.h>
@@ -978,7 +979,7 @@ static void NxtColorCommStart(u8 Port, u8 Cmd)
 	if (NxtColorInitInUse == 0)
 		hrtimer_start(&NxtColorTimer, NxtColorTime, HRTIMER_MODE_REL);
 
-	NxtColorInitInUse |=  (1 << Port);
+	NxtColorInitInUse |= BIT(Port);
 }
 
 static u8 NxtColorCommReady(u8 Port)
@@ -995,7 +996,7 @@ static u8 NxtColorCommReady(u8 Port)
 static void NxtColorCommStop(u8 Port)
 {
 
-	NxtColorInitInUse &= ~(1 << Port);
+	NxtColorInitInUse &= ~BIT(Port);
 
 	if (NxtColorInitInUse == 0) {
 		hrtimer_try_to_cancel(&NxtColorTimer);
@@ -1078,7 +1079,7 @@ static enum hrtimer_restart Device3TimerInterrupt1(struct hrtimer *pTimer)
 				Event = 0;
 				if (!PIN2Read(Port)) {
 					/* pin 2 low */
-					Event |= 0x01 << INPUT_PORT_PIN2;
+					Event |= BIT(INPUT_PORT_PIN2);
 				} else if (pAnalog->InPin1[Port] < VtoC(IN1_NEAR_5V)) {
 					/*
 					 * Using "else if" here filter out noise from LEGO NXT
@@ -1087,15 +1088,15 @@ static enum hrtimer_restart Device3TimerInterrupt1(struct hrtimer *pTimer)
 					 * to not be detected otherwise.
 					 */
 					/* pin2 high and pin 1 loaded */
-					Event |=  (0x01 << INPUT_PORT_VALUE);
+					Event |= BIT(INPUT_PORT_VALUE);
 				}
-				if (!(PINRead(Port, INPUT_PORT_PIN5))) { // pin 5 low
-
-					Event |=  (0x01 << INPUT_PORT_PIN5);
+				if (!PINRead(Port, INPUT_PORT_PIN5)) {
+					/* pin 5 low */
+					Event |= BIT(INPUT_PORT_PIN5);
 				}
-				if ((PINRead(Port, INPUT_PORT_PIN6))) { // pin 6 high
-
-					Event |=  (0x01 << INPUT_PORT_PIN6);
+				if (PINRead(Port, INPUT_PORT_PIN6)) {
+					/* pin 6 high */
+					Event |= BIT(INPUT_PORT_PIN6);
 				}
 				if (InputPort[Port].Event != Event) { // pins has changed - reset timer
 #ifdef DEBUG
@@ -1119,30 +1120,17 @@ static enum hrtimer_restart Device3TimerInterrupt1(struct hrtimer *pTimer)
 			case DCM_CONNECTION:
 				// something is connected - try to evaluate
 
-				if (InputPort[Port].Event & (0x01 << INPUT_PORT_PIN2)) {
+				if (InputPort[Port].Event & BIT(INPUT_PORT_PIN2))
 					InputPort[Port].State = DCM_PIN2_LOW;
-				} else {
-					if (InputPort[Port].Event & (0x01 << INPUT_PORT_VALUE))	//6, the right pos, & 0x40
-					{ // pin 1 is loaded, 13
+				else if (InputPort[Port].Event & BIT(INPUT_PORT_VALUE))
+					InputPort[Port].State = DCM_PIN1_LOADED;
+				else if (InputPort[Port].Event & BIT(INPUT_PORT_PIN6))
+					InputPort[Port].State = DCM_PIN6_HIGH;
+				else if (InputPort[Port].Event & BIT(INPUT_PORT_PIN5))
+					InputPort[Port].State = DCM_PIN5_LOW;
+				else
+					InputPort[Port].State = DCM_INIT;
 
-						InputPort[Port].State = DCM_PIN1_LOADED;
-					} else {
-						if (InputPort[Port].Event & (0x01 << INPUT_PORT_PIN6))	//3
-						{ // pin 6 is high, 15
-
-							InputPort[Port].State = DCM_PIN6_HIGH;
-						} else {
-							if (InputPort[Port].Event & (0x01 << INPUT_PORT_PIN5))	//3
-							{ // pin 5 is low, 17
-
-								InputPort[Port].State = DCM_PIN5_LOW;
-							} else { // ?, 0
-
-								InputPort[Port].State = DCM_INIT;
-							}
-						}
-					}
-				}
 #ifndef DISABLE_FAST_DATALOG_BUFFER
 				pAnalog->Actual[Port]    = 0;
 				pAnalog->LogIn[Port]     = 0;
@@ -1156,8 +1144,8 @@ static enum hrtimer_restart Device3TimerInterrupt1(struct hrtimer *pTimer)
 				InputPort[Port].Timer      = 0;
 				InputPort[Port].State      = DCM_CONNECTED_WAITING_FOR_PIN2_HIGH;
 
-				if ((!(InputPort[Port].Event & (0x01 << INPUT_PORT_PIN5))) && (InputPort[Port].Event & (0x01 << INPUT_PORT_PIN6))) { // pin 5 and 6 is high
-
+				if (!(InputPort[Port].Event & BIT(INPUT_PORT_PIN5)) && (InputPort[Port].Event & BIT(INPUT_PORT_PIN6))) {
+					/* pin 5 and 6 is high */
 					if (pAnalog->InPin1[Port] < VtoC(IN1_NEAR_GND)) { // nxt color sensor
 
 						pAnalog->InDcm[Port]     = TYPE_NXT_COLOR;
@@ -1173,10 +1161,10 @@ static enum hrtimer_restart Device3TimerInterrupt1(struct hrtimer *pTimer)
 						pAnalog->InConn[Port]    = CONN_NXT_IIC;
 					}
 				} else {
-					if (InputPort[Port].Event & (0x01 << INPUT_PORT_PIN5)) { // nxt light sensor
-
-						if (InputPort[Port].Event & (0x01 << INPUT_PORT_PIN6)) { // nxt test sensor
-
+					if (InputPort[Port].Event & BIT(INPUT_PORT_PIN5)) {
+						/* nxt light sensor */
+						if (InputPort[Port].Event & BIT(INPUT_PORT_PIN6)) {
+							/* nxt test sensor */
 							pAnalog->InDcm[Port]   = TYPE_NXT_TEST;
 							pAnalog->InConn[Port]  = CONN_NXT_DUMB;
 						} else {
@@ -1411,14 +1399,14 @@ static enum hrtimer_restart Device3TimerInterrupt1(struct hrtimer *pTimer)
 
 				Event = 0;
 
-				if (!(POUTRead(Port, OUTPUT_PORT_PIN6))) { // pin 6 low
-
-					Event |=  (0x01 << OUTPUT_PORT_PIN6);
+				if (!(POUTRead(Port, OUTPUT_PORT_PIN6))) {
+					/* pin 6 low */
+					Event |= BIT(OUTPUT_PORT_PIN6);
 				}
 
-				if ((pAnalog->OutPin5[Port] < VtoC(OUT5_BALANCE_LOW)) || (pAnalog->OutPin5[Port] > VtoC(OUT5_BALANCE_HIGH))) { // pin 5 out of balance
-
-					Event |=  (0x01 << OUTPUT_PORT_VALUE);
+				if ((pAnalog->OutPin5[Port] < VtoC(OUT5_BALANCE_LOW)) || (pAnalog->OutPin5[Port] > VtoC(OUT5_BALANCE_HIGH))) {
+					/* pin 5 out of balance */
+					Event |= BIT(OUTPUT_PORT_VALUE);
 				}
 
 				if (OutputPort[Port].Event != Event) { // pins has changed - reset timer
@@ -1458,8 +1446,8 @@ static enum hrtimer_restart Device3TimerInterrupt1(struct hrtimer *pTimer)
 
 				if ((Tmp > (ADC_REF - 50)) && (Tmp < (ADC_REF + 50))) { // Value5Float is equal to Value5Low
 
-					if ((OutputPort[Port].Value5Float >= OUT5_BALANCE_LOW) && (OutputPort[Port].Value5Float <= OUT5_BALANCE_HIGH) && (OutputPort[Port].Event & (0x01 << OUTPUT_PORT_PIN6))) { // NXT TOUCH SENSOR, NXT SOUND SENSOR or NEW UART SENSOR
-
+					if ((OutputPort[Port].Value5Float >= OUT5_BALANCE_LOW) && (OutputPort[Port].Value5Float <= OUT5_BALANCE_HIGH) && (OutputPort[Port].Event & BIT(OUTPUT_PORT_PIN6))) {
+						/* NXT TOUCH SENSOR, NXT SOUND SENSOR or NEW UART SENSOR */
 						pAnalog->OutDcm[Port]    = TYPE_ERROR;
 						pAnalog->OutConn[Port]   = CONN_ERROR;
 						OutputPort[Port].Connected = 1;
