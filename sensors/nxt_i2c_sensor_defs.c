@@ -2640,6 +2640,138 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
+	[MS_NXTCAM5] = {
+		/**
+		 * .. [#ms-nxtcam5-address] The address is programmable. See
+		 *    manufacturer documentation for more information.
+		 *
+		 * @vendor_name: mindsensors.com
+		 * @vendor_part_number: NXTCam-v5
+		 * @vendor_part_name: Vision Subsystem v5 for NXT or EV3 (with fixed lens)
+		 * @vendor_website: http://www.mindsensors.com/vision-for-robots/191-vision-subsystem-v5-for-nxt-or-ev3-with-fixed-lens
+		 * @default_address: 0x01
+		 * @default_address_footnote: [#ms-nxtcam5-address]_
+		 */
+		.name		= MS_NXTCAM5_NAME,
+		.vendor_id	= "mndsnsrs",
+		.product_id	= "NXTcam5",
+		.num_modes	= 1,
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
+			[0] = {
+				/**
+				 * .. [#ms-nxtcam5-mode0] This driver only allows
+				 *    for tracking a single object. To track more
+				 *    than one object and for other more advanced
+				 *    uses, you can disable this driver by setting
+				 *    ``poll_ms`` to 0 and using the ``direct``
+				 *    attribute to directly read and write I2C
+				 *    messages. See :doc:`i2c` and the manufacturers
+				 *    documentation for more information.
+				 *
+				 * @name_footnote: [#ms-nxtcam5-mode0]_
+				 * @description: Tracking
+				 * @value0: Object count
+				 * @value1: Color index
+				 * @value2: X upper left
+				 * @value3: Y upper left
+				 * @value4: X lower right
+				 * @value5: Y lower right
+				 */
+				.name		= "TRACK",
+				.data_sets	= 6,
+			},
+		},
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
+			[0] = {
+				.read_data_reg	= 0x42,
+			},
+		},
+		.num_commands	= 8,
+		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
+			[0] = {
+				/**
+				 * @description: Select object tracking mode
+				 */
+				.name = "TRACK-OBJ",
+			},
+			[1] = {
+				/**
+				 * @description: Select face tracking mode
+				 */
+				.name = "TRACK-FACE",
+			},
+			[2] = {
+				/**
+				 * @description: Begin capturing continuous movie (end by any other command)
+				 */
+				.name = "MULTI-MOVIE",
+			},
+			[3] = {
+				/**
+				 * @description: Capture short movie clip
+				 */
+				.name = "MOVIE",
+			},
+			[4] = {
+				/**
+				 * @description: Capture still picture
+				 */
+				.name = "PICTURE",
+			},
+			[5] = {
+				/**
+				 * @description: Select eye tracking mode
+				 */
+				.name = "TRACK-EYE",
+			},
+			[6] = {
+				/**
+				 * @description: Select QR code tracking mode (future)
+				 */
+				.name = "TRACK-QR",
+			},
+			[7] = {
+				/**
+				 * @description: Select line tracking mode
+				 */
+				.name = "TRACK-LINE",
+			},
+		},
+		.i2c_cmd_info	= (const struct nxt_i2c_sensor_cmd_info[]) {
+			[0] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'B',
+			},
+			[1] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'F',
+			},
+			[2] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'R',
+			},
+			[3] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'M',
+			},
+			[4] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'P',
+			},
+			[5] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'e',
+			},
+			[6] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'Q',
+			},
+			[7] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'L',
+			},
+		},
+	},
 	[MS_PIXYADAPTER] = {
 		/**
 		 * .. [#ms-pixy-adapter-address] The address is programmable.
