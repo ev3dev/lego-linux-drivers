@@ -928,12 +928,18 @@ static int evb_input_port_set_mode(void *context, u8 mode)
 	hrtimer_cancel(&data->timer);
 	cancel_work_sync(&data->work);
 
-	if (data->port.mode == EV3_INPUT_PORT_MODE_OTHER_I2C)
+	switch (data->port.mode) {
+	case EV3_INPUT_PORT_MODE_OTHER_I2C:
 		evb_input_port_disable_i2c(data);
-	if (data->port.mode == EV3_INPUT_PORT_MODE_OTHER_UART)
+		evb_input_port_set_pin1_gpio(data, LEGO_PORT_GPIO_LOW);
+		break;
+	case EV3_INPUT_PORT_MODE_OTHER_UART:
 		evb_input_port_disable_uart(data);
-	if (data->port.mode == EV3_INPUT_PORT_MODE_RAW)
+		break;
+	case EV3_INPUT_PORT_MODE_RAW:
 		evb_input_port_disable_raw_mode(data);
+		break;
+	}
 	if (data->sensor)
 		evb_input_port_unregister_sensor(&data->work);
 
@@ -962,6 +968,7 @@ static int evb_input_port_set_mode(void *context, u8 mode)
 		data->sensor_type = SENSOR_NONE;
 		data->sensor_type_id = SENSOR_TYPE_ID_UNKNOWN;
 		evb_input_port_enable_i2c(data, 0);
+		evb_input_port_set_pin1_gpio(data, LEGO_PORT_GPIO_HIGH);
 		break;
 	case EV3_INPUT_PORT_MODE_EV3_ANALOG:
 		data->sensor_type = SENSOR_EV3_ANALOG;
