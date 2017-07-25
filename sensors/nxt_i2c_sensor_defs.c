@@ -956,7 +956,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.name		= HT_NXT_COLOR_SENSOR_V2_NAME,
 		.vendor_id	= "HiTechnc",
 		.product_id	= "ColorPD",
-		.num_modes	= 8,
+		.num_modes	= 9,
 		.num_read_only_modes = 7,
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
@@ -1027,6 +1027,18 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[7] = {
 				/**
+				 * @description: Passive values
+				 * @value0: Red Component (0 to 255)
+				 * @value1: Green Component (0 to 255)
+				 * @value2: Blue Component (0 to 255)
+				 * @value3: White Component (0 to 255)
+				 */
+				.name = "PASSIVE",
+				.data_sets = 4,
+				.data_type = LEGO_SENSOR_DATA_U8,
+			},
+			[8] = {
+				/**
 				 * @description: Raw values
 				 * @value0: Red Component (0 to 255)
 				 * @value1: Green Component (0 to 255)
@@ -1034,10 +1046,8 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value3: White Component (0 to 255)
 				 */
 				.name = "RAW",
-				.raw_max = USHRT_MAX,
-				.si_max = USHRT_MAX,
 				.data_sets = 4,
-				.data_type = LEGO_SENSOR_DATA_U16,
+				.data_type = LEGO_SENSOR_DATA_U8,
 			},
 		},
 		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
@@ -1070,6 +1080,11 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.read_data_reg	= 0x42,
 			},
 			[7] = {
+				.set_mode_reg	= 0x41,
+				.set_mode_data	= 0x01,
+				.read_data_reg	= 0x42,
+			},
+			[8] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x03,
 				.read_data_reg	= 0x42,
