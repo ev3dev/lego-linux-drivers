@@ -956,8 +956,8 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.name		= HT_NXT_COLOR_SENSOR_V2_NAME,
 		.vendor_id	= "HiTechnc",
 		.product_id	= "ColorPD",
-		.num_modes	= 8,
-		.num_read_only_modes = 7,
+		.num_modes	= 5,
+		.num_read_only_modes = 3,
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
@@ -976,33 +976,17 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 * @description: Red component
-				 * @value0: Reflected light intensity (0 to 255)
+				 * @description: Color component values
+				 * @value0: Red Component (0 to 255)
+				 * @value1: Green Component (0 to 255)
+				 * @value2: Blue Component (0 to 255)
+				 * @value3: White Component (0 to 255)
 				 */
-				.name = "RED",
+				.name = "RGB",
+				.data_sets = 4,
+				.data_type = LEGO_SENSOR_DATA_U8,
 			},
 			[2] = {
-				/**
-				 * @description: Green component
-				 * @value0: Reflected light intensity (0 to 255)
-				 */
-				.name = "GREEN",
-			},
-			[3] = {
-				/**
-				 * @description: Blue component
-				 * @value0: Reflected light intensity (0 to 255)
-				 */
-				.name = "BLUE",
-			},
-			[4] = {
-				/**
-				 * @description: White component
-				 * @value0: Reflected light intensity (0 to 255)
-				 */
-				.name = "WHITE",
-			},
-			[5] = {
 				/**
 				 * @description: Normalized values
 				 * @value0: Red Component (0 to 255)
@@ -1012,20 +996,21 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 */
 				.name = "NORM",
 				.data_sets = 4,
+				.data_type = LEGO_SENSOR_DATA_U8,
 			},
-			[6] = {
+			[3] = {
 				/**
-				 * @description: All values
+				 * @description: Passive values
 				 * @value0: Red Component (0 to 255)
 				 * @value1: Green Component (0 to 255)
 				 * @value2: Blue Component (0 to 255)
 				 * @value3: White Component (0 to 255)
-				 * @value4: ??? (0 to 255)
 				 */
-				.name = "ALL",
-				.data_sets = 5,
+				.name = "PASSIVE",
+				.data_sets = 4,
+				.data_type = LEGO_SENSOR_DATA_U8,
 			},
-			[7] = {
+			[4] = {
 				/**
 				 * @description: Raw values
 				 * @value0: Red Component (0 to 255)
@@ -1034,45 +1019,60 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value3: White Component (0 to 255)
 				 */
 				.name = "RAW",
-				.raw_max = USHRT_MAX,
-				.si_max = USHRT_MAX,
 				.data_sets = 4,
-				.data_type = LEGO_SENSOR_DATA_U16,
+				.data_type = LEGO_SENSOR_DATA_U8,
 			},
 		},
 		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.set_mode_reg	= 0x41,
+				.set_mode_data	= 0x00,
 				.read_data_reg	= 0x42,
 			},
 			[1] = {
 				.set_mode_reg	= 0x41,
+				.set_mode_data	= 0x00,
 				.read_data_reg	= 0x43,
 			},
 			[2] = {
 				.set_mode_reg	= 0x41,
-				.read_data_reg	= 0x44,
+				.set_mode_data	= 0x00,
+				.read_data_reg	= 0x48,
 			},
 			[3] = {
 				.set_mode_reg	= 0x41,
-				.read_data_reg	= 0x45,
+				.set_mode_data	= 0x01,
+				.read_data_reg	= 0x43,
 			},
 			[4] = {
 				.set_mode_reg	= 0x41,
-				.read_data_reg	= 0x46,
-			},
-			[5] = {
-				.set_mode_reg	= 0x41,
-				.read_data_reg	= 0x47,
-			},
-			[6] = {
-				.set_mode_reg	= 0x41,
-				.read_data_reg	= 0x42,
-			},
-			[7] = {
-				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x03,
-				.read_data_reg	= 0x42,
+				.read_data_reg	= 0x43,
+			},
+		},
+		.num_commands	= 2,
+		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
+			[0] = {
+				/**
+				 * @description: Configure sensor for 50Hz power mains.
+				 */
+				.name = "50HZ",
+			},
+			[1] = {
+				/**
+				 * @description: Configure sensor for 60Hz power mains.
+				 */
+				.name = "60HZ",
+			},
+		},
+		.i2c_cmd_info	= (const struct nxt_i2c_sensor_cmd_info[]) {
+			[0] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 0x35,
+			},
+			[1] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 0x36,
 			},
 		},
 	},
