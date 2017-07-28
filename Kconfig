@@ -32,6 +32,12 @@ config LEGOEV3_BLUETOOTH
 	help
 	  Select Y to enable on-board bluetooth on the LEGO MINDSTORMS EV3.
 
+config LEGOEV3_PORTS
+	tristate "EV3 input and output port support"
+	default y
+	help
+	  Select Y to enable support for EV3 input and output ports.
+
 config LEGOEV3_SOUND
 	tristate "LEGO Mindstorms EV3 speaker driver"
 	depends on MACH_DAVINCI_LEGOEV3 && PWM_TIEHRPWM && LEGOEV3_FIQ

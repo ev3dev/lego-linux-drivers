@@ -41,7 +41,7 @@
 #include <lego_port_class.h>
 #include <dc_motor_class.h>
 
-#include "evb_ports.h"
+#include "ev3_ports.h"
 #include "../motors/ev3_motor.h"
 
 #define OUTPUT_PORT_POLL_NS	10000000			  /*  10 msec */

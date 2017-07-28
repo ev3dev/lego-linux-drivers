@@ -40,7 +40,7 @@
 #include <lego.h>
 #include <lego_port_class.h>
 
-#include "evb_ports.h"
+#include "ev3_ports.h"
 #include "../sensors/ev3_analog_sensor.h"
 #include "../sensors/nxt_analog_sensor.h"
 

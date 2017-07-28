@@ -52,7 +52,7 @@
 
 #include <lego_port_class.h>
 
-#include "evb_ports.h"
+#include "ev3_ports.h"
 
 static int evb_ports_probe(struct platform_device *pdev)
 {
