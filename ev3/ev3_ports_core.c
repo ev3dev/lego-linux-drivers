@@ -1,5 +1,5 @@
 /*
- * Support for the input and output ports on the FatcatLab EVB
+ * Support for the input and output ports on LEGO MINDSTORMS EV3
  *
  * Copyright (C) 2013-2014,2016 David Lechner <david@lechnology.com>
  *
@@ -17,9 +17,9 @@
  * DOC: userspace
  *
  * By default, a sysfs device is created for each input and output port on the
- * EVB. See the `input ports`_ and `output ports`_ driver descriptions for more
+ * EV3. See the `input ports`_ and `output ports`_ driver descriptions for more
  * information on how these work. There is a single module for input and output
- * ports named ``evb_ports``. This module has some module parameters.
+ * ports named ``ev3_ports``. This module has some module parameters.
  *
  * .. flat-table:: Module Parameters
  *    :widths: 1 5
@@ -54,7 +54,7 @@
 
 #include "ev3_ports.h"
 
-static int evb_ports_probe(struct platform_device *pdev)
+static int ev3_ports_probe(struct platform_device *pdev)
 {
 	int err;
 
@@ -67,53 +67,53 @@ static int evb_ports_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int evb_ports_remove(struct platform_device *pdev)
+static int ev3_ports_remove(struct platform_device *pdev)
 {
 	of_platform_depopulate(&pdev->dev);
 
 	return 0;
 }
 
-static const struct of_device_id evb_ports_dt_ids[] = {
-	{ .compatible = "ev3dev,evb-ports", },
+static const struct of_device_id ev3_ports_dt_ids[] = {
+	{ .compatible = "ev3dev,ev3-ports", },
 	{ }
 };
-MODULE_DEVICE_TABLE(of, evb_ports_dt_ids);
+MODULE_DEVICE_TABLE(of, ev3_ports_dt_ids);
 
-static struct platform_driver evb_ports_driver = {
+static struct platform_driver ev3_ports_driver = {
 	.driver	= {
-		.name	= "evb-ports",
-		.of_match_table = evb_ports_dt_ids,
+		.name	= "ev3-ports",
+		.of_match_table = ev3_ports_dt_ids,
 	},
-	.probe	= evb_ports_probe,
-	.remove	= evb_ports_remove,
+	.probe	= ev3_ports_probe,
+	.remove	= ev3_ports_remove,
 };
 
-struct dentry *evb_ports_debug;
-EXPORT_SYMBOL_GPL(evb_ports_debug);
+struct dentry *ev3_ports_debug;
+EXPORT_SYMBOL_GPL(ev3_ports_debug);
 
-static int __init evb_ports_driver_init(void)
+static int __init ev3_ports_driver_init(void)
 {
 	int err;
 
-	err = platform_driver_register(&evb_ports_driver);
+	err = platform_driver_register(&ev3_ports_driver);
 	if (err)
 		return err;
 
-	evb_ports_debug = debugfs_create_dir("evb-ports", NULL);
+	ev3_ports_debug = debugfs_create_dir("ev3-ports", NULL);
 
 	return 0;
 }
-module_init(evb_ports_driver_init);
+module_init(ev3_ports_driver_init);
 
-static void __exit evb_ports_driver_exit(void)
+static void __exit ev3_ports_driver_exit(void)
 {
-	debugfs_remove(evb_ports_debug);
-	platform_driver_unregister(&evb_ports_driver);
+	debugfs_remove(ev3_ports_debug);
+	platform_driver_unregister(&ev3_ports_driver);
 }
-module_exit(evb_ports_driver_exit);
+module_exit(ev3_ports_driver_exit);
 
-MODULE_DESCRIPTION("Support for FatcatLab EVB input and output ports.");
+MODULE_DESCRIPTION("Support for LEGO MINDSTORMS EV3 input and output ports.");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("platform:evb-ports");
+MODULE_ALIAS("platform:ev3-ports");

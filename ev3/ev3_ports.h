@@ -13,11 +13,11 @@
  * GNU General Public License for more details.
  */
 
-#ifndef _EVB_PORTS_H
-#define _EVB_PORTS_H
+#ifndef _EV3_PORTS_H
+#define _EV3_PORTS_H
 
 #include <linux/debugfs.h>
 
-extern struct dentry *evb_ports_debug;
+extern struct dentry *ev3_ports_debug;
 
-#endif /* _EVB_PORTS_H */
+#endif /* _EV3_PORTS_H */

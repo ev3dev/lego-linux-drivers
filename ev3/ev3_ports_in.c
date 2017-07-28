@@ -16,7 +16,7 @@
 /**
  * DOC: userspace
  *
- * FatcatLab EVB has four input ports labeled 1, 2, 3 and 4. These ports
+ * LEGO MINDSTORMS EV3 has four input ports labeled 1, 2, 3 and 4. These ports
  * are used with LEGO MINDSTORMS EV3 and NXT compatible sensors and other
  * devices. Most sensors can be automatically detected when plugged in.
  * Unlike the EV3, however, NXT analog sensors cannot be detected, so to use
@@ -255,7 +255,7 @@ enum sensor_type {
 	NUM_SENSOR_TYPE
 };
 
-static const char * const evb_input_port_state_names[] = {
+static const char * const ev3_input_port_state_names[] = {
 	[SENSOR_NONE]		= "no-sensor",
 	[SENSOR_NXT_ANALOG]	= "nxt-analog",
 	[SENSOR_NXT_COLOR]	= "nxt-color",
@@ -265,7 +265,7 @@ static const char * const evb_input_port_state_names[] = {
 	[SENSOR_ERR]		= "error",
 };
 
-enum evb_input_port_mode {
+enum ev3_input_port_mode {
 	EV3_INPUT_PORT_MODE_AUTO,
 	EV3_INPUT_PORT_MODE_NXT_ANALOG,
 	EV3_INPUT_PORT_MODE_NXT_COLOR,
@@ -278,8 +278,8 @@ enum evb_input_port_mode {
 	NUM_EV3_INPUT_PORT_MODE
 };
 
-struct evb_input_port_mode_name {
-	enum evb_input_port_mode mode;
+struct ev3_input_port_mode_name {
+	enum ev3_input_port_mode mode;
 	const char *name;
 };
 
@@ -287,16 +287,16 @@ struct evb_input_port_mode_name {
  * Documentation is automatically generated from this struct, so formatting is
  * very important. Make sure any new modes have the same syntax. The comments
  * are also parsed to provide more information for the documentation. The
- * parser can be found in the evbdev-kpkg repository.
+ * parser can be found in the ev3dev-kpkg repository.
  */
 
-static const struct lego_port_mode_info evb_input_port_mode_info[] = {
+static const struct lego_port_mode_info ev3_input_port_mode_info[] = {
 	/**
 	 * @description: EV3 Input Port
-	 * @module: evb-ports
+	 * @module: ev3-ports
 	 * @connection_types: NXT/Analog, NXT/I2C, Other/I2C, EV3/Analog, EV3/UART, Other/UART
 	 * @prefix: in
-	 * @module: evb_ports
+	 * @module: ev3_ports
 	 */
 	[EV3_INPUT_PORT_MODE_AUTO] = {
 		/**
@@ -375,7 +375,7 @@ static const struct lego_port_mode_info evb_input_port_mode_info[] = {
 	},
 };
 
-struct device_type evb_input_port_sensor_types[] = {
+struct device_type ev3_input_port_sensor_types[] = {
 	[SENSOR_NXT_ANALOG] = {
 		.name	= "nxt-analog-sensor",
 	},
@@ -393,7 +393,7 @@ struct device_type evb_input_port_sensor_types[] = {
 	},
 };
 
-const char *evb_input_port_sensor_table[] = {
+const char *ev3_input_port_sensor_table[] = {
 	[SENSOR_TYPE_ID_NXT_TOUCH]	= LEGO_NXT_TOUCH_SENSOR_NAME,
 	[SENSOR_TYPE_ID_NXT_LIGHT]	= LEGO_NXT_LIGHT_SENSOR_NAME,
 	[SENSOR_TYPE_ID_NXT_ANALOG]	= GENERIC_NXT_ANALOG_SENSOR_NAME,
@@ -417,13 +417,13 @@ const char *evb_input_port_sensor_table[] = {
 	[SENSOR_TYPE_ID_UNKNOWN]	= NULL,
 };
 
-static struct device_type evb_input_port_type = {
-	.name	= "evb-input-port",
+static struct device_type ev3_input_port_type = {
+	.name	= "ev3-input-port",
 };
 
 /**
- * struct evb_input_port_data - Driver data for an input port on the EV3 brick
- * @port: Pointer to the evb_port that is bound to this instance.
+ * struct ev3_input_port_data - Driver data for an input port on the EV3 brick
+ * @port: Pointer to the ev3_port that is bound to this instance.
  * @iio_cb: IIO callback buffer for analog inputs.
  * @pin1_gpio: Controls 9V supply on Pin 1.
  * @pin2_gpio: Attached to pin 2. Discriminates EV3 sensors from NXT sensors.
@@ -455,11 +455,11 @@ static struct device_type evb_input_port_type = {
  * @i2c_enabled: Flag indicating if port has i2c enabled.
  * @uart_enabled: Flag indicating that port has uart enabled.
  */
-struct evb_input_port_data {
+struct ev3_input_port_data {
 	struct lego_port_device port;
-	struct evb_analog_device *analog;
+	struct ev3_analog_device *analog;
 	struct iio_cb_buffer *iio_cb;
-	void (*sensor_cb)(struct evb_input_port_data *data);
+	void (*sensor_cb)(struct ev3_input_port_data *data);
 	struct gpio_desc *pin1_gpio;
 	struct gpio_desc *pin2_gpio;
 	struct gpio_desc *pin5_gpio;
@@ -488,7 +488,7 @@ struct evb_input_port_data {
 	unsigned uart_enabled:1;
 };
 
-static inline int evb_input_port_set_gpio(struct gpio_desc *gpio,
+static inline int ev3_input_port_set_gpio(struct gpio_desc *gpio,
 					  enum lego_port_gpio_state state)
 {
 	if (state == LEGO_PORT_GPIO_FLOAT)
@@ -497,31 +497,31 @@ static inline int evb_input_port_set_gpio(struct gpio_desc *gpio,
 	return gpiod_direction_output(gpio, state == LEGO_PORT_GPIO_HIGH);
 }
 
-static int evb_input_port_set_pin1_gpio(void *context,
+static int ev3_input_port_set_pin1_gpio(void *context,
 					enum lego_port_gpio_state state)
 {
-	struct evb_input_port_data *data = context;
+	struct ev3_input_port_data *data = context;
 
-	return evb_input_port_set_gpio(data->pin1_gpio, state);
+	return ev3_input_port_set_gpio(data->pin1_gpio, state);
 }
 
-static struct lego_port_nxt_i2c_ops evb_input_port_nxt_i2c_ops = {
-	.set_pin1_gpio	= evb_input_port_set_pin1_gpio,
+static struct lego_port_nxt_i2c_ops ev3_input_port_nxt_i2c_ops = {
+	.set_pin1_gpio	= ev3_input_port_set_pin1_gpio,
 };
 
-static int evb_input_port_set_pin5_gpio(void *context,
+static int ev3_input_port_set_pin5_gpio(void *context,
 					enum lego_port_gpio_state state)
 {
-	struct evb_input_port_data *data = context;
+	struct ev3_input_port_data *data = context;
 
-	return evb_input_port_set_gpio(data->pin5_gpio, state);
+	return ev3_input_port_set_gpio(data->pin5_gpio, state);
 }
 
-static struct lego_port_nxt_analog_ops evb_input_port_nxt_analog_ops = {
-	.set_pin5_gpio	= evb_input_port_set_pin5_gpio,
+static struct lego_port_nxt_analog_ops ev3_input_port_nxt_analog_ops = {
+	.set_pin5_gpio	= ev3_input_port_set_pin5_gpio,
 };
 
-static void evb_input_port_nxt_analog_cb(struct evb_input_port_data *data)
+static void ev3_input_port_nxt_analog_cb(struct ev3_input_port_data *data)
 {
 	if (data->port.raw_data)
 		*(s32 *)data->port.raw_data = data->pin1_mv;
@@ -529,7 +529,7 @@ static void evb_input_port_nxt_analog_cb(struct evb_input_port_data *data)
 		data->port.notify_raw_data_func(data->port.notify_raw_data_context);
 }
 
-static void evb_input_port_ev3_analog_cb(struct evb_input_port_data *data)
+static void ev3_input_port_ev3_analog_cb(struct ev3_input_port_data *data)
 {
 	if (data->port.raw_data)
 		*(s32 *)data->port.raw_data = data->pin6_mv;
@@ -537,7 +537,7 @@ static void evb_input_port_ev3_analog_cb(struct evb_input_port_data *data)
 		data->port.notify_raw_data_func(data->port.notify_raw_data_context);
 }
 
-int evb_input_port_enable_i2c(struct evb_input_port_data *data, unsigned int class)
+int ev3_input_port_enable_i2c(struct ev3_input_port_data *data, unsigned int class)
 {
 	int err;
 
@@ -555,9 +555,9 @@ int evb_input_port_enable_i2c(struct evb_input_port_data *data, unsigned int cla
 	return 0;
 }
 
-void evb_input_port_disable_i2c(struct evb_input_port_data *data)
+void ev3_input_port_disable_i2c(struct ev3_input_port_data *data)
 {
-	/* NOP if evb_input_port_enable_i2c() was not called */
+	/* NOP if ev3_input_port_enable_i2c() was not called */
 	if (!data->i2c_enabled)
 		return;
 
@@ -568,7 +568,7 @@ void evb_input_port_disable_i2c(struct evb_input_port_data *data)
 	gpiod_set_value(data->buf_ena_gpio, 0);
 }
 
-int evb_input_port_enable_uart(struct evb_input_port_data *data)
+int ev3_input_port_enable_uart(struct ev3_input_port_data *data)
 {
 	int err;
 
@@ -583,9 +583,9 @@ int evb_input_port_enable_uart(struct evb_input_port_data *data)
 	return 0;
 }
 
-void evb_input_port_disable_uart(struct evb_input_port_data *data)
+void ev3_input_port_disable_uart(struct ev3_input_port_data *data)
 {
-	/* NOP if evb_input_port_enable_uart() was not called */
+	/* NOP if ev3_input_port_enable_uart() was not called */
 	if (!data->uart_enabled)
 		return;
 
@@ -595,7 +595,7 @@ void evb_input_port_disable_uart(struct evb_input_port_data *data)
 	gpiod_set_value(data->buf_ena_gpio, 0);
 }
 
-void evb_input_port_float(struct evb_input_port_data *data)
+void ev3_input_port_float(struct ev3_input_port_data *data)
 {
 	if (data->pin1_gpio)
 		gpiod_direction_output(data->pin1_gpio, 0);
@@ -606,10 +606,10 @@ void evb_input_port_float(struct evb_input_port_data *data)
 	gpiod_direction_output(data->buf_ena_gpio, 0);
 }
 
-void evb_input_port_register_sensor(struct work_struct *work)
+void ev3_input_port_register_sensor(struct work_struct *work)
 {
-	struct evb_input_port_data *data =
-			container_of(work, struct evb_input_port_data, work);
+	struct ev3_input_port_data *data =
+			container_of(work, struct ev3_input_port_data, work);
 	struct lego_device *new_sensor;
 
 	if (data->sensor_type == SENSOR_NONE
@@ -624,15 +624,15 @@ void evb_input_port_register_sensor(struct work_struct *work)
 
 	switch(data->sensor_type) {
 	case SENSOR_NXT_ANALOG:
-		data->sensor_cb = evb_input_port_nxt_analog_cb;
+		data->sensor_cb = ev3_input_port_nxt_analog_cb;
 		break;
 	case SENSOR_EV3_ANALOG:
-		data->sensor_cb = evb_input_port_ev3_analog_cb;
+		data->sensor_cb = ev3_input_port_ev3_analog_cb;
 		break;
 	case SENSOR_NXT_I2C:
 		/* Give the sensor time to boot */
 		msleep(1000);
-		evb_input_port_enable_i2c(data, I2C_CLASS_LEGO);
+		ev3_input_port_enable_i2c(data, I2C_CLASS_LEGO);
 		/*
 		 * I2C sensors are handled by the i2c stack, so we are just
 		 * kicking the i2c adapter so that it doesn't break the
@@ -640,7 +640,7 @@ void evb_input_port_register_sensor(struct work_struct *work)
 		 */
 		break;
 	case SENSOR_EV3_UART:
-		evb_input_port_enable_uart(data);
+		ev3_input_port_enable_uart(data);
 		/*
 		 * UART sensors are handled via the EV3 UART Line Discipline
 		 * however, we still register a dummy "sensor" for use by udev
@@ -653,8 +653,8 @@ void evb_input_port_register_sensor(struct work_struct *work)
 	}
 
 	new_sensor = lego_device_register(
-		evb_input_port_sensor_table[data->sensor_type_id],
-		&evb_input_port_sensor_types[data->sensor_type],
+		ev3_input_port_sensor_table[data->sensor_type_id],
+		&ev3_input_port_sensor_types[data->sensor_type],
 		&data->port, NULL, 0);
 	if (IS_ERR(new_sensor)) {
 		dev_err(&data->port.dev,
@@ -668,31 +668,31 @@ void evb_input_port_register_sensor(struct work_struct *work)
 	return;
 }
 
-void evb_input_port_unregister_sensor(struct work_struct *work)
+void ev3_input_port_unregister_sensor(struct work_struct *work)
 {
-	struct evb_input_port_data *data =
-			container_of(work, struct evb_input_port_data, work);
+	struct ev3_input_port_data *data =
+			container_of(work, struct ev3_input_port_data, work);
 
 	lego_device_unregister(data->sensor);
 	data->sensor_type = SENSOR_NONE;
 	data->sensor = NULL;
 	data->sensor_cb = NULL;
-	evb_input_port_disable_i2c(data);
-	evb_input_port_disable_uart(data);
+	ev3_input_port_disable_i2c(data);
+	ev3_input_port_disable_uart(data);
 }
 
-void evb_input_port_change_uevent_work(struct work_struct *work)
+void ev3_input_port_change_uevent_work(struct work_struct *work)
 {
-	struct evb_input_port_data *data =
-		container_of(work, struct evb_input_port_data, change_uevent_work);
+	struct ev3_input_port_data *data =
+		container_of(work, struct ev3_input_port_data, change_uevent_work);
 
 	kobject_uevent(&data->port.dev.kobj, KOBJ_CHANGE);
 }
 
-static enum hrtimer_restart evb_input_port_timer_callback(struct hrtimer *timer)
+static enum hrtimer_restart ev3_input_port_timer_callback(struct hrtimer *timer)
 {
-	struct evb_input_port_data *data =
-			container_of(timer, struct evb_input_port_data, timer);
+	struct ev3_input_port_data *data =
+			container_of(timer, struct ev3_input_port_data, timer);
 	enum sensor_type prev_sensor_type = data->sensor_type;
 	unsigned new_pin_state_flags = 0;
 	unsigned new_pin1_mv = 0;
@@ -703,7 +703,7 @@ static enum hrtimer_restart evb_input_port_timer_callback(struct hrtimer *timer)
 	switch(data->con_state) {
 	case CON_STATE_INIT:
 		if (!data->sensor) {
-			evb_input_port_float(data);
+			ev3_input_port_float(data);
 			data->timer_loop_cnt = 0;
 			data->sensor_type = SENSOR_NONE;
 			data->sensor_type_id = SENSOR_TYPE_ID_UNKNOWN;
@@ -828,7 +828,7 @@ static enum hrtimer_restart evb_input_port_timer_callback(struct hrtimer *timer)
 			}
 			data->timer_loop_cnt = 0;
 			if (data->sensor_type != SENSOR_ERR) {
-				INIT_WORK(&data->work, evb_input_port_register_sensor);
+				INIT_WORK(&data->work, ev3_input_port_register_sensor);
 				schedule_work(&data->work);
 			}
 		}
@@ -880,7 +880,7 @@ static enum hrtimer_restart evb_input_port_timer_callback(struct hrtimer *timer)
 	    && data->timer_loop_cnt >= REMOVE_CNT && !work_busy(&data->work))
 	{
 		if (data->sensor) {
-			INIT_WORK(&data->work, evb_input_port_unregister_sensor);
+			INIT_WORK(&data->work, ev3_input_port_unregister_sensor);
 			schedule_work(&data->work);
 		}
 		data->con_state = CON_STATE_INIT;
@@ -889,7 +889,7 @@ static enum hrtimer_restart evb_input_port_timer_callback(struct hrtimer *timer)
 	return HRTIMER_RESTART;
 }
 
-int evb_input_port_enable_raw_mode(struct evb_input_port_data *data)
+int ev3_input_port_enable_raw_mode(struct ev3_input_port_data *data)
 {
 	if (data->pin1_gpio)
 		gpiod_export(data->pin1_gpio, false);
@@ -902,7 +902,7 @@ int evb_input_port_enable_raw_mode(struct evb_input_port_data *data)
 	return 0;
 }
 
-void evb_input_port_disable_raw_mode(struct evb_input_port_data *data)
+void ev3_input_port_disable_raw_mode(struct ev3_input_port_data *data)
 {
 	if (data->pin1_gpio)
 		gpiod_unexport(data->pin1_gpio);
@@ -911,12 +911,12 @@ void evb_input_port_disable_raw_mode(struct evb_input_port_data *data)
 	gpiod_unexport(data->pin5_gpio);
 	gpiod_unexport(data->pin6_gpio);
 
-	evb_input_port_float(data);
+	ev3_input_port_float(data);
 }
 
-static int evb_input_port_set_mode(void *context, u8 mode)
+static int ev3_input_port_set_mode(void *context, u8 mode)
 {
-	struct evb_input_port_data *data = context;
+	struct ev3_input_port_data *data = context;
 	int err;
 
 	/*
@@ -930,18 +930,18 @@ static int evb_input_port_set_mode(void *context, u8 mode)
 
 	switch (data->port.mode) {
 	case EV3_INPUT_PORT_MODE_OTHER_I2C:
-		evb_input_port_disable_i2c(data);
-		evb_input_port_set_pin1_gpio(data, LEGO_PORT_GPIO_LOW);
+		ev3_input_port_disable_i2c(data);
+		ev3_input_port_set_pin1_gpio(data, LEGO_PORT_GPIO_LOW);
 		break;
 	case EV3_INPUT_PORT_MODE_OTHER_UART:
-		evb_input_port_disable_uart(data);
+		ev3_input_port_disable_uart(data);
 		break;
 	case EV3_INPUT_PORT_MODE_RAW:
-		evb_input_port_disable_raw_mode(data);
+		ev3_input_port_disable_raw_mode(data);
 		break;
 	}
 	if (data->sensor)
-		evb_input_port_unregister_sensor(&data->work);
+		ev3_input_port_unregister_sensor(&data->work);
 
 	switch (mode) {
 	case EV3_INPUT_PORT_MODE_AUTO:
@@ -952,45 +952,45 @@ static int evb_input_port_set_mode(void *context, u8 mode)
 	case EV3_INPUT_PORT_MODE_NXT_ANALOG:
 		data->sensor_type = SENSOR_NXT_ANALOG;
 		data->sensor_type_id = SENSOR_TYPE_ID_NXT_ANALOG;
-		evb_input_port_register_sensor(&data->work);
+		ev3_input_port_register_sensor(&data->work);
 		break;
 	case EV3_INPUT_PORT_MODE_NXT_COLOR:
 		data->sensor_type = SENSOR_NXT_COLOR;
 		data->sensor_type_id = SENSOR_TYPE_ID_NXT_COLOR;
-		evb_input_port_register_sensor(&data->work);
+		ev3_input_port_register_sensor(&data->work);
 		break;
 	case EV3_INPUT_PORT_MODE_NXT_I2C:
 		data->sensor_type = SENSOR_NXT_I2C;
 		data->sensor_type_id = SENSOR_TYPE_ID_NXT_I2C;
-		evb_input_port_register_sensor(&data->work);
+		ev3_input_port_register_sensor(&data->work);
 		break;
 	case EV3_INPUT_PORT_MODE_OTHER_I2C:
 		data->sensor_type = SENSOR_NONE;
 		data->sensor_type_id = SENSOR_TYPE_ID_UNKNOWN;
-		evb_input_port_enable_i2c(data, 0);
-		evb_input_port_set_pin1_gpio(data, LEGO_PORT_GPIO_HIGH);
+		ev3_input_port_enable_i2c(data, 0);
+		ev3_input_port_set_pin1_gpio(data, LEGO_PORT_GPIO_HIGH);
 		break;
 	case EV3_INPUT_PORT_MODE_EV3_ANALOG:
 		data->sensor_type = SENSOR_EV3_ANALOG;
 		data->sensor_type_id = SENSOR_TYPE_ID_EV3_ANALOG_01;
-		evb_input_port_register_sensor(&data->work);
+		ev3_input_port_register_sensor(&data->work);
 		break;
 	case EV3_INPUT_PORT_MODE_EV3_UART:
 		data->sensor_type = SENSOR_EV3_UART;
 		data->sensor_type_id = SENSOR_TYPE_ID_EV3_UART;
-		evb_input_port_register_sensor(&data->work);
+		ev3_input_port_register_sensor(&data->work);
 		break;
 	case EV3_INPUT_PORT_MODE_OTHER_UART:
 		data->sensor_type = SENSOR_NONE;
 		data->sensor_type_id = SENSOR_TYPE_ID_UNKNOWN;
-		err = evb_input_port_enable_uart(data);
+		err = ev3_input_port_enable_uart(data);
 		if (err < 0)
 			return err;
 		break;
 	case EV3_INPUT_PORT_MODE_RAW:
 		data->sensor_type = SENSOR_NONE;
 		data->sensor_type_id = SENSOR_TYPE_ID_UNKNOWN;
-		err = evb_input_port_enable_raw_mode(data);
+		err = ev3_input_port_enable_raw_mode(data);
 		if (err < 0)
 			return err;
 		break;
@@ -1002,9 +1002,9 @@ static int evb_input_port_set_mode(void *context, u8 mode)
 	return 0;
 }
 
-static int evb_input_port_set_device(void *context, const char *device_name)
+static int ev3_input_port_set_device(void *context, const char *device_name)
 {
-	struct evb_input_port_data *data = context;
+	struct ev3_input_port_data *data = context;
 	struct lego_device *new_sensor;
 
 	if (data->sensor_type != SENSOR_NXT_ANALOG)
@@ -1014,7 +1014,7 @@ static int evb_input_port_set_device(void *context, const char *device_name)
 	data->sensor = NULL;
 
 	new_sensor = lego_device_register(device_name,
-		&evb_input_port_sensor_types[data->sensor_type],
+		&ev3_input_port_sensor_types[data->sensor_type],
 		&data->port, NULL, 0);
 	if (IS_ERR(new_sensor))
 		return PTR_ERR(new_sensor);
@@ -1024,16 +1024,16 @@ static int evb_input_port_set_device(void *context, const char *device_name)
 	return 0;
 }
 
-static const char *evb_input_port_get_status(void *context)
+static const char *ev3_input_port_get_status(void *context)
 {
-	struct evb_input_port_data *data = context;
+	struct ev3_input_port_data *data = context;
 
-	return evb_input_port_state_names[data->sensor_type];
+	return ev3_input_port_state_names[data->sensor_type];
 }
 
-static int evb_input_port_buf_cb(const void *buf_data, void *private)
+static int ev3_input_port_buf_cb(const void *buf_data, void *private)
 {
-	struct evb_input_port_data *data = private;
+	struct ev3_input_port_data *data = private;
 	const u16 *raw = buf_data;
 
 	/*
@@ -1051,9 +1051,9 @@ static int evb_input_port_buf_cb(const void *buf_data, void *private)
 	return 0;
 }
 
-static int evb_input_port_probe(struct platform_device *pdev)
+static int ev3_input_port_probe(struct platform_device *pdev)
 {
-	struct evb_input_port_data *data;
+	struct ev3_input_port_data *data;
 	struct iio_channel *cb_chans;
 	int err, i;
 	int pin1_channel = -1;
@@ -1092,7 +1092,7 @@ static int evb_input_port_probe(struct platform_device *pdev)
 		return err;
 	}
 
-	data->iio_cb = iio_channel_get_all_cb(&pdev->dev, evb_input_port_buf_cb,
+	data->iio_cb = iio_channel_get_all_cb(&pdev->dev, ev3_input_port_buf_cb,
 					      data);
 	if (IS_ERR(data->iio_cb)) {
 		err = PTR_ERR(data->iio_cb);
@@ -1191,7 +1191,7 @@ static int evb_input_port_probe(struct platform_device *pdev)
 		goto err_stop_iio_cb;
 	}
 
-	data->port.name = evb_input_port_type.name;
+	data->port.name = ev3_input_port_type.name;
 	snprintf(data->port.address, LEGO_NAME_SIZE, "%s", dev_name(&pdev->dev));
 	/* tty name is optional, so ignoring return value */
 	of_property_read_string(pdev->dev.of_node, "ev3dev,tty-name",
@@ -1199,26 +1199,26 @@ static int evb_input_port_probe(struct platform_device *pdev)
 	data->port.num_modes = NUM_EV3_INPUT_PORT_MODE;
 	data->port.supported_modes = LEGO_PORT_ALL_MODES;
 
-	data->port.mode_info = evb_input_port_mode_info;
-	data->port.set_mode = evb_input_port_set_mode;
-	data->port.set_device = evb_input_port_set_device;
-	data->port.get_status = evb_input_port_get_status;
-	data->port.nxt_analog_ops = &evb_input_port_nxt_analog_ops;
+	data->port.mode_info = ev3_input_port_mode_info;
+	data->port.set_mode = ev3_input_port_set_mode;
+	data->port.set_device = ev3_input_port_set_device;
+	data->port.get_status = ev3_input_port_get_status;
+	data->port.nxt_analog_ops = &ev3_input_port_nxt_analog_ops;
 	if (data->pin1_gpio)
-		data->port.nxt_i2c_ops = &evb_input_port_nxt_i2c_ops;
+		data->port.nxt_i2c_ops = &ev3_input_port_nxt_i2c_ops;
 	data->port.context = data;
 	dev_set_drvdata(&pdev->dev, data);
 
-	err = lego_port_register(&data->port, &evb_input_port_type, &pdev->dev);
+	err = lego_port_register(&data->port, &ev3_input_port_type, &pdev->dev);
 	if (err) {
 		dev_err(&pdev->dev, "Failed to register input port.\n");
 		goto err_put_i2c_adapter;
 	}
 
-	INIT_WORK(&data->change_uevent_work, evb_input_port_change_uevent_work);
+	INIT_WORK(&data->change_uevent_work, ev3_input_port_change_uevent_work);
 	INIT_WORK(&data->work, NULL);
 	hrtimer_init(&data->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	data->timer.function = evb_input_port_timer_callback;
+	data->timer.function = ev3_input_port_timer_callback;
 
 	data->con_state = CON_STATE_INIT;
 	hrtimer_start(&data->timer, ktime_set(0, INPUT_PORT_POLL_NS),
@@ -1241,44 +1241,44 @@ err_release_iio_cb:
 	return err;
 }
 
-static int evb_input_port_remove(struct platform_device *pdev)
+static int ev3_input_port_remove(struct platform_device *pdev)
 {
-	struct evb_input_port_data *data = dev_get_drvdata(&pdev->dev);
+	struct ev3_input_port_data *data = dev_get_drvdata(&pdev->dev);
 
 	hrtimer_cancel(&data->timer);
 	cancel_work_sync(&data->change_uevent_work);
 	cancel_work_sync(&data->work);
 	if (data->port.mode == EV3_INPUT_PORT_MODE_OTHER_UART)
-		evb_input_port_disable_uart(data);
+		ev3_input_port_disable_uart(data);
 	if (data->port.mode == EV3_INPUT_PORT_MODE_RAW)
-		evb_input_port_disable_raw_mode(data);
-	evb_input_port_unregister_sensor(&data->work);
+		ev3_input_port_disable_raw_mode(data);
+	ev3_input_port_unregister_sensor(&data->work);
 	lego_port_unregister(&data->port);
 	i2c_put_adapter(data->i2c_adap);
 	iio_channel_stop_all_cb(data->iio_cb);
 	iio_channel_release_all_cb(data->iio_cb);
-	evb_input_port_float(data);
+	ev3_input_port_float(data);
 
 	return 0;
 }
 
-static const struct of_device_id evb_input_port_dt_ids[] = {
-	{ .compatible = "ev3dev,evb-input-port", },
+static const struct of_device_id ev3_input_port_dt_ids[] = {
+	{ .compatible = "ev3dev,ev3-input-port", },
 	{ }
 };
-MODULE_DEVICE_TABLE(of, evb_input_port_dt_ids);
+MODULE_DEVICE_TABLE(of, ev3_input_port_dt_ids);
 
-static struct platform_driver evb_input_port_driver = {
+static struct platform_driver ev3_input_port_driver = {
 	.driver	= {
-		.name		= "evb-input-port",
-		.of_match_table = evb_input_port_dt_ids,
+		.name		= "ev3-input-port",
+		.of_match_table = ev3_input_port_dt_ids,
 	},
-	.probe	= evb_input_port_probe,
-	.remove	= evb_input_port_remove,
+	.probe	= ev3_input_port_probe,
+	.remove	= ev3_input_port_remove,
 };
-module_platform_driver(evb_input_port_driver);
+module_platform_driver(ev3_input_port_driver);
 
-MODULE_DESCRIPTION("Support for FatcatLab EVB input ports.");
+MODULE_DESCRIPTION("Support for LEGO MINDSTORMS EV3 input ports.");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("platform:evb-input-port");
+MODULE_ALIAS("platform:ev3-input-port");

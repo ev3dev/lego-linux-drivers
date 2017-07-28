@@ -17,7 +17,7 @@
 /**
  * DOC: userspace
  *
- * The FatcatLab EVB has four output ports labeled A, B, C and D. These ports
+ * The EV3 has four output ports labeled A, B, C and D. These ports
  * are used with LEGO MINDSTORMS EV3, NXT and RCX compatible motors and other
  * devices. EV3 motors can be automatically detected when plugged in. Other
  * motors with position feedback (such as the NXT motor) are usually detected
@@ -92,7 +92,7 @@ enum pin_state_flag {
 	NUM_PIN_STATE_FLAG
 };
 
-enum evb_output_port_mode {
+enum ev3_output_port_mode {
 	EV3_OUTPUT_PORT_MODE_AUTO,
 	EV3_OUTPUT_PORT_MODE_TACHO_MOTOR,
 	EV3_OUTPUT_PORT_MODE_DC_MOTOR,
@@ -108,13 +108,13 @@ enum evb_output_port_mode {
  * parser can be found in the Documentation/json/ directory.
  */
 
-static const struct lego_port_mode_info evb_output_port_mode_info[] = {
+static const struct lego_port_mode_info ev3_output_port_mode_info[] = {
 	/**
 	 * @description: EV3 Output Port
-	 * @module: evb-ports
+	 * @module: ev3-ports
 	 * @connection_types: tacho-motor, dc-motor, led
 	 * @prefix: out
-	 * @module: evb_ports
+	 * @module: ev3_ports
 	 */
 	[EV3_OUTPUT_PORT_MODE_AUTO] = {
 		/**
@@ -202,16 +202,16 @@ static const struct device_type ev3_motor_device_types[] = {
 	}
 };
 
-static const char * const evb_output_port_status_names[] = {
+static const char * const ev3_output_port_status_names[] = {
 	[MOTOR_NONE]	= "no-motor",
-	[MOTOR_TACHO]	= evb_output_port_mode_info[MOTOR_TACHO].name,
-	[MOTOR_DC]	= evb_output_port_mode_info[MOTOR_DC].name,
-	[MOTOR_LED]	= evb_output_port_mode_info[MOTOR_LED].name,
+	[MOTOR_TACHO]	= ev3_output_port_mode_info[MOTOR_TACHO].name,
+	[MOTOR_DC]	= ev3_output_port_mode_info[MOTOR_DC].name,
+	[MOTOR_LED]	= ev3_output_port_mode_info[MOTOR_LED].name,
 	[MOTOR_ERR]	= "error",
 };
 
 /**
- * struct evb_output_port_data - Driver data for an output port on the EV3 brick
+ * struct ev3_output_port_data - Driver data for an output port on the EV3 brick
  * @id: Unique identifier for the port.
  * @out_port: lego-port class device that represents this port.
  * @iio_cb: IIO callback buffer for analog inputs.
@@ -238,7 +238,7 @@ static const char * const evb_output_port_status_names[] = {
  * @command: The current command for the motor driver of the output port.
  * @debug: Handle to debugfs entry.
  */
-struct evb_output_port_data {
+struct ev3_output_port_data {
 	struct lego_port_device out_port;
 	struct iio_cb_buffer *iio_cb;
 	struct pwm_device *pwm;
@@ -263,7 +263,7 @@ struct evb_output_port_data {
 	struct dentry *debug;
 };
 
-int evb_output_port_set_direction_gpios(struct evb_output_port_data *data)
+int ev3_output_port_set_direction_gpios(struct ev3_output_port_data *data)
 {
 	switch(data->command) {
 	case DC_MOTOR_INTERNAL_COMMAND_RUN_FORWARD:
@@ -299,29 +299,29 @@ static unsigned ev3_ouput_port_get_supported_stop_actions(void *context)
 	return BIT(DC_MOTOR_STOP_ACTION_COAST) | BIT(DC_MOTOR_STOP_ACTION_BRAKE);
 }
 
-static enum dc_motor_internal_command evb_output_port_get_command(void *context)
+static enum dc_motor_internal_command ev3_output_port_get_command(void *context)
 {
-	struct evb_output_port_data *data = context;
+	struct ev3_output_port_data *data = context;
 
 	return data->command;
 }
 
-static int evb_output_port_set_command(void *context,
+static int ev3_output_port_set_command(void *context,
 				       enum dc_motor_internal_command command)
 {
-	struct evb_output_port_data *data = context;
+	struct ev3_output_port_data *data = context;
 
 	if (data->command == command)
 		return 0;
 
 	data->command = command;
 
-	return evb_output_port_set_direction_gpios(data);
+	return ev3_output_port_set_direction_gpios(data);
 }
 
-static unsigned evb_output_port_get_duty_cycle(void *context)
+static unsigned ev3_output_port_get_duty_cycle(void *context)
 {
-	struct evb_output_port_data *data = context;
+	struct ev3_output_port_data *data = context;
 	unsigned period = pwm_get_period(data->pwm);
 
 	if (unlikely(period == 0))
@@ -329,9 +329,9 @@ static unsigned evb_output_port_get_duty_cycle(void *context)
 	return pwm_get_duty_cycle(data->pwm) * 100 / period;
 }
 
-static int evb_output_port_set_duty_cycle(void *context, unsigned duty)
+static int ev3_output_port_set_duty_cycle(void *context, unsigned duty)
 {
-	struct evb_output_port_data *data = context;
+	struct ev3_output_port_data *data = context;
 	unsigned period = pwm_get_period(data->pwm);
 
 	if (duty > 100)
@@ -339,16 +339,16 @@ static int evb_output_port_set_duty_cycle(void *context, unsigned duty)
 	return pwm_config(data->pwm, period * duty / 100, period);
 }
 
-static struct dc_motor_ops evb_output_port_motor_ops = {
+static struct dc_motor_ops ev3_output_port_motor_ops = {
 	.get_supported_commands	= ev3_ouput_port_get_supported_commands,
 	.get_supported_stop_actions = ev3_ouput_port_get_supported_stop_actions,
-	.get_command		= evb_output_port_get_command,
-	.set_command		= evb_output_port_set_command,
-	.set_duty_cycle		= evb_output_port_set_duty_cycle,
-	.get_duty_cycle		= evb_output_port_get_duty_cycle,
+	.get_command		= ev3_output_port_get_command,
+	.set_command		= ev3_output_port_set_command,
+	.set_duty_cycle		= ev3_output_port_set_duty_cycle,
+	.get_duty_cycle		= ev3_output_port_get_duty_cycle,
 };
 
-void evb_output_port_float(struct evb_output_port_data *data)
+void ev3_output_port_float(struct ev3_output_port_data *data)
 {
 	gpiod_direction_output(data->pin1_gpio, 0);
 	gpiod_direction_output(data->pin2_gpio, 0);
@@ -358,18 +358,18 @@ void evb_output_port_float(struct evb_output_port_data *data)
 	data->command = DC_MOTOR_INTERNAL_COMMAND_COAST;
 }
 
-void evb_output_port_change_uevent_work(struct work_struct *work)
+void ev3_output_port_change_uevent_work(struct work_struct *work)
 {
-	struct evb_output_port_data *data = container_of(work,
-			struct evb_output_port_data, change_uevent_work);
+	struct ev3_output_port_data *data = container_of(work,
+			struct ev3_output_port_data, change_uevent_work);
 
 	kobject_uevent(&data->out_port.dev.kobj, KOBJ_CHANGE);
 }
 
-void evb_output_port_register_motor(struct work_struct *work)
+void ev3_output_port_register_motor(struct work_struct *work)
 {
-	struct evb_output_port_data *data =
-			container_of(work, struct evb_output_port_data, work);
+	struct ev3_output_port_data *data =
+			container_of(work, struct ev3_output_port_data, work);
 	struct lego_device *motor;
 	struct ev3_motor_platform_data pdata;
 	const char *driver_name;
@@ -405,20 +405,20 @@ void evb_output_port_register_motor(struct work_struct *work)
 	return;
 }
 
-void evb_output_port_unregister_motor(struct work_struct *work)
+void ev3_output_port_unregister_motor(struct work_struct *work)
 {
-	struct evb_output_port_data *data =
-			container_of(work, struct evb_output_port_data, work);
+	struct ev3_output_port_data *data =
+			container_of(work, struct ev3_output_port_data, work);
 
 	lego_device_unregister(data->motor);
 	data->motor_type = MOTOR_NONE;
 	data->motor = NULL;
 }
 
-static enum hrtimer_restart evb_output_port_timer_callback(struct hrtimer *timer)
+static enum hrtimer_restart ev3_output_port_timer_callback(struct hrtimer *timer)
 {
-	struct evb_output_port_data *data =
-			container_of(timer, struct evb_output_port_data, timer);
+	struct ev3_output_port_data *data =
+			container_of(timer, struct ev3_output_port_data, timer);
 	enum motor_type prev_motor_type = data->motor_type;
 	unsigned new_pin_state_flags = 0;
 	unsigned new_pin5_mv = 0;
@@ -429,7 +429,7 @@ static enum hrtimer_restart evb_output_port_timer_callback(struct hrtimer *timer
 	switch(data->con_state) {
 	case CON_STATE_INIT:
 		if (!data->motor) {
-			evb_output_port_float(data);
+			ev3_output_port_float(data);
 			data->timer_loop_cnt = 0;
 			data->motor_type = MOTOR_NONE;
 			data->con_state = CON_STATE_INIT_SETTLE;
@@ -564,7 +564,7 @@ static enum hrtimer_restart evb_output_port_timer_callback(struct hrtimer *timer
 	case CON_STATE_DEVICE_CONNECTED:
 		data->timer_loop_cnt = 0;
 		if (data->motor_type != MOTOR_ERR && !work_busy(&data->work)) {
-			INIT_WORK(&data->work, evb_output_port_register_motor);
+			INIT_WORK(&data->work, ev3_output_port_register_motor);
 			schedule_work(&data->work);
 			data->con_state = CON_STATE_WAITING_FOR_DISCONNECT;
 		}
@@ -577,7 +577,7 @@ static enum hrtimer_restart evb_output_port_timer_callback(struct hrtimer *timer
 			data->timer_loop_cnt = 0;
 
 		if ((data->timer_loop_cnt >= REMOVE_CNT) && !work_busy(&data->work) && data) {
-			INIT_WORK(&data->work, evb_output_port_unregister_motor);
+			INIT_WORK(&data->work, ev3_output_port_unregister_motor);
 			schedule_work(&data->work);
 			data->con_state = CON_STATE_INIT;
 		}
@@ -597,7 +597,7 @@ static enum hrtimer_restart evb_output_port_timer_callback(struct hrtimer *timer
 	return HRTIMER_RESTART;
 }
 
-void evb_output_port_enable_raw_mode(struct evb_output_port_data *data)
+void ev3_output_port_enable_raw_mode(struct ev3_output_port_data *data)
 {
 	/* TODO: would be nice to create symlinks from exported gpios to out_port */
 	gpiod_export(data->pin1_gpio, true);
@@ -608,27 +608,27 @@ void evb_output_port_enable_raw_mode(struct evb_output_port_data *data)
 	/* TODO: export pwm and iio */
 }
 
-void evb_output_port_disable_raw_mode(struct evb_output_port_data * data)
+void ev3_output_port_disable_raw_mode(struct ev3_output_port_data * data)
 {
 	gpiod_unexport(data->pin1_gpio);
 	gpiod_unexport(data->pin2_gpio);
 	gpiod_unexport(data->pin5_det_gpio);
 	gpiod_unexport(data->pin5_gpio);
 	gpiod_unexport(data->pin6_gpio);
-	evb_output_port_float(data);
+	ev3_output_port_float(data);
 }
 
-static int evb_output_port_set_mode(void *context, u8 mode)
+static int ev3_output_port_set_mode(void *context, u8 mode)
 {
-	struct evb_output_port_data *data = context;
+	struct ev3_output_port_data *data = context;
 
 	hrtimer_cancel(&data->timer);
 	cancel_work_sync(&data->work);
 
 	if (data->motor)
-		evb_output_port_unregister_motor(&data->work);
+		ev3_output_port_unregister_motor(&data->work);
 	if (data->out_port.mode == EV3_OUTPUT_PORT_MODE_RAW)
-		evb_output_port_disable_raw_mode(data);
+		ev3_output_port_disable_raw_mode(data);
 	switch (mode) {
 	case EV3_OUTPUT_PORT_MODE_AUTO:
 		data->con_state = CON_STATE_INIT;
@@ -638,18 +638,18 @@ static int evb_output_port_set_mode(void *context, u8 mode)
 	case EV3_OUTPUT_PORT_MODE_TACHO_MOTOR:
 		data->motor_type = MOTOR_TACHO;
 		data->motor_id = LEGO_EV3_LARGE_MOTOR;
-		evb_output_port_register_motor(&data->work);
+		ev3_output_port_register_motor(&data->work);
 		break;
 	case EV3_OUTPUT_PORT_MODE_DC_MOTOR:
 		data->motor_type = MOTOR_DC;
-		evb_output_port_register_motor(&data->work);
+		ev3_output_port_register_motor(&data->work);
 		break;
 	case EV3_OUTPUT_PORT_MODE_LED:
 		data->motor_type = MOTOR_LED;
-		evb_output_port_register_motor(&data->work);
+		ev3_output_port_register_motor(&data->work);
 		break;
 	case EV3_OUTPUT_PORT_MODE_RAW:
-		evb_output_port_enable_raw_mode(data);
+		ev3_output_port_enable_raw_mode(data);
 		break;
 	default:
 		WARN_ON("Unknown mode.");
@@ -658,9 +658,9 @@ static int evb_output_port_set_mode(void *context, u8 mode)
 	return 0;
 }
 
-static int evb_output_port_set_device(void *context, const char *device_name)
+static int ev3_output_port_set_device(void *context, const char *device_name)
 {
-	struct evb_output_port_data *data = context;
+	struct ev3_output_port_data *data = context;
 	struct lego_device *new_motor;
 
 	if (data->motor_type != MOTOR_TACHO)
@@ -680,23 +680,23 @@ static int evb_output_port_set_device(void *context, const char *device_name)
 	return 0;
 }
 
-static const char *evb_output_port_get_status(void *context)
+static const char *ev3_output_port_get_status(void *context)
 {
-	struct evb_output_port_data *data = context;
+	struct ev3_output_port_data *data = context;
 
 	if (data->out_port.mode == EV3_OUTPUT_PORT_MODE_AUTO)
-		return evb_output_port_status_names[data->motor_type];
+		return ev3_output_port_status_names[data->motor_type];
 
-	return evb_output_port_mode_info[data->out_port.mode].name;
+	return ev3_output_port_mode_info[data->out_port.mode].name;
 }
 
-static struct device_type evb_output_port_type = {
-	.name	= "evb-output-port",
+static struct device_type ev3_output_port_type = {
+	.name	= "ev3-output-port",
 };
 
-static int evb_output_port_buf_cb(const void *buf_data, void *private)
+static int ev3_output_port_buf_cb(const void *buf_data, void *private)
 {
-	struct evb_output_port_data *data = private;
+	struct ev3_output_port_data *data = private;
 	const u16 *raw = buf_data;
 
 	/*
@@ -710,9 +710,9 @@ static int evb_output_port_buf_cb(const void *buf_data, void *private)
 	return 0;
 }
 
-static void evb_output_port_debug_init(struct evb_output_port_data *data)
+static void ev3_output_port_debug_init(struct ev3_output_port_data *data)
 {
-	data->debug = debugfs_create_dir(data->out_port.address, evb_ports_debug);
+	data->debug = debugfs_create_dir(data->out_port.address, ev3_ports_debug);
 	if (IS_ERR_OR_NULL(data->debug))
 		return;
 
@@ -724,16 +724,16 @@ static void evb_output_port_debug_init(struct evb_output_port_data *data)
 	debugfs_create_u32("pwm_period", 0444, data->debug, &data->pwm->state.period);
 }
 
-int evb_output_port_probe(struct platform_device *pdev)
+int ev3_output_port_probe(struct platform_device *pdev)
 {
-	struct evb_output_port_data *data;
+	struct ev3_output_port_data *data;
 	int err;
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
 
-	data->iio_cb = iio_channel_get_all_cb(&pdev->dev, evb_output_port_buf_cb,
+	data->iio_cb = iio_channel_get_all_cb(&pdev->dev, ev3_output_port_buf_cb,
 					      data);
 	if (IS_ERR(data->iio_cb)) {
 		err = PTR_ERR(data->iio_cb);
@@ -812,38 +812,38 @@ int evb_output_port_probe(struct platform_device *pdev)
 	/* This lets us set the pwm duty cycle in an atomic context */
 	pm_runtime_irq_safe(data->pwm->chip->dev);
 
-	data->out_port.name = evb_output_port_type.name;
+	data->out_port.name = ev3_output_port_type.name;
 	snprintf(data->out_port.address, LEGO_NAME_SIZE, "%s",
 		 dev_name(&pdev->dev));
 	data->out_port.num_modes = NUM_EV3_OUTPUT_PORT_MODE;
 	data->out_port.supported_modes = LEGO_PORT_ALL_MODES;
-	data->out_port.mode_info = evb_output_port_mode_info;
-	data->out_port.set_mode = evb_output_port_set_mode;
-	data->out_port.set_device = evb_output_port_set_device;
-	data->out_port.get_status = evb_output_port_get_status;
-	data->out_port.dc_motor_ops = &evb_output_port_motor_ops;
+	data->out_port.mode_info = ev3_output_port_mode_info;
+	data->out_port.set_mode = ev3_output_port_set_mode;
+	data->out_port.set_device = ev3_output_port_set_device;
+	data->out_port.get_status = ev3_output_port_get_status;
+	data->out_port.dc_motor_ops = &ev3_output_port_motor_ops;
 	data->out_port.context = data;
 	dev_set_drvdata(&pdev->dev, data);
 
-	err = lego_port_register(&data->out_port, &evb_output_port_type,
+	err = lego_port_register(&data->out_port, &ev3_output_port_type,
 				 &pdev->dev);
 	if (err) {
 		dev_err(&pdev->dev, "Failed to register lego_port_device.\n");
 		goto err_disable_pwm;
 	}
 
-	INIT_WORK(&data->change_uevent_work, evb_output_port_change_uevent_work);
+	INIT_WORK(&data->change_uevent_work, ev3_output_port_change_uevent_work);
 	INIT_WORK(&data->work, NULL);
 
 	data->con_state = CON_STATE_INIT;
 
 	hrtimer_init(&data->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	data->timer.function = evb_output_port_timer_callback;
+	data->timer.function = ev3_output_port_timer_callback;
 	hrtimer_start(&data->timer, ktime_set(0, OUTPUT_PORT_POLL_NS),
 		      HRTIMER_MODE_REL);
 
-	if (!IS_ERR_OR_NULL(evb_ports_debug))
-		evb_output_port_debug_init(data);
+	if (!IS_ERR_OR_NULL(ev3_ports_debug))
+		ev3_output_port_debug_init(data);
 
 	return 0;
 
@@ -857,9 +857,9 @@ err_release_iio_cb:
 	return err;
 }
 
-int evb_output_port_remove(struct platform_device *pdev)
+int ev3_output_port_remove(struct platform_device *pdev)
 {
-	struct evb_output_port_data *data = dev_get_drvdata(&pdev->dev);
+	struct ev3_output_port_data *data = dev_get_drvdata(&pdev->dev);
 
 	debugfs_remove_recursive(data->debug);
 
@@ -867,11 +867,11 @@ int evb_output_port_remove(struct platform_device *pdev)
 	cancel_work_sync(&data->change_uevent_work);
 	cancel_work_sync(&data->work);
 	if (data->motor)
-		evb_output_port_unregister_motor(&data->work);
+		ev3_output_port_unregister_motor(&data->work);
 	if (data->out_port.mode == EV3_OUTPUT_PORT_MODE_RAW)
-		evb_output_port_disable_raw_mode(data);
+		ev3_output_port_disable_raw_mode(data);
 	lego_port_unregister(&data->out_port);
-	evb_output_port_float(data);
+	ev3_output_port_float(data);
 	pwm_disable(data->pwm);
 	iio_channel_stop_all_cb(data->iio_cb);
 	iio_channel_release_all_cb(data->iio_cb);
@@ -879,23 +879,23 @@ int evb_output_port_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct of_device_id evb_output_port_dt_ids[] = {
-	{ .compatible = "ev3dev,evb-output-port", },
+static const struct of_device_id ev3_output_port_dt_ids[] = {
+	{ .compatible = "ev3dev,ev3-output-port", },
 	{ }
 };
-MODULE_DEVICE_TABLE(of, evb_output_port_dt_ids);
+MODULE_DEVICE_TABLE(of, ev3_output_port_dt_ids);
 
-static struct platform_driver evb_output_port_driver = {
+static struct platform_driver ev3_output_port_driver = {
 	.driver	= {
-		.name		= "evb-output-port",
-		.of_match_table = evb_output_port_dt_ids,
+		.name		= "ev3-output-port",
+		.of_match_table = ev3_output_port_dt_ids,
 	},
-	.probe	= evb_output_port_probe,
-	.remove	= evb_output_port_remove,
+	.probe	= ev3_output_port_probe,
+	.remove	= ev3_output_port_remove,
 };
-module_platform_driver(evb_output_port_driver);
+module_platform_driver(ev3_output_port_driver);
 
-MODULE_DESCRIPTION("Support for FatcatLab EVB output ports.");
+MODULE_DESCRIPTION("Support for LEGO MINDSTORMS EV3 output ports.");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("platform:evb-output-port");
+MODULE_ALIAS("platform:ev3-output-port");
