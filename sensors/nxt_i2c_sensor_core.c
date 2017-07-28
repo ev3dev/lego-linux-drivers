@@ -52,7 +52,6 @@
 
 #if defined(CONFIG_LEGOEV3_I2C) || defined(CONFIG_LEGOEV3_I2C_MODULE)
 #include "../ev3/legoev3_i2c.h"
-#include "../ev3/legoev3_ports.h"
 #endif
 
 #ifndef I2C_CLASS_LEGO
