@@ -2,33 +2,35 @@
 LEGO MINDSTORMS EV3
 ===================
 
+.. _ev3-ports:
+
 Input / Output Ports
 --------------------
 
-.. kernel-doc:: ev3/legoev3_ports_core.c
+.. kernel-doc:: ev3/ev3_ports_core.c
     :doc: userspace
 
 
-.. _legoev3_input_port_mode_info:
+.. _ev3_input_port_mode_info:
 
 Input Ports
 ~~~~~~~~~~~
 
-.. kernel-doc:: ev3/legoev3_ports_in.c
+.. kernel-doc:: ev3/ev3_ports_in.c
     :doc: userspace
 
-.. lego-port:: legoev3_input_port_mode_info
+.. lego-port:: ev3_input_port_mode_info
 
 
-.. _legoev3_output_port_mode_info:
+.. _ev3_output_port_mode_info:
 
 Output Ports
 ~~~~~~~~~~~~
 
-.. kernel-doc:: ev3/legoev3_ports_out.c
+.. kernel-doc:: ev3/ev3_ports_out.c
     :doc: userspace
 
-.. lego-port:: legoev3_output_port_mode_info
+.. lego-port:: ev3_output_port_mode_info
 
 
 Buttons

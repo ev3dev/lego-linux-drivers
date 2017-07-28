@@ -8,19 +8,8 @@ The FatcatLab EVB is a LEGO MINDSTORMS EV3 compatible cape for BeagleBone.
 Input / Output Ports
 --------------------
 
-.. kernel-doc:: evb/evb_ports_core.c
-    :doc: userspace
-
-
-.. _evb_input_port_mode_info:
-
-Input Ports
-~~~~~~~~~~~
-
-.. kernel-doc:: evb/evb_ports_in.c
-    :doc: userspace
-
-.. lego-port:: evb_input_port_mode_info
+The EVB uses the LEGO MINDSTORMS EV3 input and output port drives, so please
+refer to :ref:`ev3-ports` in the EV3 section.
 
 
 Input Port I2C Adapters
@@ -30,15 +19,6 @@ Input Port I2C Adapters
     :doc: userspace
 
 
-.. _evb_output_port_mode_info:
-
-Output Ports
-~~~~~~~~~~~~
-
-.. kernel-doc:: evb/evb_ports_out.c
-    :doc: userspace
-
-.. lego-port:: evb_output_port_mode_info
 
 
 Buttons / Joystick
