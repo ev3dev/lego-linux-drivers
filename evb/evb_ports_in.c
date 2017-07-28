@@ -1197,11 +1197,7 @@ static int evb_input_port_probe(struct platform_device *pdev)
 	of_property_read_string(pdev->dev.of_node, "ev3dev,tty-name",
 				&data->port.port_alias);
 	data->port.num_modes = NUM_EV3_INPUT_PORT_MODE;
-	data->port.supported_modes = BIT(EV3_INPUT_PORT_MODE_AUTO)
-				   | BIT(EV3_INPUT_PORT_MODE_NXT_ANALOG)
-				   | BIT(EV3_INPUT_PORT_MODE_EV3_ANALOG)
-				   | BIT(EV3_INPUT_PORT_MODE_EV3_UART)
-				   | BIT(EV3_INPUT_PORT_MODE_OTHER_UART);
+	data->port.supported_modes = LEGO_PORT_ALL_MODES;
 
 	data->port.mode_info = evb_input_port_mode_info;
 	data->port.set_mode = evb_input_port_set_mode;
