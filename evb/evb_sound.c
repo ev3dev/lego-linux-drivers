@@ -584,6 +584,8 @@ static int evb_sound_probe(struct platform_device *pdev)
 	/* This lets us set the pwm duty cycle in an atomic context */
 	pm_runtime_irq_safe(pwm->chip->dev);
 
+	pwm_apply_args(pwm);
+
 	err = pwm_enable(pwm);
 	if (err < 0) {
 		dev_err(&pdev->dev, "Failed to enable pwm!\n");
