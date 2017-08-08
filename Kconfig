@@ -9,7 +9,6 @@ if LEGO_DRIVERS
 
 menuconfig LEGOEV3_DRIVERS
 	tristate "LEGO MINDSTORMS EV3 support"
-	depends on MACH_DAVINCI_LEGOEV3
 	default y
 	help
 	  This enables platform specific drivers for the LEGO MINDSTORMS EV3
