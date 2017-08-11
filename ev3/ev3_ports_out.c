@@ -322,21 +322,25 @@ static int ev3_output_port_set_command(void *context,
 static unsigned ev3_output_port_get_duty_cycle(void *context)
 {
 	struct ev3_output_port_data *data = context;
-	unsigned period = pwm_get_period(data->pwm);
+	struct pwm_state state;
 
-	if (unlikely(period == 0))
-		return 0;
-	return pwm_get_duty_cycle(data->pwm) * 100 / period;
+	pwm_get_state(data->pwm, &state);
+
+	return pwm_get_relative_duty_cycle(&state, 100);
 }
 
 static int ev3_output_port_set_duty_cycle(void *context, unsigned duty)
 {
 	struct ev3_output_port_data *data = context;
-	unsigned period = pwm_get_period(data->pwm);
+	struct pwm_state state;
+	int ret;
+	
+	pwm_init_state(data->pwm, &state);
+	ret = pwm_set_relative_duty_cycle(&state, duty, 100);
+	if (ret)
+		return ret;
 
-	if (duty > 100)
-		return -EINVAL;
-	return pwm_config(data->pwm, period * duty / 100, period);
+	return pwm_apply_state(data->pwm, &state);
 }
 
 static struct dc_motor_ops ev3_output_port_motor_ops = {
