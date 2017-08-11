@@ -257,7 +257,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 		 */
 		.name		= LEGO_EV3_GYRO_NAME,
 		.type_id	= LEGO_EV3_GYRO_TYPE_ID,
-		.num_modes	= 5,
+		.num_modes	= 7,
 		.num_view_modes	= 3,
 		.mode_info	= {
 			[0] = {
@@ -290,11 +290,12 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 * .. [#lego-ev3-gyro-mode1-calibration] The sensor
-				 *    is calibrated when the ``GYRO-RATE`` or the
-				 *    ``GYRO-G&A`` mode is set. If the sensor is
-				 *    moving when setting the mode, the calibration
-				 *    will be off.
+				 * .. [#lego-ev3-gyro-mode1-calibration] With older
+				 *    versions of this sensor (date code ending in
+				 *    2 or 3), the sensor is calibrated when the
+				 *    ``GYRO-RATE`` or the ``GYRO-G&A`` mode is set.
+				 *    If the sensor is moving when setting the mode,
+				 *    the calibration will be off.
 				 *
 				 * @name_footnote: [#lego-ev3-gyro-mode1-calibration]_
 				 * @description: Rotational Speed
@@ -309,8 +310,8 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 			},
 			[2] = {
 				/**
-				 * @description: Raw sensor value ???
-				 * @value0: ??? (-1464 to 1535)
+				 * @description: Rotational Speed
+				 * @value0: Rotational Speed (-1464 to 1535)
 				 * @value0_footnote: [#lego-ev3-gyro-mode0-value0-direction]_
 				 */
 				.name		= "GYRO-FAS",
@@ -341,6 +342,39 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				.name		= "GYRO-CAL",
 				.data_sets	= 4,
 				.data_type	= LEGO_SENSOR_DATA_S16,
+			},
+			[5] = {
+				/**
+				 * .. [#lego-ev3-gyro-mode5] This mode is not present
+				 *    in older sensors (date code ending with 2 or 3).
+				 *
+				 * .. [#lego-ev3-gyro-mode5-value0-direction]
+				 *    Clockwise is positive when looking at the
+				 *    side of the sensor opposite the cable jack.
+				 *
+				 * @name_footnote: [#lego-ev3-gyro-mode5]_
+				 * @description: Rotational Speed (2nd axis)
+				 * @value0: Rotational Speed (-440 to 440)
+				 * @value0_footnote: [#lego-ev3-gyro-mode5-value0-direction]_
+				 * @units_description: degrees per second
+				 */
+				.name		= "TILT-RATE",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "d/s",
+			},
+			[6] = {
+				/**
+				 * @name_footnote: [#lego-ev3-gyro-mode5]_
+				 * @description: Angle (2nd axis)
+				 * @value0: Angle (-32768 to 32767)
+				 * @value0_footnote: [#lego-ev3-gyro-mode5-value0-direction]_
+				 * @units_description: degrees
+				 */
+				.name		= "TILT-ANG",
+				.data_sets	= 1,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "deg",
 			},
 		},
 	},
