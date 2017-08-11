@@ -18,7 +18,9 @@
  *
  * The BrickPi3 has one user-controllable LED. It is turned on by default when
  * the ``brickpi3`` module is loaded. It uses the mainline kernel `LEDs class`_
- * subsystem. You can find it in sysfs at ``/sys/class/leds/brickpi3:amber:ev3dev``.
+ * subsystem. You can find it in sysfs at ``/sys/class/leds/led<N>:amber:brick-status``
+ * where ``<N>`` is the address of the BrickPi3 (it will be ``1`` if you only
+ * have one BrickPi3).
  *
  * .. _LEDs class: http://lxr.free-electrons.com/source/Documentation/leds/leds-class.txt?v=4.9
  */
@@ -32,9 +34,12 @@
 /* setting brightness to -1 returns control to the BrickPi3 firmware */
 #define BRICKPI3_LEDS_FIRMWARE_CONTROL	(-1)
 #define BRICKPI3_LEDS_MAX_BRIGHTNESS	100
+/* TODO: there is a constant for this in kernel v4.10+ */
+#define BRICKPI3_LEDS_MAX_NAME_SIZE	64
 
 struct brickpi3_leds {
 	struct brickpi3 *bp;
+	char name[BRICKPI3_LEDS_MAX_NAME_SIZE];
 	struct led_classdev cdev;
 	u8 address;
 };
@@ -73,7 +78,9 @@ int devm_brickpi3_register_leds(struct device *dev, struct brickpi3 *bp,
 
 	data->bp = bp;
 	data->address = address;
-	data->cdev.name = "brickpi3:amber:ev3dev";
+	snprintf(data->name, BRICKPI3_LEDS_MAX_NAME_SIZE,
+		 "led%u:amber:brick-status", address);
+	data->cdev.name = data->name;
 	data->cdev.max_brightness = BRICKPI3_LEDS_MAX_BRIGHTNESS;
 	data->cdev.brightness_set_blocking = brickpi3_leds_brightness_set_blocking;
 	data->cdev.default_trigger = "default-on";

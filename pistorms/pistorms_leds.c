@@ -19,7 +19,7 @@
  * on the Pistorms. There are two tri-color LEDs. Each component (red, green,
  * blue) is controlled separately.
  *
- * The device nodes can be found at ``/sys/class/leds/pistorms:B<bank>:<color>:ev3dev``
+ * The device nodes can be found at ``/sys/class/leds/pistorms:B<bank>:<color>:brick-status``
  * where ``<bank>>`` is ``A`` or ``B`` and ``<color>`` is ``red``, ``green`` or
  * ``blue``.
  *
@@ -129,7 +129,7 @@ static int pistorms_led_add(struct device *dev, struct pistorms_led_group *group
 	struct pistorms_led_data *led_data = &group->leds[index];
 	int ret;
 
-	snprintf(led_data->name, PISTORMS_NAME_SIZE, "%s:%s:ev3dev",
+	snprintf(led_data->name, PISTORMS_NAME_SIZE, "%s:%s:brick-status",
 	         parent_name, pistorms_led_color_names[index]);
 	led_data->cdev.name = led_data->name;
 	led_data->cdev.brightness_set = pistorms_led_set;
