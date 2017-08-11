@@ -797,12 +797,7 @@ int ev3_output_port_probe(struct platform_device *pdev)
 		goto err_stop_iio_cb;
 	}
 
-	err = pwm_config(data->pwm, 0, NSEC_PER_SEC / 10000);
-	if (err) {
-		dev_err(&pdev->dev,
-			"Failed to set pwm duty percent and frequency.\n");
-		goto err_stop_iio_cb;
-	}
+	pwm_apply_args(data->pwm);
 
 	err = pwm_enable(data->pwm);
 	if (err) {
