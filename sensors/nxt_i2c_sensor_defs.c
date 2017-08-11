@@ -1001,26 +1001,26 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[3] = {
 				/**
 				 * @description: Passive values
-				 * @value0: Red Component (0 to 255)
-				 * @value1: Green Component (0 to 255)
-				 * @value2: Blue Component (0 to 255)
-				 * @value3: White Component (0 to 255)
+				 * @value0: Red Component (0 to 255?)
+				 * @value1: Green Component (0 to 255?)
+				 * @value2: Blue Component (0 to 255?)
+				 * @value3: White Component (0 to 255?)
 				 */
 				.name = "PASSIVE",
 				.data_sets = 4,
-				.data_type = LEGO_SENSOR_DATA_U8,
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
 			},
 			[4] = {
 				/**
 				 * @description: Raw values
-				 * @value0: Red Component (0 to 255)
-				 * @value1: Green Component (0 to 255)
-				 * @value2: Blue Component (0 to 255)
-				 * @value3: White Component (0 to 255)
+				 * @value0: Red Component (0 to 255?)
+				 * @value1: Green Component (0 to 255?)
+				 * @value2: Blue Component (0 to 255?)
+				 * @value3: White Component (0 to 255?)
 				 */
 				.name = "RAW",
 				.data_sets = 4,
-				.data_type = LEGO_SENSOR_DATA_U8,
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
 			},
 		},
 		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
@@ -1042,12 +1042,12 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[3] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x01,
-				.read_data_reg	= 0x43,
+				.read_data_reg	= 0x42,
 			},
 			[4] = {
 				.set_mode_reg	= 0x41,
 				.set_mode_data	= 0x03,
-				.read_data_reg	= 0x43,
+				.read_data_reg	= 0x42,
 			},
 		},
 		.num_commands	= 2,
