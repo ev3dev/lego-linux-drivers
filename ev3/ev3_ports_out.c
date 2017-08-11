@@ -335,7 +335,7 @@ static int ev3_output_port_set_duty_cycle(void *context, unsigned duty)
 	struct pwm_state state;
 	int ret;
 	
-	pwm_init_state(data->pwm, &state);
+	pwm_get_state(data->pwm, &state);
 	ret = pwm_set_relative_duty_cycle(&state, duty, 100);
 	if (ret)
 		return ret;
