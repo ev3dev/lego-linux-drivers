@@ -29,6 +29,7 @@ writing these attribute files.
    brickpi3
    pistorms
    evb
+   board-info
    user
    sensor_data
    motor_data

@@ -1,0 +1,18 @@
+Board Information
+=================
+
+.. _board-info-class:
+
+The board-info Subsystem
+------------------------
+
+.. kernel-doc:: linux/board_info/board_info.c
+   :doc: userspace
+
+
+LEGO MINDSTORMS EV3 Board Info
+------------------------------
+
+.. kernel-doc:: ev3/ev3_board.c
+   :doc: userspace
+

@@ -16,13 +16,20 @@ menuconfig LEGOEV3_DRIVERS
 
 if LEGOEV3_DRIVERS
 
+config LEGOEV3_BOARD
+	tristate "Board info driver for LEGO MINDSTORMS EV3"
+	default y
+	depends on GPIOLIB && NVMEM && BOARD_INFO
+	help
+	  This driver is used to get board information, like hardware ID and
+		Bluetooth MAC address.
+
 config LEGOEV3_I2C
 	tristate "I2C driver for LEGO Mindstorms EV3"
 	depends on GPIOLIB && LEGOEV3_FIQ
 	help
 	  This is a GPIO bit-banging driver for connecting to LEGO Mindstorms
 	  I2C sensors. It is not quite standard I2C.
-
 
 config LEGOEV3_BLUETOOTH
 	tristate "On-board Bluetooth"
