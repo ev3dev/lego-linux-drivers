@@ -30,6 +30,10 @@
  * ``BOARD_INFO_SERIAL_NUM``
  *
  *     This is the same as "Serial" in ``/proc/cpuinfo``.
+ *
+ * ``BOARD_INFO_TYPE``
+ *
+ *     Always returns ``main``.
  */
 
 #include <linux/module.h>
@@ -45,6 +49,7 @@ static const enum board_info_property rpi_board_properties[] = {
 	BOARD_INFO_HW_REV,
 	BOARD_INFO_MODEL,
 	BOARD_INFO_SERIAL_NUM,
+	BOARD_INFO_TYPE,
 };
 
 #define RPI_BOARD_HW_REV_SIZE 9
@@ -71,6 +76,9 @@ static int rpi_board_get_property(struct board_info *info,
 		break;
 	case BOARD_INFO_SERIAL_NUM:
 		*val = data->serial_num;
+		break;
+	case BOARD_INFO_TYPE:
+		*val = BOARD_INFO_TYPE_NAME_MAIN;
 		break;
 	default:
 		return -EINVAL;

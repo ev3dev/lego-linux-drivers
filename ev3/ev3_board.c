@@ -37,6 +37,10 @@
  *
  *     The brick "ID". This is also used as the Bluetooth MAC address in the
  *     official LEGO firmware.
+ *
+ * ``BOARD_INFO_TYPE``
+ *
+ *     Always returns ``main``.
  */
 
 #include <linux/gpio/consumer.h>
@@ -53,6 +57,7 @@ static const enum board_info_property ev3_board_properties[] = {
 	BOARD_INFO_MODEL,
 	BOARD_INFO_ROM_REV,
 	BOARD_INFO_SERIAL_NUM,
+	BOARD_INFO_TYPE,
 };
 
 #define EV3_BOARD_HW_REV_SIZE		3	/* max is "15" */
@@ -85,6 +90,9 @@ static int ev3_board_get_property(struct board_info *info,
 		break;
 	case BOARD_INFO_SERIAL_NUM:
 		*val = data->serial_num;
+		break;
+	case BOARD_INFO_TYPE:
+		*val = BOARD_INFO_TYPE_NAME_MAIN;
 		break;
 	default:
 		return -EINVAL;

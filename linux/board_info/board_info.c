@@ -43,6 +43,11 @@
  *
  *     The serial number.
  *
+ * ``BOARD_INFO_TYPE``
+ *
+ *     The type of board. This can be ``main`` for a mainboard (where the CPU
+ *     lives) or ``aux`` for other boards attached to a mainboard.
+ *
  * .. note:: Not all hardware will have all properties.
  */
 
@@ -71,6 +76,7 @@ static const char *board_info_property_name[NUM_BOARD_INFO_PROPERTIES] = {
 	[BOARD_INFO_MODEL]	= __stringify(BOARD_INFO_MODEL),
 	[BOARD_INFO_ROM_REV]	= __stringify(BOARD_INFO_ROM_REV),
 	[BOARD_INFO_SERIAL_NUM]	= __stringify(BOARD_INFO_SERIAL_NUM),
+	[BOARD_INFO_TYPE]	= __stringify(BOARD_INFO_TYPE),
 };
 
 void *board_info_get_drvdata(struct board_info *info)

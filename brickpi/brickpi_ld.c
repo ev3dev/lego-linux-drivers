@@ -52,6 +52,10 @@
  *
  *     Will be "Dexter Industries BrickPi". This is the same for both BrickPi
  *     and BrickPi+. There is not a way to tell the difference.
+ *
+ * ``BOARD_INFO_TYPE``
+ *
+ *     Always returns ``aux``.
  */
 
 #include <linux/bitops.h>
@@ -483,6 +487,7 @@ static void brickpi_update_motor(struct brickpi_out_port_data *port)
 static const enum board_info_property brickpi_board_info_properties[] = {
 	BOARD_INFO_FW_VER,
 	BOARD_INFO_MODEL,
+	BOARD_INFO_TYPE,
 };
 
 static int brickpi_board_info_get_property(struct board_info *info,
@@ -497,6 +502,9 @@ static int brickpi_board_info_get_property(struct board_info *info,
 		break;
 	case BOARD_INFO_MODEL:
 		*val = "Dexter Industries BrickPi";
+		break;
+	case BOARD_INFO_TYPE:
+		*val = BOARD_INFO_TYPE_NAME_AUX;
 		break;
 	default:
 	return -EINVAL;

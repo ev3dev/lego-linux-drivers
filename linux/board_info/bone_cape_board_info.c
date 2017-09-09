@@ -22,6 +22,10 @@
  * ``BOARD_INFO_MODEL``
  *
  *     The name of the cape. Known names are "FatcatLab EVB" and "QuestCape".
+ *
+ * ``BOARD_INFO_TYPE``
+ *
+ *     Always returns ``aux``.
  */
 
 #include <linux/err.h>
@@ -35,6 +39,7 @@
 
 static const enum board_info_property bone_cape_properties[] = {
 	BOARD_INFO_MODEL,
+	BOARD_INFO_TYPE,
 };
 
 
@@ -52,6 +57,9 @@ static int bone_cape_get_property(struct board_info *info,
 	switch (prop) {
 	case BOARD_INFO_MODEL:
 		*val = data->model;
+		break;
+	case BOARD_INFO_TYPE:
+		*val = BOARD_INFO_TYPE_NAME_AUX;
 		break;
 	default:
 		return -EINVAL;

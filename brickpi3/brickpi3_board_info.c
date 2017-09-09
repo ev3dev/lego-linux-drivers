@@ -33,6 +33,10 @@
  * ``BOARD_INFO_SERIAL_NUM``
  *
  *     The BrickPi3 "ID". Use this number in config.txt when stacking BrickPi3s.
+ *
+ * ``BOARD_INFO_TYPE``
+ *
+ *     Always returns ``aux``.
  */
 
 #include <linux/device.h>
@@ -60,6 +64,7 @@ static const enum board_info_property brickpi3_board_properties[] = {
 	BOARD_INFO_HW_REV,
 	BOARD_INFO_MODEL,
 	BOARD_INFO_SERIAL_NUM,
+	BOARD_INFO_TYPE,
 };
 
 static int brickpi3_board_get_property(struct board_info *info,
@@ -80,6 +85,9 @@ static int brickpi3_board_get_property(struct board_info *info,
 		break;
 	case BOARD_INFO_SERIAL_NUM:
 		*val = data->serial_num;
+		break;
+	case BOARD_INFO_TYPE:
+		*val = BOARD_INFO_TYPE_AUX;
 		break;
 	default:
 		return -EINVAL;

@@ -22,8 +22,12 @@ enum board_info_property {
 	BOARD_INFO_MODEL,
 	BOARD_INFO_ROM_REV,
 	BOARD_INFO_SERIAL_NUM,
+	BOARD_INFO_TYPE,
 	NUM_BOARD_INFO_PROPERTIES
 };
+
+#define BOARD_INFO_TYPE_NAME_MAIN	"main"
+#define BOARD_INFO_TYPE_NAME_AUX	"aux"
 
 struct board_info;
 

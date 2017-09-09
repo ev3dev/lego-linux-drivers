@@ -29,6 +29,10 @@
  * ``BOARD_INFO_SERIAL_NUM``
  *
  *     Serial Number. See BeagleBone SRM for details.
+ *
+ * ``BOARD_INFO_TYPE``
+ *
+ *     Always returns ``main``.
  */
 
 #include <linux/err.h>
@@ -45,6 +49,7 @@ static const enum board_info_property bone_board_properties[] = {
 	BOARD_INFO_HW_REV,
 	BOARD_INFO_MODEL,
 	BOARD_INFO_SERIAL_NUM,
+	BOARD_INFO_TYPE,
 };
 
 #define BONE_BOARD_HW_REV_SIZE		5
@@ -73,6 +78,9 @@ static int bone_board_get_property(struct board_info *info,
 		break;
 	case BOARD_INFO_SERIAL_NUM:
 		*val = data->serial_num;
+		break;
+	case BOARD_INFO_TYPE:
+		*val = BOARD_INFO_TYPE_NAME_MAIN;
 		break;
 	default:
 		return -EINVAL;
