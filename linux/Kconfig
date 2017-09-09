@@ -4,6 +4,12 @@ config BOARD_INFO
   help
     This enables the board info subsystem.
 
+config BONE_BOARD_INFO
+  tristate "Support for BeagleBone board info"
+  depends on BOARD_INFO && NVMEM
+  help
+    This enables board info driver for BeagleBone.
+
 config RPI_BOARD_INFO
   tristate "Support for Raspberry Pi board info"
   depends on BOARD_INFO

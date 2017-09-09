@@ -36,3 +36,10 @@ BrickPi3 Board Info
 
 .. kernel-doc:: brickpi3/brickpi3_board_info.c
    :doc: userspace
+
+
+BeagleBone Board Info
+---------------------
+
+.. kernel-doc:: linux/board_info/bone_board_info.c
+   :doc: userspace
