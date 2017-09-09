@@ -39,6 +39,21 @@
  * .. _line discipline: https://en.wikipedia.org/wiki/Line_discipline
  */
 
+/**
+ * DOC: board-info
+ *
+ * The BrickPi board info driver provides the following properties:
+ *
+ * ``BOARD_INFO_FW_VER``
+ *
+ *     This will be "1" or "2". Version 2 has (buggy) support for EV3 sensors.
+ *
+ * ``BOARD_INFO_MODEL``
+ *
+ *     Will be "Dexter Industries BrickPi". This is the same for both BrickPi
+ *     and BrickPi+. There is not a way to tell the difference.
+ */
+
 #include <linux/bitops.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
@@ -46,6 +61,7 @@
 #include <linux/tty.h>
 
 #include "brickpi_internal.h"
+#include "../linux/board_info/board_info.h"
 
 #ifdef DEBUG
 #define debug_pr(fmt, ...) printk(fmt, ##__VA_ARGS__)
@@ -464,6 +480,32 @@ static void brickpi_update_motor(struct brickpi_out_port_data *port)
 	}
 }
 
+static const enum board_info_property brickpi_board_info_properties[] = {
+	BOARD_INFO_FW_VER,
+	BOARD_INFO_MODEL,
+};
+
+static int brickpi_board_info_get_property(struct board_info *info,
+					   enum board_info_property prop,
+					   const char **val)
+{
+	struct brickpi_data *data = board_info_get_drvdata(info);
+
+	switch (prop) {
+	case BOARD_INFO_FW_VER:
+		*val = data->fw_ver;
+		break;
+	case BOARD_INFO_MODEL:
+		*val = "Dexter Industries BrickPi";
+		break;
+	default:
+	return -EINVAL;
+	}
+
+	return 0;
+}
+
+
 static void brickpi_poll_work(struct work_struct *work)
 {
 	struct brickpi_data *data = container_of(work, struct brickpi_data,
@@ -556,6 +598,21 @@ static void brickpi_init_work(struct work_struct *work)
 
 	INIT_WORK(&data->poll_work, brickpi_poll_work);
 	hrtimer_start(&data->poll_timer, ktime_set(0, 0), HRTIMER_MODE_REL);
+
+	data->desc.properties = brickpi_board_info_properties;
+	data->desc.num_properties = ARRAY_SIZE(brickpi_board_info_properties);
+	data->desc.get_property = brickpi_board_info_get_property;
+	/* Just using the first channel. Assuming both are the same. */
+	snprintf(data->fw_ver, BRICKPI_FW_VERSION_SIZE, "%u",
+		data->channel_data[0].fw_version);
+
+	data->board = board_info_register(data->tty->dev, &data->desc, data);
+	if (IS_ERR(data->board)) {
+		/* Not a fatal error */
+		dev_err(data->tty->dev, "Failed to register board info: %ld\n",
+			PTR_ERR(data->board));
+		data->board = NULL;
+	}
 }
 
 enum hrtimer_restart brickpi_poll_timer_function(struct hrtimer *timer)
@@ -657,6 +714,7 @@ static void brickpi_close(struct tty_struct *tty)
 	hrtimer_cancel(&data->poll_timer);
 	cancel_work_sync(&data->poll_work);
 	cancel_work_sync(&data->rx_data_work);
+	board_info_unregister(data->board);
 	for (i = 0; i < data->num_channels; i++) {
 		struct brickpi_channel_data *ch_data = &data->channel_data[i];
 		if (ch_data->init_ok) {

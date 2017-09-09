@@ -23,3 +23,9 @@ Raspberry Pi Board Info
 .. kernel-doc:: linux/board_info/rpi_board_info.c
    :doc: userspace
 
+
+BrickPi Board Info
+------------------
+
+.. kernel-doc:: brickpi/brickpi_ld.c
+   :doc: board-info

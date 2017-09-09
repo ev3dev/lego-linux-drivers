@@ -34,6 +34,7 @@
 #include <tacho_motor_helper.h>
 
 #include "brickpi.h"
+#include "../linux/board_info/board_info.h"
 
 #define BRICKPI_DUTY_PCT_TO_RAW(d) ((d) * 255 / 100)
 #define BRICKPI_DUTY_RAW_TO_PCT(d) ((d) * 100 / 255)
@@ -152,9 +153,14 @@ struct brickpi_channel_data {
 	bool init_ok;
 };
 
+#define BRICKPI_FW_VERSION_SIZE 4
+
 /**
  * struct brickpi_data - Discipline data for EV3 UART Sensor communication
  * @device_name: The name of the device/driver.
+ * @desc: Board info driver descriptor
+ * @board: Board info device reference
+ * @fw_ver: Firmware version string for use by board info
  * @tty: Pointer to the tty device that the sensor is connected to
  * @channel_data: Pointer to channel data array.
  * @num_channels: Number of items in channel_data array.
@@ -174,6 +180,9 @@ struct brickpi_channel_data {
  */
 struct brickpi_data {
 	char device_name[LEGO_NAME_SIZE + 1];
+	struct board_info_desc desc;
+	struct board_info *board;
+	char fw_ver[BRICKPI_FW_VERSION_SIZE];
 	struct tty_struct *tty;
 	struct brickpi_channel_data *channel_data;
 	unsigned num_channels;
