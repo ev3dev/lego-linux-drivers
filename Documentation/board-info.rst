@@ -16,3 +16,10 @@ LEGO MINDSTORMS EV3 Board Info
 .. kernel-doc:: ev3/ev3_board.c
    :doc: userspace
 
+
+Raspberry Pi Board Info
+-----------------------
+
+.. kernel-doc:: linux/board_info/rpi_board_info.c
+   :doc: userspace
+

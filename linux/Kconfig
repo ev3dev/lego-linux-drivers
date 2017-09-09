@@ -4,6 +4,12 @@ config BOARD_INFO
   help
     This enables the board info subsystem.
 
+config RPI_BOARD_INFO
+  tristate "Support for Raspberry Pi board info"
+  depends on BOARD_INFO
+  help
+    This enables board info driver for Raspberry Pi.
+
 config FB_ST7586_EV3DEV
 	tristate "ST7586 framebuffer support"
 	depends on FB && SPI
