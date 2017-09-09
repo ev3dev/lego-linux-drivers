@@ -145,6 +145,8 @@ enum brickpi3_motor_status {
 
 #define BRICKPI3_I2C_MAX_WRITE_SIZE	16
 #define BRICKPI3_I2C_MAX_READ_SIZE	14
+#define BRICKPI3_STRING_MSG_SIZE	20
+#define BRICKPI3_ID_MSG_SIZE		16
 
 enum brickpi3_result {
 	BRICKPI3_RESULT_SUCCESS,
@@ -260,6 +262,7 @@ static inline int brickpi3_run_to_position(struct brickpi3 *bp, u8 address,
 				     BIT(port), position);
 }
 
+int devm_brickpi3_register_board(struct device *dev, struct brickpi3 *bp, u8 address);
 int devm_brickpi3_register_i2c(struct device *dev, struct brickpi3 *bp, u8 address);
 int devm_brickpi3_register_iio(struct device *dev, struct brickpi3 *bp, u8 address);
 int devm_brickpi3_register_leds(struct device *dev, struct brickpi3 *bp, u8 address);

@@ -29,3 +29,10 @@ BrickPi Board Info
 
 .. kernel-doc:: brickpi/brickpi_ld.c
    :doc: board-info
+
+
+BrickPi3 Board Info
+-------------------
+
+.. kernel-doc:: brickpi3/brickpi3_board_info.c
+   :doc: userspace

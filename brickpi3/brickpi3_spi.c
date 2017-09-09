@@ -27,8 +27,6 @@
 
 #define BRICKPI3_REQUIRED_FIRMWARE_VERSION	1004000 /* 1.4.x */
 #define BRICKPI3_HEADER_SIZE		4
-#define BRICKPI3_ID_MSG_SIZE		16
-#define BRICKPI3_STRING_MSG_SIZE	20
 #define BRICKPI3_MIN_ADDRESS		1
 /* technically max address is 255, but we want a reasonable number to probe */
 #define BRICKPI3_MAX_ADDRESS		4
@@ -748,6 +746,10 @@ static int brickpi3_probe(struct spi_device *spi)
 		ret = brickpi3_detect(bp, i);
 		if (ret < 0)
 			continue;
+
+		ret = devm_brickpi3_register_board(dev, bp, i);
+		if (ret < 0)
+			return ret;
 
 		ret = devm_brickpi3_register_leds(dev, bp, i);
 		if (ret < 0)
