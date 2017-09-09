@@ -43,3 +43,6 @@ BeagleBone Board Info
 
 .. kernel-doc:: linux/board_info/bone_board_info.c
    :doc: userspace
+
+.. kernel-doc:: linux/board_info/bone_cape_board_info.c
+   :doc: userspace
