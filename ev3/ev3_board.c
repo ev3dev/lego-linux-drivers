@@ -177,7 +177,9 @@ static int ev3_board_probe(struct platform_device *pdev)
 
 static const struct of_device_id ev3_board_of_device_ids[] = {
 	{ .compatible = "lego,ev3-board" },
+	{ }
 };
+MODULE_DEVICE_TABLE(of, ev3_board_of_device_ids);
 
 struct platform_driver ev3_board_driver = {
 	.probe  = ev3_board_probe,
