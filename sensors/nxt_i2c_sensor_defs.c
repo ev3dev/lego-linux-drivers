@@ -1028,26 +1028,26 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[7] = {
 				/**
 				 * @description: Passive values
-				 * @value0: Red Component (0 to 255)
-				 * @value1: Green Component (0 to 255)
-				 * @value2: Blue Component (0 to 255)
-				 * @value3: White Component (0 to 255)
+				 * @value0: Red Component (0 to 255?)
+				 * @value1: Green Component (0 to 255?)
+				 * @value2: Blue Component (0 to 255?)
+				 * @value3: White Component (0 to 255?)
 				 */
 				.name = "PASSIVE",
 				.data_sets = 4,
-				.data_type = LEGO_SENSOR_DATA_U8,
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
 			},
 			[8] = {
 				/**
 				 * @description: Raw values
-				 * @value0: Red Component (0 to 255)
-				 * @value1: Green Component (0 to 255)
-				 * @value2: Blue Component (0 to 255)
-				 * @value3: White Component (0 to 255)
+				 * @value0: Red Component (0 to 255?)
+				 * @value1: Green Component (0 to 255?)
+				 * @value2: Blue Component (0 to 255?)
+				 * @value3: White Component (0 to 255?)
 				 */
 				.name = "RAW",
 				.data_sets = 4,
-				.data_type = LEGO_SENSOR_DATA_U8,
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
 			},
 		},
 		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
