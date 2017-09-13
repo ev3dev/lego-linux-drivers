@@ -18,7 +18,7 @@
  *
  * - This driver is used to get information about the BrickPi battery.
  * - It uses the `power_supply`_ subsytem.
- * - It registers a sysfs device node at ``/sys/class/power_supply/brickpi-battery/``.
+ * - It registers a sysfs device node at ``/sys/class/power_supply/brickpi3-battery/``.
  *
  * .. flat-table:: Sysfs Attributes
  *    :widths: 1 2
