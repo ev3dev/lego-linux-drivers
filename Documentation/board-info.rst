@@ -25,21 +25,21 @@ Raspberry Pi Board Info
 
 
 BrickPi Board Info
-------------------
+~~~~~~~~~~~~~~~~~~
 
 .. kernel-doc:: brickpi/brickpi_ld.c
    :doc: board-info
 
 
 BrickPi3 Board Info
--------------------
+~~~~~~~~~~~~~~~~~~~
 
 .. kernel-doc:: brickpi3/brickpi3_board_info.c
    :doc: userspace
 
 
 PiStorms Board Info
--------------------
+~~~~~~~~~~~~~~~~~~~
 
 .. kernel-doc:: pistorms/pistorms_board_info.c
    :doc: userspace
@@ -50,6 +50,10 @@ BeagleBone Board Info
 
 .. kernel-doc:: linux/board_info/bone_board_info.c
    :doc: userspace
+
+
+BeagleBone Cape Board Info
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. kernel-doc:: linux/board_info/bone_cape_board_info.c
    :doc: userspace
