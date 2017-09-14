@@ -82,6 +82,10 @@ static int pistorms_probe(struct i2c_client *client,
 
 	/* some devices are duplicated on both banks */
 	if (client->addr == PISTORMS_BANK_A_ADDR) {
+		ret = devm_pistorms_register_board(&client->dev, data);
+		if (ret < 0)
+			dev_err(&client->dev, "Failed to register board info: %d",
+				ret);
 		ret = pistorms_battery_register(data);
 		if (ret < 0)
 			goto err_pistorms_battery_register;

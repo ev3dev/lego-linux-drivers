@@ -41,6 +41,7 @@ struct pistorms_data {
 	void			*out_port_data;
 };
 
+int devm_pistorms_register_board(struct device *dev, struct pistorms_data *data);
 extern int pistorms_battery_register(struct pistorms_data *data);
 extern void pistorms_battery_unregister(struct pistorms_data *data);
 extern int pistorms_input_register(struct pistorms_data *data);

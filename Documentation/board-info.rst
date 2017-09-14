@@ -38,6 +38,13 @@ BrickPi3 Board Info
    :doc: userspace
 
 
+PiStorms Board Info
+-------------------
+
+.. kernel-doc:: pistorms/pistorms_board_info.c
+   :doc: userspace
+
+
 BeagleBone Board Info
 ---------------------
 
