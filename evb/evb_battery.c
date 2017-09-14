@@ -113,7 +113,7 @@ static int evb_battery_probe(struct platform_device *pdev)
 	if (IS_ERR(batt->iio)) {
 		err = PTR_ERR(batt->iio);
 		if (err != -EPROBE_DEFER)
-			dev_err(&pdev->dev, "Failed to get iio channel.");
+			dev_err(&pdev->dev, "Failed to get iio channel\n");
 		return err;
 	}
 
