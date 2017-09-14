@@ -2324,8 +2324,8 @@ static ssize_t Device1Read(struct file *File, char *Buffer, size_t Count,
 	char Buf[10];
 	int Lng, ret;
 
-	Lng = snprintf(&Buf[0], Count, "%01u ", ReadyStatus);
-	Lng += snprintf(&Buf[Lng], Count - Lng, "%01u ", TestStatus);
+	Lng = scnprintf(&Buf[0], Count, "%01u ", ReadyStatus);
+	Lng += scnprintf(&Buf[Lng], Count - Lng, "%01u ", TestStatus);
 
 	ret = copy_to_user(Buffer, Buf, Lng);
 	if (ret < 0)

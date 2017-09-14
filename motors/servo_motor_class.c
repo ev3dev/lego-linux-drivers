@@ -200,7 +200,7 @@ static ssize_t driver_name_show(struct device *dev,
 {
 	struct servo_motor_device *motor = to_servo_motor_device(dev);
 
-	return snprintf(buf, SERVO_MOTOR_NAME_SIZE, "%s\n", motor->name);
+	return scnprintf(buf, SERVO_MOTOR_NAME_SIZE, "%s\n", motor->name);
 }
 
 static ssize_t address_show(struct device *dev, struct device_attribute *attr,
@@ -208,7 +208,7 @@ static ssize_t address_show(struct device *dev, struct device_attribute *attr,
 {
 	struct servo_motor_device *motor = to_servo_motor_device(dev);
 
-	return snprintf(buf, SERVO_MOTOR_NAME_SIZE, "%s\n", motor->address);
+	return scnprintf(buf, SERVO_MOTOR_NAME_SIZE, "%s\n", motor->address);
 }
 
 static ssize_t min_pulse_sp_show(struct device *dev,
@@ -266,7 +266,7 @@ static ssize_t max_pulse_sp_show(struct device *dev,
 {
 	struct servo_motor_device *motor = to_servo_motor_device(dev);
 
-	return snprintf(buf, SERVO_MOTOR_NAME_SIZE, "%d\n", motor->max_pulse_sp);
+	return scnprintf(buf, SERVO_MOTOR_NAME_SIZE, "%d\n", motor->max_pulse_sp);
 }
 
 static ssize_t max_pulse_sp_store(struct device *dev,

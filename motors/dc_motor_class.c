@@ -266,7 +266,7 @@ static ssize_t driver_name_show(struct device *dev,
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
 
-	return snprintf(buf, DC_MOTOR_NAME_SIZE, "%s\n", motor->name);
+	return scnprintf(buf, DC_MOTOR_NAME_SIZE, "%s\n", motor->name);
 }
 
 static ssize_t address_show(struct device *dev, struct device_attribute *attr,
@@ -274,7 +274,7 @@ static ssize_t address_show(struct device *dev, struct device_attribute *attr,
 {
 	struct dc_motor_device *motor = to_dc_motor_device(dev);
 
-	return snprintf(buf, DC_MOTOR_NAME_SIZE, "%s\n", motor->address);
+	return scnprintf(buf, DC_MOTOR_NAME_SIZE, "%s\n", motor->address);
 }
 
 static ssize_t ramp_up_sp_show(struct device *dev,

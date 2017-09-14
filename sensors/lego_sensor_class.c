@@ -260,7 +260,7 @@ static ssize_t driver_name_show(struct device *dev,
 {
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
-	return snprintf(buf, LEGO_SENSOR_NAME_SIZE, "%s\n", sensor->name);
+	return scnprintf(buf, LEGO_SENSOR_NAME_SIZE, "%s\n", sensor->name);
 }
 
 static ssize_t address_show(struct device *dev, struct device_attribute *attr,
@@ -268,7 +268,7 @@ static ssize_t address_show(struct device *dev, struct device_attribute *attr,
 {
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
-	return snprintf(buf, LEGO_SENSOR_NAME_SIZE, "%s\n", sensor->address);
+	return scnprintf(buf, LEGO_SENSOR_NAME_SIZE, "%s\n", sensor->address);
 }
 
 static ssize_t modes_show(struct device *dev, struct device_attribute *attr,
@@ -543,7 +543,7 @@ static ssize_t fw_version_show(struct device *dev, struct device_attribute *attr
 {
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 
-	return snprintf(buf, LEGO_SENSOR_FW_VERSION_SIZE + 2, "%s\n", sensor->fw_version);
+	return scnprintf(buf, LEGO_SENSOR_FW_VERSION_SIZE + 2, "%s\n", sensor->fw_version);
 }
 
 static ssize_t text_value_show(struct device *dev, struct device_attribute *attr,
@@ -560,7 +560,7 @@ static ssize_t text_value_show(struct device *dev, struct device_attribute *attr
 	if(IS_ERR(value))
 		return PTR_ERR(value);
 
-	return snprintf(buf, PAGE_SIZE, "%s\n", value);
+	return scnprintf(buf, PAGE_SIZE, "%s\n", value);
 }
 
 

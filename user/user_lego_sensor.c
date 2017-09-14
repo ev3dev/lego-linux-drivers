@@ -71,7 +71,7 @@ static ssize_t address_show(struct device *dev, struct device_attribute *attr,
 {
 	struct user_lego_sensor_device *sensor = to_user_lego_sensor_device(dev);
 
-	return snprintf(buf, LEGO_NAME_SIZE, "%s\n", sensor->sensor.address);
+	return scnprintf(buf, LEGO_NAME_SIZE, "%s\n", sensor->sensor.address);
 }
 
 static ssize_t text_value_store(struct device *dev, struct device_attribute *attr,

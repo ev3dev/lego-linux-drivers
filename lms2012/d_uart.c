@@ -1789,9 +1789,9 @@ static ssize_t Device1Read(struct file *File, char *Buffer, size_t Count, loff_t
 	Tmp   = 5;
 	while ((Count > Tmp) && (Port < INPUTS)) {
 		if (Port != (INPUTS - 1)) {
-			Tmp = snprintf(&Buf[Lng], 4, "%2u ", (UWORD)UartPort[Port].State);
+			Tmp = scnprintf(&Buf[Lng], 4, "%2u ", (UWORD)UartPort[Port].State);
 		} else {
-			Tmp = snprintf(&Buf[Lng], 5, "%2u\r", (UWORD)UartPort[Port].State);
+			Tmp = scnprintf(&Buf[Lng], 5, "%2u\r", (UWORD)UartPort[Port].State);
 		}
 		Lng   +=  Tmp;
 		Count -=  Tmp;

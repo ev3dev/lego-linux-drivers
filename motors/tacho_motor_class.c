@@ -446,7 +446,7 @@ static ssize_t address_show(struct device *dev, struct device_attribute *attr,
 {
 	struct tacho_motor_device *tm = to_tacho_motor(dev);
 
-	return snprintf(buf, LEGO_NAME_SIZE, "%s\n", tm->address);
+	return scnprintf(buf, LEGO_NAME_SIZE, "%s\n", tm->address);
 }
 
 static ssize_t driver_name_show(struct device *dev,
