@@ -66,7 +66,6 @@
 #define TONE_MIN_HZ	100
 #define TONE_MAX_HZ	10000
 #define MAX_VOLUME	256
-#define OFF_DELAY	msecs_to_jiffies(5000)
 #define PCM_PWM_PERIOD	(NSEC_PER_SEC / 64000)
 
 /*--- module parameters ---*/
@@ -84,7 +83,7 @@ struct snd_legoev3 {
 	struct input_dev	*input_dev;
 	struct snd_card		*card;
 	struct snd_pcm		*pcm;
-	struct delayed_work	 disable_work;
+	struct work_struct	 disable_work;
 	struct hrtimer		 pcm_timer;
 	struct tasklet_struct	 pcm_period_tasklet;
 	unsigned int		 tone_frequency;
@@ -105,7 +104,7 @@ struct snd_legoev3 {
 static int snd_legoev3_enable(struct snd_legoev3 *chip)
 {
 	chip->requested_enabled = true;
-	cancel_delayed_work(&chip->disable_work);
+	cancel_work_sync(&chip->disable_work);
 	gpiod_set_value(chip->ena_gpio, 1);
 	chip->is_enabled = true;
 
@@ -115,13 +114,13 @@ static int snd_legoev3_enable(struct snd_legoev3 *chip)
 static void snd_legoev3_disable(struct snd_legoev3 *chip)
 {
 	chip->requested_enabled = false;
-	mod_delayed_work(system_wq, &chip->disable_work, OFF_DELAY);
+	schedule_work(&chip->disable_work);
 }
 
 static void snd_legoev3_disable_work(struct work_struct *work)
 {
-	struct snd_legoev3 *chip = container_of(to_delayed_work(work),
-					      struct snd_legoev3, disable_work);
+	struct snd_legoev3 *chip =
+			container_of(work, struct snd_legoev3, disable_work);
 
 	/*
 	 * we can't call cancel_delayed_work_sync in atomic context, so we have
@@ -612,7 +611,7 @@ static int snd_legoev3_create(struct snd_card *card, struct pwm_device *pwm,
 	chip->card = card;
 	chip->pwm = pwm;
 	chip->ena_gpio = gpio;
-	INIT_DELAYED_WORK(&chip->disable_work, snd_legoev3_disable_work);
+	INIT_WORK(&chip->disable_work, snd_legoev3_disable_work);
 	hrtimer_init(&chip->pcm_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	chip->pcm_timer.function = &snd_legoev3_pcm_timer_callback;
 
@@ -735,7 +734,7 @@ static int snd_legoev3_remove(struct platform_device *pdev)
 
 	/* make sure sound is off */
 	snd_legoev3_disable(chip);
-	flush_delayed_work(&chip->disable_work);
+	cancel_work_sync(&chip->disable_work);
 	pwm_disable(chip->pwm);
 
 	return 0;
