@@ -87,7 +87,7 @@ static int brickpi3_board_get_property(struct board_info *info,
 		*val = data->serial_num;
 		break;
 	case BOARD_INFO_TYPE:
-		*val = BOARD_INFO_TYPE_AUX;
+		*val = BOARD_INFO_TYPE_NAME_AUX;
 		break;
 	default:
 		return -EINVAL;
