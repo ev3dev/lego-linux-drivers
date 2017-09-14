@@ -60,7 +60,6 @@
 #define TONE_MIN_HZ	100
 #define TONE_MAX_HZ	10000
 #define MAX_VOLUME	256
-#define OFF_DELAY	msecs_to_jiffies(5000)
 #define PCM_PWM_PERIOD	(NSEC_PER_SEC / 64000)
 
 /*--- module parameters ---*/
@@ -78,7 +77,7 @@ struct evb_sound {
 	struct input_dev	*input_dev;
 	struct snd_card		*card;
 	struct snd_pcm		*pcm;
-	struct delayed_work	 disable_work;
+	struct work_struct	 disable_work;
 	struct hrtimer		 pcm_timer;
 	struct tasklet_struct	 pcm_period_tasklet;
 	unsigned int		 tone_frequency;
@@ -96,7 +95,7 @@ struct evb_sound {
 static int evb_sound_enable(struct evb_sound *chip)
 {
 	chip->requested_enabled = true;
-	cancel_delayed_work(&chip->disable_work);
+	cancel_work_sync(&chip->disable_work);
 	gpiod_set_value(chip->ena_gpio, 1);
 	chip->is_enabled = true;
 
@@ -106,13 +105,13 @@ static int evb_sound_enable(struct evb_sound *chip)
 static void evb_sound_disable(struct evb_sound *chip)
 {
 	chip->requested_enabled = false;
-	mod_delayed_work(system_wq, &chip->disable_work, OFF_DELAY);
+	schedule_work(&chip->disable_work);
 }
 
 static void evb_sound_disable_work(struct work_struct *work)
 {
-	struct evb_sound *chip = container_of(to_delayed_work(work),
-					      struct evb_sound, disable_work);
+	struct evb_sound *chip =
+			container_of(work, struct evb_sound, disable_work);
 
 	/*
 	 * we can't call cancel_delayed_work_sync in atomic context, so we have
@@ -536,7 +535,7 @@ static int evb_sound_create(struct snd_card *card, struct pwm_device *pwm,
 	chip->card = card;
 	chip->pwm = pwm;
 	chip->ena_gpio = gpio;
-	INIT_DELAYED_WORK(&chip->disable_work, evb_sound_disable_work);
+	INIT_WORK(&chip->disable_work, evb_sound_disable_work);
 	hrtimer_init(&chip->pcm_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	chip->pcm_timer.function = &evb_sound_pcm_timer_callback;
 
@@ -655,7 +654,7 @@ static int evb_sound_remove(struct platform_device *pdev)
 
 	/* make sure sound is off */
 	evb_sound_disable(chip);
-	flush_delayed_work(&chip->disable_work);
+	cancel_work_sync(&chip->disable_work);
 	pwm_disable(chip->pwm);
 
 	return 0;
