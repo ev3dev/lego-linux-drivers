@@ -88,6 +88,9 @@ const struct ev3_analog_sensor_info ev3_analog_sensor_defs[] = {
 				 *     1        Pressed
 				 *    =======  =============
 				 *
+				 *    This value supports the ``poll` syscall
+				 *    using ``POLLPRI``.
+				 *
 				 * @description: Button state
 				 * @value0: State (0 or 1)
 				 * @value0_footnote: [#lego-ev3-touch-mode0-value0]_

@@ -58,6 +58,7 @@ struct ev3_analog_sensor_data {
 	struct lego_device *ldev;
 	struct lego_sensor_device sensor;
 	struct ev3_analog_sensor_info info;
+	s32 last_value;
 };
 
 #endif /* _EV3_ANALOG_SENSOR_H_ */
