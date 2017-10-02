@@ -72,6 +72,7 @@ struct nxt_analog_sensor_data {
 	struct lego_device *ldev;
 	struct lego_sensor_device sensor;
 	struct nxt_analog_sensor_info info;
+	s32 last_value;
 };
 
 #endif /* NXT_ANALOG_SENSOR_H_ */

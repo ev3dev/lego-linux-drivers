@@ -1,7 +1,7 @@
 /*
  * LEGO MINSTORMS NXT analog sensor device driver
  *
- * Copyright (C) 2013-2015 David Lechner <david@lechnology.com>
+ * Copyright (C) 2013-2015,2017 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -34,19 +34,38 @@
 
 #include "nxt_analog_sensor.h"
 
+static void nxt_touch_notify_raw_data_func(void *context)
+{
+	struct nxt_analog_sensor_data *data = context;
+	struct lego_sensor_mode_info *mode_info;
+	long int new_value;
+
+	mode_info = &data->info.mode_info[0];
+	mode_info->scale(context, mode_info, 0, &new_value);
+	if (new_value != data->last_value) {
+		sysfs_notify(&data->sensor.dev.kobj, NULL, "value0");
+		data->last_value = new_value;
+	}
+}
+
 static int nxt_analog_sensor_set_mode(void *context, u8 mode)
 {
 	struct nxt_analog_sensor_data *data = context;
 	struct lego_sensor_mode_info *mode_info;
+	lego_port_notify_raw_data_func_t func = NULL;
 
 	if (mode >= data->info.num_modes)
 		return -EINVAL;
 
 	mode_info = &data->info.mode_info[mode];
-	data->ldev->port->nxt_analog_ops->set_pin5_gpio(data->ldev->port->context,
-			data->info.analog_mode_info[mode].pin5_state);
+	if (strcmp(data->info.name, LEGO_NXT_TOUCH_SENSOR_NAME) == 0)
+		func = nxt_touch_notify_raw_data_func;
+	else
+		context = NULL;
 	lego_port_set_raw_data_ptr_and_func(data->ldev->port, mode_info->raw_data,
-		lego_sensor_get_raw_data_size(mode_info), NULL, NULL);
+		lego_sensor_get_raw_data_size(mode_info), func, context);
+	data->ldev->port->nxt_analog_ops->set_pin5_gpio(data->ldev->port->context,
+		data->info.analog_mode_info[mode].pin5_state);
 
 	return 0;
 }
