@@ -262,11 +262,6 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 		.mode_info	= {
 			[0] = {
 				/**
-				 * .. [#lego-ev3-gyro-mode0-reset] The angle in
-				 *    ``GYRO-ANG`` or ``GYRO-G&A`` modes can
-				 *    be reset by changing to a different mode
-				 *    and changing back.
-				 *
 				 * .. [#lego-ev3-gyro-mode0-value0-overflow] If
 				 *    you spin around too many times in ``GYRO-ANG``
 				 *    or ``GYRO-G&A`` mode, it will get stuck at
@@ -277,7 +272,6 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				 *    Clockwise is positive when looking at the
 				 *    side of the sensor with the arrows.
 				 *
-				 * @name_footnote: [#lego-ev3-gyro-mode0-reset]_
 				 * @description: Angle
 				 * @value0: Angle (-32768 to 32767)
 				 * @value0_footnote: [#lego-ev3-gyro-mode0-value0-overflow]_ [#lego-ev3-gyro-mode0-value0-direction]_
@@ -290,14 +284,6 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 			},
 			[1] = {
 				/**
-				 * .. [#lego-ev3-gyro-mode1-calibration] With older
-				 *    versions of this sensor (date code ending in
-				 *    2 or 3), the sensor is calibrated when the
-				 *    ``GYRO-RATE`` or the ``GYRO-G&A`` mode is set.
-				 *    If the sensor is moving when setting the mode,
-				 *    the calibration will be off.
-				 *
-				 * @name_footnote: [#lego-ev3-gyro-mode1-calibration]_
 				 * @description: Rotational Speed
 				 * @value0: Rotational Speed (-440 to 440)
 				 * @value0_footnote: [#lego-ev3-gyro-mode0-value0-direction]_
@@ -320,7 +306,6 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 			},
 			[3] = {
 				/**
-				 * @name_footnote: [#lego-ev3-gyro-mode0-reset]_ [#lego-ev3-gyro-mode1-calibration]_
 				 * @description: Angle and Rotational Speed
 				 * @value0: Angle (-32768 to 32767)
 				 * @value0_footnote: [#lego-ev3-gyro-mode0-value0-overflow]_ [#lego-ev3-gyro-mode0-value0-direction]_
