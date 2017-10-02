@@ -306,6 +306,17 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 			},
 			[3] = {
 				/**
+				 * .. [#lego-ev3-gyro-mode3] Older versions of
+				 *    this sensor will get stuck in ``GYRO-G&A``
+				 *    mode (date code ending with 2 or 3).
+				 *    Attempting to set the mode again (including
+				 *    setting ``GYRO-G&A`` mode) will result in
+				 *    a timeout error. The sensor must be reset
+				 *    by unplugging it or by changing the mode
+				 *    of the `lego-port` device that the sensor
+				 *    is connected to to a different mode.
+				 *
+				 * @name_footnote: [#lego-ev3-gyro-mode3]_
 				 * @description: Angle and Rotational Speed
 				 * @value0: Angle (-32768 to 32767)
 				 * @value0_footnote: [#lego-ev3-gyro-mode0-value0-overflow]_ [#lego-ev3-gyro-mode0-value0-direction]_
