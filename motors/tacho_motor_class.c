@@ -668,24 +668,26 @@ static int tm_send_command(struct tacho_motor_device *tm,
 
 	new_params.command = cmd;
 
-	if (!IS_RUN_CMD(cmd)) {
-		new_params.duty_cycle_sp = 0;
-		new_params.speed_sp = 0;
-	}
-
 	if (cmd == TM_COMMAND_RUN_TO_REL_POS) {
-		/*
-		 * To check the previous command, we MUST be looking at
-		 * tm->params.command because that's the previous command that
-		 * the user sent! If the previous command was also
-		 * run-to-rel-pos then we try to be "smart" about the new
-		 * setpoint by making it relative to the previous setpoint.
-		 *
-		 * This will eliminate cumulative error due to the motor not
-		 * holding the position exactly when the position setpoint
-		 * is reached.
-		 */
-		if (tm->params.command == TM_COMMAND_RUN_TO_REL_POS) {
+		if (new_params.position_sp == 0) {
+			/*
+			 * If the relative position setpoint is 0, then don't
+			 * try to run, just stop.
+			 */
+			cmd = TM_COMMAND_STOP;
+		} else if (tm->params.command == TM_COMMAND_RUN_TO_REL_POS) {
+			/*
+			* To check the previous command, we MUST be looking at
+			* tm->params.command because that's the previous command
+			* that the user sent! If the previous command was also
+			* run-to-rel-pos then we try to be "smart" about the new
+			* setpoint by making it relative to the previous
+			* setpoint.
+			*
+			* This will eliminate cumulative error due to the motor
+			* not holding the position exactly when the position
+			* setpoint is reached.
+			*/
 			new_params.position_sp = tm->active_params.position_sp +
 							tm->params.position_sp;
 		} else {
@@ -695,6 +697,11 @@ static int tm_send_command(struct tacho_motor_device *tm,
 			new_params.position_sp = position +
 							tm->params.position_sp;
 		}
+	}
+
+	if (!IS_RUN_CMD(cmd)) {
+		new_params.duty_cycle_sp = 0;
+		new_params.speed_sp = 0;
 	}
 
 	/* now actually send the command to the motor controller */
