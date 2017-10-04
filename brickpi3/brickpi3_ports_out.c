@@ -317,9 +317,17 @@ static int brickpi3_out_port_get_state(void *context)
 static int brickpi3_out_port_get_duty_cycle2(void *context, int *duty_cycle)
 {
 	struct brickpi3_out_port *data = context;
+	int ret;
 
-	return brickpi3_read_motor(data->bp, data->address, data->index, NULL,
-				   duty_cycle, NULL, NULL);
+	ret = brickpi3_read_motor(data->bp, data->address, data->index, NULL,
+				  duty_cycle, NULL, NULL);
+	if (ret < 0)
+		return ret;
+
+	if (*duty_cycle == BRICKPI3_MOTOR_COAST)
+		*duty_cycle = 0;
+	
+	return 0;
 }
 
 static int brickpi3_out_port_get_speed(void *context, int *speed)
