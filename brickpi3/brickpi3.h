@@ -215,7 +215,8 @@ int brickpi3_set_motor_limits(struct brickpi3 *bp, u8 address,
 int brickpi3_read_motor(struct brickpi3 *bp, u8 address,
 			enum brickpi3_output_port port,
 			enum brickpi3_motor_status *status,
-			s8 *duty_cycle, s32 *position, s16 *speed);
+			int *duty_cycle, int *position, int *speed);
+
 static inline int brickpi3_set_sensor_type(struct brickpi3 *bp, u8 address,
 					   enum brickpi3_input_port port,
 					   enum brickpi3_sensor_type type)

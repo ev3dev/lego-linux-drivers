@@ -298,6 +298,22 @@ static int brickpi3_out_port_get_state(void *context)
 	return state;
 }
 
+static int brickpi3_out_port_get_duty_cycle2(void *context, int *duty_cycle)
+{
+	struct brickpi3_out_port *data = context;
+
+	return brickpi3_read_motor(data->bp, data->address, data->index, NULL,
+				   duty_cycle, NULL, NULL);
+}
+
+static int brickpi3_out_port_get_speed(void *context, int *speed)
+{
+	struct brickpi3_out_port *data = context;
+
+	return brickpi3_read_motor(data->bp, data->address, data->index, NULL,
+				   NULL, NULL, speed);
+}
+
 static int brickpi3_out_port_stop(void *context, enum tm_stop_action stop_action)
 {
 	struct brickpi3_out_port *data = context;
@@ -360,6 +376,8 @@ struct tacho_motor_ops brickpi3_out_port_tacho_motor_ops = {
 	.stop			= brickpi3_out_port_stop,
 	.reset			= brickpi3_out_port_reset,
 	.get_state		= brickpi3_out_port_get_state,
+	.get_duty_cycle		= brickpi3_out_port_get_duty_cycle2,
+	.get_speed		= brickpi3_out_port_get_speed,
 	.get_stop_actions	= brickpi3_out_port_get_stop_actions,
 };
 
