@@ -21,6 +21,13 @@
  * EV3, except that they cannot automatically detect when a motor is connected.
  * By default, the ``lego-nxt-motor`` driver is loaded, so you don't need to
  * manually set the mode or device unless you want to use something else.
+ *
+ * .. warning:: Not all :ref:`tacho-motor-class` features are supported.
+ *
+ *    - The ``state`` attribute will never return the ``holding`` or the
+ *      ``stalled`` flags.
+ *    - The ``state`` attribute will only return the ``overloaded`` flag with
+ *      firmware >= v1.4.3.
  */
 
 #include <linux/bitops.h>
@@ -271,12 +278,22 @@ static int brickpi3_out_port_run_to_pos(void *context, int pos, int speed,
 static int brickpi3_out_port_get_state(void *context)
 {
 	struct brickpi3_out_port *data = context;
+	enum brickpi3_motor_status flags;
 	unsigned state = 0;
+	int ret;
 
 	if (data->running)
 		state |= BIT(TM_STATE_RUNNING);
 
-	/* FIXME: how to get holding/overloaded/stalled states? */
+	ret = brickpi3_read_motor(data->bp, data->address, data->index, &flags,
+				  NULL, NULL, NULL);
+	if (ret < 0)
+		return ret;
+
+	if (flags & BRICKPI3_MOTOR_STATUS_OVERLOADED)
+		state |= BIT(TM_STATE_OVERLOADED);
+
+	/* FIXME: how to get holding/stalled states? */
 
 	return state;
 }

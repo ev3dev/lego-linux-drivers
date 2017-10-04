@@ -140,7 +140,8 @@ enum brickpi3_i2c_flags {
 };
 
 enum brickpi3_motor_status {
-	BRICKPI3_MOTOR_STATUS_LOW_VOLTAGE_FLOAT = 0x01,
+	BRICKPI3_MOTOR_STATUS_LOW_VOLTAGE_FLOAT	= BIT(0),
+	BRICKPI3_MOTOR_STATUS_OVERLOADED	= BIT(1),
 };
 
 #define BRICKPI3_I2C_MAX_WRITE_SIZE	16
@@ -211,7 +212,10 @@ int brickpi3_i2c_transact(struct brickpi3 *bp, u8 address,
 int brickpi3_set_motor_limits(struct brickpi3 *bp, u8 address,
 			      enum brickpi3_output_port, u8 duty_cycle_sp,
 			      u16 speed);
-
+int brickpi3_read_motor(struct brickpi3 *bp, u8 address,
+			enum brickpi3_output_port port,
+			enum brickpi3_motor_status *status,
+			s8 *duty_cycle, s32 *position, s16 *speed);
 static inline int brickpi3_set_sensor_type(struct brickpi3 *bp, u8 address,
 					   enum brickpi3_input_port port,
 					   enum brickpi3_sensor_type type)

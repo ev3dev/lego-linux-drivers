@@ -618,6 +618,56 @@ int brickpi3_set_motor_limits(struct brickpi3 *bp, u8 address,
 	return ret;
 }
 
+/**
+ * brickpi3_read_motor - get the current motor state
+ *
+ * @bp: The private driver data
+ * @address: The BrickPi3 address
+ * @port: The output port
+ * @status: The current motor status flags (optional)
+ * @duty_cycle: The current duty cycle in percent (optional)
+ * @position: The current position in degrees (optional)
+ * @speed: The current speed in degrees per second (optional)
+ */
+int brickpi3_read_motor(struct brickpi3 *bp, u8 address,
+			enum brickpi3_output_port port,
+			enum brickpi3_motor_status *status,
+			s8 *duty_cycle, s32 *position, s16 *speed)
+{
+	int ret;
+
+	mutex_lock(&bp->xfer_lock);
+
+	bp->buf[0] = address;
+	bp->buf[1] = BRICKPI3_MSG_GET_MOTOR_STATUS + port;
+	memset(&bp->buf[2], 0, 10);
+	bp->xfer.len = 12;
+
+	ret = spi_sync(bp->spi, &bp->msg);
+	if (ret < 0)
+		goto out;
+
+	if (BRICKPI3_READ_FAILED(bp->buf)) {
+		ret = -EIO;
+		goto out;
+	}
+
+	if (status)
+		*status = bp->buf[4];
+	if (duty_cycle)
+		*duty_cycle = bp->buf[5];
+	if (position)
+		*position = (bp->buf[6] << 24) | (bp->buf[7] << 16) |
+			    (bp->buf[8] << 8) | bp->buf[9];
+	if (speed)
+		*speed = (bp->buf[10] << 8) | bp->buf[11];
+
+out:
+	mutex_unlock(&bp->xfer_lock);
+
+	return ret;
+}
+
 static int brickpi3_detect(struct brickpi3 *bp, u8 address)
 {
 	struct device *dev = &bp->spi->dev;
