@@ -655,12 +655,12 @@ int brickpi3_read_motor(struct brickpi3 *bp, u8 address,
 	if (status)
 		*status = bp->buf[4];
 	if (duty_cycle)
-		*duty_cycle = bp->buf[5];
+		*duty_cycle = (s8)bp->buf[5];
 	if (position)
 		*position = (bp->buf[6] << 24) | (bp->buf[7] << 16) |
 			    (bp->buf[8] << 8) | bp->buf[9];
 	if (speed)
-		*speed = (bp->buf[10] << 8) | bp->buf[11];
+		*speed = (s16)((bp->buf[10] << 8) | bp->buf[11]);
 
 out:
 	mutex_unlock(&bp->xfer_lock);
