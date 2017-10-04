@@ -19,7 +19,7 @@
 #include <linux/i2c.h>
 #include <lego.h>
 
-#define PISTORMS_NAME_SIZE	30
+#define PISTORMS_NAME_SIZE	50
 
 /**
  * struct pistorms_data - represents a single bank on a PiStorms
