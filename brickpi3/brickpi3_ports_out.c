@@ -27,6 +27,7 @@
  *    - The ``state`` attribute will never return the ``stalled`` flag.
  *    - The ``state`` attribute will only return the ``overloaded`` flag with
  *      firmware >= v1.4.3.
+ *    - The ``state`` attribtue does not support ``poll`` syscall.
  */
 
 #include <linux/bitops.h>
