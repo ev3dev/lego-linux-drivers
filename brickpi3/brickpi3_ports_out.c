@@ -24,14 +24,14 @@
  *
  * .. warning:: Not all :ref:`tacho-motor-class` features are supported.
  *
- *    - The ``state`` attribute will never return the ``holding`` or the
- *      ``stalled`` flags.
+ *    - The ``state`` attribute will never return the ``stalled`` flag.
  *    - The ``state`` attribute will only return the ``overloaded`` flag with
  *      firmware >= v1.4.3.
  */
 
 #include <linux/bitops.h>
 #include <linux/device.h>
+#include <linux/workqueue.h>
 
 #include <dc_motor_class.h>
 #include <tacho_motor_class.h>
@@ -47,9 +47,14 @@ struct brickpi3_out_port {
 	struct brickpi3 *bp;
 	struct lego_port_device port;
 	struct lego_device *motor;
+	struct delayed_work run_to_pos_work;
+	enum tm_stop_action run_to_pos_stop_action;
 	enum brickpi3_output_port index;
+	s32 position_sp;
 	s8 duty_cycle;
 	bool running;
+	bool holding;
+	bool positioning;
 	u8 address;
 };
 
@@ -237,6 +242,8 @@ static int brickpi3_out_port_run_unregulated(void *context, int duty_cycle)
 		return ret;
 
 	data->running = true;
+	data->holding = false;
+	data->positioning = false;
 
 	return 0;
 }
@@ -251,6 +258,8 @@ static int brickpi3_out_port_run_regulated(void *context, int speed)
 		return ret;
 
 	data->running = true;
+	data->holding = false;
+	data->positioning = false;
 
 	return 0;
 }
@@ -265,12 +274,19 @@ static int brickpi3_out_port_run_to_pos(void *context, int pos, int speed,
 					speed);
 	if (ret < 0)
 		return ret;
-	/* FIXME: stop action is ignored */
+
 	ret = brickpi3_run_to_position(data->bp, data->address, data->index, pos);
 	if (ret < 0)
 		return ret;
 
+	data->run_to_pos_stop_action = stop_action;
+
+	data->position_sp = pos;
 	data->running = true;
+	data->holding = false;
+	data->positioning = true;
+
+	schedule_delayed_work(&data->run_to_pos_work, 0);
 
 	return 0;
 }
@@ -284,6 +300,8 @@ static int brickpi3_out_port_get_state(void *context)
 
 	if (data->running)
 		state |= BIT(TM_STATE_RUNNING);
+	if (data->holding)
+		state |= BIT(TM_STATE_HOLDING);
 
 	ret = brickpi3_read_motor(data->bp, data->address, data->index, &flags,
 				  NULL, NULL, NULL);
@@ -292,8 +310,6 @@ static int brickpi3_out_port_get_state(void *context)
 
 	if (flags & BRICKPI3_MOTOR_STATUS_OVERLOADED)
 		state |= BIT(TM_STATE_OVERLOADED);
-
-	/* FIXME: how to get holding/stalled states? */
 
 	return state;
 }
@@ -317,6 +333,7 @@ static int brickpi3_out_port_get_speed(void *context, int *speed)
 static int brickpi3_out_port_stop(void *context, enum tm_stop_action stop_action)
 {
 	struct brickpi3_out_port *data = context;
+	bool holding = false;
 	int ret, pos;
 
 	switch(stop_action) {
@@ -335,6 +352,8 @@ static int brickpi3_out_port_stop(void *context, enum tm_stop_action stop_action
 			return ret;
 		ret = brickpi3_run_to_position(data->bp, data->address,
 					       data->index, pos);
+		data->position_sp = pos;
+		holding = true;
 		break;
 	default:
 		return -EINVAL;
@@ -343,7 +362,9 @@ static int brickpi3_out_port_stop(void *context, enum tm_stop_action stop_action
 	if (ret < 0)
 		return ret;
 
-	data->running = false;
+	data->running = holding;
+	data->holding = holding;
+	data->positioning = false;
 
 	return 0;
 }
@@ -400,6 +421,7 @@ static int brickpi3_out_port_register_motor(struct brickpi3_out_port *out_port,
 static void brickpi3_out_port_unregister_motor(struct brickpi3_out_port *data)
 {
 	if (data->motor) {
+		cancel_delayed_work_sync(&data->run_to_pos_work);
 		lego_device_unregister(data->motor);
 		data->motor = NULL;
 		brickpi3_run_unregulated(data->bp, data->address, data->index,
@@ -416,6 +438,45 @@ static int brickpi3_out_port_set_mode(void *context, u8 mode)
 	return brickpi3_out_port_register_motor(data,
 				&brickpi3_out_port_device_types[mode],
 				brickpi3_out_port_default_driver[mode]);
+}
+
+static void brickpi3_run_to_pos_work(struct work_struct *work)
+{
+	struct delayed_work *delayed_work = to_delayed_work(work);
+	struct brickpi3_out_port *data = container_of(delayed_work,
+						      struct brickpi3_out_port,
+						      run_to_pos_work);
+	int ret, speed, position;
+
+	/* another command was run, so positioning is canceled */
+	if (!data->positioning)
+		return;
+
+	ret = brickpi3_read_motor(data->bp, data->address, data->index, NULL,
+				  NULL, &position, &speed);
+
+	if (ret == -EAGAIN) {
+		/* do what it says, try again */
+		schedule_delayed_work(&data->run_to_pos_work,
+				      msecs_to_jiffies(20));
+		return;
+	} else if (ret < 0) {
+		/* Giving up for now. Might be better if we did a retry. */
+		return;
+	}
+
+	if (abs(data->position_sp - position) < 10 && speed == 0) {
+		/* we have reached the target position */
+		if (data->run_to_pos_stop_action == TM_STOP_ACTION_HOLD)
+			data->holding = true;
+		else
+			brickpi3_out_port_stop(data,
+					       data->run_to_pos_stop_action);
+	} else  {
+		/* keep polling... */
+		schedule_delayed_work(&data->run_to_pos_work,
+				      msecs_to_jiffies(100));
+	}
 }
 
 static void brickpi3_out_port_release(struct device *dev, void *res)
@@ -452,6 +513,8 @@ static int devm_brickpi3_out_port_register_one(struct device *dev,
 	data->port.dc_motor_ops = &brickpi3_out_port_dc_motor_ops;
 	data->port.tacho_motor_ops = &brickpi3_out_port_tacho_motor_ops;
 	data->port.context = data;
+
+	INIT_DELAYED_WORK(&data->run_to_pos_work, brickpi3_run_to_pos_work);
 
 	ret = lego_port_register(&data->port, &brickpi3_out_port_type, dev);
 	if (ret < 0) {
