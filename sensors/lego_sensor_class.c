@@ -80,13 +80,12 @@
  *    * - ``command``
  *      - write-only
  *      - Sends a command to the sensor. See the individual sensor documentation
- *        for possible commands. Sensors that do not support commands will
- *        return ``-EOPNOTSUPP`` when writing to this attribute.
+ *        for possible commands.
  *
  *    * - ``commands``
  *      - read-only
  *      - Returns a space separated list of the valid commands for the
- *        sensor. Returns ``-EOPNOTSUPP`` if no commands are supported.
+ *        sensor.
  *
  *    * - ``direct``
  *      - read/write
@@ -324,10 +323,13 @@ static ssize_t commands_show(struct device *dev, struct device_attribute *attr,
 	int i;
 	unsigned count = 0;
 
+	if (sensor->num_commands == 0) {
+		buf[0] = '\n';
+		return 1;
+	}
+
 	for (i = 0; i < sensor->num_commands; i++)
 		count += sprintf(buf + count, "%s ", sensor->cmd_info[i].name);
-	if (count == 0)
-		return -EOPNOTSUPP;
 	buf[count - 1] = '\n';
 
 	return count;
