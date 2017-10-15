@@ -1736,7 +1736,8 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				/**
 				 * .. [#ms-absolute-imu-mode1] Only returns data
 				 *    from models with an accelerometer
-				 *    (AbsoluteIMU-AC / AbsoluteIMU-A).
+				 *    (AbsoluteIMU-AC / AbsoluteIMU-A /
+				 *    AbsoluteIMU-ACG).
 				 *
 				 * .. [#ms-absolute-imu-mode1-units] Standard
 				 *    gravity (*g*) is defined as
