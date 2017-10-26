@@ -121,7 +121,7 @@ board_info_register(struct device *parent, struct board_info_desc *desc,
 	if (err)
 		return ERR_PTR(err);
 
-	return 0;
+	return info;
 }
 EXPORT_SYMBOL_GPL(board_info_register);
 
