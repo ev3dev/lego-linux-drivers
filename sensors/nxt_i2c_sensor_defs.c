@@ -703,27 +703,24 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[0] = {
 				/**
 				 * @description: Barometric Pressure
-				 * @value0: Absolute Pressure (0 to 3000)
-				 * @units_description: ???
+				 * @value0: Absolute Pressure (~30000)
+				 * @units_description: Inches of mercury
 				 */
 				.name = "PRESS",
-				.raw_min = 30400,
-				.raw_max = 29400,
-				.si_max = 3000,
-				.decimals = 1,
-				.units = "m",
+				.decimals = 3,
+				.units = "inHg",
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
 			},
 			[1] = {
 				/**
 				 * @description: Temperature
-				 * @value0: Absolute Pressure (0 to 1000)
+				 * @value0: Temperature (0 to 1000)
 				 * @units_description: degrees Celsius
 				 */
 				.name = "TEMP",
-				.raw_max = 1000,
-				.si_max = 1000,
 				.decimals = 1,
 				.units = "C",
+				.data_type = LEGO_SENSOR_DATA_S16_BE,
 			},
 		},
 		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
@@ -731,7 +728,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.read_data_reg	= 0x42,
 			},
 			[1] = {
-				.read_data_reg	= 0x42,
+				.read_data_reg	= 0x44,
 			},
 		},
 	},
