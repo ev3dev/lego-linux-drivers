@@ -579,7 +579,7 @@ static void calculate_speed(struct legoev3_motor_data *ev3_tm)
 		diff = ktime_sub(ev3_tm->tacho_samples[diff_idx],
 			ev3_tm->tacho_samples[(diff_idx + TACHO_SAMPLES - 1) % TACHO_SAMPLES]);
 
-		if (unlikely(ktime_equal(diff, ktime_set(0, 0))))
+		if (unlikely(!diff))
 			diff = ktime_set(0, 1);
 
 		set_num_samples_for_speed(ev3_tm, USEC_PER_SEC / (int)ktime_to_us(diff));
@@ -608,7 +608,7 @@ static void calculate_speed(struct legoev3_motor_data *ev3_tm)
 		diff = ktime_sub(ev3_tm->tacho_samples[diff_idx],
 			ev3_tm->tacho_samples[(diff_idx + TACHO_SAMPLES - ev3_tm->num_samples) % TACHO_SAMPLES]);
 
-		if (unlikely(ktime_equal(diff, ktime_set(0, 0))))
+		if (unlikely(!diff))
 			diff = ktime_set(0, 1);
 
 		new_speed = USEC_PER_SEC * ev3_tm->num_samples;
