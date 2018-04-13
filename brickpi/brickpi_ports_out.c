@@ -108,10 +108,11 @@ static enum dc_motor_internal_command brickpi_out_port_get_command(void *context
 {
 	struct brickpi_out_port_data *data = context;
 
-	if (data->motor_enabled)
+	if (data->motor_enabled) {
 		if (data->motor_reversed)
 			return DC_MOTOR_INTERNAL_COMMAND_RUN_REVERSE;
 		return DC_MOTOR_INTERNAL_COMMAND_RUN_FORWARD;
+	}
 
 	return DC_MOTOR_INTERNAL_COMMAND_COAST;
 }
