@@ -10,7 +10,6 @@ obj-y	+= evb/
 obj-y	+= motors/
 obj-y	+= pistorms/
 obj-y	+= sensors/
-obj-y	+= user/
 obj-y	+= wedo/
 
 obj-y	+= linux/

@@ -126,13 +126,6 @@ config LEGO_DC_MOTORS
 	  Select Y to enable support for DC motors (includes LEGO Power
 	  Functions motors).
 
-config LEGO_USER_DEVICES
-	tristate "User-defined device support"
-	default y
-	depends on LEGO_SENSORS && CONFIGFS_FS
-	help
-	  Select Y to enable support for user-defined devices.
-
 config LMS2012_COMPAT
 	tristate "lms2012 compatibility"
 	default y
