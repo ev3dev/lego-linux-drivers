@@ -1,1 +1,0 @@
-obj-$(CONFIG_FB_ST7586_EV3DEV) += st7586fb.o
