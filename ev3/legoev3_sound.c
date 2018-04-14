@@ -647,7 +647,7 @@ static int snd_legoev3_probe(struct platform_device *pdev)
 	ena_gpio = devm_gpiod_get(&pdev->dev, "enable", GPIOD_OUT_LOW);
 	if (IS_ERR(ena_gpio)) {
 		err = PTR_ERR(ena_gpio);
-		if (err != -EPROBE_DEFER);
+		if (err != -EPROBE_DEFER)
 			dev_err(&pdev->dev, "Failed to get gpio!\n");
 		return err;
 	}
