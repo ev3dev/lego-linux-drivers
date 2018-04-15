@@ -97,6 +97,7 @@ const struct ev3_analog_sensor_info ev3_analog_sensor_defs[] = {
 				 */
 				.name = "TOUCH",
 				.data_sets = 1,
+				.data_type = LEGO_SENSOR_DATA_S32,
 				.scale = lego_ev3_touch_sensor_scale,
 			},
 		},
