@@ -127,6 +127,9 @@ EXPORT_SYMBOL_GPL(board_info_register);
 
 void board_info_unregister(struct board_info *info)
 {
+	if (IS_ERR_OR_NULL(info))
+		return;
+
 	device_unregister(&info->dev);
 }
 EXPORT_SYMBOL_GPL(board_info_unregister);
