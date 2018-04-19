@@ -98,11 +98,3 @@ Battery
 
 .. kernel-doc:: brickpi/brickpi_battery.c
     :doc: userspace
-
-
-Line Discipline
----------------
-
-.. kernel-doc:: brickpi/brickpi_ld.c
-    :doc: userspace
-

@@ -25,6 +25,7 @@
 #include <linux/hrtimer.h>
 #include <linux/ktime.h>
 #include <linux/module.h>
+#include <linux/serdev.h>
 #include <linux/types.h>
 
 #include <lego.h>
@@ -156,12 +157,12 @@ struct brickpi_channel_data {
 #define BRICKPI_FW_VERSION_SIZE 4
 
 /**
- * struct brickpi_data - Discipline data for EV3 UART Sensor communication
+ * struct brickpi_data - serdev data for BrickPi communication
  * @device_name: The name of the device/driver.
  * @desc: Board info driver descriptor
  * @board: Board info device reference
  * @fw_ver: Firmware version string for use by board info
- * @tty: Pointer to the tty device that the sensor is connected to
+ * @serdev: Pointer to the serdev device
  * @channel_data: Pointer to channel data array.
  * @num_channels: Number of items in channel_data array.
  * @tx_buffer: Array to store the data to be transmitted.
@@ -183,7 +184,7 @@ struct brickpi_data {
 	struct board_info_desc desc;
 	struct board_info *board;
 	char fw_ver[BRICKPI_FW_VERSION_SIZE];
-	struct tty_struct *tty;
+	struct serdev_device *serdev;
 	struct brickpi_channel_data *channel_data;
 	unsigned num_channels;
 	u8 tx_buffer[BRICKPI_BUFFER_SIZE];

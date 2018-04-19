@@ -27,7 +27,7 @@ Raspberry Pi Board Info
 BrickPi Board Info
 ~~~~~~~~~~~~~~~~~~
 
-.. kernel-doc:: brickpi/brickpi_ld.c
+.. kernel-doc:: brickpi/brickpi_serdev.c
    :doc: board-info
 
 

@@ -73,7 +73,7 @@ static const struct lego_port_mode_info brickpi_in_port_mode_info[NUM_BRICKPI_IN
 	/**
 	 * .. [#in-port-prefix] The full port name includes the parent device
 	 *    node. So, the ``address`` attribute will return something like
-	 *    ``ttyAMA0:S1``.
+	 *    ``serial0-0:S1``.
 	 *
 	 * @description: Dexter Industries BrickPi Input Port
 	 * @connection_types: NXT/Analog, NXT/I2C, EV3/Analog, EV3/UART

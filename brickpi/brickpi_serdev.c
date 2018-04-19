@@ -1,7 +1,7 @@
 /*
  * Dexter Industries BrickPi driver
  *
- * Copyright (C) 2015-2016 David Lechner <david@lechnology.com>
+ * Copyright (C) 2015-2018 David Lechner <david@lechnology.com>
  *
  * Based on BrickPi.h by:
  *
@@ -17,26 +17,6 @@
  * kind, whether express or implied; without even the implied warranty
  * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- */
-
-/**
- * DOC: userspace
- *
- * This driver is a tty `line discipline`_ that runs on top of a serial port.
- * It is the core driver that facilitates communication between the Rapberry Pi
- * and the BrickPi.
- *
- * The driver is loaded by attaching the line discipline::
- *
- *    sudo ldattach 29 /dev/ttyAMA0
- *
- * Once this driver is successfully loaded, it will load the input and output
- * drivers for the BrickPi.
- *
- * .. tip:: Technically, it is possible to use the BrickPi with any 3.3V serial
- *    port. It does not necessarily have to be use with a Rapsberry Pi.
- *
- * .. _line discipline: https://en.wikipedia.org/wiki/Line_discipline
  */
 
 /**
@@ -60,9 +40,10 @@
 
 #include <linux/bitops.h>
 #include <linux/delay.h>
+#include <linux/module.h>
+#include <linux/serdev.h>
 #include <linux/slab.h>
 #include <linux/string.h>
-#include <linux/tty.h>
 
 #include "brickpi_internal.h"
 #include "../linux/board_info/board_info.h"
@@ -73,9 +54,6 @@
 #define debug_pr(fmt, ...) while(0) { }
 #endif
 
-#ifndef N_BRICKPI
-#define N_BRICKPI 28
-#endif
 
 /*
  * This is just about as fast as we can go. Each poll is 2 messages -- 1 to
@@ -150,8 +128,8 @@ int brickpi_send_message(struct brickpi_data *data, u8 addr,
 	while (retries--) {
 		data->rx_data_size = 0;
 		reinit_completion(&data->rx_completion);
-		set_bit(TTY_DO_WRITE_WAKEUP, &data->tty->flags);
-		ret = data->tty->ops->write(data->tty, data->tx_buffer, size);
+		serdev_device_write_wakeup(data->serdev);
+		ret = serdev_device_write_buf(data->serdev, data->tx_buffer, size);
 		if (ret < 0)
 			return ret;
 		ret = wait_for_completion_timeout(&data->rx_completion,
@@ -441,7 +419,7 @@ static void brickpi_handle_rx_data(struct work_struct *work)
 	size = data->rx_buffer[BRICKPI_RX_SIZE] + 2;
 	/* if the size is bigger than the buffer, throw out the data */
 	if (size > BRICKPI_BUFFER_SIZE) {
-		dev_err(data->tty->dev, "Buffer overrun.\n");
+		dev_err(&data->serdev->dev, "Buffer overrun.\n");
 		data->rx_data_size = 0;
 		return;
 	}
@@ -453,7 +431,7 @@ static void brickpi_handle_rx_data(struct work_struct *work)
 
 	/* throw out the data if the checksum is bad */
 	if (checksum != data->rx_buffer[BRICKPI_RX_CHECKSUM]) {
-		dev_err(data->tty->dev, "Bad checksum.\n");
+		dev_err(&data->serdev->dev, "Bad checksum.\n");
 		data->rx_data_size = 0;
 		return;
 	}
@@ -562,7 +540,7 @@ static void brickpi_init_work(struct work_struct *work)
 		in_port_2->sensor_type = BRICKPI_SENSOR_TYPE_FW_VERSION;
 		err = brickpi_set_sensors(ch_data);
 		if (err < 0) {
-			dev_err(data->tty->dev,
+			dev_err(&data->serdev->dev,
 				"Failed to init while setting sensors. (%d)\n",
 				err);
 			return;
@@ -571,7 +549,7 @@ static void brickpi_init_work(struct work_struct *work)
 		out_port_2->ch_data = ch_data;
 		err = brickpi_get_values(ch_data);
 		if (err < 0) {
-			dev_err(data->tty->dev,
+			dev_err(&data->serdev->dev,
 				"Failed to init while getting values. (%d)\n",
 				err);
 			return;
@@ -586,17 +564,17 @@ static void brickpi_init_work(struct work_struct *work)
 		debug_pr("address: %d, fw: %d\n", ch_data->address,
 			 ch_data->fw_version);
 
-		err = brickpi_register_in_ports(ch_data, data->tty->dev);
+		err = brickpi_register_in_ports(ch_data, &data->serdev->dev);
 		if (err < 0) {
-			dev_err(data->tty->dev,
+			dev_err(&data->serdev->dev,
 				"Failed to register input ports (%d)",
 				err);
 			return;
 		}
-		err = brickpi_register_out_ports(ch_data, data->tty->dev);
+		err = brickpi_register_out_ports(ch_data, &data->serdev->dev);
 		if (err < 0) {
 			brickpi_unregister_in_ports(ch_data);
-			dev_err(data->tty->dev,
+			dev_err(&data->serdev->dev,
 				"Failed to register output ports (%d)",
 				err);
 			return;
@@ -614,10 +592,10 @@ static void brickpi_init_work(struct work_struct *work)
 	snprintf(data->fw_ver, BRICKPI_FW_VERSION_SIZE, "%u",
 		data->channel_data[0].fw_version);
 
-	data->board = board_info_register(data->tty->dev, &data->desc, data);
+	data->board = board_info_register(&data->serdev->dev, &data->desc, data);
 	if (IS_ERR(data->board)) {
 		/* Not a fatal error */
-		dev_err(data->tty->dev, "Failed to register board info: %ld\n",
+		dev_err(&data->serdev->dev, "Failed to register board info: %ld\n",
 			PTR_ERR(data->board));
 		data->board = NULL;
 	}
@@ -637,83 +615,80 @@ enum hrtimer_restart brickpi_poll_timer_function(struct hrtimer *timer)
 	return HRTIMER_RESTART;
 }
 
-static int brickpi_open(struct tty_struct *tty)
+static int brickpi_serdev_receive_buf(struct serdev_device *serdev,
+				      const unsigned char *buf, size_t count)
 {
-	struct ktermios old_termios = tty->termios;
-	struct brickpi_data *data;
-	int err;
+	struct brickpi_data *data = serdev_device_get_drvdata(serdev);
 
-	data = kzalloc(sizeof(struct brickpi_data), GFP_KERNEL);
+	if (data->closing)
+		return 0;
+
+	/* check if there is enough room in the rx_buffer */
+	if (data->rx_data_size + count > BRICKPI_BUFFER_SIZE)
+		return 0;
+
+	memcpy(data->rx_buffer + data->rx_data_size, buf, count);
+	data->rx_data_size += count;
+
+	schedule_work(&data->rx_data_work);
+
+	return count;
+}
+
+static void brickpi_serdev_write_wakeup(struct serdev_device *serdev)
+{
+	/* TODO: do we need to do anything here? */
+}
+
+static const struct serdev_device_ops brickpi_serdev_ops = {
+	.receive_buf	= brickpi_serdev_receive_buf,
+	.write_wakeup	= brickpi_serdev_write_wakeup,
+};
+
+static int brickpi_serdev_probe(struct serdev_device *serdev)
+{
+	struct device *dev = &serdev->dev;
+	struct brickpi_data *data;
+	int ret;
+
+	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
-	data->num_channels = 2;
-	data->channel_data = kzalloc(sizeof(struct brickpi_channel_data)
-		* data->num_channels, GFP_KERNEL);
-	if (!data) {
-		err = -ENOMEM;
-		goto err_channel_data_alloc;
-	}
 
-	data->tty = tty;
+	data->num_channels = 2;
+	data->channel_data = devm_kzalloc(dev, sizeof(*data->channel_data)
+					  * data->num_channels, GFP_KERNEL);
+	if (!data)
+		return -ENOMEM;
+
+	data->serdev = serdev;
 	mutex_init(&data->tx_mutex);
 	init_completion(&data->rx_completion);
 	INIT_WORK(&data->rx_data_work, brickpi_handle_rx_data);
 	INIT_WORK(&data->poll_work, brickpi_init_work);
 	hrtimer_init(&data->poll_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	data->poll_timer.function = brickpi_poll_timer_function;
-	tty->disc_data = data;
 
-	/* set baud rate and other data settings */
-	down_write(&tty->termios_rwsem);
-	tty->termios.c_iflag &=
-		~(IGNBRK    /* disable ignore break */
-		| BRKINT    /* disable break causes interrupt */
-		| PARMRK    /* disable mark parity errors */
-		| ISTRIP    /* disable clear high bit of input characters */
-		| INLCR     /* disable translate NL to CR */
-		| IGNCR     /* disable ignore CR */
-		| ICRNL     /* disable translate CR to NL */
-		| IXON);    /* disable enable XON/XOFF flow control */
+	serdev_device_set_drvdata(serdev, data);
+	serdev_device_set_client_ops(serdev, &brickpi_serdev_ops);
 
-	/* disable postprocess output characters */
-	tty->termios.c_oflag &= ~OPOST;
+	ret = serdev_device_open(serdev);
+	if (ret) {
+		dev_err(dev, "Unable to open serdev\n");
+		return ret;
+	}
 
-	tty->termios.c_lflag &=
-		~(ECHO      /* disable echo input characters */
-		| ECHONL    /* disable echo new line */
-		| ICANON    /* disable erase, kill, werase, and rprnt
-				   special characters */
-		| ISIG      /* disable interrupt, quit, and suspend special
-				   characters */
-		| IEXTEN);  /* disable non-POSIX special characters */
-
-	/* 500,000 baud, 8bits, no parity, 1 stop */
-	tty->termios.c_cflag = B500000 | CS8 | CREAD | HUPCL | CLOCAL;
-	tty->ops->set_termios(tty, &old_termios);
-	up_write(&tty->termios_rwsem);
-	tty->ops->tiocmset(tty, 0, ~0); /* clear all */
-
-	tty->receive_room = 65536;
-	tty->port->low_latency = 1; // does not do anything since kernel 3.12
-
-	/* flush any existing data in the buffer */
-	if (data->tty->ldisc->ops->flush_buffer)
-		data->tty->ldisc->ops->flush_buffer(data->tty);
-	tty_driver_flush_buffer(data->tty);
+	serdev_device_set_baudrate(serdev, 500000);
+	serdev_device_set_flow_control(serdev, false);
 
 	schedule_work(&data->poll_work);
 
 	return 0;
-
-err_channel_data_alloc:
-	kfree(data);
-
-	return err;
 }
 
-static void brickpi_close(struct tty_struct *tty)
+static void brickpi_serdev_remove(struct serdev_device *serdev)
 {
-	struct brickpi_data *data = tty->disc_data;
+	struct brickpi_data *data = serdev_device_get_drvdata(serdev);
 	int i;
 
 	mutex_lock(&data->tx_mutex);
@@ -730,74 +705,25 @@ static void brickpi_close(struct tty_struct *tty)
 			brickpi_unregister_out_ports(ch_data);
 		}
 	}
-	tty->disc_data = NULL;
-	kfree(data->channel_data);
-	kfree(data);
+	serdev_device_close(serdev);
 }
 
-static int brickpi_ioctl(struct tty_struct *tty, struct file *file,
-			 unsigned int cmd, unsigned long arg)
-{
-	return tty_mode_ioctl(tty, file, cmd, arg);
-}
-
-static void brickpi_receive_buf(struct tty_struct *tty,
-				const unsigned char *cp, char *fp, int count)
-{
-	struct brickpi_data *data = tty->disc_data;
-
-	if (data->closing)
-		return;
-
-	/* check if there is enough room in the rx_buffer */
-	if (data->rx_data_size + count > BRICKPI_BUFFER_SIZE)
-		return;
-
-	memcpy(data->rx_buffer + data->rx_data_size, cp, count);
-	data->rx_data_size += count;
-
-	schedule_work(&data->rx_data_work);
-}
-
-static struct tty_ldisc_ops brickpi_ldisc = {
-	.magic		= TTY_LDISC_MAGIC,
-	.name		= "n_brickpi",
-	.open		= brickpi_open,
-	.close		= brickpi_close,
-	.ioctl		= brickpi_ioctl,
-	.receive_buf	= brickpi_receive_buf,
-	.owner		= THIS_MODULE,
+static const struct of_device_id brickpi_serdev_of_match[] = {
+	{ .compatible = "ev3dev,brickpi" },
+	{ }
 };
+MODULE_DEVICE_TABLE(of, brickpi_serdev_of_match);
 
-static int __init brickpi_init(void)
-{
-	int err;
-
-	err = tty_register_ldisc(N_BRICKPI, &brickpi_ldisc);
-	if (err) {
-		pr_err("Could not register BrickPi line discipline. (%d)\n",
-			err);
-		return err;
-	}
-
-	pr_info("Registered BrickPi line discipline. (%d)\n", N_BRICKPI);
-
-	return 0;
-}
-module_init(brickpi_init);
-
-static void __exit brickpi_exit(void)
-{
-	int err;
-
-	err = tty_unregister_ldisc(N_BRICKPI);
-	if (err)
-		pr_err("Could not unregister BrickPi line discipline. (%d)\n",
-			err);
-}
-module_exit(brickpi_exit);
+static struct serdev_device_driver brickpi_serdev_driver = {
+	.driver		= {
+		.name	= "brickpi-serdev",
+		.of_match_table = brickpi_serdev_of_match,
+	},
+	.probe	= brickpi_serdev_probe,
+	.remove	= brickpi_serdev_remove,
+};
+module_serdev_device_driver(brickpi_serdev_driver);
 
 MODULE_DESCRIPTION("Dexter Industries BrickPi tty line discipline");
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS_LDISC(N_BRICKPI);
