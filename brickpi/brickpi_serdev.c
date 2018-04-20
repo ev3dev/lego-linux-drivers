@@ -80,7 +80,7 @@
 
 #define BRICKPI_RX_BUFFER_HEAD_INIT (BRICKPI_RX_MESSAGE_DATA * 8)
 
-void brickpi_append_tx(struct brickpi_data *data, u8 size, long value)
+static void brickpi_append_tx(struct brickpi_data *data, u8 size, long value)
 {
 	unsigned end = data->tx_buffer_tail + size;
 
@@ -94,7 +94,7 @@ void brickpi_append_tx(struct brickpi_data *data, u8 size, long value)
 	}
 }
 
-long brickpi_read_rx(struct brickpi_data *data, u8 size)
+static long brickpi_read_rx(struct brickpi_data *data, u8 size)
 {
 	long result = 0;
 	int i = 0;
@@ -109,8 +109,8 @@ long brickpi_read_rx(struct brickpi_data *data, u8 size)
 	return result;
 }
 
-int brickpi_send_message(struct brickpi_data *data, u8 addr,
-			 enum brickpi_message msg, unsigned timeout)
+static int brickpi_send_message(struct brickpi_data *data, u8 addr,
+			        enum brickpi_message msg, unsigned timeout)
 {
 	unsigned size, i, ret;
 	unsigned retries = 2;
@@ -601,7 +601,7 @@ static void brickpi_init_work(struct work_struct *work)
 	}
 }
 
-enum hrtimer_restart brickpi_poll_timer_function(struct hrtimer *timer)
+static enum hrtimer_restart brickpi_poll_timer_function(struct hrtimer *timer)
 {
 	struct brickpi_data *data = container_of(timer, struct brickpi_data,
 						 poll_timer);
