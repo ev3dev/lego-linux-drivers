@@ -514,10 +514,9 @@ static void brickpi_poll_work(struct work_struct *work)
 	}
 }
 
-static void brickpi_init_work(struct work_struct *work)
+static int brickpi_serdev_init(struct brickpi_data *data)
 {
-	struct brickpi_data *data = container_of(work, struct brickpi_data,
-						 poll_work);
+	struct device *dev = &data->serdev->dev;
 	int i, err;
 
 	for (i = 0; i < data->num_channels; i++) {
@@ -540,19 +539,15 @@ static void brickpi_init_work(struct work_struct *work)
 		in_port_2->sensor_type = BRICKPI_SENSOR_TYPE_FW_VERSION;
 		err = brickpi_set_sensors(ch_data);
 		if (err < 0) {
-			dev_err(&data->serdev->dev,
-				"Failed to init while setting sensors. (%d)\n",
-				err);
-			return;
+			dev_err(dev, "Failed to init while setting sensors\n");
+			return err;
 		}
 		out_port_1->ch_data = ch_data;
 		out_port_2->ch_data = ch_data;
 		err = brickpi_get_values(ch_data);
 		if (err < 0) {
-			dev_err(&data->serdev->dev,
-				"Failed to init while getting values. (%d)\n",
-				err);
-			return;
+			dev_err(dev, "Failed to init while getting values\n");
+			return err;
 		}
 		tm_speed_init(&out_port_1->speed, out_port_1->motor_position,
 			data->rx_time, BRICKPI_SPEED_PERIOD / BRICKPI_POLL_MS);
@@ -561,44 +556,38 @@ static void brickpi_init_work(struct work_struct *work)
 		_brickpi_out_port_reset(out_port_1);
 		_brickpi_out_port_reset(out_port_2);
 		ch_data->fw_version = in_port_1->sensor_values[0];
-		debug_pr("address: %d, fw: %d\n", ch_data->address,
-			 ch_data->fw_version);
+		dev_dbg(dev, "address: %d, fw: %d\n", ch_data->address,
+			ch_data->fw_version);
 
-		err = brickpi_register_in_ports(ch_data, &data->serdev->dev);
+		err = brickpi_register_in_ports(ch_data, dev);
 		if (err < 0) {
-			dev_err(&data->serdev->dev,
-				"Failed to register input ports (%d)",
-				err);
-			return;
+			dev_err(dev, "Failed to register input ports");
+			return err;
 		}
-		err = brickpi_register_out_ports(ch_data, &data->serdev->dev);
+		err = brickpi_register_out_ports(ch_data, dev);
 		if (err < 0) {
 			brickpi_unregister_in_ports(ch_data);
-			dev_err(&data->serdev->dev,
-				"Failed to register output ports (%d)",
-				err);
-			return;
+			dev_err(dev, "Failed to register output ports");
+			return err;
 		}
 		ch_data->init_ok = true;
 	}
-
-	INIT_WORK(&data->poll_work, brickpi_poll_work);
-	hrtimer_start(&data->poll_timer, ktime_set(0, 0), HRTIMER_MODE_REL);
 
 	data->desc.properties = brickpi_board_info_properties;
 	data->desc.num_properties = ARRAY_SIZE(brickpi_board_info_properties);
 	data->desc.get_property = brickpi_board_info_get_property;
 	/* Just using the first channel. Assuming both are the same. */
 	snprintf(data->fw_ver, BRICKPI_FW_VERSION_SIZE, "%u",
-		data->channel_data[0].fw_version);
+		 data->channel_data[0].fw_version);
 
-	data->board = board_info_register(&data->serdev->dev, &data->desc, data);
+	data->board = board_info_register(dev, &data->desc, data);
 	if (IS_ERR(data->board)) {
-		/* Not a fatal error */
-		dev_err(&data->serdev->dev, "Failed to register board info: %ld\n",
-			PTR_ERR(data->board));
+		dev_warn(dev, "Failed to register board info (%ld)\n",
+			 PTR_ERR(data->board));
 		data->board = NULL;
 	}
+
+	return 0;
 }
 
 static enum hrtimer_restart brickpi_poll_timer_function(struct hrtimer *timer)
@@ -665,7 +654,7 @@ static int brickpi_serdev_probe(struct serdev_device *serdev)
 	mutex_init(&data->tx_mutex);
 	init_completion(&data->rx_completion);
 	INIT_WORK(&data->rx_data_work, brickpi_handle_rx_data);
-	INIT_WORK(&data->poll_work, brickpi_init_work);
+	INIT_WORK(&data->poll_work, brickpi_poll_work);
 	hrtimer_init(&data->poll_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	data->poll_timer.function = brickpi_poll_timer_function;
 
@@ -681,7 +670,13 @@ static int brickpi_serdev_probe(struct serdev_device *serdev)
 	serdev_device_set_baudrate(serdev, 500000);
 	serdev_device_set_flow_control(serdev, false);
 
-	schedule_work(&data->poll_work);
+	ret = brickpi_serdev_init(data);
+	if (ret < 0) {
+		serdev_device_close(serdev);
+		return ret;
+	}
+
+	hrtimer_start(&data->poll_timer, ktime_set(0, 0), HRTIMER_MODE_REL);
 
 	return 0;
 }
