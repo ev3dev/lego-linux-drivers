@@ -1204,6 +1204,31 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.read_data_reg	= 0x44,
 			},
 		},
+		.num_commands	= 2,
+		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
+			[0]= {
+				/**
+				 * @description: Begin calibration
+				 */
+				.name = "BEGIN-CAL",
+			},
+			[1]= {
+				/**
+				 * @description: End calibration
+				 */
+				.name = "END-CAL",
+			},
+		},
+		.i2c_cmd_info	= (const struct nxt_i2c_sensor_cmd_info[]) {
+			[0] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 0x43,
+			},
+			[1] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 0x00,
+			},
+		},
 	},
 	[HT_NXT_IR_RECEIVER_SENSOR] = {
 		/**
