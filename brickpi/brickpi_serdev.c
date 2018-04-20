@@ -110,7 +110,7 @@ static long brickpi_read_rx(struct brickpi_data *data, u8 size)
 }
 
 static int brickpi_send_message(struct brickpi_data *data, u8 addr,
-			        enum brickpi_message msg, unsigned timeout)
+				enum brickpi_message msg, unsigned timeout)
 {
 	unsigned size, i, ret;
 	unsigned retries = 2;
@@ -122,9 +122,12 @@ static int brickpi_send_message(struct brickpi_data *data, u8 addr,
 	data->tx_buffer[BRICKPI_TX_CHECKSUM] = 0;
 	data->tx_buffer[BRICKPI_TX_SIZE] = size - 3;
 	data->tx_buffer[BRICKPI_TX_MESSAGE_TYPE] = msg;
+
 	for (i = 0; i < size; i++)
 		checksum += data->tx_buffer[i];
+
 	data->tx_buffer[BRICKPI_TX_CHECKSUM] = checksum;
+
 	while (retries--) {
 		data->rx_data_size = 0;
 		reinit_completion(&data->rx_completion);
@@ -137,6 +140,7 @@ static int brickpi_send_message(struct brickpi_data *data, u8 addr,
 		if (ret)
 			break;
 	}
+
 	if (!ret)
 		return -ETIMEDOUT;
 
@@ -152,21 +156,23 @@ int brickpi_set_sensors(struct brickpi_channel_data *ch_data)
 	int i, err;
 
 	mutex_lock(&data->tx_mutex);
+
 	if (data->closing) {
 		mutex_unlock(&data->tx_mutex);
 		return 0;
 	}
+
 	data->tx_buffer_tail = BRICKPI_TX_BUFFER_TAIL_INIT;
 	brickpi_append_tx(data, 8, ch_data->in_port[BRICKPI_PORT_1].sensor_type);
 	brickpi_append_tx(data, 8, ch_data->in_port[BRICKPI_PORT_2].sensor_type);
+
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
 		struct brickpi_in_port_data *port = &ch_data->in_port[i];
 		int num_msg = port->num_i2c_msg;
 		int j;
 
 		if (port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C
-			|| port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C_9V)
-		{
+		    || port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C_9V) {
 			brickpi_append_tx(data, 8, port->i2c_speed);
 			brickpi_append_tx(data, 3, num_msg -1);
 			for (j = 0; j < num_msg; j++) {
@@ -187,8 +193,10 @@ int brickpi_set_sensors(struct brickpi_channel_data *ch_data)
 			}
 		}
 	}
+
 	err = brickpi_send_message(data, ch_data->address,
 				   BRICK_PI_MESSAGE_SET_SENSOR, 5000);
+
 	mutex_unlock(&data->tx_mutex);
 
 	return err;
@@ -201,27 +209,31 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 	u8 port_size[NUM_BRICKPI_PORT];
 
 	mutex_lock(&data->tx_mutex);
+
 	if (data->closing) {
 		mutex_unlock(&data->tx_mutex);
 		return 0;
 	}
+
 	data->tx_buffer_tail = BRICKPI_TX_BUFFER_TAIL_INIT;
+
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
 		brickpi_append_tx(data, 1, ch_data->out_port[i].motor_use_offset);
 		/* TODO: handle use_offset */
 	}
+
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
 		brickpi_append_tx(data, 1, ch_data->out_port[i].motor_enabled);
 		brickpi_append_tx(data, 1, ch_data->out_port[i].motor_reversed);
 		brickpi_append_tx(data, 8, ch_data->out_port[i].motor_speed);
 	}
+
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
 		struct brickpi_in_port_data *port = &ch_data->in_port[i];
 		int num_msg = port->num_i2c_msg;
 
 		if (port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C
-			|| port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C_9V)
-		{
+		    || port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C_9V) {
 			for (j = 0; j < num_msg; j++) {
 				struct brickpi_i2c_msg_data *msg = &port->i2c_msg[j];
 
@@ -237,6 +249,7 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 			}
 		}
 	}
+
 	err = brickpi_send_message(data, ch_data->address,
 				   BRICK_PI_MESSAGE_GET_VALUES, 100);
 	if (err < 0) {
@@ -250,6 +263,7 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 	debug_pr("port_size[BRICKPI_PORT_1]: %u\n", port_size[BRICKPI_PORT_1]);
 	port_size[BRICKPI_PORT_2] = brickpi_read_rx(data, 5);
 	debug_pr("port_size[BRICKPI_PORT_2]: %u\n", port_size[BRICKPI_PORT_2]);
+
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
 		struct brickpi_out_port_data *port = &ch_data->out_port[i];
 		u64 bits = brickpi_read_rx(data, port_size[i]);
@@ -260,11 +274,14 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 		 * whereas other platforms only count this as 1.
 		 */
 		s64 position = bits >> 2;
+
 		if (bits & 1)
 			position *= -1;
+
 		port->motor_position = position;
 		tm_speed_update(&port->speed, position, data->rx_time);
 		debug_pr("motor_position[%d]: %d\n", i, (int)position);
+
 		if (port->stop_at_target_position) {
 			if ((port->motor_reversed
 			     && position < port->target_position)
@@ -275,6 +292,7 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 			}
 		}
 	}
+
 	for (i = 0; i < NUM_BRICKPI_PORT; i++) {
 		struct brickpi_in_port_data *port = &ch_data->in_port[i];
 		s32 *sensor_values = port->sensor_values;
@@ -380,9 +398,9 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 
 		if (!raw_data)
 			continue;
+
 		if (port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C
-			|| port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C_9V)
-		{
+		   || port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C_9V) {
 			memcpy(raw_data, port->i2c_msg[0].read_data,
 				port->i2c_msg[0].read_size);
 		} else {
@@ -391,6 +409,7 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 		}
 		lego_port_call_raw_data_func(&port->port);
 	}
+
 	mutex_unlock(&data->tx_mutex);
 
 	return 0;
@@ -416,16 +435,20 @@ static void brickpi_handle_rx_data(struct work_struct *work)
 	/* Check if there is enough data to get the size */
 	if (data->rx_data_size < BRICKPI_RX_SIZE)
 		return;
+
 	size = data->rx_buffer[BRICKPI_RX_SIZE] + 2;
+
 	/* if the size is bigger than the buffer, throw out the data */
 	if (size > BRICKPI_BUFFER_SIZE) {
 		dev_err(&data->serdev->dev, "Buffer overrun.\n");
 		data->rx_data_size = 0;
 		return;
 	}
+
 	/* Check to see if we have received all of the data */
 	if (data->rx_data_size < size)
 		return;
+
 	for (i = BRICKPI_RX_SIZE; i < size; i++)
 		checksum += data->rx_buffer[i];
 
@@ -448,9 +471,10 @@ static void brickpi_update_motor(struct brickpi_out_port_data *port)
 			if (port->speed_pid.setpoint == 0) {
 				duty_cycle = 0;
 				tm_pid_reinit(&port->speed_pid);
-			} else
+			} else {
 				duty_cycle = tm_pid_update(&port->speed_pid,
 						tm_speed_get(&port->speed));
+			}
 		} else if (port->hold_pid_ena) {
 			duty_cycle = tm_pid_update(&port->hold_pid,
 							port->motor_position);
@@ -491,7 +515,6 @@ static int brickpi_board_info_get_property(struct board_info *info,
 	return 0;
 }
 
-
 static void brickpi_poll_work(struct work_struct *work)
 {
 	struct brickpi_data *data = container_of(work, struct brickpi_data,
@@ -503,13 +526,15 @@ static void brickpi_poll_work(struct work_struct *work)
 
 	for (i = 0; i < data->num_channels; i++) {
 		struct brickpi_channel_data *ch_data = &data->channel_data[i];
+
 		if (ch_data->init_ok) {
 			brickpi_update_motor(&ch_data->out_port[BRICKPI_PORT_1]);
 			brickpi_update_motor(&ch_data->out_port[BRICKPI_PORT_2]);
 			err = brickpi_get_values(ch_data);
+
 			if (err < 0)
 				debug_pr("failed to get values for address %d. (%d)\n",
-				ch_data->address, err);
+					 ch_data->address, err);
 		}
 	}
 }
@@ -537,18 +562,22 @@ static int brickpi_serdev_init(struct brickpi_data *data)
 		in_port_1->sensor_type = BRICKPI_SENSOR_TYPE_FW_VERSION;
 		in_port_2->ch_data = ch_data;
 		in_port_2->sensor_type = BRICKPI_SENSOR_TYPE_FW_VERSION;
+
 		err = brickpi_set_sensors(ch_data);
 		if (err < 0) {
 			dev_err(dev, "Failed to init while setting sensors\n");
 			return err;
 		}
+
 		out_port_1->ch_data = ch_data;
 		out_port_2->ch_data = ch_data;
 		err = brickpi_get_values(ch_data);
+
 		if (err < 0) {
 			dev_err(dev, "Failed to init while getting values\n");
 			return err;
 		}
+
 		tm_speed_init(&out_port_1->speed, out_port_1->motor_position,
 			data->rx_time, BRICKPI_SPEED_PERIOD / BRICKPI_POLL_MS);
 		tm_speed_init(&out_port_1->speed, out_port_1->motor_position,
@@ -564,6 +593,7 @@ static int brickpi_serdev_init(struct brickpi_data *data)
 			dev_err(dev, "Failed to register input ports");
 			return err;
 		}
+
 		err = brickpi_register_out_ports(ch_data, dev);
 		if (err < 0) {
 			brickpi_unregister_in_ports(ch_data);
@@ -596,6 +626,7 @@ static enum hrtimer_restart brickpi_poll_timer_function(struct hrtimer *timer)
 						 poll_timer);
 
 	hrtimer_forward_now(timer, ms_to_ktime(BRICKPI_POLL_MS));
+
 	if (data->closing)
 		return HRTIMER_NORESTART;
 
@@ -693,6 +724,7 @@ static void brickpi_serdev_remove(struct serdev_device *serdev)
 	cancel_work_sync(&data->poll_work);
 	cancel_work_sync(&data->rx_data_work);
 	board_info_unregister(data->board);
+
 	for (i = 0; i < data->num_channels; i++) {
 		struct brickpi_channel_data *ch_data = &data->channel_data[i];
 		if (ch_data->init_ok) {
@@ -700,6 +732,7 @@ static void brickpi_serdev_remove(struct serdev_device *serdev)
 			brickpi_unregister_out_ports(ch_data);
 		}
 	}
+
 	serdev_device_close(serdev);
 }
 
