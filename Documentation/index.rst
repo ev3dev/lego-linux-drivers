@@ -30,7 +30,6 @@ writing these attribute files.
    pistorms
    evb
    board-info
-   user
    sensor_data
    motor_data
    i2c
