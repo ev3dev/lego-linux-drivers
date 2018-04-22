@@ -771,9 +771,14 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 			continue;
 
 		if (supported_commands & BIT(i)) {
-			int err = tm_send_command(tm, i);
+			int err;
+			
+			err = tm_send_command(tm, i);
+			if (err < 0)
+				return err;
 
-			return err < 0 ? err : size;
+			tm->params.command = i;
+			return size;
 		}
 	}
 
