@@ -82,10 +82,10 @@ static ssize_t in4_tty_show(struct device *dev, struct device_attribute *attr,
 	return sprintf(buf, "%s\n", lms->tty_names[3]);
 }
 
-DEVICE_ATTR_RO(in1_tty);
-DEVICE_ATTR_RO(in2_tty);
-DEVICE_ATTR_RO(in3_tty);
-DEVICE_ATTR_RO(in4_tty);
+static DEVICE_ATTR_RO(in1_tty);
+static DEVICE_ATTR_RO(in2_tty);
+static DEVICE_ATTR_RO(in3_tty);
+static DEVICE_ATTR_RO(in4_tty);
 
 static struct attribute *d_uart_attrs[] = {
 	&dev_attr_in1_tty.attr,

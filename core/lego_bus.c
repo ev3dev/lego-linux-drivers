@@ -170,9 +170,10 @@ static ssize_t modalias_show(struct device *dev, struct device_attribute *attr,
 {
 	return sprintf(buf, "lego:%s\n", dev->type->name);
 }
-DEVICE_ATTR_RO(address);
-DEVICE_ATTR_RO(type_name);
-DEVICE_ATTR_RO(modalias);
+
+static DEVICE_ATTR_RO(address);
+static DEVICE_ATTR_RO(type_name);
+static DEVICE_ATTR_RO(modalias);
 
 static struct attribute *lego_bus_dev_attrs[] = {
 	&dev_attr_modalias.attr,
