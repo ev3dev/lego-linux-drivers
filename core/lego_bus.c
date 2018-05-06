@@ -151,28 +151,12 @@ void lego_device_driver_unregister(struct lego_device_driver *drv)
 }
 EXPORT_SYMBOL_GPL(lego_device_driver_unregister);
 
-static ssize_t address_show(struct device *dev, struct device_attribute *attr,
-			    char *buf)
-{
-	struct lego_device *ldev = to_lego_device(dev);
-
-	return scnprintf(buf, LEGO_NAME_SIZE, "%s\n", ldev->port->address);
-}
-
-static ssize_t type_name_show(struct device *dev, struct device_attribute *attr,
-			      char *buf)
-{
-	return sprintf(buf, "%s\n", dev->type->name);
-}
-
 static ssize_t modalias_show(struct device *dev, struct device_attribute *attr,
 			     char *buf)
 {
 	return sprintf(buf, "lego:%s\n", dev->type->name);
 }
 
-static DEVICE_ATTR_RO(address);
-static DEVICE_ATTR_RO(type_name);
 static DEVICE_ATTR_RO(modalias);
 
 static struct attribute *lego_bus_dev_attrs[] = {
