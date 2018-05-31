@@ -40,23 +40,68 @@
  *        or used by other drivers.
  */
 
+#include <linux/console.h>
 #include <linux/device.h>
-#include <linux/module.h>
-#include <linux/string.h>
-#include <linux/slab.h>
 #include <linux/err.h>
-#include <linux/gpio.h>
-#include <linux/ioport.h>
-#include <linux/platform_device.h>
+#include <linux/module.h>
 #include <linux/of_platform.h>
+#include <linux/of.h>
+#include <linux/platform_device.h>
+#include <linux/slab.h>
+#include <linux/string.h>
 
 #include <lego_port_class.h>
 
 #include "ev3_ports.h"
 
+static void ev3_ports_disable_node(struct device_node *np)
+{
+	struct property *newprop;
+
+	newprop = kzalloc(sizeof(*newprop), GFP_KERNEL);
+	if (!newprop)
+		return;
+
+	newprop->name = kstrdup("status", GFP_KERNEL);
+	newprop->value = kstrdup("disabled", GFP_KERNEL);
+	newprop->length = sizeof("disabled");
+	of_update_property(np, newprop);
+}
+
 static int ev3_ports_probe(struct platform_device *pdev)
 {
+	struct device_node *child;
+	struct console *con;
+	const char *tty_name;
+	char con_name[20];
 	int err;
+
+	/* FIXME: this is bad if there is no console= kernel parameter */
+	if (!console_drivers)
+		return -EPROBE_DEFER;
+
+	for_each_available_child_of_node(pdev->dev.of_node, child) {
+		/* ev3dev,tty-name property is optional */
+		err = of_property_read_string(child, "ev3dev,tty-name",
+					      &tty_name);
+		if (err)
+			continue;
+
+		/*
+		 * if the child node has a tty associated with it and the tty
+		 * is being used as a console, then disable that node so we
+		 * don't interfere with the console
+		 */
+		for_each_console(con) {
+			snprintf(con_name, 20, "%s%d", con->name, con->index);
+			if (strcmp(tty_name, con_name) == 0) {
+				dev_info(&pdev->dev,
+					"Skipping %s due to UART in use\n",
+					 of_node_full_name(child));
+				ev3_ports_disable_node(child);
+			}
+		}
+	}
 
 	err = of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev);
 	if (err < 0) {
