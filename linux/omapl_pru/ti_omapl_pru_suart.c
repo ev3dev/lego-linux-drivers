@@ -32,7 +32,6 @@
 #include <linux/clk.h>
 #include <linux/serial_reg.h>
 #include <linux/delay.h>
-#include <linux/ti_omapl_pru_suart.h>
 #include "omapl_suart_board.h"
 #include "suart_api.h"
 #include "suart_utils.h"
@@ -48,6 +47,10 @@
 #define SUART_FIFO_TIMEOUT_DFLT 10
 #define SUART_FIFO_TIMEOUT_MIN 4
 #define SUART_FIFO_TIMEOUT_MAX 500
+
+#ifndef OMAPL_PRU_SUART
+#define OMAPL_PRU_SUART 999
+#endif
 
 //#define __SUART_DEBUG 1
 #ifdef __SUART_DEBUG
@@ -757,16 +760,9 @@ static struct uart_driver pru_suart_reg = {
 static int omapl_pru_suart_probe(struct platform_device *pdev)
 {
 	struct omapl_pru_suart *soft_uart;
-	struct ti_pru_suart_platform_data *pdata;
 	struct resource *res_mem[PLATFORM_SUART_RES_SZ];
 	int err, i;
 	unsigned char *fw_data = NULL;
-
-	pdata = pdev->dev.platform_data;
-	if (!pdata) {
-		dev_err(&pdev->dev, "no platform data provided for pru!\n");
-		return -ENODEV;
-	}
 
 	soft_uart = kzalloc(sizeof(struct omapl_pru_suart), GFP_KERNEL);
 	if (!soft_uart)
@@ -943,18 +939,10 @@ probe_exit:
 
 static int omapl_pru_suart_remove(struct platform_device *pdev)
 {
-	struct ti_pru_suart_platform_data *pdata;
 	struct omapl_pru_suart *soft_uart = platform_get_drvdata(pdev);
 	struct resource *res_mem[PLATFORM_SUART_RES_SZ];
 	int i;
 	u32 err = 0;
-
-	pdata = pdev->dev.platform_data;
-	if (!pdata) {
-		dev_err(&pdev->dev, "no platform data provided for pru!\n");
-		return -ENODEV;
-	}
-	platform_set_drvdata(pdev, NULL);
 
 	for (i = 0; i < PLATFORM_SUART_RES_SZ; i++) {
 		res_mem[i] = platform_get_resource(pdev, IORESOURCE_MEM, i);
