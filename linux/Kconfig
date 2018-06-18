@@ -37,3 +37,5 @@ config TI_ADS79XX_EV3DEV
 
       To compile this driver as a module, choose M here: the
       module will be called ti-ads79xx.
+
+source "drivers/lego/linux/omapl_pru/Kconfig"
