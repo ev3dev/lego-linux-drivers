@@ -974,14 +974,9 @@ static int omapl_pru_suart_remove(struct platform_device *pdev)
 	return err;
 }
 
-#define omapl_pru_suart_suspend NULL
-#define omapl_pru__suart_resume NULL
-
 static struct platform_driver serial_omapl_pru_driver = {
 	.probe = omapl_pru_suart_probe,
 	.remove = omapl_pru_suart_remove,
-	.suspend = omapl_pru_suart_suspend,
-	.resume = omapl_pru__suart_resume,
 	.driver = {
 		.name = DRV_NAME,
 	},
