@@ -984,7 +984,6 @@ static struct platform_driver serial_omapl_pru_driver = {
 	.resume = omapl_pru__suart_resume,
 	.driver = {
 		.name = DRV_NAME,
-		.owner = THIS_MODULE,
 	},
 };
 
