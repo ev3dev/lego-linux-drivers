@@ -23,13 +23,15 @@
  * monitoring the battery and an leds driver for the multi-color LEDs.
  */
 
+#include <linux/bug.h>
+#include <linux/delay.h>
 #include <linux/device.h>
+#include <linux/i2c.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+#include <linux/notifier.h>
+#include <linux/reboot.h>
 #include <linux/slab.h>
-#include <linux/delay.h>
-#include <linux/bug.h>
-#include <linux/i2c.h>
 #include <linux/workqueue.h>
 
 #include "pistorms.h"
@@ -56,6 +58,23 @@ static int _pistorms_detect(struct i2c_client *client)
 
 	return 0;
 }
+
+static struct i2c_client *pistorms_reboot_client;
+
+static int pistorms_reboot_notifier_call(struct notifier_block *nb,
+					 unsigned long action, void *data)
+{
+	if (pistorms_reboot_client && action == SYS_POWER_OFF) {
+		i2c_smbus_write_byte_data(pistorms_reboot_client, 0x41, 'H');
+		return NOTIFY_OK;
+	}
+
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block pistorms_reboot_notifier = {
+	.notifier_call = pistorms_reboot_notifier_call,
+};
 
 static int pistorms_probe(struct i2c_client *client,
 			  const struct i2c_device_id *id)
@@ -92,6 +111,17 @@ static int pistorms_probe(struct i2c_client *client,
 		ret = pistorms_input_register(data);
 		if (ret < 0)
 			goto err_pistorms_input_register;
+
+		if (!pistorms_reboot_client) {
+			pistorms_reboot_client = client;
+			ret = register_reboot_notifier(&pistorms_reboot_notifier);
+			if (ret < 0) {
+				dev_warn(&client->dev,
+					 "Failed to register reboot notifier (%d)\n",
+					 ret);
+				pistorms_reboot_client = NULL;
+			}
+		}
 	}
 	ret = pistorms_leds_register(data);
 	if (ret < 0)
@@ -112,6 +142,8 @@ err_pistorms_out_ports_register:
 err_pistorms_in_ports_register:
 	pistorms_leds_unregister(data);
 err_pistorms_leds_register:
+	unregister_reboot_notifier(&pistorms_reboot_notifier);
+	pistorms_reboot_client = NULL;
 	pistorms_input_unregister(data);
 err_pistorms_input_register:
 	pistorms_battery_unregister(data);
@@ -128,6 +160,8 @@ static int pistorms_remove(struct i2c_client *client)
 	pistorms_out_ports_unregister(data);
 	pistorms_in_ports_unregister(data);
 	pistorms_leds_unregister(data);
+	unregister_reboot_notifier(&pistorms_reboot_notifier);
+	pistorms_reboot_client = NULL;
 	pistorms_input_unregister(data);
 	pistorms_battery_unregister(data);
 	i2c_set_clientdata(client, NULL);
