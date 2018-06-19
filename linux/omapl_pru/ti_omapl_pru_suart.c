@@ -316,7 +316,6 @@ static unsigned int pru_suart_get_mctrl(struct uart_port *port)
 
 static void pru_suart_set_mctrl(struct uart_port *port, unsigned int mctrl)
 {
-	WARN_ONCE(1, "modem control not supported\n");
 }
 
 static void pru_suart_break_ctl(struct uart_port *port, int break_state)
