@@ -782,28 +782,27 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	if (IS_ERR(soft_uart->pru_arm_iomap.mcasp_io_addr))
 		return PTR_ERR(soft_uart->pru_arm_iomap.mcasp_io_addr);
 
-	soft_uart->clk_pru = clk_get(dev, "pruss");
+	soft_uart->clk_pru = devm_clk_get(dev, "pruss");
 	if (IS_ERR(soft_uart->clk_pru)) {
 		dev_err(dev, "no clock available: pruss\n");
 		return PTR_ERR(soft_uart->clk_pru);
 	}
 	soft_uart->clk_freq_pru = clk_get_rate(soft_uart->clk_pru);
 
-	soft_uart->clk_mcasp = clk_get(NULL, "mcasp");
+	soft_uart->clk_mcasp = devm_clk_get(dev, "mcasp");
 	if (IS_ERR(soft_uart->clk_mcasp)) {
 		dev_err(dev, "no clock available: mcasp\n");
-		err = PTR_ERR(soft_uart->clk_mcasp);
-		soft_uart->clk_mcasp = NULL;
-		goto probe_exit_clk_pru;
+		return PTR_ERR(soft_uart->clk_mcasp);
 	}
 	soft_uart->clk_freq_mcasp = clk_get_rate(soft_uart->clk_mcasp);
+
 	clk_enable(soft_uart->clk_mcasp);
 	clk_enable(soft_uart->clk_pru);
+
 	err = request_firmware(&soft_uart->fw, "PRU_SUART.bin", dev);
 	if (err) {
 		dev_err(dev, "can't load firmware\n");
-		err = -ENODEV;
-		goto probe_exit_clk;
+		return err;
 	}
 	dev_info(dev, "fw size %td. downloading...\n", soft_uart->fw->size);
 
@@ -814,7 +813,7 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 
 	err = of_reserved_mem_device_init(dev);
 	if (err < 0)
-		goto probe_exit_clk;
+		return err;
 
 	// FIXME: verify and use (2 * SUART_CNTX_SZ * NR_SUART) for size
 	soft_uart->dma_vaddr_buff = dma_alloc_coherent(dev, SZ_8K,
@@ -892,10 +891,6 @@ probe_release_fw:
 			  soft_uart->dma_phys_addr);
 probe_exit_reserved_mem:
 	of_reserved_mem_device_release(dev);
-probe_exit_clk:
-	clk_put(soft_uart->clk_mcasp);
-probe_exit_clk_pru:
-	clk_put(soft_uart->clk_pru);
 
 	return err;
 }
@@ -916,8 +911,6 @@ static int omapl_pru_suart_remove(struct platform_device *pdev)
 	dma_free_coherent(dev, SZ_8K, soft_uart->dma_vaddr_buff,
 			  soft_uart->dma_phys_addr);
 	of_reserved_mem_device_release(dev);
-	clk_put(soft_uart->clk_mcasp);
-	clk_put(soft_uart->clk_pru);
 	pru_mcasp_deinit ();
 	clk_disable(soft_uart->clk_mcasp);
 	pru_softuart_deinit();
