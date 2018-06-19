@@ -782,13 +782,6 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	if (IS_ERR(soft_uart->pru_arm_iomap.mcasp_io_addr))
 		return PTR_ERR(soft_uart->pru_arm_iomap.mcasp_io_addr);
 
-	soft_uart->pru_arm_iomap.syscfg_io_addr =
-	    IO_ADDRESS(DA8XX_SYSCFG0_BASE);
-	if (!soft_uart->pru_arm_iomap.syscfg_io_addr) {
-		dev_err(dev, "ioremap failed\n");
-		return -ENOMEM;
-	}
-
 	soft_uart->clk_pru = clk_get(dev, "pruss");
 	if (IS_ERR(soft_uart->clk_pru)) {
 		dev_err(dev, "no clock available: pruss\n");
