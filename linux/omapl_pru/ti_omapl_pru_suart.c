@@ -760,7 +760,7 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	int err, i;
 	unsigned char *fw_data = NULL;
 
-	soft_uart = kzalloc(sizeof(struct omapl_pru_suart), GFP_KERNEL);
+	soft_uart = devm_kzalloc(dev, sizeof(*soft_uart), GFP_KERNEL);
 	if (!soft_uart)
 		return -ENOMEM;
 
@@ -768,22 +768,19 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 		res_mem[i] = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (!res_mem[i]) {
 			dev_err(dev, "unable to get pru memory resources!\n");
-			err = -ENODEV;
-			goto probe_exit;
+			return -ENODEV;
 		}
 	}
 
-	if (!request_mem_region(res_mem[0]->start, resource_size(res_mem[0]),
-				dev_name(dev))) {
+	if (!devm_request_mem_region(dev, res_mem[0]->start,
+				resource_size(res_mem[0]), dev_name(dev))) {
 		dev_err(dev, "pru memory region already claimed!\n");
-		err = -EBUSY;
-		goto probe_exit;
+		return -EBUSY;
 	}
-	if (!request_mem_region(res_mem[1]->start, resource_size(res_mem[1]),
-				dev_name(dev))) {
+	if (!devm_request_mem_region(dev, res_mem[1]->start,
+				resource_size(res_mem[1]), dev_name(dev))) {
 		dev_err(dev, "mcasp memory region already claimed!\n");
-		err = -EBUSY;
-		goto probe_exit_1;
+		return -EBUSY;
 	}
 
 	soft_uart->pru_arm_iomap.pru_io_addr = ioremap(res_mem[0]->start,
@@ -791,8 +788,7 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 								     [0]));
 	if (!soft_uart->pru_arm_iomap.pru_io_addr) {
 		dev_err(dev, "ioremap failed\n");
-		err = -ENOMEM;
-		goto probe_exit_free_region;
+		return -ENOMEM;
 	}
 	soft_uart->pru_arm_iomap.mcasp_io_addr = ioremap(res_mem[1]->start,
 							 resource_size(res_mem
@@ -931,12 +927,7 @@ probe_exit_iounmap_2:
 	iounmap(soft_uart->pru_arm_iomap.mcasp_io_addr);
 probe_exit_iounmap_1:
 	iounmap(soft_uart->pru_arm_iomap.pru_io_addr);
-probe_exit_free_region:
-	release_mem_region(res_mem[1]->start, resource_size(res_mem[1]));
-probe_exit_1:
-	release_mem_region(res_mem[0]->start, resource_size(res_mem[0]));
-probe_exit:
-	kfree(soft_uart);
+
 	return err;
 }
 
@@ -944,17 +935,7 @@ static int omapl_pru_suart_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct omapl_pru_suart *soft_uart = platform_get_drvdata(pdev);
-	struct resource *res_mem[PLATFORM_SUART_RES_SZ];
 	int i;
-	u32 err = 0;
-
-	for (i = 0; i < PLATFORM_SUART_RES_SZ; i++) {
-		res_mem[i] = platform_get_resource(pdev, IORESOURCE_MEM, i);
-		if (!res_mem[i]) {
-			dev_err(dev, "unable to get pru memory resources!\n");
-			err = -ENODEV;
-		}
-	}
 
 	if (soft_uart) {
 		for (i = 0; i < NR_SUART; i++) {
@@ -974,10 +955,8 @@ static int omapl_pru_suart_remove(struct platform_device *pdev)
 	clk_disable(soft_uart->clk_pru);
 	iounmap(soft_uart->pru_arm_iomap.mcasp_io_addr);
 	iounmap(soft_uart->pru_arm_iomap.pru_io_addr);
-	for (i = 0; i < PLATFORM_SUART_RES_SZ; i++)
-		release_mem_region(res_mem[i]->start, resource_size(res_mem[i]));
-	kfree(soft_uart);
-	return err;
+
+	return 0;
 }
 
 static const struct of_device_id serial_omapl_pru_of_match[] = {
