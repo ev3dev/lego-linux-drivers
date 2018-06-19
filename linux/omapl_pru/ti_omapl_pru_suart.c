@@ -937,14 +937,14 @@ static int __init pru_suart_init(void)
 	ret = uart_register_driver(&pru_suart_reg);
 	if (ret)
 		return ret;
-	ret = platform_driver_register(&serial_omapl_pru_driver);
-	if (ret)
-		goto out;
 
-	return ret;
-out:
-	uart_unregister_driver(&pru_suart_reg);
-	return ret;
+	ret = platform_driver_register(&serial_omapl_pru_driver);
+	if (ret) {
+		uart_unregister_driver(&pru_suart_reg);
+		return ret;
+	}
+
+	return 0;
 }
 
 module_init(pru_suart_init);
