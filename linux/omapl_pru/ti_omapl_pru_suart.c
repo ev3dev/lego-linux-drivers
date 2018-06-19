@@ -54,12 +54,6 @@
 #define OMAPL_PRU_SUART 999
 #endif
 
-//#define __SUART_DEBUG 1
-#ifdef __SUART_DEBUG
-#define __suart_debug(fmt, args...) printk(KERN_DEBUG "suart_debug: " fmt, ## args)
-#else
-#define __suart_debug(fmt, args...)
-#endif
 #define __suart_err(fmt, args...) printk(KERN_ERR "suart_err: " fmt, ## args)
 
 #if defined(CONFIG_SERIAL_SUART_OMAPL_PRU) && defined(CONFIG_MAGIC_SYSRQ)
@@ -322,7 +316,7 @@ static unsigned int pru_suart_get_mctrl(struct uart_port *port)
 
 static void pru_suart_set_mctrl(struct uart_port *port, unsigned int mctrl)
 {
-	__suart_debug("modem control not supported\n");
+	WARN_ONCE(1, "modem control not supported\n");
 }
 
 static void pru_suart_break_ctl(struct uart_port *port, int break_state)
@@ -1009,7 +1003,6 @@ static int __init pru_suart_init(void)
 {
 	int ret;
 
-	__suart_debug("SUART serial driver loaded\n");
 	pru_suart_reg.nr = NR_SUART;
 	ret = uart_register_driver(&pru_suart_reg);
 	if (ret)
@@ -1030,7 +1023,6 @@ static void __exit omapl_pru_suart_exit(void)
 {
 	platform_driver_unregister(&serial_omapl_pru_driver);
 	uart_unregister_driver(&pru_suart_reg);
-	__suart_debug("SUART serial driver unloaded\n");
 }
 
 module_exit(omapl_pru_suart_exit);
