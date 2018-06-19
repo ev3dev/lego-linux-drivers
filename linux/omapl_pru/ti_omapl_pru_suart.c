@@ -1003,7 +1003,6 @@ static int __init pru_suart_init(void)
 {
 	int ret;
 
-	pru_suart_reg.nr = NR_SUART;
 	ret = uart_register_driver(&pru_suart_reg);
 	if (ret)
 		return ret;
