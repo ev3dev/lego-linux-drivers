@@ -1,7 +1,3 @@
-#ifdef CONFIG_OMAPL_SUART_FW_SOURCE
-#$(if $(wildcard drivers/serial/omapl_pru/pru), , \
-#		$(shell ln -s $(CONFIG_OMAPL_SUART_FW_SOURCE) drivers/serial/omapl_pru/pru))
-#endif
 
 EXTRA_CFLAGS += -I$(srctree)/drivers/lego/linux/omapl_pru/pru/hal/uart/include -I$(srctree)/drivers/lego/linux/omapl_pru/pru/hal/common/include
 

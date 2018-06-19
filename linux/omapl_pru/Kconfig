@@ -13,12 +13,3 @@ config OMAPL_SUART_MCASP
     ---help---
     Enter the McASP number to use with SUART (0, 1 or 2).
 	You will need to recompile the kernel if this is changed.
-
-config OMAPL_SUART_FW_SOURCE
-    string "OMAPL SUART source file(s)"
-	depends on SERIAL_SUART_OMAPL_PRU
-    default ""
-    ---help---
-	Enter the path for the OMAPL PRU SUART source files (<system path>/pru)
-
-
