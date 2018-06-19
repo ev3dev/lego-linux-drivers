@@ -772,47 +772,27 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (!devm_request_mem_region(dev, res_mem[0]->start,
-				resource_size(res_mem[0]), dev_name(dev))) {
-		dev_err(dev, "pru memory region already claimed!\n");
-		return -EBUSY;
-	}
-	if (!devm_request_mem_region(dev, res_mem[1]->start,
-				resource_size(res_mem[1]), dev_name(dev))) {
-		dev_err(dev, "mcasp memory region already claimed!\n");
-		return -EBUSY;
-	}
+	soft_uart->pru_arm_iomap.pru_io_addr = devm_ioremap_resource(dev,
+								res_mem[0]);
+	if (IS_ERR(soft_uart->pru_arm_iomap.pru_io_addr))
+		return PTR_ERR(soft_uart->pru_arm_iomap.pru_io_addr);
 
-	soft_uart->pru_arm_iomap.pru_io_addr = ioremap(res_mem[0]->start,
-						       resource_size(res_mem
-								     [0]));
-	if (!soft_uart->pru_arm_iomap.pru_io_addr) {
-		dev_err(dev, "ioremap failed\n");
-		return -ENOMEM;
-	}
-	soft_uart->pru_arm_iomap.mcasp_io_addr = ioremap(res_mem[1]->start,
-							 resource_size(res_mem
-								       [1]));
-	if (!soft_uart->pru_arm_iomap.mcasp_io_addr) {
-		dev_err(dev, "ioremap failed\n");
-		err = -ENOMEM;
-		goto probe_exit_iounmap_1;
-	}
+	soft_uart->pru_arm_iomap.mcasp_io_addr = devm_ioremap_resource(dev,
+								res_mem[1]);
+	if (IS_ERR(soft_uart->pru_arm_iomap.mcasp_io_addr))
+		return PTR_ERR(soft_uart->pru_arm_iomap.mcasp_io_addr);
 
 	soft_uart->pru_arm_iomap.syscfg_io_addr =
 	    IO_ADDRESS(DA8XX_SYSCFG0_BASE);
 	if (!soft_uart->pru_arm_iomap.syscfg_io_addr) {
 		dev_err(dev, "ioremap failed\n");
-		err = -ENOMEM;
-		goto probe_exit_iounmap_2;
+		return -ENOMEM;
 	}
 
 	soft_uart->clk_pru = clk_get(dev, "pruss");
 	if (IS_ERR(soft_uart->clk_pru)) {
 		dev_err(dev, "no clock available: pruss\n");
-		err = PTR_ERR(soft_uart->clk_pru);
-		soft_uart->clk_pru = NULL;
-		goto probe_exit_iounmap_2;
+		return PTR_ERR(soft_uart->clk_pru);
 	}
 	soft_uart->clk_freq_pru = clk_get_rate(soft_uart->clk_pru);
 
@@ -923,10 +903,6 @@ probe_exit_clk:
 	clk_put(soft_uart->clk_mcasp);
 probe_exit_clk_pru:
 	clk_put(soft_uart->clk_pru);
-probe_exit_iounmap_2:
-	iounmap(soft_uart->pru_arm_iomap.mcasp_io_addr);
-probe_exit_iounmap_1:
-	iounmap(soft_uart->pru_arm_iomap.pru_io_addr);
 
 	return err;
 }
@@ -953,8 +929,6 @@ static int omapl_pru_suart_remove(struct platform_device *pdev)
 	clk_disable(soft_uart->clk_mcasp);
 	pru_softuart_deinit();
 	clk_disable(soft_uart->clk_pru);
-	iounmap(soft_uart->pru_arm_iomap.mcasp_io_addr);
-	iounmap(soft_uart->pru_arm_iomap.pru_io_addr);
 
 	return 0;
 }
