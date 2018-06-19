@@ -754,6 +754,7 @@ static struct uart_driver pru_suart_reg = {
 
 static int omapl_pru_suart_probe(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
 	struct omapl_pru_suart *soft_uart;
 	struct resource *res_mem[PLATFORM_SUART_RES_SZ];
 	int err, i;
@@ -766,22 +767,21 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	for (i = 0; i < PLATFORM_SUART_RES_SZ; i++) {
 		res_mem[i] = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (!res_mem[i]) {
-			dev_err(&pdev->dev,
-				"unable to get pru memory resources!\n");
+			dev_err(dev, "unable to get pru memory resources!\n");
 			err = -ENODEV;
 			goto probe_exit;
 		}
 	}
 
 	if (!request_mem_region(res_mem[0]->start, resource_size(res_mem[0]),
-				dev_name(&pdev->dev))) {
-		dev_err(&pdev->dev, "pru memory region already claimed!\n");
+				dev_name(dev))) {
+		dev_err(dev, "pru memory region already claimed!\n");
 		err = -EBUSY;
 		goto probe_exit;
 	}
 	if (!request_mem_region(res_mem[1]->start, resource_size(res_mem[1]),
-				dev_name(&pdev->dev))) {
-		dev_err(&pdev->dev, "mcasp memory region already claimed!\n");
+				dev_name(dev))) {
+		dev_err(dev, "mcasp memory region already claimed!\n");
 		err = -EBUSY;
 		goto probe_exit_1;
 	}
@@ -790,7 +790,7 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 						       resource_size(res_mem
 								     [0]));
 	if (!soft_uart->pru_arm_iomap.pru_io_addr) {
-		dev_err(&pdev->dev, "ioremap failed\n");
+		dev_err(dev, "ioremap failed\n");
 		err = -ENOMEM;
 		goto probe_exit_free_region;
 	}
@@ -798,7 +798,7 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 							 resource_size(res_mem
 								       [1]));
 	if (!soft_uart->pru_arm_iomap.mcasp_io_addr) {
-		dev_err(&pdev->dev, "ioremap failed\n");
+		dev_err(dev, "ioremap failed\n");
 		err = -ENOMEM;
 		goto probe_exit_iounmap_1;
 	}
@@ -806,14 +806,14 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	soft_uart->pru_arm_iomap.syscfg_io_addr =
 	    IO_ADDRESS(DA8XX_SYSCFG0_BASE);
 	if (!soft_uart->pru_arm_iomap.syscfg_io_addr) {
-		dev_err(&pdev->dev, "ioremap failed\n");
+		dev_err(dev, "ioremap failed\n");
 		err = -ENOMEM;
 		goto probe_exit_iounmap_2;
 	}
 
-	soft_uart->clk_pru = clk_get(&pdev->dev, "pruss");
+	soft_uart->clk_pru = clk_get(dev, "pruss");
 	if (IS_ERR(soft_uart->clk_pru)) {
-		dev_err(&pdev->dev, "no clock available: pruss\n");
+		dev_err(dev, "no clock available: pruss\n");
 		err = PTR_ERR(soft_uart->clk_pru);
 		soft_uart->clk_pru = NULL;
 		goto probe_exit_iounmap_2;
@@ -822,7 +822,7 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 
 	soft_uart->clk_mcasp = clk_get(NULL, "mcasp");
 	if (IS_ERR(soft_uart->clk_mcasp)) {
-		dev_err(&pdev->dev, "no clock available: mcasp\n");
+		dev_err(dev, "no clock available: mcasp\n");
 		err = PTR_ERR(soft_uart->clk_mcasp);
 		soft_uart->clk_mcasp = NULL;
 		goto probe_exit_clk_pru;
@@ -830,31 +830,29 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	soft_uart->clk_freq_mcasp = clk_get_rate(soft_uart->clk_mcasp);
 	clk_enable(soft_uart->clk_mcasp);
 	clk_enable(soft_uart->clk_pru);
-	err = request_firmware(&soft_uart->fw, "PRU_SUART.bin",
-			       &pdev->dev);
+	err = request_firmware(&soft_uart->fw, "PRU_SUART.bin", dev);
 	if (err) {
-		dev_err(&pdev->dev, "can't load firmware\n");
+		dev_err(dev, "can't load firmware\n");
 		err = -ENODEV;
 		goto probe_exit_clk;
 	}
-	dev_info(&pdev->dev, "fw size %td. downloading...\n",
-		 soft_uart->fw->size);
+	dev_info(dev, "fw size %td. downloading...\n", soft_uart->fw->size);
 
 	/* download firmware into pru  & init */
 	fw_data = kmalloc(soft_uart->fw->size, GFP_KERNEL);
 	memcpy((void *)fw_data, (const void *)soft_uart->fw->data,
 	       soft_uart->fw->size);
 
-	err = of_reserved_mem_device_init(&pdev->dev);
+	err = of_reserved_mem_device_init(dev);
 	if (err < 0)
 		goto probe_exit_clk;
 
 	// FIXME: verify and use (2 * SUART_CNTX_SZ * NR_SUART) for size
-	soft_uart->dma_vaddr_buff = dma_alloc_coherent(&pdev->dev, SZ_8K,
+	soft_uart->dma_vaddr_buff = dma_alloc_coherent(dev, SZ_8K,
 						       &soft_uart->dma_phys_addr,
 						       GFP_KERNEL);
 	if (!soft_uart->dma_vaddr_buff) {
-		dev_err(&pdev->dev, "Failed to allocate shared ram.\n");
+		dev_err(dev, "Failed to allocate shared ram.\n");
 		err = -EFAULT;
 		goto probe_exit_reserved_mem;
 	}
@@ -867,7 +865,7 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 				SUART_DEFAULT_OVRSMPL, fw_data,
 				soft_uart->fw->size, &soft_uart->pru_arm_iomap);
 	if (err) {
-		dev_err(&pdev->dev, "pru init error\n");
+		dev_err(dev, "pru init error\n");
 		err = -ENODEV;
 		kfree((const void *)fw_data);
 		goto probe_release_fw;
@@ -883,7 +881,7 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 				(unsigned char *)&soft_uart->pru_arm_iomap;
 		soft_uart->port[i].type = OMAPL_PRU_SUART;
 		soft_uart->port[i].irq = platform_get_irq(pdev, i);
-		soft_uart->port[i].dev = &pdev->dev;
+		soft_uart->port[i].dev = dev;
 		soft_uart->port[i].irqflags = IRQF_SHARED;
 		soft_uart->port[i].uartclk = soft_uart->clk_freq_mcasp;	/* 24MHz */
 		soft_uart->port[i].fifosize = SUART_FIFO_LEN;
@@ -914,19 +912,17 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	}
 	platform_set_drvdata(pdev, &soft_uart->port[0]);
 
-	dev_info(&pdev->dev,
-		 "%s device registered"
-		 "(pru_clk=%d, asp_clk=%d)\n",
+	dev_info(dev, "%s device registered (pru_clk=%d, asp_clk=%d)\n",
 		 DRV_NAME, soft_uart->clk_freq_pru, soft_uart->clk_freq_mcasp);
 
 	return 0;
 
 probe_release_fw:
 	release_firmware(soft_uart->fw);
-	dma_free_coherent(&pdev->dev, SZ_8K, soft_uart->dma_vaddr_buff,
+	dma_free_coherent(dev, SZ_8K, soft_uart->dma_vaddr_buff,
 			  soft_uart->dma_phys_addr);
 probe_exit_reserved_mem:
-	of_reserved_mem_device_release(&pdev->dev);
+	of_reserved_mem_device_release(dev);
 probe_exit_clk:
 	clk_put(soft_uart->clk_mcasp);
 probe_exit_clk_pru:
@@ -946,6 +942,7 @@ probe_exit:
 
 static int omapl_pru_suart_remove(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
 	struct omapl_pru_suart *soft_uart = platform_get_drvdata(pdev);
 	struct resource *res_mem[PLATFORM_SUART_RES_SZ];
 	int i;
@@ -954,8 +951,7 @@ static int omapl_pru_suart_remove(struct platform_device *pdev)
 	for (i = 0; i < PLATFORM_SUART_RES_SZ; i++) {
 		res_mem[i] = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (!res_mem[i]) {
-			dev_err(&pdev->dev,
-				"unable to get pru memory resources!\n");
+			dev_err(dev, "unable to get pru memory resources!\n");
 			err = -ENODEV;
 		}
 	}
@@ -967,9 +963,9 @@ static int omapl_pru_suart_remove(struct platform_device *pdev)
 		}
 	}
 	release_firmware(soft_uart->fw);
-	dma_free_coherent(&pdev->dev, SZ_8K, soft_uart->dma_vaddr_buff,
+	dma_free_coherent(dev, SZ_8K, soft_uart->dma_vaddr_buff,
 			  soft_uart->dma_phys_addr);
-	of_reserved_mem_device_release(&pdev->dev);
+	of_reserved_mem_device_release(dev);
 	clk_put(soft_uart->clk_mcasp);
 	clk_put(soft_uart->clk_pru);
 	pru_mcasp_deinit ();
