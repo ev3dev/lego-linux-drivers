@@ -78,10 +78,9 @@ struct suart_dma {
 	dma_addr_t dma_phys_addr_rx;
 };
 
-static dma_addr_t dma_phys_addr;
-static void *dma_vaddr_buff;
-
 struct omapl_pru_suart {
+	dma_addr_t dma_phys_addr;
+	void *dma_vaddr_buff;
 	struct uart_port port[NR_SUART];
 	arm_pru_iomap pru_arm_iomap;
 	struct semaphore port_sem[NR_SUART];
@@ -857,16 +856,17 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 		goto probe_exit_clk;
 
 	// FIXME: verify and use (2 * SUART_CNTX_SZ * NR_SUART) for size
-	dma_vaddr_buff = dma_alloc_coherent(&pdev->dev, SZ_8K, &dma_phys_addr,
-					    GFP_KERNEL);
-	if (!dma_vaddr_buff) {
+	soft_uart->dma_vaddr_buff = dma_alloc_coherent(&pdev->dev, SZ_8K,
+						       &soft_uart->dma_phys_addr,
+						       GFP_KERNEL);
+	if (!soft_uart->dma_vaddr_buff) {
 		dev_err(&pdev->dev, "Failed to allocate shared ram.\n");
 		err = -EFAULT;
 		goto probe_exit_reserved_mem;
 	}
 
-	soft_uart->pru_arm_iomap.pFifoBufferPhysBase = (void *)dma_phys_addr;
-	soft_uart->pru_arm_iomap.pFifoBufferVirtBase = (void *)dma_vaddr_buff;
+	soft_uart->pru_arm_iomap.pFifoBufferPhysBase = (void *)soft_uart->dma_phys_addr;
+	soft_uart->pru_arm_iomap.pFifoBufferVirtBase = soft_uart->dma_vaddr_buff;
 	soft_uart->pru_arm_iomap.pru_clk_freq = (soft_uart->clk_freq_pru / 1000000);
 
 	err = pru_softuart_init(SUART_DEFAULT_BAUD, SUART_DEFAULT_BAUD,
@@ -901,16 +901,18 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 		soft_uart->port[i].serial_in = NULL;
 
 		soft_uart->suart_dma_addr[i].dma_vaddr_buff_tx =
-				dma_vaddr_buff + (2 * SUART_CNTX_SZ * i);
+			soft_uart->dma_vaddr_buff + (2 * SUART_CNTX_SZ * i);
 
 		soft_uart->suart_dma_addr[i].dma_vaddr_buff_rx =
-			dma_vaddr_buff + ((2 * SUART_CNTX_SZ * i) + SUART_CNTX_SZ);
+			soft_uart->dma_vaddr_buff + ((2 * SUART_CNTX_SZ * i) 
+							+ SUART_CNTX_SZ);
 
 		soft_uart->suart_dma_addr[i].dma_phys_addr_tx =
-					dma_phys_addr + (2 * SUART_CNTX_SZ * i);
+				soft_uart->dma_phys_addr + (2 * SUART_CNTX_SZ * i);
 
 		soft_uart->suart_dma_addr[i].dma_phys_addr_rx =
-			dma_phys_addr + ((2 * SUART_CNTX_SZ * i) + SUART_CNTX_SZ);
+			soft_uart->dma_phys_addr + ((2 * SUART_CNTX_SZ * i)
+							+ SUART_CNTX_SZ);
 
 		soft_uart->port[i].serial_out = NULL;
 		uart_add_one_port(&pru_suart_reg, &soft_uart->port[i]);
@@ -927,7 +929,8 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 
 probe_release_fw:
 	release_firmware(soft_uart->fw);
-	dma_free_coherent(&pdev->dev, SZ_8K, dma_vaddr_buff, dma_phys_addr);
+	dma_free_coherent(&pdev->dev, SZ_8K, soft_uart->dma_vaddr_buff,
+			  soft_uart->dma_phys_addr);
 probe_exit_reserved_mem:
 	of_reserved_mem_device_release(&pdev->dev);
 probe_exit_clk:
@@ -970,7 +973,8 @@ static int omapl_pru_suart_remove(struct platform_device *pdev)
 		}
 	}
 	release_firmware(soft_uart->fw);
-	dma_free_coherent(&pdev->dev, SZ_8K, dma_vaddr_buff, dma_phys_addr);
+	dma_free_coherent(&pdev->dev, SZ_8K, soft_uart->dma_vaddr_buff,
+			  soft_uart->dma_phys_addr);
 	of_reserved_mem_device_release(&pdev->dev);
 	clk_put(soft_uart->clk_mcasp);
 	clk_put(soft_uart->clk_pru);
