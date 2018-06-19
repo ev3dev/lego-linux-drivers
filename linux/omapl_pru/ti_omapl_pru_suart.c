@@ -19,6 +19,7 @@
 
 #include <linux/clk.h>
 #include <linux/delay.h>
+#include <linux/dma-mapping.h>
 #include <linux/errno.h>
 #include <linux/firmware.h>
 #include <linux/init.h>
@@ -32,7 +33,6 @@
 #include <linux/slab.h>
 #include <linux/tty_flip.h>
 #include <linux/tty.h>
-#include <mach/da8xx.h>
 
 #include "omapl_suart_board.h"
 #include "suart_api.h"
