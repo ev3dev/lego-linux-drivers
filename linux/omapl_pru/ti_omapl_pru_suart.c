@@ -801,12 +801,12 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	err = request_firmware(&soft_uart->fw, "PRU_SUART.bin", dev);
 	if (err) {
 		dev_err(dev, "can't load firmware\n");
-		return err;
+		goto err_clk_disable;
 	}
 
 	err = of_reserved_mem_device_init(dev);
 	if (err < 0)
-		return err;
+		goto err_release_fw;
 
 	// FIXME: verify and use (2 * SUART_CNTX_SZ * NR_SUART) for size
 	soft_uart->dma_vaddr_buff = dma_alloc_coherent(dev, SZ_8K,
@@ -815,7 +815,7 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	if (!soft_uart->dma_vaddr_buff) {
 		dev_err(dev, "Failed to allocate shared ram.\n");
 		err = -EFAULT;
-		goto probe_exit_reserved_mem;
+		goto err_release_reserved_mem;
 	}
 
 	soft_uart->pru_arm_iomap.pFifoBufferPhysBase = (void *)soft_uart->dma_phys_addr;
@@ -828,7 +828,7 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	if (err) {
 		dev_err(dev, "pru init error\n");
 		err = -ENODEV;
-		goto probe_release_fw;
+		goto err_free_dma;
 	}
 
 	for (i = 0; i < NR_SUART; i++) {
@@ -876,12 +876,16 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 
 	return 0;
 
-probe_release_fw:
-	release_firmware(soft_uart->fw);
+err_free_dma:
 	dma_free_coherent(dev, SZ_8K, soft_uart->dma_vaddr_buff,
 			  soft_uart->dma_phys_addr);
-probe_exit_reserved_mem:
+err_release_reserved_mem:
 	of_reserved_mem_device_release(dev);
+err_release_fw:
+	release_firmware(soft_uart->fw);
+err_clk_disable:
+	clk_disable(soft_uart->clk_mcasp);
+	clk_disable(soft_uart->clk_pru);
 
 	return err;
 }
@@ -898,13 +902,13 @@ static int omapl_pru_suart_remove(struct platform_device *pdev)
 					     &soft_uart->port[i]);
 		}
 	}
-	release_firmware(soft_uart->fw);
+	pru_softuart_deinit();
+	pru_mcasp_deinit ();
 	dma_free_coherent(dev, SZ_8K, soft_uart->dma_vaddr_buff,
 			  soft_uart->dma_phys_addr);
 	of_reserved_mem_device_release(dev);
-	pru_mcasp_deinit ();
+	release_firmware(soft_uart->fw);
 	clk_disable(soft_uart->clk_mcasp);
-	pru_softuart_deinit();
 	clk_disable(soft_uart->clk_pru);
 
 	return 0;
