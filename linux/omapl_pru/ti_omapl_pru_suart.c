@@ -17,21 +17,23 @@
  * GNU General Public License for more details.
  */
 
-#include <linux/kernel.h>
-#include <linux/errno.h>
-#include <linux/init.h>
-#include <linux/slab.h>
-#include <linux/tty.h>
-#include <linux/tty_flip.h>
-#include <linux/serial.h>
-#include <linux/serial_core.h>
-#include <linux/module.h>
-#include <mach/da8xx.h>
-#include <linux/platform_device.h>
-#include <linux/firmware.h>
 #include <linux/clk.h>
-#include <linux/serial_reg.h>
 #include <linux/delay.h>
+#include <linux/errno.h>
+#include <linux/firmware.h>
+#include <linux/init.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/of_reserved_mem.h>
+#include <linux/platform_device.h>
+#include <linux/serial_core.h>
+#include <linux/serial_reg.h>
+#include <linux/serial.h>
+#include <linux/slab.h>
+#include <linux/tty_flip.h>
+#include <linux/tty.h>
+#include <mach/da8xx.h>
+
 #include "omapl_suart_board.h"
 #include "suart_api.h"
 #include "suart_utils.h"
@@ -43,7 +45,7 @@
 #define DRV_DESC "TI PRU SUART Controller Driver v0.1"
 #define MAX_SUART_RETRIES 100
 #define SUART_CNTX_SZ 512
-#define PLATFORM_SUART_RES_SZ 3
+#define PLATFORM_SUART_RES_SZ 2
 #define SUART_FIFO_TIMEOUT_DFLT 10
 #define SUART_FIFO_TIMEOUT_MIN 4
 #define SUART_FIFO_TIMEOUT_MAX 500
@@ -850,12 +852,17 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	memcpy((void *)fw_data, (const void *)soft_uart->fw->data,
 	       soft_uart->fw->size);
 
-	dma_phys_addr = res_mem[2]->start;
-	dma_vaddr_buff = ioremap(res_mem[2]->start, resource_size(res_mem[2]));
-	if (!dma_vaddr_buff) {
-		__suart_err("Failed to allocate shared ram.\n");
-		err = -EFAULT;
+	err = of_reserved_mem_device_init(&pdev->dev);
+	if (err < 0)
 		goto probe_exit_clk;
+
+	// FIXME: verify and use (2 * SUART_CNTX_SZ * NR_SUART) for size
+	dma_vaddr_buff = dma_alloc_coherent(&pdev->dev, SZ_8K, &dma_phys_addr,
+					    GFP_KERNEL);
+	if (!dma_vaddr_buff) {
+		dev_err(&pdev->dev, "Failed to allocate shared ram.\n");
+		err = -EFAULT;
+		goto probe_exit_reserved_mem;
 	}
 
 	soft_uart->pru_arm_iomap.pFifoBufferPhysBase = (void *)dma_phys_addr;
@@ -920,6 +927,9 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 
 probe_release_fw:
 	release_firmware(soft_uart->fw);
+	dma_free_coherent(&pdev->dev, SZ_8K, dma_vaddr_buff, dma_phys_addr);
+probe_exit_reserved_mem:
+	of_reserved_mem_device_release(&pdev->dev);
 probe_exit_clk:
 	clk_put(soft_uart->clk_mcasp);
 probe_exit_clk_pru:
@@ -960,6 +970,8 @@ static int omapl_pru_suart_remove(struct platform_device *pdev)
 		}
 	}
 	release_firmware(soft_uart->fw);
+	dma_free_coherent(&pdev->dev, SZ_8K, dma_vaddr_buff, dma_phys_addr);
+	of_reserved_mem_device_release(&pdev->dev);
 	clk_put(soft_uart->clk_mcasp);
 	clk_put(soft_uart->clk_pru);
 	pru_mcasp_deinit ();
@@ -974,11 +986,18 @@ static int omapl_pru_suart_remove(struct platform_device *pdev)
 	return err;
 }
 
+static const struct of_device_id serial_omapl_pru_of_match[] = {
+	{ .compatible = "ev3dev,omapl-pru-suart", },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, serial_omapl_pru_of_match);
+
 static struct platform_driver serial_omapl_pru_driver = {
 	.probe = omapl_pru_suart_probe,
 	.remove = omapl_pru_suart_remove,
 	.driver = {
 		.name = DRV_NAME,
+		.of_match_table = serial_omapl_pru_of_match,
 	},
 };
 
@@ -1007,7 +1026,6 @@ static void __exit omapl_pru_suart_exit(void)
 {
 	platform_driver_unregister(&serial_omapl_pru_driver);
 	uart_unregister_driver(&pru_suart_reg);
-	iounmap(dma_vaddr_buff);
 	__suart_debug("SUART serial driver unloaded\n");
 }
 
