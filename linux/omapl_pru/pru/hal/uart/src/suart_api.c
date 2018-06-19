@@ -530,7 +530,7 @@ void pru_set_ram_data (arm_pru_iomap * arm_iomap_pru)
 short pru_softuart_init(unsigned int txBaudValue,
 			unsigned int rxBaudValue,
 			unsigned int oversampling,
-			unsigned char *pru_suart_emu_code,
+			const unsigned char *pru_suart_emu_code,
 			unsigned int fw_size, arm_pru_iomap * arm_iomap_pru)
 {
 	unsigned int omapl_addr;

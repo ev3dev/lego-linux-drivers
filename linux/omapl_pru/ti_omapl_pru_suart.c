@@ -758,7 +758,6 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	struct omapl_pru_suart *soft_uart;
 	struct resource *res_mem[PLATFORM_SUART_RES_SZ];
 	int err, i;
-	unsigned char *fw_data = NULL;
 
 	soft_uart = devm_kzalloc(dev, sizeof(*soft_uart), GFP_KERNEL);
 	if (!soft_uart)
@@ -804,12 +803,6 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 		dev_err(dev, "can't load firmware\n");
 		return err;
 	}
-	dev_info(dev, "fw size %td. downloading...\n", soft_uart->fw->size);
-
-	/* download firmware into pru  & init */
-	fw_data = kmalloc(soft_uart->fw->size, GFP_KERNEL);
-	memcpy((void *)fw_data, (const void *)soft_uart->fw->data,
-	       soft_uart->fw->size);
 
 	err = of_reserved_mem_device_init(dev);
 	if (err < 0)
@@ -830,15 +823,13 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	soft_uart->pru_arm_iomap.pru_clk_freq = (soft_uart->clk_freq_pru / 1000000);
 
 	err = pru_softuart_init(SUART_DEFAULT_BAUD, SUART_DEFAULT_BAUD,
-				SUART_DEFAULT_OVRSMPL, fw_data,
+				SUART_DEFAULT_OVRSMPL, soft_uart->fw->data,
 				soft_uart->fw->size, &soft_uart->pru_arm_iomap);
 	if (err) {
 		dev_err(dev, "pru init error\n");
 		err = -ENODEV;
-		kfree((const void *)fw_data);
 		goto probe_release_fw;
 	}
-	kfree((const void *)fw_data);
 
 	for (i = 0; i < NR_SUART; i++) {
 		soft_uart->port[i].ops = &pru_suart_ops;

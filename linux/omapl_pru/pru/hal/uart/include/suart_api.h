@@ -404,7 +404,7 @@ typedef struct {
 	short pru_softuart_init(unsigned int txBaudValue,
 				unsigned int rxBaudValue,
 				unsigned int oversampling,
-				unsigned char *pru_suart_emu_code,
+				const unsigned char *pru_suart_emu_code,
 				unsigned int fw_size,
 				arm_pru_iomap * pru_arm_iomap1);
 	int pru_intr_set_mask(unsigned short uartNum,
