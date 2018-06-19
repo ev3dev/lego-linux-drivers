@@ -763,6 +763,8 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	if (!soft_uart)
 		return -ENOMEM;
 
+	platform_set_drvdata(pdev, soft_uart);
+
 	for (i = 0; i < PLATFORM_SUART_RES_SZ; i++) {
 		res_mem[i] = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (!res_mem[i]) {
