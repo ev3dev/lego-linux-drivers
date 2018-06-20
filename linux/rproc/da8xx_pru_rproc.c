@@ -79,11 +79,11 @@ static int da8xx_pru_rproc_start(struct rproc *rproc)
 static int da8xx_pru_rproc_stop(struct rproc *rproc)
 {
 	struct da8xx_pru_data *data = rproc->priv;
-	u32 val;
+	u32 mask;
 
-	val = DA8XX_PRU_CONTROL_ENABLE;
+	mask = DA8XX_PRU_CONTROL_ENABLE;
 
-	return regmap_write_bits(data->regmap, DA8XX_PRU_CS_CONTROL, val, val);
+	return regmap_write_bits(data->regmap, DA8XX_PRU_CS_CONTROL, mask, 0);
 }
 
 static void *da8xx_pru_rproc_da_to_va(struct rproc *rproc, u64 da, int len,
