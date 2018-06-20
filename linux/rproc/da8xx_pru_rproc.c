@@ -91,8 +91,6 @@ static void *da8xx_pru_rproc_da_to_va(struct rproc *rproc, u64 da, int len,
 {
 	struct da8xx_pru_data *data = rproc->priv;
 
-	printk("%s: %llu %d %d\n", __func__, da, len, page);
-
 	if (page == 0) {
 		if (da + len > DA8XX_PRU_INST_SIZE)
 			return ERR_PTR(-EINVAL);
