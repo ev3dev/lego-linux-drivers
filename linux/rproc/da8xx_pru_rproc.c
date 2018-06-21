@@ -18,22 +18,22 @@
 #define SZ_12K 0x3000
 
 /* control/status registers */
-#define DA8XX_PRU_CS_CONTROL	0x0
-#define DA8XX_PRU_CS_STATUS	0x4
-#define DA8XX_PRU_CS_WAKEUP	0x8
-#define DA8XX_PRU_CS_CYCLECNT	0xc
+#define TI_PRU_CS_CONTROL	0x0
+#define TI_PRU_CS_STATUS	0x4
+#define TI_PRU_CS_WAKEUP	0x8
+#define TI_PRU_CS_CYCLECNT	0xc
 
 /* control register bits */
-#define DA8XX_PRU_CONTROL_PCRESETVAL	GENMASK(31, 16)
-#define DA8XX_PRU_CONTROL_RUNSTATE	BIT(15)
-#define DA8XX_PRU_CONTROL_SINGLESTEP	BIT(8)
-#define DA8XX_PRU_CONTROL_COUNTENABLE	BIT(3)
-#define DA8XX_PRU_CONTROL_SLEEPING	BIT(2)
-#define DA8XX_PRU_CONTROL_ENABLE	BIT(1)
-#define DA8XX_PRU_CONTROL_SOFTRESET	BIT(0)
+#define TI_PRU_CONTROL_PCRESETVAL	GENMASK(31, 16)
+#define TI_PRU_CONTROL_RUNSTATE		BIT(15)
+#define TI_PRU_CONTROL_SINGLESTEP	BIT(8)
+#define TI_PRU_CONTROL_COUNTENABLE	BIT(3)
+#define TI_PRU_CONTROL_SLEEPING		BIT(2)
+#define TI_PRU_CONTROL_ENABLE		BIT(1)
+#define TI_PRU_CONTROL_SOFTRESET	BIT(0)
 
 /* status bits */
-#define DA8XX_PRU_STATUS_PCOUNTER	GENMASK(15, 0)
+#define TI_PRU_STATUS_PCOUNTER		GENMASK(15, 0)
 
 enum ti_pru {
 	TI_PRU0,
@@ -47,16 +47,16 @@ enum ti_pru_type {
 	NUM_TI_PRU_TYPE
 };
 
-enum da8xx_pru_evtout {
-	DA8XX_PRU_EVTOUT0,
-	DA8XX_PRU_EVTOUT1,
-	DA8XX_PRU_EVTOUT2,
-	DA8XX_PRU_EVTOUT3,
-	DA8XX_PRU_EVTOUT4,
-	DA8XX_PRU_EVTOUT5,
-	DA8XX_PRU_EVTOUT6,
-	DA8XX_PRU_EVTOUT7,
-	NUM_DA8XX_PRU_EVTOUT
+enum ti_pru_evtout {
+	TI_PRU_EVTOUT0,
+	TI_PRU_EVTOUT1,
+	TI_PRU_EVTOUT2,
+	TI_PRU_EVTOUT3,
+	TI_PRU_EVTOUT4,
+	TI_PRU_EVTOUT5,
+	TI_PRU_EVTOUT6,
+	TI_PRU_EVTOUT7,
+	NUM_TI_PRU_EVTOUT
 };
 
 struct ti_pru_mem_region {
@@ -135,7 +135,7 @@ struct ti_pru_shared_data {
 	const struct ti_pru_shared_info *info;
 	struct device *dev;
 	void __iomem *base;
-	int evtout_irq[NUM_DA8XX_PRU_EVTOUT];
+	int evtout_irq[NUM_TI_PRU_EVTOUT];
 	struct rproc *pru[NUM_TI_PRU];
 };
 
@@ -145,29 +145,29 @@ struct ti_pru_data {
 	struct regmap *ctrl;
 };
 
-static int da8xx_pru_rproc_start(struct rproc *rproc)
+static int ti_pru_rproc_start(struct rproc *rproc)
 {
 	struct ti_pru_data *pru = rproc->priv;
 	u32 val;
 
-	val = (rproc->bootaddr >> 2) << (ffs(DA8XX_PRU_CONTROL_PCRESETVAL) - 1);
-	val |= DA8XX_PRU_CONTROL_ENABLE;
+	val = (rproc->bootaddr >> 2) << (ffs(TI_PRU_CONTROL_PCRESETVAL) - 1);
+	val |= TI_PRU_CONTROL_ENABLE;
 
-	return regmap_write(pru->ctrl, DA8XX_PRU_CS_CONTROL, val);
+	return regmap_write(pru->ctrl, TI_PRU_CS_CONTROL, val);
 }
 
-static int da8xx_pru_rproc_stop(struct rproc *rproc)
+static int ti_pru_rproc_stop(struct rproc *rproc)
 {
 	struct ti_pru_data *pru = rproc->priv;
 	u32 mask;
 
-	mask = DA8XX_PRU_CONTROL_ENABLE;
+	mask = TI_PRU_CONTROL_ENABLE;
 
-	return regmap_write_bits(pru->ctrl, DA8XX_PRU_CS_CONTROL, mask, 0);
+	return regmap_write_bits(pru->ctrl, TI_PRU_CS_CONTROL, mask, 0);
 }
 
-static void *da8xx_pru_rproc_da_to_va(struct rproc *rproc, u64 da, int len,
-				      int page)
+static void *ti_pru_rproc_da_to_va(struct rproc *rproc, u64 da, int len,
+				   int page)
 {
 	struct ti_pru_data *pru = rproc->priv;
 	struct ti_pru_shared_data *shared = pru->shared;
@@ -190,9 +190,9 @@ static void *da8xx_pru_rproc_da_to_va(struct rproc *rproc, u64 da, int len,
 }
 
 static const struct rproc_ops ti_pru_rproc_ops = {
-	.start = da8xx_pru_rproc_start,
-	.stop = da8xx_pru_rproc_stop,
-	.da_to_va = da8xx_pru_rproc_da_to_va,
+	.start = ti_pru_rproc_start,
+	.stop = ti_pru_rproc_stop,
+	.da_to_va = ti_pru_rproc_da_to_va,
 };
 
 static struct regmap_config ti_pru_ctrl_regmap_config = {
@@ -251,7 +251,7 @@ static struct rproc *ti_pru_init_one_rproc(struct ti_pru_shared_data *shared,
 	return rproc;
 }
 
-static int da8xx_pru_rproc_probe(struct platform_device *pdev)
+static int ti_pru_rproc_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	const struct of_device_id *of_id;
@@ -280,7 +280,7 @@ static int da8xx_pru_rproc_probe(struct platform_device *pdev)
 		return PTR_ERR(shared->base);
 	}
 
-	for (i = 0; i < NUM_DA8XX_PRU_EVTOUT; i++) {
+	for (i = 0; i < NUM_TI_PRU_EVTOUT; i++) {
 		shared->evtout_irq[i] = platform_get_irq(pdev, i);
 		if (shared->evtout_irq[i] < 0) {
 			dev_err(dev, "failed to get IRQ for EVTOUT%d\n", i);
@@ -329,7 +329,7 @@ err_free_pru0:
 	return err;
 }
 
-static int da8xx_pru_rproc_remove(struct platform_device *pdev)
+static int ti_pru_rproc_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct ti_pru_shared_data *shared = platform_get_drvdata(pdev);
@@ -344,16 +344,16 @@ static int da8xx_pru_rproc_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver da8xx_pru_rproc_driver = {
-	.probe	= da8xx_pru_rproc_probe,
-	.remove	= da8xx_pru_rproc_remove,
+static struct platform_driver ti_pru_rproc_driver = {
+	.probe	= ti_pru_rproc_probe,
+	.remove	= ti_pru_rproc_remove,
 	.driver	= {
 		.name = "ti-pru-rproc",
 		.of_match_table = ti_pru_rproc_of_match,
 	},
 };
 
-module_platform_driver(da8xx_pru_rproc_driver);
+module_platform_driver(ti_pru_rproc_driver);
 
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
 MODULE_LICENSE("GPL v2");
