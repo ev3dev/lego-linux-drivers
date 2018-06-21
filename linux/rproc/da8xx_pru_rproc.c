@@ -244,6 +244,7 @@ static struct rproc *ti_pru_init_one_rproc(struct ti_pru_shared_data *shared,
 					  &ti_pru_ctrl_regmap_config);
 	if (IS_ERR(pru->ctrl)) {
 		dev_err(&rproc->dev, "failed to init regmap\n");
+		rproc_free(rproc);
 		return ERR_CAST(pru->ctrl);
 	}
 
