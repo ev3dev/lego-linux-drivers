@@ -40,8 +40,9 @@ config TI_ADS79XX_EV3DEV
 
 source "drivers/lego/linux/omapl_pru/Kconfig"
 
-config DA8XX_PRU_RPROC_EV3DEV
-  tristate "PRU rproc driver for TI AM18xx/OMAPL138"
+config TI_PRU_RPROC_EV3DEV
+  tristate "PRU rproc driver for TI PRU"
   select REMOTEPROC
   help
-    say yes here to build experimental ev3dev rproc driver for PRU
+    say yes here to build experimental ev3dev rproc driver for TI Programmable
+    Realtime Units.
