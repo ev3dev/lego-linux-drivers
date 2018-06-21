@@ -70,7 +70,7 @@ static int da8xx_pru_rproc_start(struct rproc *rproc)
 	struct da8xx_pru_data *data = rproc->priv;
 	u32 val;
 
-	val = (rproc->bootaddr >> 2) << ffs(DA8XX_PRU_CONTROL_PCRESETVAL);
+	val = (rproc->bootaddr >> 2) << (ffs(DA8XX_PRU_CONTROL_PCRESETVAL) - 1);
 	val |= DA8XX_PRU_CONTROL_ENABLE;
 
 	return regmap_write(data->regmap, DA8XX_PRU_CS_CONTROL, val);
