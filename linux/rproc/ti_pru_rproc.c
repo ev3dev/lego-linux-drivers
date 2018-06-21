@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2018 David Lechner <david@lechnology.com>
  *
- * Remoteproc driver for TI AM18xx/OMAPL138 PRU
+ * Remoteproc driver for TI Programmable Realtime Unit
  */
 
 #include <linux/bitops.h>
