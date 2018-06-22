@@ -70,34 +70,6 @@ Uint32 pru_run(Uint8 pruNum, arm_pru_iomap * pru_arm_iomap)
 	return E_PASS;
 }
 
-Uint32 pru_waitForHalt(Uint8 pruNum, Int32 timeout,
-		       arm_pru_iomap * pru_arm_iomap)
-{
-	CSL_PrucoreRegsOvly hPru;
-
-	Int32 cnt = timeout;
-
-	if (pruNum == CSL_PRUCORE_0) {
-		hPru = (CSL_PrucoreRegsOvly) ((Uint32 )pru_arm_iomap->pru_io_addr + 0x7000);	//CSL_PRUCORE_0_REGS;
-	} else if (pruNum == CSL_PRUCORE_1) {
-		hPru = (CSL_PrucoreRegsOvly) ((Uint32 )pru_arm_iomap->pru_io_addr + 0x7800);	//CSL_PRUCORE_1_REGS;
-	} else {
-		return E_FAIL;
-	}
-
-	while (CSL_FEXT(hPru->CONTROL, PRUCORE_CONTROL_RUNSTATE) ==
-	       CSL_PRUCORE_CONTROL_RUNSTATE_RUN) {
-		if (cnt > 0) {
-			cnt--;
-		}
-		if (cnt == 0) {
-			return E_TIMEOUT;
-		}
-	}
-
-	return E_PASS;
-}
-
 Uint32 pru_disable(arm_pru_iomap * pru_arm_iomap)
 {
 	CSL_PrucoreRegsOvly hPru;

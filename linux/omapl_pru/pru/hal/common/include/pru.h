@@ -121,8 +121,6 @@ extern __FAR__ Uint32 pru_load(Uint8 pruNum, Uint32 * pruCode,
 				   arm_pru_iomap * pru_arm_iomap);
 extern __FAR__ Uint32 pru_run(Uint8 pruNum,
 				  arm_pru_iomap * pru_arm_iomap);
-extern __FAR__ Uint32 pru_waitForHalt(Uint8 pruNum, Int32 timeout,
-					  arm_pru_iomap * pru_arm_iomap);
 extern __FAR__ Uint32 pru_disable(arm_pru_iomap * pru_arm_iomap);
 
 short pru_ram_write_data(Uint32 u32offset, Uint8 * pu8datatowrite,
