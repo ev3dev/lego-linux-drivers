@@ -43,6 +43,7 @@ source "drivers/lego/linux/omapl_pru/Kconfig"
 config TI_PRU_RPROC_EV3DEV
   tristate "PRU rproc driver for TI PRU"
   select REMOTEPROC
+  select RPMSG_VIRTIO
   help
     say yes here to build experimental ev3dev rproc driver for TI Programmable
     Realtime Units.
