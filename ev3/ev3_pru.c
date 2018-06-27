@@ -210,6 +210,17 @@ static int ev3_tacho_rpmsg_probe(struct rpmsg_device *rpdev)
 
 static void ev3_tacho_rpmsg_remove(struct rpmsg_device *rpdev)
 {
+	struct device *dev = &rpdev->dev;
+	struct ev3_tacho_rpmsg_data *priv = dev_get_drvdata(dev);
+
+	/*
+	 * Need to manually call this now to prevent crash. If we don't rproc
+	 * device can be removed before iio device while we are still receiving
+	 * rpmsg callbacks. By forcing iio removal here, all buffers will be
+	 * removed and the PRU will be instructed to stop sending messages.
+	 */
+	devm_iio_device_unregister(dev, priv->indio_dev);
+
 	dev_info(&rpdev->dev, "rpmsg sample client driver is removed\n");
 }
 
