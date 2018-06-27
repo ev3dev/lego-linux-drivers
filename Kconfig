@@ -44,6 +44,14 @@ config LEGOEV3_PORTS
 	help
 	  Select Y to enable support for EV3 input and output ports.
 
+config LEGOEV3_PRU
+	tristate "EV3 PRU support"
+	default y
+	depends on MACH_DAVINCI_LEGOEV3
+	select RPMSG_VIRTIO
+	help
+		Select Y to enable for PRU support on the EV3.
+
 config LEGOEV3_SOUND
 	tristate "LEGO Mindstorms EV3 speaker driver"
 	depends on MACH_DAVINCI_LEGOEV3 && PWM_TIEHRPWM && LEGOEV3_FIQ
