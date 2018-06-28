@@ -56,7 +56,7 @@ static int ev3_tacho_rpmsg_cb(struct rpmsg_device *rpdev, void *data, int len,
 
 	switch (msg->type) {
 	case EV3_PRU_TACHO_MSG_REQ_ONE:
-		*priv->last_value = *msg->value;
+		memcpy(priv->last_value, msg->value, 4 * NUM_EV3_PRU_IIO_CH);
 		complete(&priv->completion);
 		break;
 	case EV3_PRU_TACHO_MSG_UPDATE:
