@@ -10,6 +10,7 @@
 #include <linux/iio/iio.h>
 #include <linux/iio/kfifo_buf.h>
 #include <linux/kernel.h>
+#include <linux/math64.h>
 #include <linux/module.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/platform_device.h>
@@ -24,11 +25,12 @@ enum ev3_pru_tacho_msg_type {
 };
 
 enum ev3_pru_tacho_iio_channel {
-	EV3_PRU_IIO_CH_TIMESTAMP,
 	EV3_PRU_IIO_CH_TACHO_A,
 	EV3_PRU_IIO_CH_TACHO_B,
 	EV3_PRU_IIO_CH_TACHO_C,
 	EV3_PRU_IIO_CH_TACHO_D,
+	EV3_PRU_IIO_CH_TIMESTAMP_LOW,
+	EV3_PRU_IIO_CH_TIMESTAMP_HIGH,
 	NUM_EV3_PRU_IIO_CH
 };
 
@@ -49,6 +51,7 @@ static int ev3_tacho_rpmsg_cb(struct rpmsg_device *rpdev, void *data, int len,
 {
 	struct ev3_tacho_rpmsg_data *priv = dev_get_drvdata(&rpdev->dev);
 	struct ev3_pru_tacho_msg *msg = data;
+	u64 *d;
 	int ret;
 
 	if (len < sizeof(*msg))
@@ -60,6 +63,10 @@ static int ev3_tacho_rpmsg_cb(struct rpmsg_device *rpdev, void *data, int len,
 		complete(&priv->completion);
 		break;
 	case EV3_PRU_TACHO_MSG_UPDATE:
+		/* convert the timestamp to nanoseconds */
+		d = (u64 *)&msg->value[EV3_PRU_IIO_CH_TIMESTAMP_LOW];
+		*d = mul_u64_u32_div(*d, 125, 3);
+
 		ret = iio_push_to_buffers(priv->indio_dev, &msg->value[0]);
 		if (ret < 0)
 			return ret;
@@ -71,36 +78,37 @@ static int ev3_tacho_rpmsg_cb(struct rpmsg_device *rpdev, void *data, int len,
 	return 0;
 }
 
-#define EV3_PRU_IIO_COUNT_MOTOR(x) {						\
-		.type = IIO_COUNT,						\
-		.indexed = 1,							\
-		.channel = EV3_PRU_IIO_CH_TACHO_##x - EV3_PRU_IIO_CH_TACHO_A,	\
-		.scan_index = EV3_PRU_IIO_CH_TACHO_##x,				\
-		.scan_type = {							\
-			.sign = 's',						\
-			.realbits = 32,						\
-			.storagebits = 32,					\
-		},								\
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),			\
-		.datasheet_name = "Motor" __stringify(x),			\
+#define EV3_PRU_IIO_COUNT_MOTOR(idx, n) {			\
+		.type = IIO_COUNT,				\
+		.indexed = 1,					\
+		.channel = (idx),				\
+		.scan_index =(idx),				\
+		.scan_type = {					\
+			.sign = 's',				\
+			.realbits = 32,				\
+			.storagebits = 32,			\
+		},						\
+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),	\
+		.datasheet_name = "Motor##n",			\
 	}
 
-
 static const struct iio_chan_spec ev3_tacho_rpmsg_channels[] = {
-	[EV3_PRU_IIO_CH_TIMESTAMP] = {
+	EV3_PRU_IIO_COUNT_MOTOR(EV3_PRU_IIO_CH_TACHO_A, A),
+	EV3_PRU_IIO_COUNT_MOTOR(EV3_PRU_IIO_CH_TACHO_B, B),
+	EV3_PRU_IIO_COUNT_MOTOR(EV3_PRU_IIO_CH_TACHO_C, C),
+	EV3_PRU_IIO_COUNT_MOTOR(EV3_PRU_IIO_CH_TACHO_D, D),
+	{
 		.type = IIO_TIMESTAMP,
-		.scan_index = EV3_PRU_IIO_CH_TIMESTAMP,
+		.channel = -1,
+		.scan_index = EV3_PRU_IIO_CH_TIMESTAMP_LOW,
 		.scan_type = {
-			.sign = 'u',
-			.realbits = 32,
-			.storagebits = 32,
+			.sign = 's',
+			.realbits = 64,
+			.storagebits = 64,
 		},
 		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+		.datasheet_name = "TIMER64P0.TIM34",
 	},
-	[EV3_PRU_IIO_CH_TACHO_A] = EV3_PRU_IIO_COUNT_MOTOR(A),
-	[EV3_PRU_IIO_CH_TACHO_B] = EV3_PRU_IIO_COUNT_MOTOR(B),
-	[EV3_PRU_IIO_CH_TACHO_C] = EV3_PRU_IIO_COUNT_MOTOR(C),
-	[EV3_PRU_IIO_CH_TACHO_D] = EV3_PRU_IIO_COUNT_MOTOR(D),
 };
 
 static int ev3_pru_tacho_read_raw(struct iio_dev *indio_dev,
