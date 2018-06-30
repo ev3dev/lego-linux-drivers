@@ -25,10 +25,14 @@ enum ev3_pru_tacho_msg_type {
 };
 
 enum ev3_pru_tacho_iio_channel {
-	EV3_PRU_IIO_CH_TACHO_A,
-	EV3_PRU_IIO_CH_TACHO_B,
-	EV3_PRU_IIO_CH_TACHO_C,
-	EV3_PRU_IIO_CH_TACHO_D,
+	EV3_PRU_IIO_CH_TACHO_A_COUNT,
+	EV3_PRU_IIO_CH_TACHO_B_COUNT,
+	EV3_PRU_IIO_CH_TACHO_C_COUNT,
+	EV3_PRU_IIO_CH_TACHO_D_COUNT,
+	EV3_PRU_IIO_CH_TACHO_A_COUNT_TIME,
+	EV3_PRU_IIO_CH_TACHO_B_COUNT_TIME,
+	EV3_PRU_IIO_CH_TACHO_C_COUNT_TIME,
+	EV3_PRU_IIO_CH_TACHO_D_COUNT_TIME,
 	EV3_PRU_IIO_CH_TIMESTAMP_LOW,
 	EV3_PRU_IIO_CH_TIMESTAMP_HIGH,
 	NUM_EV3_PRU_IIO_CH
@@ -78,25 +82,39 @@ static int ev3_tacho_rpmsg_cb(struct rpmsg_device *rpdev, void *data, int len,
 	return 0;
 }
 
-#define EV3_PRU_IIO_COUNT_MOTOR(idx, n) {			\
-		.type = IIO_COUNT,				\
-		.indexed = 1,					\
-		.channel = (idx),				\
-		.scan_index =(idx),				\
-		.scan_type = {					\
-			.sign = 's',				\
-			.realbits = 32,				\
-			.storagebits = 32,			\
-		},						\
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),	\
-		.datasheet_name = "Motor##n",			\
+#define EV3_PRU_IIO_MOTOR(n) {						\
+		.type = IIO_COUNT,					\
+		.indexed = 1,						\
+		.channel = EV3_PRU_IIO_CH_TACHO_##n##_COUNT,		\
+		.scan_index = EV3_PRU_IIO_CH_TACHO_##n##_COUNT,		\
+		.scan_type = {						\
+			.sign = 's',					\
+			.realbits = 32,					\
+			.storagebits = 32,				\
+		},							\
+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),		\
+		.datasheet_name = "Motor##n",				\
+	},								\
+	{								\
+		.type = IIO_COUNT,					\
+		.indexed = 1,						\
+		.channel = EV3_PRU_IIO_CH_TACHO_##n##_COUNT,		\
+		.scan_index = EV3_PRU_IIO_CH_TACHO_##n##_COUNT_TIME,	\
+		.scan_type = {						\
+			.sign = 'u',					\
+			.realbits = 32,					\
+			.storagebits = 32,				\
+		},							\
+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),		\
+		.datasheet_name = "Motor##n",				\
+		.extend_name = "time",					\
 	}
 
 static const struct iio_chan_spec ev3_tacho_rpmsg_channels[] = {
-	EV3_PRU_IIO_COUNT_MOTOR(EV3_PRU_IIO_CH_TACHO_A, A),
-	EV3_PRU_IIO_COUNT_MOTOR(EV3_PRU_IIO_CH_TACHO_B, B),
-	EV3_PRU_IIO_COUNT_MOTOR(EV3_PRU_IIO_CH_TACHO_C, C),
-	EV3_PRU_IIO_COUNT_MOTOR(EV3_PRU_IIO_CH_TACHO_D, D),
+	EV3_PRU_IIO_MOTOR(A),
+	EV3_PRU_IIO_MOTOR(B),
+	EV3_PRU_IIO_MOTOR(C),
+	EV3_PRU_IIO_MOTOR(D),
 	{
 		.type = IIO_TIMESTAMP,
 		.channel = -1,
