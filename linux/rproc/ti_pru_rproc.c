@@ -229,19 +229,19 @@ static void *ti_pru_rproc_da_to_va(struct rproc *rproc, u64 da, int len,
 
 	if (page == 0) {
 		if (da + len > pru->info->inst.size)
-			return ERR_PTR(-EINVAL);
+			return NULL;
 
 		return shared->base + pru->info->inst.offset + da;
 	}
 
 	if (page == 1) {
 		if (da + len > pru->info->ram.size)
-			return ERR_PTR(-EINVAL);
+			return NULL;
 
 		return shared->base + pru->info->ram.offset + da;
 	}
 
-	return ERR_PTR(-EINVAL);
+	return NULL;
 }
 
 static const struct rproc_ops ti_pru_rproc_ops = {
