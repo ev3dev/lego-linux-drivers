@@ -23,35 +23,13 @@
 #define EV3_PRU_TACHO_RING_BUF_SIZE 1024 /* must be power of 2! */
 
 enum ev3_pru_tacho_msg_type {
-	/* Host > PRU: tell PRU to start sending update messages */
-	EV3_PRU_TACHO_MSG_START,
-	/* Host > PRU: tell PRU to stop sending update messages */
-	EV3_PRU_TACHO_MSG_STOP,
-	/* Host >< PRU: request updated values from PRU */
-	EV3_PRU_TACHO_MSG_REQ_ONE,
-	/* Host < PRU: receive updated values from PRU */
-	EV3_PRU_TACHO_MSG_UPDATE,
 	/* Host >< PRU: request memory map address of ring buffer data */
 	EV3_PRU_TACHO_MSG_DATA_ADDR,
 };
 
-enum ev3_pru_tacho_iio_channel {
-	EV3_PRU_IIO_CH_TACHO_A_COUNT,
-	EV3_PRU_IIO_CH_TACHO_B_COUNT,
-	EV3_PRU_IIO_CH_TACHO_C_COUNT,
-	EV3_PRU_IIO_CH_TACHO_D_COUNT,
-	EV3_PRU_IIO_CH_TACHO_A_COUNT_TIME,
-	EV3_PRU_IIO_CH_TACHO_B_COUNT_TIME,
-	EV3_PRU_IIO_CH_TACHO_C_COUNT_TIME,
-	EV3_PRU_IIO_CH_TACHO_D_COUNT_TIME,
-	EV3_PRU_IIO_CH_TIMESTAMP_LOW,
-	EV3_PRU_IIO_CH_TIMESTAMP_HIGH,
-	NUM_EV3_PRU_IIO_CH
-};
-
 struct ev3_pru_tacho_msg {
 	uint32_t type;
-	uint32_t value[NUM_EV3_PRU_IIO_CH];
+	uint32_t value;
 };
 
 enum ev3_pru_tacho {
@@ -70,12 +48,24 @@ struct ev3_pru_tacho_remote_data {
 
 /* end from PRU */
 
+enum ev3_pru_tacho_scan_indexl {
+	EV3_PRU_SCAN_INDEX_TACHO_A_COUNT,
+	EV3_PRU_SCAN_INDEX_TACHO_B_COUNT,
+	EV3_PRU_SCAN_INDEX_TACHO_C_COUNT,
+	EV3_PRU_SCAN_INDEX_TACHO_D_COUNT,
+	EV3_PRU_SCAN_INDEX_TACHO_A_COUNT_TIME,
+	EV3_PRU_SCAN_INDEX_TACHO_B_COUNT_TIME,
+	EV3_PRU_SCAN_INDEX_TACHO_C_COUNT_TIME,
+	EV3_PRU_SCAN_INDEX_TACHO_D_COUNT_TIME,
+	NUM_EV3_PRU_SCAN_INDEX
+};
+
 struct ev3_tacho_rpmsg_data {
 	__iomem void *remote_data;
 	struct iio_dev *indio_dev;
 	struct rpmsg_device *rpdev;
 	struct completion completion;
-	u32 last_value[NUM_EV3_PRU_IIO_CH];
+	u32 last_value;
 };
 
 static int ev3_tacho_rpmsg_cb(struct rpmsg_device *rpdev, void *data, int len,
@@ -83,26 +73,14 @@ static int ev3_tacho_rpmsg_cb(struct rpmsg_device *rpdev, void *data, int len,
 {
 	struct ev3_tacho_rpmsg_data *priv = dev_get_drvdata(&rpdev->dev);
 	struct ev3_pru_tacho_msg *msg = data;
-	u64 *d;
-	int ret;
 
 	if (len < sizeof(*msg))
 		return -EINVAL;
 
 	switch (msg->type) {
-	case EV3_PRU_TACHO_MSG_REQ_ONE:
 	case EV3_PRU_TACHO_MSG_DATA_ADDR:
-		memcpy(priv->last_value, msg->value, 4 * NUM_EV3_PRU_IIO_CH);
+		priv->last_value = msg->value;
 		complete(&priv->completion);
-		break;
-	case EV3_PRU_TACHO_MSG_UPDATE:
-		/* convert the timestamp to nanoseconds */
-		d = (u64 *)&msg->value[EV3_PRU_IIO_CH_TIMESTAMP_LOW];
-		*d = mul_u64_u32_div(*d, 125, 3);
-
-		ret = iio_push_to_buffers(priv->indio_dev, &msg->value[0]);
-		if (ret < 0)
-			return ret;
 		break;
 	default:
 		return -EINVAL;
@@ -166,16 +144,16 @@ static int ev3_pru_tacho_read_raw(struct iio_dev *indio_dev,
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
 		switch (chan->scan_index) {
-		case EV3_PRU_IIO_CH_TACHO_A_COUNT:
-		case EV3_PRU_IIO_CH_TACHO_B_COUNT:
-		case EV3_PRU_IIO_CH_TACHO_C_COUNT:
-		case EV3_PRU_IIO_CH_TACHO_D_COUNT:
+		case EV3_PRU_SCAN_INDEX_TACHO_A_COUNT:
+		case EV3_PRU_SCAN_INDEX_TACHO_B_COUNT:
+		case EV3_PRU_SCAN_INDEX_TACHO_C_COUNT:
+		case EV3_PRU_SCAN_INDEX_TACHO_D_COUNT:
 			*val = data->position[chan->channel][data->head[chan->channel]];
 			return IIO_VAL_INT;
-		case EV3_PRU_IIO_CH_TACHO_A_COUNT_TIME:
-		case EV3_PRU_IIO_CH_TACHO_B_COUNT_TIME:
-		case EV3_PRU_IIO_CH_TACHO_C_COUNT_TIME:
-		case EV3_PRU_IIO_CH_TACHO_D_COUNT_TIME:
+		case EV3_PRU_SCAN_INDEX_TACHO_A_COUNT_TIME:
+		case EV3_PRU_SCAN_INDEX_TACHO_B_COUNT_TIME:
+		case EV3_PRU_SCAN_INDEX_TACHO_C_COUNT_TIME:
+		case EV3_PRU_SCAN_INDEX_TACHO_D_COUNT_TIME:
 			*val = data->timestamp[chan->channel][data->head[chan->channel]];
 			return IIO_VAL_INT;
 		}
@@ -198,7 +176,7 @@ static int ev3_pru_tacho_read_raw(struct iio_dev *indio_dev,
 		.type = IIO_COUNT,					\
 		.indexed = 1,						\
 		.channel = EV3_PRU_TACHO_##n,				\
-		.scan_index = EV3_PRU_IIO_CH_TACHO_##n##_COUNT,		\
+		.scan_index = EV3_PRU_SCAN_INDEX_TACHO_##n##_COUNT,	\
 		.scan_type = {						\
 			.sign = 's',					\
 			.realbits = 32,					\
@@ -211,7 +189,7 @@ static int ev3_pru_tacho_read_raw(struct iio_dev *indio_dev,
 		.type = IIO_COUNT,					\
 		.indexed = 1,						\
 		.channel = EV3_PRU_TACHO_##n,				\
-		.scan_index = EV3_PRU_IIO_CH_TACHO_##n##_COUNT_TIME,	\
+		.scan_index = EV3_PRU_SCAN_INDEX_TACHO_##n##_COUNT_TIME,\
 		.scan_type = {						\
 			.sign = 'u',					\
 			.realbits = 32,					\
@@ -235,18 +213,6 @@ static const struct iio_chan_spec ev3_tacho_rpmsg_channels[] = {
 	EV3_PRU_IIO_MOTOR(B),
 	EV3_PRU_IIO_MOTOR(C),
 	EV3_PRU_IIO_MOTOR(D),
-	{
-		.type = IIO_TIMESTAMP,
-		.channel = -1,
-		.scan_index = EV3_PRU_IIO_CH_TIMESTAMP_LOW,
-		.scan_type = {
-			.sign = 's',
-			.realbits = 64,
-			.storagebits = 64,
-		},
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
-		.datasheet_name = "TIMER64P0.TIM34",
-	},
 };
 
 static const struct iio_info ev3_pru_tacho_iio_info = {
@@ -256,18 +222,12 @@ static const struct iio_info ev3_pru_tacho_iio_info = {
 
 static int ev3_pru_tacho_buffer_enable(struct iio_dev *indio_dev)
 {
-	struct ev3_tacho_rpmsg_data *priv = iio_priv(indio_dev);
-	struct ev3_pru_tacho_msg msg = { .type = EV3_PRU_TACHO_MSG_START };
-
-	return rpmsg_send(priv->rpdev->ept, &msg, sizeof(msg));
+	return -EOPNOTSUPP;
 }
 
 static int ev3_pru_tacho_buffer_disable(struct iio_dev *indio_dev)
 {
-	struct ev3_tacho_rpmsg_data *priv = iio_priv(indio_dev);
-	struct ev3_pru_tacho_msg msg = { .type = EV3_PRU_TACHO_MSG_STOP };
-
-	return rpmsg_send(priv->rpdev->ept, &msg, sizeof(msg));
+	return -EOPNOTSUPP;
 }
 
 static const struct iio_buffer_setup_ops ev3_pru_tacho_buffer_setup_ops = {
@@ -315,7 +275,7 @@ static int ev3_tacho_rpmsg_probe(struct rpmsg_device *rpdev)
 	if (ret == 0)
 		return -ETIMEDOUT;
 
-	priv->remote_data = devm_ioremap(dev, priv->last_value[0],
+	priv->remote_data = devm_ioremap(dev, priv->last_value,
 					 sizeof(struct ev3_pru_tacho_remote_data));
 	if (!priv->remote_data)
 		return -ENOMEM;
