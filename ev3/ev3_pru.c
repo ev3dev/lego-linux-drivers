@@ -9,6 +9,7 @@
 #include <linux/iio/buffer.h>
 #include <linux/iio/iio.h>
 #include <linux/iio/kfifo_buf.h>
+#include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/math64.h>
 #include <linux/module.h>
@@ -17,11 +18,21 @@
 #include <linux/rpmsg.h>
 #include <linux/types.h>
 
+/* from PRU */
+
+#define EV3_PRU_TACHO_RING_BUF_SIZE 1024 /* must be power of 2! */
+
 enum ev3_pru_tacho_msg_type {
+	/* Host > PRU: tell PRU to start sending update messages */
 	EV3_PRU_TACHO_MSG_START,
+	/* Host > PRU: tell PRU to stop sending update messages */
 	EV3_PRU_TACHO_MSG_STOP,
+	/* Host >< PRU: request updated values from PRU */
 	EV3_PRU_TACHO_MSG_REQ_ONE,
+	/* Host < PRU: receive updated values from PRU */
 	EV3_PRU_TACHO_MSG_UPDATE,
+	/* Host >< PRU: request memory map address of ring buffer data */
+	EV3_PRU_TACHO_MSG_DATA_ADDR,
 };
 
 enum ev3_pru_tacho_iio_channel {
@@ -43,7 +54,24 @@ struct ev3_pru_tacho_msg {
 	uint32_t value[NUM_EV3_PRU_IIO_CH];
 };
 
+enum ev3_pru_tacho {
+	EV3_PRU_TACHO_A,
+	EV3_PRU_TACHO_B,
+	EV3_PRU_TACHO_C,
+	EV3_PRU_TACHO_D,
+	NUM_EV3_PRU_TACHO
+};
+
+struct ev3_pru_tacho_remote_data {
+	uint32_t position[NUM_EV3_PRU_TACHO][EV3_PRU_TACHO_RING_BUF_SIZE];
+	uint32_t timestamp[NUM_EV3_PRU_TACHO][EV3_PRU_TACHO_RING_BUF_SIZE];
+	uint32_t head[NUM_EV3_PRU_TACHO];
+};
+
+/* end from PRU */
+
 struct ev3_tacho_rpmsg_data {
+	__iomem void *remote_data;
 	struct iio_dev *indio_dev;
 	struct rpmsg_device *rpdev;
 	struct completion completion;
@@ -63,6 +91,7 @@ static int ev3_tacho_rpmsg_cb(struct rpmsg_device *rpdev, void *data, int len,
 
 	switch (msg->type) {
 	case EV3_PRU_TACHO_MSG_REQ_ONE:
+	case EV3_PRU_TACHO_MSG_DATA_ADDR:
 		memcpy(priv->last_value, msg->value, 4 * NUM_EV3_PRU_IIO_CH);
 		complete(&priv->completion);
 		break;
@@ -82,10 +111,93 @@ static int ev3_tacho_rpmsg_cb(struct rpmsg_device *rpdev, void *data, int len,
 	return 0;
 }
 
+static int ev3_pru_tacho_get_freq(struct ev3_pru_tacho_remote_data *data,
+				  enum ev3_pru_tacho index)
+{
+	s32 head = data->head[index];
+	s32 tail;
+	s32 head_pos, tail_pos;
+	u32 head_time, tail_time;
+	u32 x = 0;
+
+	head_pos = data->position[index][head];
+	head_time = data->timestamp[index][head];
+
+	do {
+		/*
+		 * tacho counts are not equidistant, so we need to use multiple
+		 * of 4 to get accurate values
+		 */
+		x += 4;
+
+		tail = (head - x) & (EV3_PRU_TACHO_RING_BUF_SIZE - 1);
+
+		tail_pos = data->position[index][tail];
+		tail_time = data->timestamp[index][tail];
+
+		if (head_pos == tail_pos)
+			return 0;
+
+		/*
+		 * we need delta_t to be >= 20ms to be reasonably accurate.
+		 * timer is 24MHz, thus * 3 / 125 converts to ns
+		 */
+		if (head_time - tail_time >= 20 * NSEC_PER_MSEC * 3 / 125)
+			break;
+	} while (x < 64);
+
+	/* avoid divide by 0 - motor probably hasn't moved yet */
+	if (head_time == tail_time)
+		return 0;
+
+	/* timer is 24MHz */
+	return div_s64((s64)(head_pos - tail_pos) * 24000000,
+			head_time - tail_time);
+	
+}
+
+static int ev3_pru_tacho_read_raw(struct iio_dev *indio_dev,
+				  const struct iio_chan_spec *chan,
+				  int *val, int *val2, long mask)
+{
+	struct ev3_tacho_rpmsg_data *priv = iio_priv(indio_dev);
+	struct ev3_pru_tacho_remote_data *data = priv->remote_data;
+
+	switch (mask) {
+	case IIO_CHAN_INFO_RAW:
+		switch (chan->scan_index) {
+		case EV3_PRU_IIO_CH_TACHO_A_COUNT:
+		case EV3_PRU_IIO_CH_TACHO_B_COUNT:
+		case EV3_PRU_IIO_CH_TACHO_C_COUNT:
+		case EV3_PRU_IIO_CH_TACHO_D_COUNT:
+			*val = data->position[chan->channel][data->head[chan->channel]];
+			return IIO_VAL_INT;
+		case EV3_PRU_IIO_CH_TACHO_A_COUNT_TIME:
+		case EV3_PRU_IIO_CH_TACHO_B_COUNT_TIME:
+		case EV3_PRU_IIO_CH_TACHO_C_COUNT_TIME:
+		case EV3_PRU_IIO_CH_TACHO_D_COUNT_TIME:
+			*val = data->timestamp[chan->channel][data->head[chan->channel]];
+			return IIO_VAL_INT;
+		}
+		break;
+	case IIO_CHAN_INFO_PROCESSED:
+		switch (chan->type) {
+		case IIO_FREQUENCY:
+			*val = ev3_pru_tacho_get_freq(data, chan->channel);
+			return IIO_VAL_INT;
+		default:
+			break;
+		}
+		break;
+	}
+
+	return -EINVAL;
+}
+
 #define EV3_PRU_IIO_MOTOR(n) {						\
 		.type = IIO_COUNT,					\
 		.indexed = 1,						\
-		.channel = EV3_PRU_IIO_CH_TACHO_##n##_COUNT,		\
+		.channel = EV3_PRU_TACHO_##n,				\
 		.scan_index = EV3_PRU_IIO_CH_TACHO_##n##_COUNT,		\
 		.scan_type = {						\
 			.sign = 's',					\
@@ -98,7 +210,7 @@ static int ev3_tacho_rpmsg_cb(struct rpmsg_device *rpdev, void *data, int len,
 	{								\
 		.type = IIO_COUNT,					\
 		.indexed = 1,						\
-		.channel = EV3_PRU_IIO_CH_TACHO_##n##_COUNT,		\
+		.channel = EV3_PRU_TACHO_##n,				\
 		.scan_index = EV3_PRU_IIO_CH_TACHO_##n##_COUNT_TIME,	\
 		.scan_type = {						\
 			.sign = 'u',					\
@@ -108,6 +220,14 @@ static int ev3_tacho_rpmsg_cb(struct rpmsg_device *rpdev, void *data, int len,
 		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),		\
 		.datasheet_name = "Motor##n",				\
 		.extend_name = "time",					\
+	},								\
+	{								\
+		.type = IIO_FREQUENCY,					\
+		.indexed = 1,						\
+		.channel = EV3_PRU_TACHO_##n,				\
+		.scan_index = -1,					\
+		.info_mask_separate = BIT(IIO_CHAN_INFO_PROCESSED),	\
+		.datasheet_name = "Motor##n",				\
 	}
 
 static const struct iio_chan_spec ev3_tacho_rpmsg_channels[] = {
@@ -128,42 +248,6 @@ static const struct iio_chan_spec ev3_tacho_rpmsg_channels[] = {
 		.datasheet_name = "TIMER64P0.TIM34",
 	},
 };
-
-static int ev3_pru_tacho_read_raw(struct iio_dev *indio_dev,
-				  const struct iio_chan_spec *chan,
-				  int *value, int *shift, long mask)
-{
-	struct ev3_tacho_rpmsg_data *priv = iio_priv(indio_dev);
-	enum ev3_pru_tacho_msg_type msg = EV3_PRU_TACHO_MSG_REQ_ONE;
-	int ret;
-
-	switch (mask) {
-	case IIO_CHAN_INFO_RAW:
-		mutex_lock(&indio_dev->mlock);
-
-		reinit_completion(&priv->completion);
-
-		ret = rpmsg_send(priv->rpdev->ept, &msg, sizeof(msg));
-		if (ret < 0) {
-			mutex_unlock(&indio_dev->mlock);
-			return ret;
-		}
-
-		ret = wait_for_completion_timeout(&priv->completion,
-						  msecs_to_jiffies(10));
-		if (ret == 0) {
-			mutex_unlock(&indio_dev->mlock);
-			return -ETIMEDOUT;
-		}
-
-		*value = priv->last_value[chan->scan_index];
-		mutex_unlock(&indio_dev->mlock);
-
-		return IIO_VAL_INT;
-	}
-
-	return -EINVAL;
-}
 
 static const struct iio_info ev3_pru_tacho_iio_info = {
 	.driver_module = THIS_MODULE,
@@ -193,6 +277,7 @@ static const struct iio_buffer_setup_ops ev3_pru_tacho_buffer_setup_ops = {
 
 static int ev3_tacho_rpmsg_probe(struct rpmsg_device *rpdev)
 {
+	struct ev3_pru_tacho_msg msg = { .type = EV3_PRU_TACHO_MSG_DATA_ADDR };
 	struct device *dev = &rpdev->dev;
 	struct iio_dev *indio_dev;
 	struct ev3_tacho_rpmsg_data *priv;
@@ -220,6 +305,22 @@ static int ev3_tacho_rpmsg_probe(struct rpmsg_device *rpdev)
 	init_completion(&priv->completion);
 
 	dev_set_drvdata(dev, priv);
+
+	ret = rpmsg_send(rpdev->ept, &msg, sizeof(msg));
+	if (ret < 0)
+		return ret;
+
+	ret = wait_for_completion_timeout(&priv->completion,
+					  msecs_to_jiffies(10));
+	if (ret == 0)
+		return -ETIMEDOUT;
+
+	priv->remote_data = devm_ioremap(dev, priv->last_value[0],
+					 sizeof(struct ev3_pru_tacho_remote_data));
+	if (!priv->remote_data)
+		return -ENOMEM;
+
+	memset(priv->remote_data, 0, sizeof(struct ev3_pru_tacho_remote_data));
 
 	buffer = devm_iio_kfifo_allocate(&indio_dev->dev);
 	if (!buffer)
