@@ -591,18 +591,14 @@ static void pru_suart_release_port(struct uart_port *port)
 static int pru_suart_request_port(struct uart_port *port)
 {
 	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
+	suart_struct_handle *hdl = &soft_uart->suart_hdl[port->line];
 	suart_config pru_suart_config;
-	u32 timeout = 0;
-	u32 err = 0;
-	if (soft_uart == NULL) {
-		__suart_err("soft_uart ptr failed\n");
-		return -ENODEV;
-	}
-	err = pru_softuart_open(&soft_uart->suart_hdl[port->line]);
+	int err;
+
+	err = pru_softuart_open(hdl);
 	if (PRU_SUART_SUCCESS != err) {
-		dev_err(port->dev, "failed to open suart: %d\n", err);
-		err = -ENODEV;
-		goto exit;
+		dev_err(port->dev, "failed to open suart: %X\n", err);
+		return -ENODEV;
 	}
 
 	/* set fifo timeout */
@@ -615,34 +611,42 @@ static int pru_suart_request_port(struct uart_port *port)
 	}
 
 	/* This is only for x8 */
-	timeout = (SUART_DEFAULT_BAUD * suart_timeout) / 1000;
-	pru_set_fifo_timeout(timeout);
+	pru_set_fifo_timeout(SUART_DEFAULT_BAUD * suart_timeout / 1000);
 
-	if (soft_uart->suart_hdl[port->line].uartNum == PRU_SUART_UART1) {
+	switch (hdl->uartNum) {
+	case PRU_SUART_UART1:
 		pru_suart_config.TXSerializer = PRU_SUART1_CONFIG_TX_SER;
 		pru_suart_config.RXSerializer = PRU_SUART1_CONFIG_RX_SER;
-	} else if (soft_uart->suart_hdl[port->line].uartNum == PRU_SUART_UART2) {
+		break;
+	case PRU_SUART_UART2:
 		pru_suart_config.TXSerializer = PRU_SUART2_CONFIG_TX_SER;
 		pru_suart_config.RXSerializer = PRU_SUART2_CONFIG_RX_SER;
-	} else if (soft_uart->suart_hdl[port->line].uartNum == PRU_SUART_UART3) {
+		break;
+	case PRU_SUART_UART3:
 		pru_suart_config.TXSerializer = PRU_SUART3_CONFIG_TX_SER;
 		pru_suart_config.RXSerializer = PRU_SUART3_CONFIG_RX_SER;
-	} else if (soft_uart->suart_hdl[port->line].uartNum == PRU_SUART_UART4) {
+		break;
+	case PRU_SUART_UART4:
 		pru_suart_config.TXSerializer = PRU_SUART4_CONFIG_TX_SER;
 		pru_suart_config.RXSerializer = PRU_SUART4_CONFIG_RX_SER;
-	} else if (soft_uart->suart_hdl[port->line].uartNum == PRU_SUART_UART5) {
+		break;
+	case PRU_SUART_UART5:
 		pru_suart_config.TXSerializer = PRU_SUART5_CONFIG_TX_SER;
 		pru_suart_config.RXSerializer = PRU_SUART5_CONFIG_RX_SER;
-	} else if (soft_uart->suart_hdl[port->line].uartNum == PRU_SUART_UART6) {
+		break;
+	case PRU_SUART_UART6:
 		pru_suart_config.TXSerializer = PRU_SUART6_CONFIG_TX_SER;
 		pru_suart_config.RXSerializer = PRU_SUART6_CONFIG_RX_SER;
-	} else if (soft_uart->suart_hdl[port->line].uartNum == PRU_SUART_UART7) {
+		break;
+	case PRU_SUART_UART7:
 		pru_suart_config.TXSerializer = PRU_SUART7_CONFIG_TX_SER;
 		pru_suart_config.RXSerializer = PRU_SUART7_CONFIG_RX_SER;
-	} else if (soft_uart->suart_hdl[port->line].uartNum == PRU_SUART_UART8) {
+		break;
+	case PRU_SUART_UART8:
 		pru_suart_config.TXSerializer = PRU_SUART8_CONFIG_TX_SER;
 		pru_suart_config.RXSerializer = PRU_SUART8_CONFIG_RX_SER;
-	} else {
+		break;
+	default:
 		return -ENOTSUPP;
 	}
 
@@ -653,15 +657,15 @@ static int pru_suart_request_port(struct uart_port *port)
 	pru_suart_config.rxBitsPerChar = ePRU_SUART_DATA_BITS8;	/* including start and stop bit 8 + 2 */
 	pru_suart_config.Oversampling = SUART_DEFAULT_OVRSMPL;
 
-	if (PRU_SUART_SUCCESS !=
-	    pru_softuart_setconfig(&soft_uart->suart_hdl[port->line],
-				   &pru_suart_config)) {
+	err = pru_softuart_setconfig(hdl, &pru_suart_config);
+	if (PRU_SUART_SUCCESS != err) {
 		dev_err(port->dev,
 			"pru_softuart_setconfig: failed to set config: %X\n",
 			err);
+		return -EINVAL;
 	}
-exit:
-	return err;
+
+	return 0;
 }
 
 /*
