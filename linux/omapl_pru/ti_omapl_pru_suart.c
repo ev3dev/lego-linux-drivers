@@ -54,8 +54,6 @@
 #define OMAPL_PRU_SUART 999
 #endif
 
-#define __suart_err(fmt, args...) printk(KERN_ERR "suart_err: " fmt, ## args)
-
 #if defined(CONFIG_SERIAL_SUART_OMAPL_PRU) && defined(CONFIG_MAGIC_SYSRQ)
 #define SUPPORT_SYSRQ
 #endif
@@ -161,7 +159,7 @@ static void omapl_pru_tx_chars(struct omapl_pru_suart *soft_uart, u32 uart_no)
 						&soft_uart->suart_dma_addr
 						[uart_no].dma_phys_addr_tx,
 						count)) {
-		__suart_err("failed to tx data\n");
+		dev_err(soft_uart->port[uart_no].dev, "failed to tx data\n");
 	}
 
 	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
@@ -248,9 +246,9 @@ static irqreturn_t omapl_pru_suart_interrupt(int irq, void *dev_id)
 	do {
 		ret = pru_softuart_get_isrstatus(uartNum, &txrx_flag);
 		if (PRU_SUART_SUCCESS != ret) {
-			__suart_err
-			("suart%d: failed to get interrupt, ret: 0x%X txrx_flag 0x%X\n",
-			port->line, ret, txrx_flag);
+			dev_err(port->dev,
+				"failed to get interrupt, ret: 0x%X txrx_flag 0x%X\n",
+				ret, txrx_flag);
 			spin_unlock_irqrestore(&soft_uart->port[port->line].lock, flags);
 			return IRQ_NONE;
 		}
@@ -288,7 +286,7 @@ static void pru_suart_stop_rx(struct uart_port *port)
 
 static void pru_suart_enable_ms(struct uart_port *port)
 {
-	__suart_err("modem control timer not supported\n");
+	dev_err(port->dev, "modem control timer not supported\n");
 }
 
 static void pru_suart_start_tx(struct uart_port *port)
@@ -377,7 +375,7 @@ static void pru_suart_set_termios(struct uart_port *port,
 	if (SUART_SUCCESS !=
 	    pru_softuart_setdatabits(&soft_uart->suart_hdl[port->line], cval,
 				     cval))
-		__suart_err("failed to set data bits to: %d\n", cval);
+		dev_err(port->dev, "failed to set data bits to: %d\n", cval);
 
 /*
  * Ask the core to calculate the divisor for us.
@@ -397,7 +395,7 @@ static void pru_suart_set_termios(struct uart_port *port,
 	    pru_softuart_setbaud(&soft_uart->suart_hdl[port->line],
 				 SUART_DEFAULT_BAUD / baud,
 				 SUART_DEFAULT_BAUD / baud))
-		__suart_err("failed to set baud to: %d\n", baud);
+		dev_err(port->dev, "failed to set baud to: %d\n", baud);
 
 /*
  * update port->read_config_mask and port->ignore_config_mask
@@ -597,10 +595,12 @@ static int pru_suart_request_port(struct uart_port *port)
 
 	/* set fifo timeout */
 	if (SUART_FIFO_TIMEOUT_MIN > suart_timeout){
-		__suart_err("fifo timeout less than %d ms not supported\n", SUART_FIFO_TIMEOUT_MIN);
+		dev_err(port->dev, "fifo timeout less than %d ms not supported\n",
+			SUART_FIFO_TIMEOUT_MIN);
 		suart_timeout = SUART_FIFO_TIMEOUT_MIN;
 	} else if (SUART_FIFO_TIMEOUT_MAX < suart_timeout){
-		__suart_err("fifo timeout more than %d ms not supported\n", SUART_FIFO_TIMEOUT_MAX);
+		dev_err(port->dev, "fifo timeout more than %d ms not supported\n",
+			SUART_FIFO_TIMEOUT_MAX);
 		suart_timeout = SUART_FIFO_TIMEOUT_MAX;
 	}
 
