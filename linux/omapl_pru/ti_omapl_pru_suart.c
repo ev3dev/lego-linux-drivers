@@ -698,22 +698,25 @@ static void pru_suart_config_port(struct uart_port *port, int flags)
 static int pru_suart_verify_port(struct uart_port *port,
 				 struct serial_struct *ser)
 {
-	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
-	int ret = 0;
-
 	if (ser->type != PORT_UNKNOWN && ser->type != OMAPL_PRU_SUART)
-		ret = -EINVAL;
-	if (soft_uart->port[port->line].irq != ser->irq)
-		ret = -EINVAL;
+		return -EINVAL;
+
+	if (ser->irq != port->irq )
+		return -EINVAL;
+
 	if (ser->io_type != UPIO_MEM)
-		ret = -EINVAL;
-	if (soft_uart->port[port->line].uartclk / 16 != ser->baud_base)
-		ret = -EINVAL;
-	if ((void *)soft_uart->port[port->line].mapbase != ser->iomem_base)
-		ret = -EINVAL;
-	if (soft_uart->port[port->line].iobase != ser->port)
-		ret = -EINVAL;
-	return ret;
+		return -EINVAL;
+
+	if (ser->baud_base != port->uartclk / 16)
+		return -EINVAL;
+
+	if (ser->iomem_base != (void *)port->mapbase)
+		return -EINVAL;
+
+	if (ser->port != port->iobase)
+		return -EINVAL;
+
+	return 0;
 }
 
 static struct uart_ops pru_suart_ops = {
