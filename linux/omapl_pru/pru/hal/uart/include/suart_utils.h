@@ -77,11 +77,6 @@
 				       unsigned int oversampling,
 				       arm_pru_iomap * pru_arm_iomap);
 
-	extern short suart_asp_baud_set(unsigned int txBaudValue,
-					unsigned int rxBaudValue,
-					unsigned int oversampling,
-					arm_pru_iomap * pru_arm_iomap);
-
 	extern short suart_asp_serializer_deactivate (unsigned short u16srNum,
 			 arm_pru_iomap * pru_arm_iomap);
 

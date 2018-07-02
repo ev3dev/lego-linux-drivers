@@ -52,7 +52,7 @@ static short suart_mcasp_rx_baud_set(unsigned int rxBaudValue,
  *		AUXCLK = 24MHz
  */
 
-unsigned int lt_tx_baud_rate[][SUART_TRX_DIV_CONF_SZ] = {
+static unsigned int lt_tx_baud_rate[][SUART_TRX_DIV_CONF_SZ] = {
 	/*BaudRate,     Divisor, CLKXDIV, HCLKXDIV */
 	{300, 80000, 24, 3200},
 	{600, 40000, 15, 2500},
@@ -81,7 +81,7 @@ unsigned int lt_tx_baud_rate[][SUART_TRX_DIV_CONF_SZ] = {
  * Here
  *		AUXCLK = 24MHz
  */
-unsigned int lt_rx_8x_baud_rate[][SUART_TRX_DIV_CONF_SZ] = {
+static unsigned int lt_rx_8x_baud_rate[][SUART_TRX_DIV_CONF_SZ] = {
 /*BaudRate, Divisor, CLKXDIV, HCLKXDIV */
 	{300, 10000, 4, 2000},
 	{600, 5000, 1, 2500},
@@ -110,7 +110,7 @@ unsigned int lt_rx_8x_baud_rate[][SUART_TRX_DIV_CONF_SZ] = {
  * Here
  *		AUXCLK = 24MHz
  */
-unsigned int lt_rx_16x_baud_rate[][SUART_TRX_DIV_CONF_SZ] = {
+static unsigned int lt_rx_16x_baud_rate[][SUART_TRX_DIV_CONF_SZ] = {
 /*BaudRate, Divisor, CLKXDIV, HCLKXDIV */
 	{300, 5000, 1, 2500},
 	{600, 2500, 0, 2500},
@@ -260,8 +260,8 @@ void suart_mcasp_tx_serialzier_set(unsigned int serializerNum,
 /*
  * mcasp TX buard rate setting routine 
  */
-short suart_mcasp_tx_baud_set(unsigned int txBaudValue,
-			      arm_pru_iomap * pru_arm_iomap)
+static short suart_mcasp_tx_baud_set(unsigned int txBaudValue,
+				     arm_pru_iomap * pru_arm_iomap)
 {
 	unsigned int clkDivVal;
 	unsigned int loopCnt;
@@ -295,9 +295,9 @@ short suart_mcasp_tx_baud_set(unsigned int txBaudValue,
 /*
  * mcasp RX buard rate setting routine 
  */
-short suart_mcasp_rx_baud_set(unsigned int rxBaudValue,
-			      unsigned int oversampling,
-			      arm_pru_iomap * pru_arm_iomap)
+static short suart_mcasp_rx_baud_set(unsigned int rxBaudValue,
+				     unsigned int oversampling,
+				     arm_pru_iomap * pru_arm_iomap)
 {
 	unsigned int clkDivVal;
 	unsigned int loopCnt;
@@ -362,24 +362,6 @@ short suart_mcasp_rx_baud_set(unsigned int rxBaudValue,
 	if (foundVal != SUART_TRUE) {
 		return SUART_INVALID_RX_BAUD;
 	}
-
-	return (status);
-
-}
-
-/*
- * mcasp buard rate setting routine 
- */
-short suart_asp_baud_set(unsigned int txBaudValue,
-			 unsigned int rxBaudValue,
-			 unsigned int oversampling,
-			 arm_pru_iomap * pru_arm_iomap)
-{
-	short status = SUART_SUCCESS;
-
-	status = suart_mcasp_tx_baud_set(txBaudValue, pru_arm_iomap);
-	status =
-	    suart_mcasp_rx_baud_set(rxBaudValue, oversampling, pru_arm_iomap);
 
 	return (status);
 
