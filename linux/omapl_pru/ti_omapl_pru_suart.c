@@ -569,11 +569,10 @@ static const char *pru_suart_type(struct uart_port *port)
 static void pru_suart_release_port(struct uart_port *port)
 {
 	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
-	struct platform_device *pdev = to_platform_device(port->dev);
 
-	if (0 != pru_softuart_close(&soft_uart->suart_hdl[port->line])) {
-		dev_err(&pdev->dev, "failed to close suart\n");
-	}
+	if (0 != pru_softuart_close(&soft_uart->suart_hdl[port->line]))
+		dev_err(port->dev, "failed to close suart\n");
+
 	return;
 }
 
@@ -592,7 +591,6 @@ static void pru_suart_release_port(struct uart_port *port)
 static int pru_suart_request_port(struct uart_port *port)
 {
 	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
-	struct platform_device *pdev = to_platform_device(port->dev);
 	suart_config pru_suart_config;
 	u32 timeout = 0;
 	u32 err = 0;
@@ -602,7 +600,7 @@ static int pru_suart_request_port(struct uart_port *port)
 	}
 	err = pru_softuart_open(&soft_uart->suart_hdl[port->line]);
 	if (PRU_SUART_SUCCESS != err) {
-		dev_err(&pdev->dev, "failed to open suart: %d\n", err);
+		dev_err(port->dev, "failed to open suart: %d\n", err);
 		err = -ENODEV;
 		goto exit;
 	}
@@ -658,7 +656,7 @@ static int pru_suart_request_port(struct uart_port *port)
 	if (PRU_SUART_SUCCESS !=
 	    pru_softuart_setconfig(&soft_uart->suart_hdl[port->line],
 				   &pru_suart_config)) {
-		dev_err(&pdev->dev,
+		dev_err(port->dev,
 			"pru_softuart_setconfig: failed to set config: %X\n",
 			err);
 	}
