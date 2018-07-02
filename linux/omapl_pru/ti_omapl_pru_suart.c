@@ -460,57 +460,51 @@ static void pru_suart_set_termios(struct uart_port *port,
 static int pru_suart_startup(struct uart_port *port)
 {
 	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
-	int retval;
+	suart_struct_handle *hdl = &soft_uart->suart_hdl[port->line];
+	int err;
 
 	/*
 	 * Disable interrupts from this port
 	 */
-	suart_intr_clrmask(soft_uart->suart_hdl[port->line].uartNum,
-			   PRU_TX_INTR, CHN_TXRX_IE_MASK_CMPLT);
-	suart_intr_clrmask(soft_uart->suart_hdl[port->line].uartNum,
-			   PRU_RX_INTR, CHN_TXRX_IE_MASK_BI
+	suart_intr_clrmask(hdl->uartNum, PRU_TX_INTR, CHN_TXRX_IE_MASK_CMPLT);
+	suart_intr_clrmask(hdl->uartNum, PRU_RX_INTR, CHN_TXRX_IE_MASK_BI
 			   | CHN_TXRX_IE_MASK_FE | CHN_TXRX_IE_MASK_CMPLT
 			   | CHN_TXRX_IE_MASK_TIMEOUT);
 
-	retval = request_irq(port->irq, omapl_pru_suart_interrupt,
-			     port->irqflags, "suart_irq", port);
-	if (retval) {
+	err = request_irq(port->irq, omapl_pru_suart_interrupt, port->irqflags,
+			  "suart_irq", port);
+	if (err) {
 		free_irq(port->irq, port);	/* should we free this if err */
-		goto out;
+		return err;
 	}
+
 	/*
 	 * enable interrupts from this port
 	 */
-	suart_intr_setmask(soft_uart->suart_hdl[port->line].uartNum,
-					PRU_RX_INTR, SUART_GBL_INTR_ERR_MASK);
+	suart_intr_setmask(hdl->uartNum, PRU_RX_INTR, SUART_GBL_INTR_ERR_MASK);
 
-	suart_intr_setmask(soft_uart->suart_hdl[port->line].uartNum,
-	                   PRU_RX_INTR, CHN_TXRX_IE_MASK_CMPLT | CHN_TXRX_IE_MASK_TIMEOUT);
+	suart_intr_setmask(hdl->uartNum, PRU_RX_INTR,
+			 CHN_TXRX_IE_MASK_CMPLT | CHN_TXRX_IE_MASK_TIMEOUT);
 
-	suart_intr_setmask(soft_uart->suart_hdl[port->line].uartNum,
-		   PRU_TX_INTR, CHN_TXRX_IE_MASK_CMPLT);
+	suart_intr_setmask(hdl->uartNum, PRU_TX_INTR, CHN_TXRX_IE_MASK_CMPLT);
 
-	suart_intr_setmask(soft_uart->suart_hdl[port->line].uartNum,
-		   PRU_RX_INTR, CHN_RX_IE_MASK_OVRN);
+	suart_intr_setmask(hdl->uartNum, PRU_RX_INTR, CHN_RX_IE_MASK_OVRN);
 
 	if ((suart_get_duplex(soft_uart, port->line) & ePRU_SUART_HALF_TX)
 	    == ePRU_SUART_HALF_TX) {
-		suart_pru_to_host_intr_enable(soft_uart->suart_hdl[port->line].uartNum,
-					      PRU_TX_INTR, true);
+		suart_pru_to_host_intr_enable(hdl->uartNum, PRU_TX_INTR, true);
 	}
 	/* Seed RX if port is half-rx or full-duplex */
 	if ((suart_get_duplex(soft_uart, port->line) & ePRU_SUART_HALF_RX)
 	    == ePRU_SUART_HALF_RX) {
-		suart_pru_to_host_intr_enable(soft_uart->suart_hdl[port->line].uartNum,
-					      PRU_RX_INTR , true);
-		pru_softuart_read(&soft_uart->suart_hdl[port->line],
+		suart_pru_to_host_intr_enable(hdl->uartNum, PRU_RX_INTR , true);
+		pru_softuart_read(hdl,
 				  (unsigned int *)
 				  &soft_uart->suart_dma_addr[port->line].
 				  dma_phys_addr_rx, SUART_FIFO_LEN);
 	}
 
-out:
-	return retval;
+	return 0;
 }
 
 /*
