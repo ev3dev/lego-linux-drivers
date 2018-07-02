@@ -28,7 +28,6 @@
 #include "pru.h"
 
 #include "csl/soc_OMAPL138.h"
-#include "csl/cslr_dspintc.h"
 #include "csl/cslr_mcasp.h"
 
 #define SUART_TRX_DIV_CONF_SZ	4
