@@ -88,6 +88,11 @@ struct omapl_pru_suart {
 	u32 tx_loadsz;
 };
 
+static inline struct omapl_pru_suart *to_pru_suart(struct uart_port *port)
+{
+	return container_of(port, struct omapl_pru_suart, port[port->line]);
+}
+
 static u32 suart_get_duplex(struct omapl_pru_suart *soft_uart, u32 uart_no)
 {
 	return (soft_uart->suart_hdl[uart_no].uartType);
@@ -113,8 +118,7 @@ static inline void __stop_tx(struct omapl_pru_suart *soft_uart, u32 uart_no)
 
 static void pru_suart_stop_tx(struct uart_port *port)
 {
-	struct omapl_pru_suart *soft_uart =
-	    container_of(port, struct omapl_pru_suart, port[port->line]);
+	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
 
 	__stop_tx(soft_uart, port->line);
 }
@@ -234,8 +238,7 @@ static void omapl_pru_rx_chars(struct omapl_pru_suart *soft_uart, u32 uart_no)
 static irqreturn_t omapl_pru_suart_interrupt(int irq, void *dev_id)
 {
 	struct uart_port *port = dev_id;
-	struct omapl_pru_suart *soft_uart =
-		container_of(port, struct omapl_pru_suart, port[port->line]);
+	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
 	u16 txrx_flag;
 	u32 ret;
 	unsigned long flags = 0;
@@ -275,8 +278,7 @@ static irqreturn_t omapl_pru_suart_interrupt(int irq, void *dev_id)
 
 static void pru_suart_stop_rx(struct uart_port *port)
 {
-	struct omapl_pru_suart *soft_uart =
-	    container_of(port, struct omapl_pru_suart, port[port->line]);
+	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
 	/* disable rx interrupt */
 	suart_intr_clrmask(soft_uart->suart_hdl[port->line].uartNum,
 	                   PRU_RX_INTR, CHN_TXRX_IE_MASK_BI
@@ -291,8 +293,7 @@ static void pru_suart_enable_ms(struct uart_port *port)
 
 static void pru_suart_start_tx(struct uart_port *port)
 {
-	struct omapl_pru_suart *soft_uart =
-		container_of(port, struct omapl_pru_suart, port[port->line]);
+	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
 	/* unmask the tx interrupts */
 
 	suart_intr_setmask(soft_uart->suart_hdl[port->line].uartNum,
@@ -302,8 +303,7 @@ static void pru_suart_start_tx(struct uart_port *port)
 
 static unsigned int pru_suart_tx_empty(struct uart_port *port)
 {
-	struct omapl_pru_suart *soft_uart =
-		container_of(port, struct omapl_pru_suart, port[port->line]);
+	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
 
 	return(pru_softuart_getTxStatus(&soft_uart->suart_hdl[port->line])
 		& CHN_TXRX_STATUS_RDY) ? 0 : TIOCSER_TEMT;
@@ -320,8 +320,7 @@ static void pru_suart_set_mctrl(struct uart_port *port, unsigned int mctrl)
 
 static void pru_suart_break_ctl(struct uart_port *port, int break_state)
 {
-	struct omapl_pru_suart *soft_uart =
-		container_of(port, struct omapl_pru_suart, port[port->line]);
+	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
 	unsigned long flags = 0;
 
 	spin_lock_irqsave(&port->lock, flags);
@@ -340,8 +339,7 @@ static void pru_suart_set_termios(struct uart_port *port,
 				  struct ktermios *termios,
 				  struct ktermios *old)
 {
-	struct omapl_pru_suart *soft_uart =
-		container_of(port, struct omapl_pru_suart, port[port->line]);
+	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
 	unsigned char cval = 0;
 	unsigned long flags = 0;
 	unsigned int baud = 0;
@@ -461,8 +459,7 @@ static void pru_suart_set_termios(struct uart_port *port,
  */
 static int pru_suart_startup(struct uart_port *port)
 {
-	struct omapl_pru_suart *soft_uart =
-		container_of(port, struct omapl_pru_suart, port[port->line]);
+	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
 	int retval;
 
 	/*
@@ -532,8 +529,7 @@ out:
  */
 static void pru_suart_shutdown(struct uart_port *port)
 {
-	struct omapl_pru_suart *soft_uart =
-		container_of(port, struct omapl_pru_suart, port[port->line]);
+	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
 
 	/*
 	 * Disable interrupts from this port
@@ -572,8 +568,7 @@ static const char *pru_suart_type(struct uart_port *port)
  */
 static void pru_suart_release_port(struct uart_port *port)
 {
-	struct omapl_pru_suart *soft_uart =
-	    container_of(port, struct omapl_pru_suart, port[port->line]);
+	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
 	struct platform_device *pdev = to_platform_device(port->dev);
 
 	if (0 != pru_softuart_close(&soft_uart->suart_hdl[port->line])) {
@@ -596,8 +591,7 @@ static void pru_suart_release_port(struct uart_port *port)
  */
 static int pru_suart_request_port(struct uart_port *port)
 {
-	struct omapl_pru_suart *soft_uart =
-	    container_of(port, struct omapl_pru_suart, port[port->line]);
+	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
 	struct platform_device *pdev = to_platform_device(port->dev);
 	suart_config pru_suart_config;
 	u32 timeout = 0;
@@ -704,8 +698,7 @@ static void pru_suart_config_port(struct uart_port *port, int flags)
 static int pru_suart_verify_port(struct uart_port *port,
 				 struct serial_struct *ser)
 {
-	struct omapl_pru_suart *soft_uart =
-	    container_of(port, struct omapl_pru_suart, port[port->line]);
+	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
 	int ret = 0;
 
 	if (ser->type != PORT_UNKNOWN && ser->type != OMAPL_PRU_SUART)
