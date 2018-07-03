@@ -14,8 +14,9 @@
 extern "C" {
 #endif
 
+#include <linux/types.h>
+
 #include <csl/cslr.h>
-#include "tistdtypes.h"
 
 /* Minimum unit = 1 byte */
 
@@ -23,81 +24,81 @@ extern "C" {
 * Register Overlay Structure
 \**************************************************************************/
 	typedef struct {
-		volatile Uint32 CONTROL;
-		volatile Uint32 STATUS;
-		volatile Uint32 WAKEUP;
-		volatile Uint32 CYCLECNT;
-		volatile Uint32 STALLCNT;
-		volatile Uint8 RSVD0[12];
-		volatile Uint32 CONTABBLKIDX0;
-		volatile Uint32 CONTABBLKIDX1;
-		volatile Uint32 CONTABPROPTR0;
-		volatile Uint32 CONTABPROPTR1;
-		volatile Uint8 RSVD1[976];
-		volatile Uint32 INTGPR0;
-		volatile Uint32 INTGPR1;
-		volatile Uint32 INTGPR2;
-		volatile Uint32 INTGPR3;
-		volatile Uint32 INTGPR4;
-		volatile Uint32 INTGPR5;
-		volatile Uint32 INTGPR6;
-		volatile Uint32 INTGPR7;
-		volatile Uint32 INTGPR8;
-		volatile Uint32 INTGPR9;
-		volatile Uint32 INTGPR10;
-		volatile Uint32 INTGPR11;
-		volatile Uint32 INTGPR12;
-		volatile Uint32 INTGPR13;
-		volatile Uint32 INTGPR14;
-		volatile Uint32 INTGPR15;
-		volatile Uint32 INTGPR16;
-		volatile Uint32 INTGPR17;
-		volatile Uint32 INTGPR18;
-		volatile Uint32 INTGPR19;
-		volatile Uint32 INTGPR20;
-		volatile Uint32 INTGPR21;
-		volatile Uint32 INTGPR22;
-		volatile Uint32 INTGPR23;
-		volatile Uint32 INTGPR24;
-		volatile Uint32 INTGPR25;
-		volatile Uint32 INTGPR26;
-		volatile Uint32 INTGPR27;
-		volatile Uint32 INTGPR28;
-		volatile Uint32 INTGPR29;
-		volatile Uint32 INTGPR30;
-		volatile Uint32 INTGPR31;
-		volatile Uint32 INTCTER0;
-		volatile Uint32 INTCTER1;
-		volatile Uint32 INTCTER2;
-		volatile Uint32 INTCTER3;
-		volatile Uint32 INTCTER4;
-		volatile Uint32 INTCTER5;
-		volatile Uint32 INTCTER6;
-		volatile Uint32 INTCTER7;
-		volatile Uint32 INTCTER8;
-		volatile Uint32 INTCTER9;
-		volatile Uint32 INTCTER10;
-		volatile Uint32 INTCTER11;
-		volatile Uint32 INTCTER12;
-		volatile Uint32 INTCTER13;
-		volatile Uint32 INTCTER14;
-		volatile Uint32 INTCTER15;
-		volatile Uint32 INTCTER16;
-		volatile Uint32 INTCTER17;
-		volatile Uint32 INTCTER18;
-		volatile Uint32 INTCTER19;
-		volatile Uint32 INTCTER20;
-		volatile Uint32 INTCTER21;
-		volatile Uint32 INTCTER22;
-		volatile Uint32 INTCTER23;
-		volatile Uint32 INTCTER24;
-		volatile Uint32 INTCTER25;
-		volatile Uint32 INTCTER26;
-		volatile Uint32 INTCTER27;
-		volatile Uint32 INTCTER28;
-		volatile Uint32 INTCTER29;
-		volatile Uint32 INTCTER30;
-		volatile Uint32 INTCTER31;
+		volatile u32 CONTROL;
+		volatile u32 STATUS;
+		volatile u32 WAKEUP;
+		volatile u32 CYCLECNT;
+		volatile u32 STALLCNT;
+		volatile u8 RSVD0[12];
+		volatile u32 CONTABBLKIDX0;
+		volatile u32 CONTABBLKIDX1;
+		volatile u32 CONTABPROPTR0;
+		volatile u32 CONTABPROPTR1;
+		volatile u8 RSVD1[976];
+		volatile u32 INTGPR0;
+		volatile u32 INTGPR1;
+		volatile u32 INTGPR2;
+		volatile u32 INTGPR3;
+		volatile u32 INTGPR4;
+		volatile u32 INTGPR5;
+		volatile u32 INTGPR6;
+		volatile u32 INTGPR7;
+		volatile u32 INTGPR8;
+		volatile u32 INTGPR9;
+		volatile u32 INTGPR10;
+		volatile u32 INTGPR11;
+		volatile u32 INTGPR12;
+		volatile u32 INTGPR13;
+		volatile u32 INTGPR14;
+		volatile u32 INTGPR15;
+		volatile u32 INTGPR16;
+		volatile u32 INTGPR17;
+		volatile u32 INTGPR18;
+		volatile u32 INTGPR19;
+		volatile u32 INTGPR20;
+		volatile u32 INTGPR21;
+		volatile u32 INTGPR22;
+		volatile u32 INTGPR23;
+		volatile u32 INTGPR24;
+		volatile u32 INTGPR25;
+		volatile u32 INTGPR26;
+		volatile u32 INTGPR27;
+		volatile u32 INTGPR28;
+		volatile u32 INTGPR29;
+		volatile u32 INTGPR30;
+		volatile u32 INTGPR31;
+		volatile u32 INTCTER0;
+		volatile u32 INTCTER1;
+		volatile u32 INTCTER2;
+		volatile u32 INTCTER3;
+		volatile u32 INTCTER4;
+		volatile u32 INTCTER5;
+		volatile u32 INTCTER6;
+		volatile u32 INTCTER7;
+		volatile u32 INTCTER8;
+		volatile u32 INTCTER9;
+		volatile u32 INTCTER10;
+		volatile u32 INTCTER11;
+		volatile u32 INTCTER12;
+		volatile u32 INTCTER13;
+		volatile u32 INTCTER14;
+		volatile u32 INTCTER15;
+		volatile u32 INTCTER16;
+		volatile u32 INTCTER17;
+		volatile u32 INTCTER18;
+		volatile u32 INTCTER19;
+		volatile u32 INTCTER20;
+		volatile u32 INTCTER21;
+		volatile u32 INTCTER22;
+		volatile u32 INTCTER23;
+		volatile u32 INTCTER24;
+		volatile u32 INTCTER25;
+		volatile u32 INTCTER26;
+		volatile u32 INTCTER27;
+		volatile u32 INTCTER28;
+		volatile u32 INTCTER29;
+		volatile u32 INTCTER30;
+		volatile u32 INTCTER31;
 	} CSL_PrucoreRegs;
 
 /**************************************************************************\

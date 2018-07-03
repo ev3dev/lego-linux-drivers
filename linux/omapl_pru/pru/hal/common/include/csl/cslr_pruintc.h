@@ -14,9 +14,9 @@
 extern "C" {
 #endif
 
-#include <csl/cslr.h>
-#include "tistdtypes.h"
+#include <linux/types.h>
 
+#include <csl/cslr.h>
 
 /* Minimum unit = 1 byte */
 
@@ -24,84 +24,84 @@ extern "C" {
 * Register Overlay Structure
 \**************************************************************************/
 typedef struct  {
-    volatile Uint32 REVID;
-    volatile Uint32 CONTROL;
-    volatile Uint8 RSVD0[8];
-    volatile Uint32 GLBLEN;
-    volatile Uint8 RSVD1[8];
-    volatile Uint32 GLBLNSTLVL;
-    volatile Uint32 STATIDXSET;
-    volatile Uint32 STATIDXCLR;
-    volatile Uint32 ENIDXSET;
-    volatile Uint32 ENIDXCLR;
-    volatile Uint8 RSVD2[4];
-    volatile Uint32 HSTINTENIDX;
-    volatile Uint32 HSTINTENIDXCLR;
-    volatile Uint8 RSVD3[68];
-    volatile Uint32 GLBLPRIIDX;
-    volatile Uint8 RSVD4[380];
-    volatile Uint32 STATSETINT0;
-    volatile Uint32 STATSETINT1;
-    volatile Uint8 RSVD5[120];
-    volatile Uint32 STATCLRINT0;
-    volatile Uint32 STATCLRINT1;
-    volatile Uint8 RSVD6[120];
-    volatile Uint32 ENABLESET0;
-    volatile Uint32 ENABLESET1;
-    volatile Uint8 RSVD7[120];
-    volatile Uint32 ENABLECLR0;
-    volatile Uint32 ENABLECLR1;
-    volatile Uint8 RSVD8[120];
-    volatile Uint32 CHANMAP0;
-    volatile Uint32 CHANMAP1;
-    volatile Uint32 CHANMAP2;
-    volatile Uint32 CHANMAP3;
-    volatile Uint32 CHANMAP4;
-    volatile Uint32 CHANMAP5;
-    volatile Uint32 CHANMAP6;
-    volatile Uint32 CHANMAP7;
-    volatile Uint32 CHANMAP8;
-    volatile Uint32 CHANMAP9;
-    volatile Uint32 CHANMAP10;
-    volatile Uint32 CHANMAP11;
-    volatile Uint32 CHANMAP12;
-    volatile Uint32 CHANMAP13;
-    volatile Uint32 CHANMAP14;
-    volatile Uint32 CHANMAP15;
-    volatile Uint8 RSVD9[960];
-    volatile Uint32 HOSTMAP0;
-    volatile Uint32 HOSTMAP1;
-    volatile Uint32 HOSTMAP2;
-    volatile Uint8 RSVD10[244];
-    volatile Uint32 HSTINTPRIIDX0;
-    volatile Uint32 HSTINTPRIIDX1;
-    volatile Uint32 HSTINTPRIIDX2;
-    volatile Uint32 HSTINTPRIIDX3;
-    volatile Uint32 HSTINTPRIIDX4;
-    volatile Uint32 HSTINTPRIIDX5;
-    volatile Uint32 HSTINTPRIIDX6;
-    volatile Uint32 HSTINTPRIIDX7;
-    volatile Uint32 HSTINTPRIIDX8;
-    volatile Uint32 HSTINTPRIIDX9;
-    volatile Uint8 RSVD11[984];
-    volatile Uint32 POLARITY0;
-    volatile Uint32 POLARITY1;
-    volatile Uint8 RSVD12[120];
-    volatile Uint32 TYPE0;
-    volatile Uint32 TYPE1;
-    volatile Uint8 RSVD13[888];
-    volatile Uint32 HSTINTNSTLVL0;
-    volatile Uint32 HSTINTNSTLVL1;
-    volatile Uint32 HSTINTNSTLVL2;
-    volatile Uint32 HSTINTNSTLVL3;
-    volatile Uint32 HSTINTNSTLVL4;
-    volatile Uint32 HSTINTNSTLVL5;
-    volatile Uint32 HSTINTNSTLVL6;
-    volatile Uint32 HSTINTNSTLVL7;
-    volatile Uint32 HSTINTNSTLVL8;
-    volatile Uint32 HSTINTNSTLVL9;
-    volatile Uint8 RSVD14[984];
-    volatile Uint32 HSTINTEN;
+    volatile u32 REVID;
+    volatile u32 CONTROL;
+    volatile u8 RSVD0[8];
+    volatile u32 GLBLEN;
+    volatile u8 RSVD1[8];
+    volatile u32 GLBLNSTLVL;
+    volatile u32 STATIDXSET;
+    volatile u32 STATIDXCLR;
+    volatile u32 ENIDXSET;
+    volatile u32 ENIDXCLR;
+    volatile u8 RSVD2[4];
+    volatile u32 HSTINTENIDX;
+    volatile u32 HSTINTENIDXCLR;
+    volatile u8 RSVD3[68];
+    volatile u32 GLBLPRIIDX;
+    volatile u8 RSVD4[380];
+    volatile u32 STATSETINT0;
+    volatile u32 STATSETINT1;
+    volatile u8 RSVD5[120];
+    volatile u32 STATCLRINT0;
+    volatile u32 STATCLRINT1;
+    volatile u8 RSVD6[120];
+    volatile u32 ENABLESET0;
+    volatile u32 ENABLESET1;
+    volatile u8 RSVD7[120];
+    volatile u32 ENABLECLR0;
+    volatile u32 ENABLECLR1;
+    volatile u8 RSVD8[120];
+    volatile u32 CHANMAP0;
+    volatile u32 CHANMAP1;
+    volatile u32 CHANMAP2;
+    volatile u32 CHANMAP3;
+    volatile u32 CHANMAP4;
+    volatile u32 CHANMAP5;
+    volatile u32 CHANMAP6;
+    volatile u32 CHANMAP7;
+    volatile u32 CHANMAP8;
+    volatile u32 CHANMAP9;
+    volatile u32 CHANMAP10;
+    volatile u32 CHANMAP11;
+    volatile u32 CHANMAP12;
+    volatile u32 CHANMAP13;
+    volatile u32 CHANMAP14;
+    volatile u32 CHANMAP15;
+    volatile u8 RSVD9[960];
+    volatile u32 HOSTMAP0;
+    volatile u32 HOSTMAP1;
+    volatile u32 HOSTMAP2;
+    volatile u8 RSVD10[244];
+    volatile u32 HSTINTPRIIDX0;
+    volatile u32 HSTINTPRIIDX1;
+    volatile u32 HSTINTPRIIDX2;
+    volatile u32 HSTINTPRIIDX3;
+    volatile u32 HSTINTPRIIDX4;
+    volatile u32 HSTINTPRIIDX5;
+    volatile u32 HSTINTPRIIDX6;
+    volatile u32 HSTINTPRIIDX7;
+    volatile u32 HSTINTPRIIDX8;
+    volatile u32 HSTINTPRIIDX9;
+    volatile u8 RSVD11[984];
+    volatile u32 POLARITY0;
+    volatile u32 POLARITY1;
+    volatile u8 RSVD12[120];
+    volatile u32 TYPE0;
+    volatile u32 TYPE1;
+    volatile u8 RSVD13[888];
+    volatile u32 HSTINTNSTLVL0;
+    volatile u32 HSTINTNSTLVL1;
+    volatile u32 HSTINTNSTLVL2;
+    volatile u32 HSTINTNSTLVL3;
+    volatile u32 HSTINTNSTLVL4;
+    volatile u32 HSTINTNSTLVL5;
+    volatile u32 HSTINTNSTLVL6;
+    volatile u32 HSTINTNSTLVL7;
+    volatile u32 HSTINTNSTLVL8;
+    volatile u32 HSTINTNSTLVL9;
+    volatile u8 RSVD14[984];
+    volatile u32 HSTINTEN;
 } CSL_PruintcRegs;
 
 

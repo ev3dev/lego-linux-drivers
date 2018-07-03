@@ -23,7 +23,8 @@
  *====================
  */
 #include<linux/bitops.h>
-#include "tistdtypes.h"
+#include <linux/types.h>
+
 #include "pru.h"
 /*
  *====================
@@ -474,13 +475,13 @@ typedef struct {
 	
 	short pru_softuart_clrRxFifo(suart_handle hUart);
 
-	short pru_softuart_read_data (suart_handle hUart, Uint8 * pDataBuffer, 
-		                      Int32 s32MaxLen, Uint32 * pu32DataRead);
+	short pru_softuart_read_data (suart_handle hUart, u8 *pDataBuffer, 
+		                      s32 s32MaxLen, u32 *pu32DataRead);
 
 	short pru_softuart_stopReceive (suart_handle hUart);
 	
 	int suart_pru_to_host_intr_enable (unsigned short uartNum, 
-				           unsigned int txrxmode, int s32Flag);
-	void pru_set_fifo_timeout(Uint32 timeout);
+				           unsigned int txrxmode, bool s32Flag);
+	void pru_set_fifo_timeout(u32 timeout);
 
 #endif /* _SUART_API_H_ */

@@ -7,7 +7,8 @@
 #ifndef _PRU_H_
 #define _PRU_H_
 
-#include "tistdtypes.h"
+#include <linux/types.h>
+
 #include "csl/cslr_prucore.h"
 
 #define PRU_NUM0		(0)
@@ -114,20 +115,14 @@ typedef struct arm_pru_iomap {
 * Global Function Declarations                             *
 ***********************************************************/
 
-extern __FAR__ Uint32 pru_enable(Uint8 pruNum,
-				 arm_pru_iomap * pru_arm_iomap);
-extern __FAR__ Uint32 pru_load(Uint8 pruNum, Uint32 * pruCode,
-				   Uint32 codeSizeInWords,
-				   arm_pru_iomap * pru_arm_iomap);
-extern __FAR__ Uint32 pru_run(Uint8 pruNum,
-				  arm_pru_iomap * pru_arm_iomap);
-extern __FAR__ Uint32 pru_disable(arm_pru_iomap * pru_arm_iomap);
+int pru_enable(u8 pruNum, arm_pru_iomap *pru_arm_iomap);
+int pru_load(u8 pruNum, u32 * pruCode, u32 codeSizeInWords, arm_pru_iomap *pru_arm_iomap);
+int pru_run(u8 pruNum, arm_pru_iomap *pru_arm_iomap);
+int pru_disable(arm_pru_iomap *pru_arm_iomap);
 
-short pru_ram_write_data(Uint32 u32offset, Uint8 * pu8datatowrite,
-			 Uint16 u16wordstowrite,
+short pru_ram_write_data(u32 u32offset, u8 * pu8datatowrite, u16 u16wordstowrite,
 			 arm_pru_iomap * pru_arm_iomap);
-short pru_ram_read_data(Uint32 u32offset, Uint8 * pu8datatoread,
-			Uint16 u16wordstoread,
+short pru_ram_read_data(u32 u32offset, u8 * pu8datatoread, u16 u16wordstoread,
 			arm_pru_iomap * pru_arm_iomap);
 short pru_ram_read_data_4byte(unsigned int u32offset,
 				  unsigned int *pu32datatoread,

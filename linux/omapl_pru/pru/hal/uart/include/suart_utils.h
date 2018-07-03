@@ -17,13 +17,6 @@
 #ifndef _SUART_UTILS_H_
 #define _SUART_UTILS_H_
 
-/*
- *====================
- * Includes
- *====================
- */
-#include "tistdtypes.h"
-
 /* ************ Serializers ***************** */
 #define PRU_SUART_SERIALIZER_0          (0u)
 /** Serializer */
