@@ -74,20 +74,6 @@ enum ti_pru_evtout {
 	NUM_TI_PRU_EVTOUT
 };
 
-struct ti_pru_mem_region {
-	off_t offset;
-	size_t size;
-};
-
-/**
- * ti_pru_shared_info - common init info for the PRUSS
- * @ram: shared RAM, if present
- * @intc: interrupt controller
- */
-struct ti_pru_shared_info {
-	struct ti_pru_mem_region ram;
-};
-
 /**
  * ti_pru_info - init info each individual PRU
  * @vq_arm_to_pru_event: The index of the PRU system event interrupt used
@@ -101,14 +87,11 @@ struct ti_pru_info {
 };
 
 struct ti_pru_device_info {
-	struct ti_pru_shared_info shared;
 	struct ti_pru_info pru[NUM_TI_PRU];
 };
 
 static const struct ti_pru_device_info ti_pru_devices[NUM_TI_PRU_TYPE] = {
 	[TI_PRU_TYPE_AM18XX] = {
-		.shared = {
-		},
 		.pru[TI_PRU0] = {
 			.vq_arm_to_pru_event = 32,
 			.vq_pru_to_arm_event = 33,
@@ -119,9 +102,6 @@ static const struct ti_pru_device_info ti_pru_devices[NUM_TI_PRU_TYPE] = {
 		},
 	},
 	[TI_PRU_TYPE_AM335X] = {
-		.shared = {
-			.ram =	{ .offset = 0x10000,	.size = SZ_12K,	},
-		},
 		.pru[TI_PRU0] = {
 			.vq_arm_to_pru_event = 16,
 			.vq_pru_to_arm_event = 17,
@@ -135,13 +115,11 @@ static const struct ti_pru_device_info ti_pru_devices[NUM_TI_PRU_TYPE] = {
 
 /**
  * ti_pru_shared_data - private platform driver data
- * @info: init info common to both PRU cores
  * @dev: the platform device
  * @intc: regmap of the interrupt controller
  * @pru: per-PRU core data
  */
 struct ti_pru_shared_data {
-	const struct ti_pru_shared_info *info;
 	struct device *dev;
 	struct regmap *intc;
 	struct rproc *pru[NUM_TI_PRU];
@@ -502,7 +480,6 @@ static int ti_pru_rproc_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, shared);
 
-	shared->info = &info->shared;
 	shared->dev = dev;
 
 	child = of_get_child_by_name(dev->of_node, "intc");
