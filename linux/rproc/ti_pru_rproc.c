@@ -90,20 +90,12 @@ struct ti_pru_shared_info {
 
 /**
  * ti_pru_info - init info each individual PRU
- * @ram: PRU RAM
- * @ctrl: PRU control/status registers
- * @dbg: PRU dbg registers
- * @inst: instruction RAM
  * @vq_arm_to_pru_event: The index of the PRU system event interrupt used
  *                       used by the ARM for kicking the PRU
  * @vq_pru_to_arm_event: The index of the PRU system event interrupt used
  *                       used by the PRU for kicking the ARM
  */
 struct ti_pru_info {
-	struct ti_pru_mem_region ram;
-	struct ti_pru_mem_region ctrl;
-	struct ti_pru_mem_region dbg;
-	struct ti_pru_mem_region inst;
 	int vq_arm_to_pru_event;
 	int vq_pru_to_arm_event;
 };
@@ -118,18 +110,10 @@ static const struct ti_pru_device_info ti_pru_devices[NUM_TI_PRU_TYPE] = {
 		.shared = {
 		},
 		.pru[TI_PRU0] = {
-			.ram =	{ .offset = 0x0000,	.size = SZ_512,	},
-			.ctrl =	{ .offset = 0x7000,	.size = SZ_1K,	},
-			.dbg =	{ .offset = 0x7400,	.size = SZ_1K,	},
-			.inst =	{ .offset = 0x8000,	.size = SZ_4K,	},
 			.vq_arm_to_pru_event = 32,
 			.vq_pru_to_arm_event = 33,
 		},
 		.pru[TI_PRU1] = {
-			.ram =	{ .offset = 0x2000,	.size = SZ_512,	},
-			.ctrl =	{ .offset = 0x7800,	.size = SZ_1K,	},
-			.dbg =	{ .offset = 0x7c00,	.size = SZ_1K,	},
-			.inst =	{ .offset = 0xc000,	.size = SZ_4K,	},
 			.vq_arm_to_pru_event = 34,
 			.vq_pru_to_arm_event = 35,
 		},
@@ -139,18 +123,10 @@ static const struct ti_pru_device_info ti_pru_devices[NUM_TI_PRU_TYPE] = {
 			.ram =	{ .offset = 0x10000,	.size = SZ_12K,	},
 		},
 		.pru[TI_PRU0] = {
-			.ram =	{ .offset = 0x00000,	.size = SZ_8K,	},
-			.ctrl =	{ .offset = 0x22000,	.size = SZ_1K,	},
-			.dbg =	{ .offset = 0x22400,	.size = SZ_1K,	},
-			.inst =	{ .offset = 0x34000,	.size = SZ_8K,	},
 			.vq_arm_to_pru_event = 16,
 			.vq_pru_to_arm_event = 17,
 		},
 		.pru[TI_PRU1] = {
-			.ram =	{ .offset = 0x02000,	.size = SZ_8K,	},
-			.ctrl =	{ .offset = 0x24000,	.size = SZ_1K,	},
-			.dbg =	{ .offset = 0x24400,	.size = SZ_1K,	},
-			.inst =	{ .offset = 0x38000,	.size = SZ_8K,	},
 			.vq_arm_to_pru_event = 18,
 			.vq_pru_to_arm_event = 19,
 		},
@@ -161,14 +137,12 @@ static const struct ti_pru_device_info ti_pru_devices[NUM_TI_PRU_TYPE] = {
  * ti_pru_shared_data - private platform driver data
  * @info: init info common to both PRU cores
  * @dev: the platform device
- * @base: the mapped memory region of the PRUSS
  * @intc: regmap of the interrupt controller
  * @pru: per-PRU core data
  */
 struct ti_pru_shared_data {
 	const struct ti_pru_shared_info *info;
 	struct device *dev;
-	void __iomem *base;
 	struct regmap *intc;
 	struct rproc *pru[NUM_TI_PRU];
 };
@@ -178,12 +152,16 @@ struct ti_pru_shared_data {
  * @info: static init info
  * @shared: pointer to the shared data struct
  * @ctrl: regmap of the PRU control/status register
+ * @dram: the local PRU data RAM
+ * @iram: the local PRU instruction RAM
  * @vq_irq: interrupt used for rpmsg
  */
 struct ti_pru_data {
 	const struct ti_pru_info *info;
 	struct ti_pru_shared_data *shared;
 	struct regmap *ctrl;
+	void __iomem *dram;
+	void __iomem *iram;
 	int vq_irq;
 };
 
@@ -223,21 +201,14 @@ static void *ti_pru_rproc_da_to_va(struct rproc *rproc, u64 da, int len,
 				   int page)
 {
 	struct ti_pru_data *pru = rproc->priv;
-	struct ti_pru_shared_data *shared = pru->shared;
 
-	if (page == 0) {
-		if (da + len > pru->info->inst.size)
-			return NULL;
+	// TODO: to be safe, should check that len is within memory region
 
-		return shared->base + pru->info->inst.offset + da;
-	}
+	if (page == 0)
+		return pru->iram + da;
 
-	if (page == 1) {
-		if (da + len > pru->info->ram.size)
-			return NULL;
-
-		return shared->base + pru->info->ram.offset + da;
-	}
+	if (page == 1)
+		return pru->dram + da;
 
 	return NULL;
 }
@@ -304,7 +275,8 @@ static void ti_pru_free_rproc(void *data)
 	rproc_free(rproc);
 }
 
-static struct rproc *ti_pru_init_one_rproc(struct ti_pru_shared_data *shared,
+static struct rproc *ti_pru_init_one_rproc(struct device_node *np,
+					   struct ti_pru_shared_data *shared,
 					   const struct ti_pru_info *info,
 					   enum ti_pru id)
 {
@@ -314,7 +286,11 @@ static struct rproc *ti_pru_init_one_rproc(struct ti_pru_shared_data *shared,
 	char irq_name[16];
 	struct rproc *rproc;
 	struct ti_pru_data *pru;
+	void __iomem *ctrl;
 	int err;
+
+	if (!np)
+		return ERR_PTR(-ENODEV);
 
 	name = devm_kasprintf(dev, GFP_KERNEL, "pru%u", id);
 	if (!name)
@@ -328,10 +304,29 @@ static struct rproc *ti_pru_init_one_rproc(struct ti_pru_shared_data *shared,
 
 	/* don't auto-boot for now - bad firmware can lock up the system */
 	rproc->auto_boot = false;
+	rproc->dev.of_node = np;
 
 	pru = rproc->priv;
 	pru->info = info;
 	pru->shared = shared;
+
+	pru->dram = of_iomap(np, 0);
+	if (!pru->dram) {
+		dev_err(dev, "%s: could not get dram\n", name);
+		return ERR_PTR(-ENOMEM);
+	}
+
+	ctrl = of_iomap(np, 1);
+	if (!ctrl) {
+		dev_err(dev, "%s: could not get ctrl\n", name);
+		return ERR_PTR(-ENOMEM);
+	}
+
+	pru->iram = of_iomap(np, 3);
+	if (!pru->iram) {
+		dev_err(dev, "%s: could not get iram\n", name);
+		return ERR_PTR(-ENOMEM);
+	}
 
 	snprintf(irq_name, 16, "%s-vq", name);
 
@@ -349,8 +344,7 @@ static struct rproc *ti_pru_init_one_rproc(struct ti_pru_shared_data *shared,
 		return ERR_PTR(err);
 	}
 
-	pru->ctrl = devm_regmap_init_mmio(&rproc->dev,
-					  shared->base + info->ctrl.offset,
+	pru->ctrl = devm_regmap_init_mmio(&rproc->dev, ctrl,
 					  &ti_pru_ctrl_regmap_config);
 	if (IS_ERR(pru->ctrl)) {
 		dev_err(&rproc->dev, "failed to init ctrl regmap\n");
@@ -494,9 +488,8 @@ static int ti_pru_rproc_probe(struct platform_device *pdev)
 	const struct of_device_id *of_id;
 	const struct ti_pru_device_info *info;
 	struct ti_pru_shared_data *shared;
-	struct device_node *intc_node;
+	struct device_node *child;
 	void __iomem *intc_base;
-	struct resource *res;
 	int err;
 
 	of_id = of_match_device(ti_pru_rproc_of_match, dev);
@@ -512,16 +505,9 @@ static int ti_pru_rproc_probe(struct platform_device *pdev)
 	shared->info = &info->shared;
 	shared->dev = dev;
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	shared->base = devm_ioremap_resource(dev, res);
-	if (IS_ERR(shared->base)) {
-		dev_err(dev, "failed to ioremap resource\n");
-		return PTR_ERR(shared->base);
-	}
-
-	intc_node = of_get_child_by_name(dev->of_node, "intc");
-	if (IS_ERR(intc_node)) {
-	of_node_put(intc_node);
+	child = of_get_child_by_name(dev->of_node, "intc");
+	intc_base = of_iomap(child, 0);
+	of_node_put(child);
 	if (!intc_base)
 		return -ENOMEM;
 
@@ -532,13 +518,19 @@ static int ti_pru_rproc_probe(struct platform_device *pdev)
 		return PTR_ERR(shared->intc);
 	}
 
-	shared->pru[TI_PRU0] = ti_pru_init_one_rproc(shared, &info->pru[TI_PRU0],
+	child = of_get_child_by_name(dev->of_node, "pru0");
+	shared->pru[TI_PRU0] = ti_pru_init_one_rproc(child, shared,
+						     &info->pru[TI_PRU0],
 						     TI_PRU0);
+	of_node_put(child);
 	if (IS_ERR(shared->pru[TI_PRU0]))
 		return PTR_ERR(shared->pru[TI_PRU0]);
 
-	shared->pru[TI_PRU1] = ti_pru_init_one_rproc(shared, &info->pru[TI_PRU1],
+	child = of_get_child_by_name(dev->of_node, "pru1");
+	shared->pru[TI_PRU1] = ti_pru_init_one_rproc(child, shared,
+						     &info->pru[TI_PRU1],
 						     TI_PRU1);
+	of_node_put(child);
 	if (IS_ERR(shared->pru[TI_PRU1]))
 		return PTR_ERR(shared->pru[TI_PRU1]);
 
