@@ -199,6 +199,7 @@ static const struct rproc_ops ti_pru_rproc_ops = {
 };
 
 static struct regmap_config ti_pru_ctrl_regmap_config = {
+	.name = "ctrl",
 	.reg_bits = 32,
 	.val_bits = 32,
 	.reg_stride = 4,
@@ -206,6 +207,7 @@ static struct regmap_config ti_pru_ctrl_regmap_config = {
 };
 
 static struct regmap_config ti_pru_intc_regmap_config = {
+	.name = "intc",
 	.reg_bits = 32,
 	.val_bits = 32,
 	.reg_stride = 4,
