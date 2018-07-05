@@ -8,6 +8,7 @@
 #include <linux/bitops.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
+#include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
@@ -85,7 +86,6 @@ struct ti_pru_mem_region {
  */
 struct ti_pru_shared_info {
 	struct ti_pru_mem_region ram;
-	struct ti_pru_mem_region intc;
 };
 
 /**
@@ -116,7 +116,6 @@ struct ti_pru_device_info {
 static const struct ti_pru_device_info ti_pru_devices[NUM_TI_PRU_TYPE] = {
 	[TI_PRU_TYPE_AM18XX] = {
 		.shared = {
-			.intc =	{ .offset = 0x4000,	.size = SZ_12K,	},
 		},
 		.pru[TI_PRU0] = {
 			.ram =	{ .offset = 0x0000,	.size = SZ_512,	},
@@ -138,7 +137,6 @@ static const struct ti_pru_device_info ti_pru_devices[NUM_TI_PRU_TYPE] = {
 	[TI_PRU_TYPE_AM335X] = {
 		.shared = {
 			.ram =	{ .offset = 0x10000,	.size = SZ_12K,	},
-			.intc =	{ .offset = 0x20000,	.size = SZ_8K,	},
 		},
 		.pru[TI_PRU0] = {
 			.ram =	{ .offset = 0x00000,	.size = SZ_8K,	},
@@ -496,6 +494,8 @@ static int ti_pru_rproc_probe(struct platform_device *pdev)
 	const struct of_device_id *of_id;
 	const struct ti_pru_device_info *info;
 	struct ti_pru_shared_data *shared;
+	struct device_node *intc_node;
+	void __iomem *intc_base;
 	struct resource *res;
 	int err;
 
@@ -519,9 +519,14 @@ static int ti_pru_rproc_probe(struct platform_device *pdev)
 		return PTR_ERR(shared->base);
 	}
 
-	shared->intc = devm_regmap_init_mmio(dev,
-				shared->base + shared->info->intc.offset,
-				&ti_pru_intc_regmap_config);
+	intc_node = of_get_child_by_name(dev->of_node, "intc");
+	if (IS_ERR(intc_node)) {
+	of_node_put(intc_node);
+	if (!intc_base)
+		return -ENOMEM;
+
+	shared->intc = devm_regmap_init_mmio(dev, intc_base,
+					     &ti_pru_intc_regmap_config);
 	if (IS_ERR(shared->intc)) {
 		dev_err(dev, "failed to init intc regmap\n");
 		return PTR_ERR(shared->intc);
