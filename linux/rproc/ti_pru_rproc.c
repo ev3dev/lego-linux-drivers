@@ -8,18 +8,13 @@
 #include <linux/bitops.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
-#include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
-#include <linux/pm_runtime.h>
 #include <linux/remoteproc.h>
 #include <linux/regmap.h>
-#include <linux/sizes.h>
 #include <linux/types.h>
 
 #include "../../../remoteproc/remoteproc_internal.h"
-
-#define SZ_12K 0x3000
 
 /* control/status registers */
 #define TI_PRU_CS_CONTROL	0x0
@@ -27,7 +22,7 @@
 #define TI_PRU_CS_WAKEUP	0x8
 #define TI_PRU_CS_CYCLECNT	0xc
 
-/* control register bits */
+/* control register bits (for TI_PRU_CS_CONTROL) */
 #define TI_PRU_CONTROL_PCRESETVAL	GENMASK(31, 16)
 #define TI_PRU_CONTROL_RUNSTATE		BIT(15)
 #define TI_PRU_CONTROL_SINGLESTEP	BIT(8)
@@ -36,111 +31,23 @@
 #define TI_PRU_CONTROL_ENABLE		BIT(1)
 #define TI_PRU_CONTROL_SOFTRESET	BIT(0)
 
-/* status bits */
+/* status bits (for TI_PRU_CS_STATUS) */
 #define TI_PRU_STATUS_PCOUNTER		GENMASK(15, 0)
-
-/* interrupt contoller registers */
-#define TI_PRU_INTC_GLBLEN		0x10
-#define TI_PRU_INTC_STATIDXSET		0x20
-#define TI_PRU_INTC_STATIDXCLR		0x24
-#define TI_PRU_INTC_ENIDXSET		0x28
-#define TI_PRU_INTC_HSTINTENIDXSET	0x34
-#define TI_PRU_INTC_CHANMAP0		0x400
-#define TI_PRU_INTC_POLARITY0		0xd00
-#define TI_PRU_INTC_TYPE0		0xd80
-#define TI_PRU_INTC_HOSTMAP0		0x800
-
-enum ti_pru {
-	TI_PRU0,
-	TI_PRU1,
-	NUM_TI_PRU
-};
-
-enum ti_pru_type {
-	TI_PRU_TYPE_AM18XX,
-	TI_PRU_TYPE_AM335X,
-	NUM_TI_PRU_TYPE
-};
-
-enum ti_pru_evtout {
-	TI_PRU_EVTOUT0,
-	TI_PRU_EVTOUT1,
-	TI_PRU_EVTOUT2,
-	TI_PRU_EVTOUT3,
-	TI_PRU_EVTOUT4,
-	TI_PRU_EVTOUT5,
-	TI_PRU_EVTOUT6,
-	TI_PRU_EVTOUT7,
-	NUM_TI_PRU_EVTOUT
-};
-
-/**
- * ti_pru_info - init info each individual PRU
- * @vq_arm_to_pru_event: The index of the PRU system event interrupt used
- *                       used by the ARM for kicking the PRU
- * @vq_pru_to_arm_event: The index of the PRU system event interrupt used
- *                       used by the PRU for kicking the ARM
- */
-struct ti_pru_info {
-	int vq_arm_to_pru_event;
-	int vq_pru_to_arm_event;
-};
-
-struct ti_pru_device_info {
-	struct ti_pru_info pru[NUM_TI_PRU];
-};
-
-static const struct ti_pru_device_info ti_pru_devices[NUM_TI_PRU_TYPE] = {
-	[TI_PRU_TYPE_AM18XX] = {
-		.pru[TI_PRU0] = {
-			.vq_arm_to_pru_event = 32,
-			.vq_pru_to_arm_event = 33,
-		},
-		.pru[TI_PRU1] = {
-			.vq_arm_to_pru_event = 34,
-			.vq_pru_to_arm_event = 35,
-		},
-	},
-	[TI_PRU_TYPE_AM335X] = {
-		.pru[TI_PRU0] = {
-			.vq_arm_to_pru_event = 16,
-			.vq_pru_to_arm_event = 17,
-		},
-		.pru[TI_PRU1] = {
-			.vq_arm_to_pru_event = 18,
-			.vq_pru_to_arm_event = 19,
-		},
-	},
-};
-
-/**
- * ti_pru_shared_data - private platform driver data
- * @dev: the platform device
- * @intc: regmap of the interrupt controller
- * @pru: per-PRU core data
- */
-struct ti_pru_shared_data {
-	struct device *dev;
-	struct regmap *intc;
-	struct rproc *pru[NUM_TI_PRU];
-};
 
 /**
  * ti_pru_data - private data for each PRU core
- * @info: static init info
- * @shared: pointer to the shared data struct
  * @ctrl: regmap of the PRU control/status register
  * @dram: the local PRU data RAM
  * @iram: the local PRU instruction RAM
- * @vq_irq: interrupt used for rpmsg
+ * @vq_to_pru_irq: virtualqueue ARM to PRU system event
+ * @vq_from_pru_irq: virtualqueue PRU to ARM system event
  */
 struct ti_pru_data {
-	const struct ti_pru_info *info;
-	struct ti_pru_shared_data *shared;
 	struct regmap *ctrl;
 	void __iomem *dram;
 	void __iomem *iram;
-	int vq_irq;
+	int vq_to_pru_irq;
+	int vq_from_pru_irq;
 };
 
 static int ti_pru_rproc_start(struct rproc *rproc)
@@ -167,12 +74,8 @@ static int ti_pru_rproc_stop(struct rproc *rproc)
 static void ti_pru_rproc_kick(struct rproc *rproc, int vqid)
 {
 	struct ti_pru_data *pru = rproc->priv;
-	struct ti_pru_shared_data *shared = pru->shared;
-	u32 val;
 
-	val = pru->info->vq_arm_to_pru_event;
-
-	regmap_write(shared->intc, TI_PRU_INTC_STATIDXSET, val);
+	irq_set_irqchip_state(pru->vq_to_pru_irq, IRQCHIP_STATE_PENDING, true);
 }
 
 static void *ti_pru_rproc_da_to_va(struct rproc *rproc, u64 da, int len,
@@ -206,37 +109,11 @@ static struct regmap_config ti_pru_ctrl_regmap_config = {
 	.max_register = 0x2c,
 };
 
-static struct regmap_config ti_pru_intc_regmap_config = {
-	.name = "intc",
-	.reg_bits = 32,
-	.val_bits = 32,
-	.reg_stride = 4,
-	.max_register = 0x1500,
-};
-
 static const struct of_device_id ti_pru_rproc_of_match[] = {
-	{
-		.compatible = "ev3dev,da850-pru-rproc",
-		.data = &ti_pru_devices[TI_PRU_TYPE_AM18XX]
-	},
-	{
-		.compatible = "ev3dev,am3352-pru-rproc",
-		.data = &ti_pru_devices[TI_PRU_TYPE_AM335X]
-	},
+	{ .compatible = "ev3dev,da850-pru-rproc", },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, ti_pru_rproc_of_match);
-
-static irqreturn_t ti_pru_handle_vq_irq(int irq, void *p)
-{
-	struct rproc *rproc = p;
-	struct ti_pru_data *pru = rproc->priv;
-
-	regmap_write(pru->shared->intc, TI_PRU_INTC_STATIDXCLR,
-		     pru->info->vq_pru_to_arm_event);
-
-	return IRQ_WAKE_THREAD;
-}
 
 static irqreturn_t ti_pru_vq_irq_thread(int irq, void *p)
 {
@@ -255,301 +132,91 @@ static void ti_pru_free_rproc(void *data)
 	rproc_free(rproc);
 }
 
-static struct rproc *ti_pru_init_one_rproc(struct device_node *np,
-					   struct ti_pru_shared_data *shared,
-					   const struct ti_pru_info *info,
-					   enum ti_pru id)
-{
-	struct device *dev = shared->dev;
-	struct platform_device *pdev = to_platform_device(dev);
-	const char *name;
-	char irq_name[16];
-	struct rproc *rproc;
-	struct ti_pru_data *pru;
-	void __iomem *ctrl;
-	int err;
-
-	if (!np)
-		return ERR_PTR(-ENODEV);
-
-	name = devm_kasprintf(dev, GFP_KERNEL, "pru%u", id);
-	if (!name)
-		return ERR_PTR(-ENOMEM);
-
-	rproc = rproc_alloc(dev, name, &ti_pru_rproc_ops, NULL, sizeof(*pru));
-	if (!rproc)
-		return ERR_PTR(-ENOMEM);
-
-	devm_add_action(dev, ti_pru_free_rproc, rproc);
-
-	/* don't auto-boot for now - bad firmware can lock up the system */
-	rproc->auto_boot = false;
-	rproc->dev.of_node = np;
-
-	pru = rproc->priv;
-	pru->info = info;
-	pru->shared = shared;
-
-	pru->dram = of_iomap(np, 0);
-	if (!pru->dram) {
-		dev_err(dev, "%s: could not get dram\n", name);
-		return ERR_PTR(-ENOMEM);
-	}
-
-	ctrl = of_iomap(np, 1);
-	if (!ctrl) {
-		dev_err(dev, "%s: could not get ctrl\n", name);
-		return ERR_PTR(-ENOMEM);
-	}
-
-	pru->iram = of_iomap(np, 3);
-	if (!pru->iram) {
-		dev_err(dev, "%s: could not get iram\n", name);
-		return ERR_PTR(-ENOMEM);
-	}
-
-	snprintf(irq_name, 16, "%s-vq", name);
-
-	pru->vq_irq = platform_get_irq_byname(pdev, irq_name);
-	if (pru->vq_irq < 0) {
-		dev_err(&rproc->dev, "failed to get vq IRQ\n");
-		return ERR_PTR(pru->vq_irq);
-	}
-
-	err = devm_request_threaded_irq(&rproc->dev, pru->vq_irq,
-					ti_pru_handle_vq_irq,
-				 	ti_pru_vq_irq_thread, 0, name, rproc);
-	if (err < 0) {
-		dev_err(&rproc->dev, "failed to request vq IRQ\n");
-		return ERR_PTR(err);
-	}
-
-	pru->ctrl = devm_regmap_init_mmio(&rproc->dev, ctrl,
-					  &ti_pru_ctrl_regmap_config);
-	if (IS_ERR(pru->ctrl)) {
-		dev_err(&rproc->dev, "failed to init ctrl regmap\n");
-		return ERR_CAST(pru->ctrl);
-	}
-
-	return rproc;
-}
-
-/**
- * ti_pru_init_intc_polarity - configure polarity interrupt event
- * @intc: the interrtup controller regmap
- * @event: the source event
- */
-static void ti_pru_init_intc_polarity(struct regmap *intc, int event)
-{
-	int offset, shift, mask;
-
-	/* 32 events per register */
-	offset = event / 32 * 4;
-	shift = event % 32;
-	mask = 1 << shift;
-
-	/* polarity is always high (1) */
-	regmap_write_bits(intc, TI_PRU_INTC_POLARITY0 + offset, mask, ~0);
-}
-
-/**
- * ti_pru_init_intc_type - configure type of interrupt event
- * @intc: the interrtup controller regmap
- * @event: the source event
- */
-static void ti_pru_init_intc_type(struct regmap *intc, int event)
-{
-	int offset, shift, mask;
-
-	/* 32 events per register */
-	offset = event / 32 * 4;
-	shift = event % 32;
-	mask = 1 << shift;
-
-	/* type is always pulse (0) */
-	regmap_write_bits(intc, TI_PRU_INTC_TYPE0 + offset, mask, 0);
-}
-
-/**
- * ti_pru_init_intc_channel_map - configure interrupt event to channel mapping
- * @intc: the interrtup controller regmap
- * @event: the source event
- * @ch: the channel to be assigned to the event
- */
-static void ti_pru_init_intc_channel_map(struct regmap *intc, int event, int ch)
-{
-	int offset, shift, mask, val;
-
-	/* 4 channels per 32-bit register */
-	offset = event / 4 * 4;
-	shift = event % 4 * 8;
-	mask = 0xff << shift;
-	val = ch << shift;
-
-	regmap_write_bits(intc, TI_PRU_INTC_CHANMAP0 + offset, mask, val);
-}
-
-/**
- * ti_pru_init_intc_host_map - configure interrupt channel to host mapping
- * @intc: the interrtup controller regmap
- * @ch: the source channel
- * @host: the host interrupt to be assigned to the channel
- */
-static void ti_pru_init_intc_host_map(struct regmap *intc, int ch, int host)
-{
-	int offset, shift, mask, val;
-
-	/* 4 hosts per 32-bit register */
-	offset = ch / 4 * 4;
-	shift = ch % 4 * 8;
-	mask = 0xff << shift;
-	val = host << shift;
-
-	regmap_write_bits(intc, TI_PRU_INTC_HOSTMAP0 + offset, mask, val);
-}
-
-static void ti_pru_init_intc(struct regmap *intc,
-			     const struct ti_pru_device_info *info)
-{
-	int arm_to_pru0 = info->pru[TI_PRU0].vq_arm_to_pru_event;
-	int arm_to_pru1 = info->pru[TI_PRU1].vq_arm_to_pru_event;
-	int pru0_to_arm = info->pru[TI_PRU0].vq_pru_to_arm_event;
-	int pru1_to_arm = info->pru[TI_PRU1].vq_pru_to_arm_event;
-
-	/* set polarity of system events */
-	ti_pru_init_intc_polarity(intc, arm_to_pru0);
-	ti_pru_init_intc_polarity(intc, arm_to_pru1);
-	ti_pru_init_intc_polarity(intc, pru0_to_arm);
-	ti_pru_init_intc_polarity(intc, pru1_to_arm);
-
-	/* set type of system events */
-	ti_pru_init_intc_type(intc, arm_to_pru0);
-	ti_pru_init_intc_type(intc, arm_to_pru1);
-	ti_pru_init_intc_type(intc, pru0_to_arm);
-	ti_pru_init_intc_type(intc, pru1_to_arm);
-
-	/* map system events to channels */
-	ti_pru_init_intc_channel_map(intc, arm_to_pru0, 0);
-	ti_pru_init_intc_channel_map(intc, arm_to_pru1, 1);
-	ti_pru_init_intc_channel_map(intc, pru0_to_arm, 2);
-	ti_pru_init_intc_channel_map(intc, pru1_to_arm, 3);
-
-	/* map channels to host interrupts */
-	ti_pru_init_intc_host_map(intc, 0, 0); /* ARM to PRU0 */
-	ti_pru_init_intc_host_map(intc, 1, 1); /* ARM to PRU1 */
-	ti_pru_init_intc_host_map(intc, 2, 2); /* PRU0 to ARM */
-	ti_pru_init_intc_host_map(intc, 3, 3); /* PRU1 to ARM */
-
-	/* clear system interrupts */
-	regmap_write(intc, TI_PRU_INTC_STATIDXCLR, arm_to_pru0);
-	regmap_write(intc, TI_PRU_INTC_STATIDXCLR, arm_to_pru1);
-	regmap_write(intc, TI_PRU_INTC_STATIDXCLR, pru0_to_arm);
-	regmap_write(intc, TI_PRU_INTC_STATIDXCLR, pru1_to_arm);
-
-	/* enable host interrupts for kicking */
-	regmap_write(intc, TI_PRU_INTC_HSTINTENIDXSET, 0); /* ARM to PRU0 */
-	regmap_write(intc, TI_PRU_INTC_HSTINTENIDXSET, 1); /* ARM to PRU1 */
-	regmap_write(intc, TI_PRU_INTC_HSTINTENIDXSET, 2); /* PRU0 to ARM */
-	regmap_write(intc, TI_PRU_INTC_HSTINTENIDXSET, 3); /* PRU1 to ARM */
-
-	/* enable system events for kicking */
-	regmap_write(intc, TI_PRU_INTC_ENIDXSET, arm_to_pru0);
-	regmap_write(intc, TI_PRU_INTC_ENIDXSET, arm_to_pru1);
-	regmap_write(intc, TI_PRU_INTC_ENIDXSET, pru0_to_arm);
-	regmap_write(intc, TI_PRU_INTC_ENIDXSET, pru1_to_arm);
-
-	/* enable all interrupts */
-	regmap_write_bits(intc, TI_PRU_INTC_GLBLEN, 1, 1);
-}
-
 static int ti_pru_rproc_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	const struct of_device_id *of_id;
-	const struct ti_pru_device_info *info;
-	struct ti_pru_shared_data *shared;
-	struct device_node *child;
-	void __iomem *intc_base;
+	const char *name;
+	struct rproc *rproc;
+	struct ti_pru_data *pru;
+	struct resource *res;
+	void __iomem *ctrl;
 	int err;
 
-	of_id = of_match_device(ti_pru_rproc_of_match, dev);
-	if (!of_id || !of_id->data)
-		return -EINVAL;
-
-	info = of_id->data;
-
-	shared = devm_kzalloc(dev, sizeof(*shared), GFP_KERNEL);
-
-	platform_set_drvdata(pdev, shared);
-
-	shared->dev = dev;
-
-	child = of_get_child_by_name(dev->of_node, "intc");
-	intc_base = of_iomap(child, 0);
-	of_node_put(child);
-	if (!intc_base)
+	name = dev->of_node ? dev->of_node->name : dev_name(dev);
+	rproc = rproc_alloc(dev, name, &ti_pru_rproc_ops, NULL, sizeof(*pru));
+	if (!rproc)
 		return -ENOMEM;
 
-	shared->intc = devm_regmap_init_mmio(dev, intc_base,
-					     &ti_pru_intc_regmap_config);
-	if (IS_ERR(shared->intc)) {
-		dev_err(dev, "failed to init intc regmap\n");
-		return PTR_ERR(shared->intc);
+	devm_add_action(dev, ti_pru_free_rproc, rproc);
+	platform_set_drvdata(pdev, rproc);
+
+	/* don't auto-boot for now - bad firmware can lock up the system */
+	rproc->auto_boot = false;
+
+	pru = rproc->priv;
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "dram");
+	pru->dram = devm_ioremap_resource(dev, res);
+	if (!pru->dram) {
+		dev_err(dev, "%s: could not get dram\n", name);
+		return -ENOMEM;
 	}
 
-	child = of_get_child_by_name(dev->of_node, "pru0");
-	shared->pru[TI_PRU0] = ti_pru_init_one_rproc(child, shared,
-						     &info->pru[TI_PRU0],
-						     TI_PRU0);
-	of_node_put(child);
-	if (IS_ERR(shared->pru[TI_PRU0]))
-		return PTR_ERR(shared->pru[TI_PRU0]);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ctrl");
+	ctrl = devm_ioremap_resource(dev, res);
+	if (!ctrl) {
+		dev_err(dev, "%s: could not get ctrl\n", name);
+		return -ENOMEM;
+	}
 
-	child = of_get_child_by_name(dev->of_node, "pru1");
-	shared->pru[TI_PRU1] = ti_pru_init_one_rproc(child, shared,
-						     &info->pru[TI_PRU1],
-						     TI_PRU1);
-	of_node_put(child);
-	if (IS_ERR(shared->pru[TI_PRU1]))
-		return PTR_ERR(shared->pru[TI_PRU1]);
+	pru->ctrl = devm_regmap_init_mmio(dev, ctrl,
+					  &ti_pru_ctrl_regmap_config);
+	if (IS_ERR(pru->ctrl))
+		return PTR_ERR(pru->ctrl);
 
-	pm_runtime_enable(dev);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "iram");
+	pru->iram = devm_ioremap_resource(dev, res);
+	if (!pru->iram) {
+		dev_err(dev, "%s: could not get iram\n", name);
+		return -ENOMEM;
+	}
 
-	err = pm_runtime_get_sync(dev);
-	if (err < 0)
-		goto err_pm_runtime_disable;
+	pru->vq_to_pru_irq = platform_get_irq_byname(pdev, "vq-to-pru");
+	if (pru->vq_to_pru_irq < 0) {
+		dev_err(dev, "failed to get vq-to-pru IRQ\n");
+		return pru->vq_to_pru_irq;
+	}
 
-	err = rproc_add(shared->pru[TI_PRU0]);
-	if (err < 0)
-		goto err_pm_runtime_put;
+	/* no_action should never be called since this IRQ is routed to PRU */
+	err = devm_request_irq(dev, pru->vq_to_pru_irq, no_action, 0,
+			       name, rproc);
+	if (err < 0) {
+		dev_err(dev, "failed to request vq-to-pru IRQ\n");
+		return err;
+	}
 
-	err = rproc_add(shared->pru[TI_PRU1]);
-	if (err < 0)
-		goto err_del_pru0;
+	pru->vq_from_pru_irq = platform_get_irq_byname(pdev, "vq-from-pru");
+	if (pru->vq_from_pru_irq < 0) {
+		dev_err(dev, "failed to get vq-from-pru IRQ\n");
+		return pru->vq_from_pru_irq;
+	}
 
-	ti_pru_init_intc(shared->intc, info);
+	err = devm_request_threaded_irq(dev, pru->vq_from_pru_irq, NULL,
+				 	ti_pru_vq_irq_thread, IRQF_ONESHOT,
+					name, rproc);
+	if (err < 0) {
+		dev_err(dev, "failed to request vq-from-pru IRQ\n");
+		return err;
+	}
 
-	return 0;
-
-err_del_pru0:
-	rproc_del(shared->pru[TI_PRU0]);
-err_pm_runtime_put:
-	pm_runtime_put(dev);
-err_pm_runtime_disable:
-	pm_runtime_disable(dev);
-
-	return err;
+	return rproc_add(rproc);;
 }
 
 static int ti_pru_rproc_remove(struct platform_device *pdev)
 {
-	struct device *dev = &pdev->dev;
-	struct ti_pru_shared_data *shared = platform_get_drvdata(pdev);
+	struct rproc *rproc = platform_get_drvdata(pdev);
 
-	rproc_del(shared->pru[TI_PRU1]);
-	rproc_del(shared->pru[TI_PRU0]);
-	pm_runtime_put(dev);
-	pm_runtime_disable(dev);
+	rproc_del(rproc);
 
 	return 0;
 }
@@ -562,7 +229,6 @@ static struct platform_driver ti_pru_rproc_driver = {
 		.of_match_table = ti_pru_rproc_of_match,
 	},
 };
-
 module_platform_driver(ti_pru_rproc_driver);
 
 MODULE_AUTHOR("David Lechner <david@lechnology.com>");
