@@ -1518,50 +1518,6 @@ short pru_softuart_getconfig(suart_handle hUart, suart_config * configUart)
 	return (status);
 }
 
-
-int pru_softuart_pending_tx_request(void) 
-{
-	unsigned int offset = 0;
-	unsigned int u32ISRValue = 0;
-	
-	if ((PRU0_MODE == PRU_MODE_RX_TX_BOTH) || (PRU1_MODE == PRU_MODE_RX_TX_BOTH))
-	{
-		return SUART_SUCCESS;
-	}
-	else if (PRU0_MODE == PRU_MODE_TX_ONLY )
-	{
-		/* Read PRU Interrupt Status Register from PRU */
-		offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_STATCLRINT1 &
-				0xFFFF);
-		pru_ram_read_data_4byte(offset, (unsigned int *)&u32ISRValue, 1);
-
-		if ((u32ISRValue & 0x1) == 0x1)
-		{
-			return PRU_SUART_FAILURE;
-		}
-	}
-	else if (PRU1_MODE == PRU_MODE_TX_ONLY)
-	{
-		/* Read PRU Interrupt Status Register from PRU */
-		offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_STATCLRINT1 &
-				0xFFFF);
-		pru_ram_read_data_4byte(offset, (unsigned int *)&u32ISRValue, 1);
-
-		if ((u32ISRValue & 0x2) == 0x2)
-		{
-			return PRU_SUART_FAILURE;
-		}
-	}
-	else
-	{
-		return PRU_MODE_INVALID;
-	}
-
-	return SUART_SUCCESS;
-}	
-
 /*
  * suart data transmit routine 
  */

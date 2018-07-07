@@ -432,8 +432,6 @@ typedef struct {
 	short pru_softuart_getconfig
 	    (suart_handle hUart, suart_config * configUart);
 
-	int pru_softuart_pending_tx_request (void);
-
 	short pru_softuart_write
 	    (suart_handle hUart,
 	     unsigned int *ptTxDataBuf, unsigned short dataLen);
