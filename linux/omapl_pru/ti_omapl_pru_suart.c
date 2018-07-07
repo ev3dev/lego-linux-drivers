@@ -471,10 +471,8 @@ static int pru_suart_startup(struct uart_port *port)
 
 	err = request_irq(port->irq, omapl_pru_suart_interrupt, port->irqflags,
 			  "suart_irq", port);
-	if (err) {
-		free_irq(port->irq, port);	/* should we free this if err */
+	if (err)
 		return err;
-	}
 
 	/*
 	 * enable interrupts from this port
