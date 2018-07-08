@@ -20,6 +20,7 @@
  *====================
  */
 
+#include <linux/string.h>
 #include <linux/types.h>
 
 #include "suart_api.h"
@@ -36,17 +37,18 @@ static arm_pru_iomap pru_arm_iomap;
 static int suart_set_pru_id (unsigned int pru_no);
 static void pru_set_rx_tx_mode(u32 pru_mode, u32 pruNum);
 static void pru_set_delay_count (u32 pru_freq);
+static void suart_arm_to_pru_intr(unsigned short uartNum);
 
 #if (PRU_ACTIVE == BOTH_PRU)
 void pru_set_ram_data (arm_pru_iomap * arm_iomap_pru)
 {
 
-    PRU_SUART_RegsOvly pru_suart_regs = (PRU_SUART_RegsOvly) arm_iomap_pru->pru_io_addr;
+    PRU_SUART_RegsOvly pru_suart_regs = arm_iomap_pru->pru0_dram_io_addr;
     unsigned int * pu32SrCtlAddr = (unsigned int *) ((unsigned int)
 					arm_iomap_pru->mcasp_io_addr + 0x180);
     pru_suart_tx_cntx_priv * pru_suart_tx_priv = NULL;
     pru_suart_rx_cntx_priv * pru_suart_rx_priv = NULL;
-    unsigned char * pu32_pru_ram_base = (unsigned char *) arm_iomap_pru->pru_io_addr;
+    unsigned char *pu32_pru_ram_base = arm_iomap_pru->pru0_dram_io_addr;
 	
     /* ***************************** RX PRU - 0  **************************************** */
 
@@ -203,10 +205,8 @@ void pru_set_ram_data (arm_pru_iomap * arm_iomap_pru)
 
 
     /* ****************************** PRU1 RAM BASE ADDR ******************************** */
-    pru_suart_regs = (PRU_SUART_RegsOvly) ((unsigned int)
-					   arm_iomap_pru->pru_io_addr + 0x2000);
-    pu32_pru_ram_base = (unsigned char *) ((unsigned int)
-					   arm_iomap_pru->pru_io_addr + 0x2000);
+    pru_suart_regs = arm_iomap_pru->pru1_dram_io_addr;
+    pu32_pru_ram_base = arm_iomap_pru->pru1_dram_io_addr;
 
     /* ***************************** TX PRU - 1  **************************************** */
     /* Channel 0 context information */
@@ -363,12 +363,12 @@ void pru_set_ram_data (arm_pru_iomap * arm_iomap_pru)
 void pru_set_ram_data (arm_pru_iomap * arm_iomap_pru)
 {
     
-    PRU_SUART_RegsOvly pru_suart_regs = (PRU_SUART_RegsOvly) arm_iomap_pru->pru_io_addr;
+    PRU_SUART_RegsOvly pru_suart_regs = arm_iomap_pru->pru0_dram_io_addr;
     unsigned int * pu32SrCtlAddr = (unsigned int *) ((unsigned int) 
 					arm_iomap_pru->mcasp_io_addr + 0x180);	
     pru_suart_tx_cntx_priv * pru_suart_tx_priv = NULL;			
     pru_suart_rx_cntx_priv * pru_suart_rx_priv = NULL;
-    unsigned char * pu32_pru_ram_base = (unsigned char *) arm_iomap_pru->pru_io_addr;	
+    unsigned char *pu32_pru_ram_base = arm_iomap_pru->pru0_dram_io_addr;
 							
     /* ***************************** UART 0  **************************************** */
 
@@ -536,21 +536,15 @@ short pru_softuart_init(unsigned int txBaudValue,
 			unsigned int fw_size, arm_pru_iomap * arm_iomap_pru)
 {
 	unsigned int omapl_addr;
-	unsigned int u32loop;
 	short status = PRU_SUART_SUCCESS;
 	short idx;
-	short retval;
 
 	if ((PRU0_MODE == PRU_MODE_RX_TX_BOTH) && (PRU1_MODE == PRU_MODE_RX_TX_BOTH))
 	{
 		return PRU_SUART_FAILURE;
 	}
 
-	pru_arm_iomap.pru_io_addr = arm_iomap_pru->pru_io_addr;
-	pru_arm_iomap.mcasp_io_addr = arm_iomap_pru->mcasp_io_addr;
-	pru_arm_iomap.pFifoBufferPhysBase = arm_iomap_pru->pFifoBufferPhysBase;
-	pru_arm_iomap.pFifoBufferVirtBase = arm_iomap_pru->pFifoBufferVirtBase;
-	pru_arm_iomap.pru_clk_freq = arm_iomap_pru->pru_clk_freq;
+	pru_arm_iomap = *arm_iomap_pru;
 
 	omapl_addr = (unsigned int)arm_iomap_pru->mcasp_io_addr;
 	/* Configure McASP0  */
@@ -562,15 +556,10 @@ short pru_softuart_init(unsigned int txBaudValue,
 	pru_enable(1, arm_iomap_pru);
 #endif
 
-	omapl_addr = (unsigned int) arm_iomap_pru->pru_io_addr;
-
-	for (u32loop = 0; u32loop < 512; u32loop++)
-	{
-		*(unsigned int *)(omapl_addr | u32loop) = 0x0;
+	memset(arm_iomap_pru->pru0_dram_io_addr, 0, 512);
 #if (!(PRU1_MODE == PRU_MODE_INVALID))
-		*(unsigned int *)(omapl_addr | u32loop | 0x2000) = 0x0;
+	memset(arm_iomap_pru->pru1_dram_io_addr, 0, 512);
 #endif
-	}
 
 	pru_load(PRU_NUM0, (unsigned int *)pru_suart_emu_code,
 		 (fw_size / sizeof(unsigned int)), arm_iomap_pru);
@@ -578,11 +567,7 @@ short pru_softuart_init(unsigned int txBaudValue,
 	pru_load(PRU_NUM1, (unsigned int *)pru_suart_emu_code,
 		 (fw_size / sizeof(unsigned int)), arm_iomap_pru);
 #endif
-	
-	retval = arm_to_pru_intr_init();
-	if (-1 == retval) {
-		return status;
-	}
+
 	pru_set_delay_count (pru_arm_iomap.pru_clk_freq);
 
 	suart_set_pru_id(0);
@@ -682,30 +667,10 @@ void pru_mcasp_deinit (void)
 
 short pru_softuart_deinit(void)
 {
-	unsigned int offset;
-	short s16retval = 0;
-	unsigned int u32value = 0;
-
-	pru_disable(&pru_arm_iomap);	
-
-	offset =
-		(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_STATCLRINT1 &
-			0xFFFF);
-	u32value = 0xFFFFFFFF;
-	s16retval =
-		pru_ram_write_data_4byte(offset, (unsigned int *)&u32value, 1);
-	if (-1 == s16retval) {
-		return -1;
-	}
-	offset =
-		(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_STATCLRINT0 &
-			0xFFFF);
-	u32value = 0xFFFFFFFF;
-	s16retval =
-		pru_ram_write_data_4byte(offset, (unsigned int *)&u32value, 1);
-	if (-1 == s16retval) {
-		return -1;
-	}
+	pru_disable(PRU_NUM0, &pru_arm_iomap);
+#if (!(PRU1_MODE == PRU_MODE_INVALID))
+	pru_disable(PRU_NUM1, &pru_arm_iomap);
+#endif
 
 	return PRU_SUART_SUCCESS;
 }
@@ -2201,102 +2166,6 @@ short pru_softuart_clrRxStatus(suart_handle hUart)
 	return (status);
 }
 
-/*
- * suart_intr_status_read: Gets the Global Interrupt status register 
- * for the specified SUART.
- * uartNum < 1 to 6 >
- * txrxFlag < Indicates TX or RX interrupt for the uart >
- */
-short pru_softuart_get_isrstatus(unsigned short uartNum, unsigned short *txrxFlag)
-{
-	unsigned int u32IntcOffset;
-	unsigned int chNum = 0xFF;
-	unsigned int regVal = 0;
-	unsigned int u32RegVal = 0;
-	unsigned int u32ISRValue = 0;
-	unsigned int u32AckRegVal = 0;
-	unsigned int  u32StatInxClrRegoffset = 0;
-	
-	/* initialize the status & Flag to known value */
-	*txrxFlag = 0;
-	
-	u32StatInxClrRegoffset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_STATIDXCLR &
-									   0xFFFF);
-									   
-	/* Read PRU Interrupt Status Register from PRU */
-	u32IntcOffset =
-        (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_STATCLRINT1 &
-                               0xFFFF);
-
-	pru_ram_read_data_4byte(u32IntcOffset, (unsigned int *)&u32ISRValue, 1);
-
-	if ((PRU0_MODE == PRU_MODE_RX_TX_BOTH) || (PRU1_MODE == PRU_MODE_RX_TX_BOTH))
-	{	
-		/* channel starts from 0 and uart instance starts from 1 */
-		chNum = uartNum * 2 - 2;
-
-                /* Check if the interrupt occured for Tx */
-                u32RegVal = PRU_SUART0_TX_EVT_BIT << ((uartNum - 1)* 2);
-                if (u32ISRValue & u32RegVal)
-                {
-                        /* interupt occured for TX */
-                        *txrxFlag |= PRU_TX_INTR;
-
-                        /* acknowledge the TX interrupt  */
-                        u32AckRegVal  = chNum + PRU_SUART0_TX_EVT;
-                        pru_ram_write_data_4byte(u32StatInxClrRegoffset, (unsigned int *)&u32AckRegVal, 1);          
-
-                }
-
-                /* Check if the interrupt occured for Rx */
-                u32RegVal = PRU_SUART0_RX_EVT_BIT << ((uartNum - 1)* 2);
-                pru_ram_read_data_4byte(u32IntcOffset, (unsigned int *)&u32ISRValue, 1);
-                if (u32ISRValue & u32RegVal)
-                {
-                        /* interupt occured for RX */
-                        *txrxFlag |= PRU_RX_INTR;
-                        chNum += 1;
-
-                        /* acknowledge the RX interrupt  */
-                        u32AckRegVal  = chNum + PRU_SUART0_TX_EVT;
-                        pru_ram_write_data_4byte(u32StatInxClrRegoffset, (unsigned int *)&u32AckRegVal, 1);          
-                }		
-	}
-	else
-	{
-		chNum = uartNum - 1;
-		if ((u32ISRValue & 0x03FC) != 0)
-		{
-			/* PRU0 */
-			u32RegVal = 1 << (uartNum + 1);
-			if (u32ISRValue & u32RegVal)
-			{
-				/* acknowledge the interrupt  */
-				u32AckRegVal  = chNum + PRU_SUART0_TX_EVT;
-				pru_ram_write_data_4byte(u32StatInxClrRegoffset, (unsigned int *)&u32AckRegVal, 1);			
-				*txrxFlag |= PRU_RX_INTR;
-			}
-		}	
-	
-		pru_ram_read_data_4byte(u32IntcOffset, (unsigned int *)&u32ISRValue, 1);
-		if (u32ISRValue & 0x3FC00)
-		{
-			/* PRU1 */
-			u32RegVal = 1 << (uartNum + 9);
-			if (u32ISRValue & u32RegVal)
-			{
-				/* acknowledge the interrupt  */
-				u32AckRegVal  = chNum + PRU_SUART4_TX_EVT;
-				pru_ram_write_data_4byte(u32StatInxClrRegoffset, (unsigned int *)&u32AckRegVal, 1);			
-                               *txrxFlag |= PRU_TX_INTR;
-			}
-		}
-	
-	}
-
-	return regVal;
-}
-
 int pru_intr_clr_isrstatus(unsigned short uartNum, unsigned int txrxmode)
 {
 	unsigned int offset;
@@ -2343,430 +2212,24 @@ int pru_intr_clr_isrstatus(unsigned short uartNum, unsigned int txrxmode)
 	return 0;
 }
 
-short suart_arm_to_pru_intr(unsigned short uartNum)
+static void suart_arm_to_pru_intr(unsigned short uartNum)
 {
-	unsigned int u32offset;
-	unsigned int u32value;
-	short s16retval;
+	u8 pru_num;
 	
-	if ((PRU0_MODE == PRU_MODE_RX_TX_BOTH) || (PRU1_MODE == PRU_MODE_RX_TX_BOTH))
-	{
-		if ((uartNum > 0) && (uartNum <= 4)) {
-			/* PRU0 SYS_EVT32 */
-			u32value = 0x20;
-		} else if ((uartNum > 4) && (uartNum <= 8)) {
-			/* PRU1 SYS_EVT33 */
-			u32value = 0x21;
-		} else {
-			return SUART_INVALID_UART_NUM;
-		}
+	if ((PRU0_MODE == PRU_MODE_RX_TX_BOTH) || (PRU1_MODE == PRU_MODE_RX_TX_BOTH)) {
+		if ((uartNum > 0) && (uartNum <= 4))
+			pru_num = PRU_NUM0;
+		else if ((uartNum > 4) && (uartNum <= 8))
+			pru_num = PRU_NUM1;
+		else
+			return;
 	}
 	
 	if ((PRU0_MODE == PRU_MODE_RX_ONLY) || (PRU1_MODE == PRU_MODE_RX_ONLY) || 
-		(PRU0_MODE == PRU_MODE_TX_ONLY) || (PRU1_MODE == PRU_MODE_TX_ONLY))
-	{
-		if (uartNum == PRU_NUM0) 
-		{
-			/* PRU0 SYS_EVT32 */
-			u32value = 0x20;
-		}
+	    (PRU0_MODE == PRU_MODE_TX_ONLY) || (PRU1_MODE == PRU_MODE_TX_ONLY))
+		pru_num = uartNum;
 	
-		if (uartNum == PRU_NUM1) 
-		{
-			/* PRU0 SYS_EVT33 */
-			u32value = 0x21;
-		}
-	}
-	
-	u32offset =
-	    (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_STATIDXSET &
-						       0xFFFF);
-	s16retval =
-	    pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-	if (s16retval == -1) {
-		return -1;
-	}
-	return 0;
-}
-
-short arm_to_pru_intr_init(void)
-{
-	unsigned int u32offset;
-	unsigned int u32value;
-	unsigned int intOffset;
-	short s16retval = -1;
-#if 0
-	/* Set the MCASP Event to PRU0 as Edge Triggered */
-	u32offset =
-        (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_TYPE0&
-                        0xFFFF);
-	u32value = 0x80000000;
-    	s16retval =
-    	pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-    	if (s16retval == -1) {
-       		return -1;
-    	}
-#endif
-	/* Clear all the host interrupts */
-    for (intOffset = 0; intOffset <= PRU_INTC_HOSTINTLVL_MAX; intOffset++)
-    {
-	    u32offset =
-    	    (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_HSTINTENIDXCLR&
-                               0xFFFF);
-    	u32value = intOffset;
-    	s16retval =
-        	pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-    	if (s16retval == -1) {
-        	return -1;
-    	}
-	}
-	
-	/* Enable the global interrupt */
-	u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_GLBLEN &
-						       0xFFFF);
-	u32value = 0x1;
-	s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-	if (s16retval == -1) {
-		return -1;
-	}
-
-	/* Enable the Host interrupts for all host channels */
-    for (intOffset = 0; intOffset <=PRU_INTC_HOSTINTLVL_MAX; intOffset++)
-	{
-		u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_HSTINTENIDXSET &
-						       0xFFFF);
-		u32value = intOffset;
-		s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-		if (s16retval == -1) {
-			return -1;
-		}
-	}
-
-	/* host to channel mapping : Setting the host interrupt for channels 0,1,2,3 */
-	u32offset =
-	    (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_HOSTMAP0 &
-						       0xFFFF);
-	u32value = 0x03020100;
-	s16retval =
-	    pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-	if (-1 == s16retval) {
-		return -1;
-	}
-
-	/* host to channel mapping : Setting the host interrupt for channels 4,5,6,7 */
-	u32offset =
-	    (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_HOSTMAP1 &
-						       0xFFFF);
-	u32value = 0x07060504;
-	s16retval =
-	    pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-	if (-1 == s16retval) {
-		return -1;
-	}
-
-	/* host to channel mapping : Setting the host interrupt for channels 8,9 */
-	u32offset =
-	    (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_HOSTMAP2 &
-						       0xFFFF);
-	u32value = 0x00000908;
-	s16retval =
-	    pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-	if (-1 == s16retval) {
-		return -1;
-	}
-
-    	/* Set the channel for System intrrupts
-     	* MAP Channel 0 to SYS_EVT31 
-     	*/
-	u32offset =
-		(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP7 &
-							0xFFFF);
-	u32value = 0x0000000000;
-	s16retval =
-		pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-	if (-1 == s16retval) {
-		return -1;
-		}
-    
-
-	if ((PRU0_MODE == PRU_MODE_RX_TX_BOTH) || (PRU1_MODE == PRU_MODE_RX_TX_BOTH))
-	{
-		/* Sets the channel for the system interrupt 
-		* MAP channel 0 to SYS_EVT32
-		* MAP channel 1 to SYS_EVT33 
-		* MAP channel 2 to SYS_EVT34  SUART0-Tx
-		* MAP channel 2 to SYS_EVT35  SUART0-Rx
-		*/
-		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP8 &
-								0xFFFF);
-		u32value = 0x02020100;
-		s16retval =
-			pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-		if (-1 == s16retval) {
-			return -1;
-		}
-
-		/* Sets the channel for the system interrupt 
-		* MAP channel 3 to SYS_EVT36	SUART1-Tx
-		* MAP channel 3 to SYS_EVT37 	SUART1-Rx
-		* MAP channel 4 to SYS_EVT38 	SUART2-Tx
-		* MAP channel 4 to SYS_EVT39 	SUART2-Rx
-		*/
-		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP9 &
-								0xFFFF);
-		u32value = 0x04040303;
-		s16retval =
-			pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-		if (-1 == s16retval) {
-			return -1;
-		}
-
-		/* Sets the channel for the system interrupt 
-		* MAP channel 5 to SYS_EVT40	SUART3-Tx
-		* MAP channel 5 to SYS_EVT41 	SUART3-Rx
-		* MAP channel 6 to SYS_EVT42 	SUART4-Tx
-		* MAP channel 6 to SYS_EVT43 	SUART4-Rx
-		*/
-		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP10 &
-								0xFFFF);
-		u32value = 0x06060505;
-		s16retval =
-			pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-		if (-1 == s16retval) {
-			return -1;
-		}
-
-		/* Sets the channel for the system interrupt 
-		* MAP channel 7 to SYS_EVT44	SUART5-Tx
-		* MAP channel 7 to SYS_EVT45 	SUART5-Rx
-		* MAP channel 8 to SYS_EVT46 	SUART6-Tx
-		* MAP channel 8 to SYS_EVT47 	SUART6-Rx
-		*/
-		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP11 &
-						       0xFFFF);
-		u32value = 0x08080707;
-		s16retval =
-			pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-		if (-1 == s16retval) {
-			return -1;
-		}
-
-		/* Sets the channel for the system interrupt 
-		* MAP channel 9 to SYS_EVT48	SUART7-Tx
-		* MAP channel 9 to SYS_EVT49 	SUART7-Rx
-		* MAP Channel 1 to SYS_EVT50
-		*/
-		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP12 &
-								0xFFFF);
-		u32value = 0x00010909;
-		s16retval =
-			pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-		if (-1 == s16retval) {
-			return -1;
-		}
-	}
-	
-	if ((PRU0_MODE == PRU_MODE_RX_ONLY) || (PRU1_MODE == PRU_MODE_RX_ONLY) || 
-		(PRU0_MODE == PRU_MODE_TX_ONLY) || (PRU1_MODE == PRU_MODE_TX_ONLY))
-	{
-		/* Sets the channel for the system interrupt 
-		* MAP channel 0 to SYS_EVT32
-		* MAP channel 1 to SYS_EVT33 
-		* MAP channel 2 to SYS_EVT34  SUART0
-		* MAP channel 3 to SYS_EVT35  SUART1
-		*/
-		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP8 &
-								0xFFFF);
-		u32value = 0x03020100;
-		s16retval =
-			pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-		if (-1 == s16retval) {
-			return -1;
-		}
-
-		/* Sets the channel for the system interrupt 
-		* MAP channel 4 to SYS_EVT36	SUART2
-		* MAP channel 5 to SYS_EVT37 	SUART3
-		* MAP channel 6 to SYS_EVT38 	SUART4
-		* MAP channel 7 to SYS_EVT39 	SUART5
-		*/
-		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP9 &
-								0xFFFF);
-		u32value = 0x07060504;
-		s16retval =
-			pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-		if (-1 == s16retval) {
-			return -1;
-		}
-
-		/* Sets the channel for the system interrupt 
-		* MAP channel 8 to SYS_EVT40	SUART6
-		* MAP channel 9 to SYS_EVT41 	SUART7
-		* MAP channel 2 to SYS_EVT42 	SUART0
-		* MAP channel 3 to SYS_EVT43 	SUART1
-		*/
-		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP10 &
-								0xFFFF);
-		u32value = 0x03020908;
-		s16retval =
-			pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-		if (-1 == s16retval) {
-			return -1;
-		}
-
-		/* Sets the channel for the system interrupt 
-		* MAP channel 4 to SYS_EVT44	SUART2
-		* MAP channel 5 to SYS_EVT45 	SUART3
-		* MAP channel 6 to SYS_EVT46 	SUART4
-		* MAP channel 7 to SYS_EVT47 	SUART5
-		*/
-		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP11 &
-						       0xFFFF);
-		u32value = 0x07060504;
-		s16retval =
-			pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-		if (-1 == s16retval) {
-			return -1;
-		}
-
-		/* Sets the channel for the system interrupt 
-		* MAP channel 8 to SYS_EVT48	SUART6
-		* MAP channel 9 to SYS_EVT49 	SUART7
-		* MAP Channel 1 to SYS_EVT50    PRU to PRU Intr
-		*/
-		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP12 &
-								0xFFFF);
-		u32value = 0x00010908;
-		s16retval =
-			pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-		if (-1 == s16retval) {
-			return -1;
-		}
-	}
-	
-	/* Clear required set of system events and enable them using indexed register */
-	for  (intOffset = 0; intOffset < 18; intOffset++)
-	{
-    	u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_STATIDXCLR & 0xFFFF);
-    	u32value = 32 + intOffset;
-    	s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int *) &u32value, 1);
-    	if (s16retval == -1) {
-        	return -1;
-    	}
-		
-	}
-	/* enable only the HOST to PRU interrupts and let the PRU to Host events be
-	 * enabled by the separate API on demand basis.
-	 */
-	u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_ENIDXSET & 0xFFFF);
-	u32value = 31;
-	s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int*) &u32value, 1);
-	if (s16retval == -1) {
-		return -1;
-	}
-	u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_ENIDXSET & 0xFFFF);
-	u32value = 32;
-	s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int*) &u32value, 1);
-	if (s16retval == -1) {
-		return -1;
-	}
-	u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_ENIDXSET & 0xFFFF);
-	u32value = 33;
-	s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int*) &u32value, 1);
-	if (s16retval == -1) {
-		return -1;
-	}
-	u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_ENIDXSET & 0xFFFF);
-	u32value = 50;
-	s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int*) &u32value, 1);
-	if (s16retval == -1) {
-		return -1;
-	}
-
-	/* Enable the global interrupt */
-	u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_GLBLEN &
-						       0xFFFF);
-	u32value = 0x1;
-	s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-	if (s16retval == -1) {
-		return -1;
-	}
-
-	/* Enable the Host interrupts for all host channels */
-    	for (intOffset = 0; intOffset <=PRU_INTC_HOSTINTLVL_MAX; intOffset++)
-	{
-		u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_HSTINTENIDXSET &
-						       0xFFFF);
-		u32value = intOffset;
-		s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
-		if (s16retval == -1) {
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
-int suart_pru_to_host_intr_enable (unsigned short uartNum,
-		       unsigned int txrxmode, bool s32Flag)
-{
-	int    retVal = 0;
-	unsigned int u32offset;
-	unsigned int chnNum;
-	unsigned int u32value;
-	short s16retval = 0;
-	
-	if (uartNum > 8) {
-		return SUART_INVALID_UART_NUM;
-	}
-
-	chnNum = uartNum - 1;
-	if ((PRU0_MODE == PRU_MODE_RX_TX_BOTH) || (PRU1_MODE == PRU_MODE_RX_TX_BOTH))
-	{
-		chnNum = (uartNum * 2) - 2;
-		if (2 == txrxmode) {	/* Rx mode */
-			chnNum++;
-		}
-		u32value = 34 + chnNum;
-	}
-	else if ((PRU_MODE_RX_ONLY == txrxmode) && (PRU0_MODE == PRU_MODE_RX_ONLY))
-			u32value = 34 + chnNum;
-	else if ((PRU_MODE_RX_ONLY == txrxmode) && (PRU1_MODE == PRU_MODE_RX_ONLY))
-			u32value = 42 + chnNum;	
-	else if ((PRU_MODE_TX_ONLY == txrxmode) && (PRU0_MODE == PRU_MODE_TX_ONLY))
-			u32value = 34 + chnNum;
-	else if ((PRU_MODE_TX_ONLY == txrxmode) && (PRU1_MODE == PRU_MODE_TX_ONLY))
-			u32value = 42 + chnNum;	
-	else	
-			return -1;
-
-	if (s32Flag)
-	{
-		u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_ENIDXSET & 0xFFFF);
-		s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int*) &u32value, 1);
-		if (s16retval == -1) {
-			return -1;
-		}
-	}
-	else
-	{
-		u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_ENIDXCLR & 0xFFFF);
-		s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int*) &u32value, 1);
-		if (s16retval == -1) {
-			return -1;
-		}
-	}
-	return (retVal);
+	pru_kick(pru_num, &pru_arm_iomap);
 }
 
 int suart_intr_setmask(unsigned short uartNum,

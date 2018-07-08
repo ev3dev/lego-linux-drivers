@@ -19,6 +19,7 @@
 ************************************************************/
 
 #include <linux/errno.h>
+#include <linux/interrupt.h>
 #include <linux/types.h>
 
 #include "csl/cslr.h"
@@ -37,13 +38,12 @@ int pru_load(u8 pruNum, u32 * pruCode, u32 codeSizeInWords,
 	u32 *pruIram;
 	u32 i;
 
-	if (pruNum == CSL_PRUCORE_0) {
-		pruIram = (u32 *) ((u32 )pru_arm_iomap->pru_io_addr + 0x8000);
-	} else if (pruNum == CSL_PRUCORE_1) {
-		pruIram = (u32 *) ((u32 )pru_arm_iomap->pru_io_addr + 0xc000);
-	} else {
+	if (pruNum == CSL_PRUCORE_0)
+		pruIram = pru_arm_iomap->pru0_iram_io_addr;
+	else if (pruNum == CSL_PRUCORE_1)
+		pruIram = pru_arm_iomap->pru1_iram_io_addr;
+	else
 		return -EINVAL;
-	}
 
 	pru_enable(pruNum, pru_arm_iomap);
 
@@ -59,13 +59,12 @@ int pru_run(u8 pruNum, arm_pru_iomap * pru_arm_iomap)
 {
 	CSL_PrucoreRegsOvly hPru;
 
-	if (pruNum == CSL_PRUCORE_0) {
-		hPru = (CSL_PrucoreRegsOvly) ((u32 )pru_arm_iomap->pru_io_addr + 0x7000);	//CSL_PRUCORE_0_REGS;
-	} else if (pruNum == CSL_PRUCORE_1) {
-		hPru = (CSL_PrucoreRegsOvly) ((u32 )pru_arm_iomap->pru_io_addr + 0x7800);	//CSL_PRUCORE_1_REGS;
-	} else {
+	if (pruNum == CSL_PRUCORE_0)
+		hPru = (CSL_PrucoreRegsOvly)pru_arm_iomap->pru0_ctrl_io_addr;
+	else if (pruNum == CSL_PRUCORE_1)
+		hPru = (CSL_PrucoreRegsOvly)pru_arm_iomap->pru1_ctrl_io_addr;
+	else
 		return -EINVAL;
-	}
 
 	// Enable dMAX, let it execute the code we just copied
 	CSL_FINST(hPru->CONTROL, PRUCORE_CONTROL_COUNTENABLE, ENABLE);
@@ -74,31 +73,46 @@ int pru_run(u8 pruNum, arm_pru_iomap * pru_arm_iomap)
 	return 0;
 }
 
-int pru_disable(arm_pru_iomap * pru_arm_iomap)
+int pru_kick(u8 pruNum, arm_pru_iomap *pru_arm_iomap)
+{
+	if (pruNum == CSL_PRUCORE_0)
+		return irq_set_irqchip_state(pru_arm_iomap->arm_to_pru0_irq,
+					     IRQCHIP_STATE_PENDING, true);
+
+	if (pruNum == CSL_PRUCORE_1)
+		return irq_set_irqchip_state(pru_arm_iomap->arm_to_pru1_irq,
+					     IRQCHIP_STATE_PENDING, true);
+
+	return -EINVAL;
+}
+
+int pru_disable(u8 pruNum, arm_pru_iomap * pru_arm_iomap)
 {
 	CSL_PrucoreRegsOvly hPru;
 	unsigned int delay_cnt;
 
-	// Disable PRU0
-	hPru = (CSL_PrucoreRegsOvly) ((u32 )pru_arm_iomap->pru_io_addr + 0x7000);	//CSL_PRUCORE_0_REGS;  
-	CSL_FINST(hPru->CONTROL, PRUCORE_CONTROL_COUNTENABLE, DISABLE);
-	for (delay_cnt = 0x10000; delay_cnt > 0; delay_cnt--)
-	CSL_FINST(hPru->CONTROL, PRUCORE_CONTROL_ENABLE, DISABLE);
+	if (pruNum == CSL_PRUCORE_0) {
+		// Disable PRU0
+		hPru = (CSL_PrucoreRegsOvly)pru_arm_iomap->pru0_ctrl_io_addr;
+		CSL_FINST(hPru->CONTROL, PRUCORE_CONTROL_COUNTENABLE, DISABLE);
+		for (delay_cnt = 0x10000; delay_cnt > 0; delay_cnt--)
+		CSL_FINST(hPru->CONTROL, PRUCORE_CONTROL_ENABLE, DISABLE);
 
-	for (delay_cnt = 0x10000; delay_cnt > 0; delay_cnt--)
-	// Reset PRU0
-	hPru->CONTROL = CSL_PRUCORE_CONTROL_RESETVAL;
+		for (delay_cnt = 0x10000; delay_cnt > 0; delay_cnt--)
+		// Reset PRU0
+		hPru->CONTROL = CSL_PRUCORE_CONTROL_RESETVAL;
+	} else if (pruNum == CSL_PRUCORE_1) {
+		// Disable PRU1
+		hPru = (CSL_PrucoreRegsOvly)pru_arm_iomap->pru1_ctrl_io_addr;
+		CSL_FINST(hPru->CONTROL, PRUCORE_CONTROL_COUNTENABLE, DISABLE);
 
-	// Disable PRU1
-	hPru = (CSL_PrucoreRegsOvly) ((u32 )pru_arm_iomap->pru_io_addr + 0x7800);	//CSL_PRUCORE_1_REGS;  
-	CSL_FINST(hPru->CONTROL, PRUCORE_CONTROL_COUNTENABLE, DISABLE);
+		for (delay_cnt = 0x10000; delay_cnt > 0; delay_cnt--)
+		CSL_FINST(hPru->CONTROL, PRUCORE_CONTROL_ENABLE, DISABLE);
 
-	for (delay_cnt = 0x10000; delay_cnt > 0; delay_cnt--)
-	CSL_FINST(hPru->CONTROL, PRUCORE_CONTROL_ENABLE, DISABLE);
-
-	for (delay_cnt = 0x10000; delay_cnt > 0; delay_cnt--)
-	// Reset PRU1
-	hPru->CONTROL = CSL_PRUCORE_CONTROL_RESETVAL;
+		for (delay_cnt = 0x10000; delay_cnt > 0; delay_cnt--)
+		// Reset PRU1
+		hPru->CONTROL = CSL_PRUCORE_CONTROL_RESETVAL;
+	}
 
 	return 0;
 }
@@ -109,11 +123,11 @@ int pru_enable(u8 pruNum, arm_pru_iomap * pru_arm_iomap)
 
 	if (pruNum == CSL_PRUCORE_0) {
 		// Reset PRU0
-		hPru = (CSL_PrucoreRegsOvly) ((u32 )pru_arm_iomap->pru_io_addr + 0x7000);	//CSL_PRUCORE_0_REGS;
+		hPru = (CSL_PrucoreRegsOvly)pru_arm_iomap->pru0_ctrl_io_addr;
 		hPru->CONTROL = CSL_PRUCORE_CONTROL_RESETVAL;
 	} else if (pruNum == CSL_PRUCORE_1) {
 		// Reset PRU1
-		hPru = (CSL_PrucoreRegsOvly) ((u32 )pru_arm_iomap->pru_io_addr + 0x7800);	//CSL_PRUCORE_1_REGS;
+		hPru = (CSL_PrucoreRegsOvly)pru_arm_iomap->pru1_ctrl_io_addr;
 		hPru->CONTROL = CSL_PRUCORE_CONTROL_RESETVAL;
 	}
 
@@ -142,7 +156,7 @@ short pru_ram_write_data
      u16 u16bytestowrite, arm_pru_iomap * pru_arm_iomap) {
 	u8 *pu8addresstowrite;
 	u16 u16loop;
-	u32offset = (unsigned int)pru_arm_iomap->pru_io_addr + u32offset;
+	u32offset = (unsigned int)pru_arm_iomap->pru0_dram_io_addr + u32offset;
 	pu8addresstowrite = (u8 *) (u32offset);
 
 	for (u16loop = 0; u16loop < u16bytestowrite; u16loop++)
@@ -169,7 +183,7 @@ short pru_ram_read_data
 
 	u8 *pu8addresstoread;
 	u16 u16loop;
-	u32offset = (unsigned int)pru_arm_iomap->pru_io_addr + u32offset;
+	u32offset = (unsigned int)pru_arm_iomap->pru0_dram_io_addr + u32offset;
 	pu8addresstoread = (u8 *) (u32offset);
 
 	for (u16loop = 0; u16loop < u16bytestoread; u16loop++)
