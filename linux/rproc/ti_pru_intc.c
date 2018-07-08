@@ -378,12 +378,6 @@ static int ti_pru_intc_probe(struct platform_device *pdev)
 		goto err_pm_runtime_disable;
 	}
 
-	/* system events require polarity = 1 and type = 0 */
-	regmap_write(intc->regmap, TI_PRU_INTC_POLARITY(0), ~0);
-	regmap_write(intc->regmap, TI_PRU_INTC_POLARITY(1), ~0);
-	regmap_write(intc->regmap, TI_PRU_INTC_TYPE(0), 0);
-	regmap_write(intc->regmap, TI_PRU_INTC_TYPE(1), 0);
-
 	regmap_write_bits(intc->regmap, TI_PRU_INTC_GLBLEN, 1, 1);
 
 	return 0;
