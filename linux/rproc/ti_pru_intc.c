@@ -333,8 +333,8 @@ static int ti_pru_intc_probe(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	base = devm_ioremap_resource(dev, res);
-	if (!base)
-		return -ENOMEM;
+	if (IS_ERR(base))
+		return PTR_ERR(base);
 
 	intc->regmap = devm_regmap_init_mmio(dev, base,
 					     &ti_pru_intc_regmap_config);
