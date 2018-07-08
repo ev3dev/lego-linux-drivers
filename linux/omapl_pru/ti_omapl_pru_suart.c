@@ -83,6 +83,10 @@ struct omapl_pru_suart {
 	u32 clk_freq_pru;
 	u32 clk_freq_mcasp;
 	u32 tx_loadsz;
+	int mcasp_irq;
+	int pru_to_pru_irq;
+	int tx_irq[8];
+	int rx_irq[8];
 };
 
 static inline struct omapl_pru_suart *to_pru_suart(struct uart_port *port)
@@ -232,44 +236,32 @@ static void omapl_pru_rx_chars(struct omapl_pru_suart *soft_uart, u32 uart_no)
 	spin_lock(&soft_uart->port[uart_no].lock);
 }
 
-static irqreturn_t omapl_pru_suart_interrupt(int irq, void *dev_id)
+static irqreturn_t omapl_pru_suart_tx_interrupt(int irq, void *dev_id)
 {
 	struct uart_port *port = dev_id;
 	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
-	u16 txrx_flag;
-	u32 ret;
-	unsigned long flags = 0;
 	u16 uartNum = port->line + 1;
 
-	spin_lock_irqsave(&soft_uart->port[port->line].lock, flags);
-	do {
-		ret = pru_softuart_get_isrstatus(uartNum, &txrx_flag);
-		if (PRU_SUART_SUCCESS != ret) {
-			dev_err(port->dev,
-				"failed to get interrupt, ret: 0x%X txrx_flag 0x%X\n",
-				ret, txrx_flag);
-			spin_unlock_irqrestore(&soft_uart->port[port->line].lock, flags);
-			return IRQ_NONE;
-		}
-		if ((PRU_RX_INTR & txrx_flag) == PRU_RX_INTR) {
-			pru_intr_clr_isrstatus(uartNum, PRU_RX_INTR);
-			if ((soft_uart->port[port->line].ignore_status_mask &
-				CHN_TXRX_STATUS_RDY) == CHN_TXRX_STATUS_RDY) {
-				pru_softuart_clrRxStatus(&soft_uart->suart_hdl[port->line]);
-			} else {
-				omapl_pru_rx_chars(soft_uart, port->line);
-			}
-		}
+	pru_intr_clr_isrstatus(uartNum, PRU_TX_INTR);
+	pru_softuart_clrTxStatus(&soft_uart->suart_hdl[port->line]);
+	up(&soft_uart->port_sem[port->line]);
+	omapl_pru_tx_chars(soft_uart, port->line);
 
-		if ((PRU_TX_INTR & txrx_flag) == PRU_TX_INTR) {
-			pru_intr_clr_isrstatus(uartNum, PRU_TX_INTR);
-			pru_softuart_clrTxStatus(&soft_uart->suart_hdl[port->line]);
-			up(&soft_uart->port_sem[port->line]);
-			omapl_pru_tx_chars(soft_uart, port->line);
-		}
-	} while (txrx_flag & (PRU_RX_INTR | PRU_TX_INTR));
+	return IRQ_HANDLED;
+}
 
-	spin_unlock_irqrestore(&soft_uart->port[port->line].lock, flags);
+static irqreturn_t omapl_pru_suart_rx_interrupt(int irq, void *dev_id)
+{
+	struct uart_port *port = dev_id;
+	struct omapl_pru_suart *soft_uart = to_pru_suart(port);
+	u16 uartNum = port->line + 1;
+
+	pru_intr_clr_isrstatus(uartNum, PRU_RX_INTR);
+	if (port->ignore_status_mask & CHN_TXRX_STATUS_RDY)
+		pru_softuart_clrRxStatus(&soft_uart->suart_hdl[port->line]);
+	else
+		omapl_pru_rx_chars(soft_uart, port->line);
+
 	return IRQ_HANDLED;
 }
 
@@ -468,11 +460,6 @@ static int pru_suart_startup(struct uart_port *port)
 			   | CHN_TXRX_IE_MASK_FE | CHN_TXRX_IE_MASK_CMPLT
 			   | CHN_TXRX_IE_MASK_TIMEOUT);
 
-	err = request_irq(port->irq, omapl_pru_suart_interrupt, port->irqflags,
-			  "suart_irq", port);
-	if (err)
-		return err;
-
 	/*
 	 * enable interrupts from this port
 	 */
@@ -485,14 +472,24 @@ static int pru_suart_startup(struct uart_port *port)
 
 	suart_intr_setmask(hdl->uartNum, PRU_RX_INTR, CHN_RX_IE_MASK_OVRN);
 
-	if ((suart_get_duplex(soft_uart, port->line) & ePRU_SUART_HALF_TX)
-	    == ePRU_SUART_HALF_TX) {
-		suart_pru_to_host_intr_enable(hdl->uartNum, PRU_TX_INTR, true);
+	if (suart_get_duplex(soft_uart, port->line) & ePRU_SUART_HALF_TX) {
+		err = request_irq(soft_uart->tx_irq[port->line],
+				  omapl_pru_suart_tx_interrupt, port->irqflags,
+				  "suart_tx", port);
+		if (err)
+			return err;
 	}
 	/* Seed RX if port is half-rx or full-duplex */
-	if ((suart_get_duplex(soft_uart, port->line) & ePRU_SUART_HALF_RX)
-	    == ePRU_SUART_HALF_RX) {
-		suart_pru_to_host_intr_enable(hdl->uartNum, PRU_RX_INTR , true);
+	if (suart_get_duplex(soft_uart, port->line) & ePRU_SUART_HALF_RX) {
+		err = request_irq(soft_uart->rx_irq[port->line],
+				  omapl_pru_suart_rx_interrupt, port->irqflags,
+				  "suart_rx", port);
+		if (err) {
+			if (suart_get_duplex(soft_uart, port->line) & ePRU_SUART_HALF_TX)
+				free_irq(soft_uart->tx_irq[port->line], port);
+			return err;
+		}
+
 		pru_softuart_read(hdl,
 				  (unsigned int *)
 				  &soft_uart->suart_dma_addr[port->line].
@@ -532,7 +529,8 @@ static void pru_suart_shutdown(struct uart_port *port)
 			   | CHN_TXRX_IE_MASK_TIMEOUT | CHN_RX_IE_MASK_OVRN);
 
 	/* free interrupts */
-	free_irq(port->irq, port);
+	free_irq(soft_uart->rx_irq[port->line], port);
+	free_irq(soft_uart->tx_irq[port->line], port);
 }
 
 /*
@@ -740,6 +738,27 @@ static struct uart_driver pru_suart_reg = {
 	.nr = NR_SUART,
 };
 
+static int omapl_pru_suart_request_irq(struct platform_device *pdev,
+				       const char *name, void *data)
+{
+	int irq, err;
+
+	irq = platform_get_irq_byname(pdev, name);
+	if (irq < 0) {
+		if (irq != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "failed to get %s irq\n", name);
+		return irq;
+	}
+
+	err = devm_request_irq(&pdev->dev, irq, no_action, 0, name, data);
+	if (err) {
+		dev_err(&pdev->dev, "failed to request %s irq\n", name);
+		return err;
+	}
+
+	return irq;
+}
+
 static int omapl_pru_suart_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -767,7 +786,7 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	soft_uart->pru_arm_iomap.pru_iram_io_addr[0] = devm_ioremap_resource(dev, res);
 	if (IS_ERR(soft_uart->pru_arm_iomap.pru_iram_io_addr[0]))
 		return PTR_ERR(soft_uart->pru_arm_iomap.pru_iram_io_addr[0]);
-
+#if 0
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pru1-dram");
 	soft_uart->pru_arm_iomap.pru_dram_io_addr[1] = devm_ioremap_resource(dev, res);
 	if (IS_ERR(soft_uart->pru_arm_iomap.pru_dram_io_addr[1]))
@@ -782,16 +801,32 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	soft_uart->pru_arm_iomap.pru_iram_io_addr[1] = devm_ioremap_resource(dev, res);
 	if (IS_ERR(soft_uart->pru_arm_iomap.pru_iram_io_addr[1]))
 		return PTR_ERR(soft_uart->pru_arm_iomap.pru_iram_io_addr[1]);
-
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pru-intc");
-	soft_uart->pru_arm_iomap.pru_intc_io_addr = devm_ioremap_resource(dev, res);
-	if (IS_ERR(soft_uart->pru_arm_iomap.pru_intc_io_addr))
-		return PTR_ERR(soft_uart->pru_arm_iomap.pru_intc_io_addr);
+#endif
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mcasp");
 	soft_uart->pru_arm_iomap.mcasp_io_addr = devm_ioremap_resource(dev, res);
 	if (IS_ERR(soft_uart->pru_arm_iomap.mcasp_io_addr))
 		return PTR_ERR(soft_uart->pru_arm_iomap.mcasp_io_addr);
+
+	soft_uart->mcasp_irq =
+		omapl_pru_suart_request_irq(pdev, "mcasp", soft_uart);
+	if (soft_uart->mcasp_irq < 0)
+		return soft_uart->mcasp_irq;
+
+	soft_uart->pru_arm_iomap.arm_to_pru_irq[0] =
+		omapl_pru_suart_request_irq(pdev, "arm-to-pru0", soft_uart);
+	if (soft_uart->pru_arm_iomap.arm_to_pru_irq[0] < 0)
+		return soft_uart->pru_arm_iomap.arm_to_pru_irq[0];
+
+	soft_uart->pru_arm_iomap.arm_to_pru_irq[1] =
+		omapl_pru_suart_request_irq(pdev, "arm-to-pru1", soft_uart);
+	if (soft_uart->pru_arm_iomap.arm_to_pru_irq[1] < 0)
+		return soft_uart->pru_arm_iomap.arm_to_pru_irq[1];
+
+	soft_uart->pru_to_pru_irq =
+		omapl_pru_suart_request_irq(pdev, "pru-to-pru", soft_uart);
+	if (soft_uart->pru_to_pru_irq < 0)
+		return soft_uart->pru_to_pru_irq;
 
 	soft_uart->clk_pru = devm_clk_get(dev, "pruss");
 	if (IS_ERR(soft_uart->clk_pru)) {
@@ -844,6 +879,20 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	}
 
 	for (i = 0; i < NR_SUART; i++) {
+		char name[20];
+
+		snprintf(name, 20, "suart%d-tx", i);
+		soft_uart->tx_irq[i] = platform_get_irq_byname(pdev, name);
+		if (soft_uart->tx_irq[i] < 0)
+			dev_warn(dev, "failed to get %s irq (%d)\n", name,
+				 soft_uart->tx_irq[i]);
+
+		snprintf(name, 20, "suart%d-rx", i);
+		soft_uart->rx_irq[i] = platform_get_irq_byname(pdev, name);
+		if (soft_uart->rx_irq[i] < 0)
+			dev_warn(dev, "failed to get %s irq (%d)\n", name,
+				 soft_uart->rx_irq[i]);
+
 		soft_uart->port[i].ops = &pru_suart_ops;
 		soft_uart->port[i].iotype = UPIO_MEM;	/* user conf parallel io */
 		soft_uart->port[i].flags = UPF_BOOT_AUTOCONF | UPF_IOREMAP;
@@ -851,7 +900,7 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 		soft_uart->port[i].membase =
 				(unsigned char *)&soft_uart->pru_arm_iomap;
 		soft_uart->port[i].type = OMAPL_PRU_SUART;
-		soft_uart->port[i].irq = platform_get_irq(pdev, i);
+		soft_uart->port[i].irq = soft_uart->rx_irq[i];
 		soft_uart->port[i].dev = dev;
 		soft_uart->port[i].irqflags = IRQF_SHARED;
 		soft_uart->port[i].uartclk = soft_uart->clk_freq_mcasp;	/* 24MHz */

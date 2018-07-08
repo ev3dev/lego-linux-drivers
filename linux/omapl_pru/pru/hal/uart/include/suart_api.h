@@ -451,9 +451,6 @@ typedef struct {
 
 	short pru_softuart_getRxStatus(suart_handle hUart);
 
-	short pru_softuart_get_isrstatus(unsigned short uartNum,
-					 unsigned short *txrxFlag);
-
 	int pru_intr_clr_isrstatus(unsigned short uartNum,  unsigned int txrxmode);
 
 	int suart_intr_getmask(unsigned short uartNum,
@@ -466,8 +463,6 @@ typedef struct {
 	short pru_softuart_getRxDataLen(suart_handle hUart);
 	short suart_arm_to_pru_intr(unsigned short uartNum);
 
-	short arm_to_pru_intr_init(void);
-	
 	void pru_mcasp_deinit (void);
 	short pru_softuart_deinit(void);
 	
@@ -478,8 +473,6 @@ typedef struct {
 
 	short pru_softuart_stopReceive (suart_handle hUart);
 	
-	int suart_pru_to_host_intr_enable (unsigned short uartNum, 
-				           unsigned int txrxmode, bool s32Flag);
 	void pru_set_fifo_timeout(u32 timeout);
 
 #endif /* _SUART_API_H_ */
