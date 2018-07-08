@@ -20,6 +20,7 @@
  *====================
  */
 
+#include <linux/string.h>
 #include <linux/types.h>
 
 #include "suart_api.h"
@@ -41,12 +42,12 @@ static void pru_set_delay_count (u32 pru_freq);
 void pru_set_ram_data (arm_pru_iomap * arm_iomap_pru)
 {
 
-    PRU_SUART_RegsOvly pru_suart_regs = (PRU_SUART_RegsOvly) arm_iomap_pru->pru_io_addr;
+    PRU_SUART_RegsOvly pru_suart_regs = arm_iomap_pru->pru_dram_io_addr[PRU_NUM0];
     unsigned int * pu32SrCtlAddr = (unsigned int *) ((unsigned int)
 					arm_iomap_pru->mcasp_io_addr + 0x180);
     pru_suart_tx_cntx_priv * pru_suart_tx_priv = NULL;
     pru_suart_rx_cntx_priv * pru_suart_rx_priv = NULL;
-    unsigned char * pu32_pru_ram_base = (unsigned char *) arm_iomap_pru->pru_io_addr;
+    unsigned char *pu32_pru_ram_base = arm_iomap_pru->pru_dram_io_addr[PRU_NUM0];
 	
     /* ***************************** RX PRU - 0  **************************************** */
 
@@ -203,10 +204,8 @@ void pru_set_ram_data (arm_pru_iomap * arm_iomap_pru)
 
 
     /* ****************************** PRU1 RAM BASE ADDR ******************************** */
-    pru_suart_regs = (PRU_SUART_RegsOvly) ((unsigned int)
-					   arm_iomap_pru->pru_io_addr + 0x2000);
-    pu32_pru_ram_base = (unsigned char *) ((unsigned int)
-					   arm_iomap_pru->pru_io_addr + 0x2000);
+    pru_suart_regs = arm_iomap_pru->pru_dram_io_addr[PRU_NUM1];
+    pu32_pru_ram_base = arm_iomap_pru->pru_dram_io_addr[PRU_NUM1];
 
     /* ***************************** TX PRU - 1  **************************************** */
     /* Channel 0 context information */
@@ -363,12 +362,12 @@ void pru_set_ram_data (arm_pru_iomap * arm_iomap_pru)
 void pru_set_ram_data (arm_pru_iomap * arm_iomap_pru)
 {
     
-    PRU_SUART_RegsOvly pru_suart_regs = (PRU_SUART_RegsOvly) arm_iomap_pru->pru_io_addr;
+    PRU_SUART_RegsOvly pru_suart_regs = arm_iomap_pru->pru_dram_io_addr[PRU_NUM0];
     unsigned int * pu32SrCtlAddr = (unsigned int *) ((unsigned int) 
 					arm_iomap_pru->mcasp_io_addr + 0x180);	
     pru_suart_tx_cntx_priv * pru_suart_tx_priv = NULL;			
     pru_suart_rx_cntx_priv * pru_suart_rx_priv = NULL;
-    unsigned char * pu32_pru_ram_base = (unsigned char *) arm_iomap_pru->pru_io_addr;	
+    unsigned char *pu32_pru_ram_base = arm_iomap_pru->pru_dram_io_addr[PRU_NUM0];
 							
     /* ***************************** UART 0  **************************************** */
 
@@ -536,7 +535,6 @@ short pru_softuart_init(unsigned int txBaudValue,
 			unsigned int fw_size, arm_pru_iomap * arm_iomap_pru)
 {
 	unsigned int omapl_addr;
-	unsigned int u32loop;
 	short status = PRU_SUART_SUCCESS;
 	short idx;
 	short retval;
@@ -546,11 +544,7 @@ short pru_softuart_init(unsigned int txBaudValue,
 		return PRU_SUART_FAILURE;
 	}
 
-	pru_arm_iomap.pru_io_addr = arm_iomap_pru->pru_io_addr;
-	pru_arm_iomap.mcasp_io_addr = arm_iomap_pru->mcasp_io_addr;
-	pru_arm_iomap.pFifoBufferPhysBase = arm_iomap_pru->pFifoBufferPhysBase;
-	pru_arm_iomap.pFifoBufferVirtBase = arm_iomap_pru->pFifoBufferVirtBase;
-	pru_arm_iomap.pru_clk_freq = arm_iomap_pru->pru_clk_freq;
+	pru_arm_iomap = *arm_iomap_pru;
 
 	omapl_addr = (unsigned int)arm_iomap_pru->mcasp_io_addr;
 	/* Configure McASP0  */
@@ -562,15 +556,10 @@ short pru_softuart_init(unsigned int txBaudValue,
 	pru_enable(1, arm_iomap_pru);
 #endif
 
-	omapl_addr = (unsigned int) arm_iomap_pru->pru_io_addr;
-
-	for (u32loop = 0; u32loop < 512; u32loop++)
-	{
-		*(unsigned int *)(omapl_addr | u32loop) = 0x0;
+	memset(pru_arm_iomap.pru_dram_io_addr[PRU_NUM0], 0, 512);
 #if (!(PRU1_MODE == PRU_MODE_INVALID))
-		*(unsigned int *)(omapl_addr | u32loop | 0x2000) = 0x0;
+	memset(pru_arm_iomap.pru_dram_io_addr[PRU_NUM1], 0, 512);
 #endif
-	}
 
 	pru_load(PRU_NUM0, (unsigned int *)pru_suart_emu_code,
 		 (fw_size / sizeof(unsigned int)), arm_iomap_pru);
@@ -686,10 +675,13 @@ short pru_softuart_deinit(void)
 	short s16retval = 0;
 	unsigned int u32value = 0;
 
-	pru_disable(&pru_arm_iomap);	
+#if (!(PRU1_MODE == PRU_MODE_INVALID))
+	pru_disable(PRU_NUM1, &pru_arm_iomap);	
+#endif
+	pru_disable(PRU_NUM0, &pru_arm_iomap);	
 
 	offset =
-		(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_STATCLRINT1 &
+		(unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_STATCLRINT1 &
 			0xFFFF);
 	u32value = 0xFFFFFFFF;
 	s16retval =
@@ -698,7 +690,7 @@ short pru_softuart_deinit(void)
 		return -1;
 	}
 	offset =
-		(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_STATCLRINT0 &
+		(unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_STATCLRINT0 &
 			0xFFFF);
 	u32value = 0xFFFFFFFF;
 	s16retval =
@@ -2220,12 +2212,12 @@ short pru_softuart_get_isrstatus(unsigned short uartNum, unsigned short *txrxFla
 	/* initialize the status & Flag to known value */
 	*txrxFlag = 0;
 	
-	u32StatInxClrRegoffset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_STATIDXCLR &
+	u32StatInxClrRegoffset = (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_STATIDXCLR &
 									   0xFFFF);
 									   
 	/* Read PRU Interrupt Status Register from PRU */
 	u32IntcOffset =
-        (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_STATCLRINT1 &
+        (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_STATCLRINT1 &
                                0xFFFF);
 
 	pru_ram_read_data_4byte(u32IntcOffset, (unsigned int *)&u32ISRValue, 1);
@@ -2379,7 +2371,7 @@ short suart_arm_to_pru_intr(unsigned short uartNum)
 	}
 	
 	u32offset =
-	    (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_STATIDXSET &
+	    (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_STATIDXSET &
 						       0xFFFF);
 	s16retval =
 	    pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
@@ -2398,7 +2390,7 @@ short arm_to_pru_intr_init(void)
 #if 0
 	/* Set the MCASP Event to PRU0 as Edge Triggered */
 	u32offset =
-        (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_TYPE0&
+        (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_TYPE0&
                         0xFFFF);
 	u32value = 0x80000000;
     	s16retval =
@@ -2411,7 +2403,7 @@ short arm_to_pru_intr_init(void)
     for (intOffset = 0; intOffset <= PRU_INTC_HOSTINTLVL_MAX; intOffset++)
     {
 	    u32offset =
-    	    (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_HSTINTENIDXCLR&
+    	    (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_HSTINTENIDXCLR &
                                0xFFFF);
     	u32value = intOffset;
     	s16retval =
@@ -2422,7 +2414,7 @@ short arm_to_pru_intr_init(void)
 	}
 	
 	/* Enable the global interrupt */
-	u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_GLBLEN &
+	u32offset = (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_GLBLEN &
 						       0xFFFF);
 	u32value = 0x1;
 	s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
@@ -2433,7 +2425,7 @@ short arm_to_pru_intr_init(void)
 	/* Enable the Host interrupts for all host channels */
     for (intOffset = 0; intOffset <=PRU_INTC_HOSTINTLVL_MAX; intOffset++)
 	{
-		u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_HSTINTENIDXSET &
+		u32offset = (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_HSTINTENIDXSET &
 						       0xFFFF);
 		u32value = intOffset;
 		s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
@@ -2444,7 +2436,7 @@ short arm_to_pru_intr_init(void)
 
 	/* host to channel mapping : Setting the host interrupt for channels 0,1,2,3 */
 	u32offset =
-	    (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_HOSTMAP0 &
+	    (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_HOSTMAP0 &
 						       0xFFFF);
 	u32value = 0x03020100;
 	s16retval =
@@ -2455,7 +2447,7 @@ short arm_to_pru_intr_init(void)
 
 	/* host to channel mapping : Setting the host interrupt for channels 4,5,6,7 */
 	u32offset =
-	    (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_HOSTMAP1 &
+	    (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_HOSTMAP1 &
 						       0xFFFF);
 	u32value = 0x07060504;
 	s16retval =
@@ -2466,7 +2458,7 @@ short arm_to_pru_intr_init(void)
 
 	/* host to channel mapping : Setting the host interrupt for channels 8,9 */
 	u32offset =
-	    (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_HOSTMAP2 &
+	    (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_HOSTMAP2 &
 						       0xFFFF);
 	u32value = 0x00000908;
 	s16retval =
@@ -2479,7 +2471,7 @@ short arm_to_pru_intr_init(void)
      	* MAP Channel 0 to SYS_EVT31 
      	*/
 	u32offset =
-		(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP7 &
+		(unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_CHANMAP7 &
 							0xFFFF);
 	u32value = 0x0000000000;
 	s16retval =
@@ -2498,7 +2490,7 @@ short arm_to_pru_intr_init(void)
 		* MAP channel 2 to SYS_EVT35  SUART0-Rx
 		*/
 		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP8 &
+			(unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_CHANMAP8 &
 								0xFFFF);
 		u32value = 0x02020100;
 		s16retval =
@@ -2514,7 +2506,7 @@ short arm_to_pru_intr_init(void)
 		* MAP channel 4 to SYS_EVT39 	SUART2-Rx
 		*/
 		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP9 &
+			(unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_CHANMAP9 &
 								0xFFFF);
 		u32value = 0x04040303;
 		s16retval =
@@ -2530,7 +2522,7 @@ short arm_to_pru_intr_init(void)
 		* MAP channel 6 to SYS_EVT43 	SUART4-Rx
 		*/
 		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP10 &
+			(unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_CHANMAP10 &
 								0xFFFF);
 		u32value = 0x06060505;
 		s16retval =
@@ -2546,7 +2538,7 @@ short arm_to_pru_intr_init(void)
 		* MAP channel 8 to SYS_EVT47 	SUART6-Rx
 		*/
 		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP11 &
+			(unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_CHANMAP11 &
 						       0xFFFF);
 		u32value = 0x08080707;
 		s16retval =
@@ -2561,7 +2553,7 @@ short arm_to_pru_intr_init(void)
 		* MAP Channel 1 to SYS_EVT50
 		*/
 		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP12 &
+			(unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_CHANMAP12 &
 								0xFFFF);
 		u32value = 0x00010909;
 		s16retval =
@@ -2581,7 +2573,7 @@ short arm_to_pru_intr_init(void)
 		* MAP channel 3 to SYS_EVT35  SUART1
 		*/
 		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP8 &
+			(unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_CHANMAP8 &
 								0xFFFF);
 		u32value = 0x03020100;
 		s16retval =
@@ -2597,7 +2589,7 @@ short arm_to_pru_intr_init(void)
 		* MAP channel 7 to SYS_EVT39 	SUART5
 		*/
 		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP9 &
+			(unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_CHANMAP9 &
 								0xFFFF);
 		u32value = 0x07060504;
 		s16retval =
@@ -2613,7 +2605,7 @@ short arm_to_pru_intr_init(void)
 		* MAP channel 3 to SYS_EVT43 	SUART1
 		*/
 		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP10 &
+			(unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_CHANMAP10 &
 								0xFFFF);
 		u32value = 0x03020908;
 		s16retval =
@@ -2629,7 +2621,7 @@ short arm_to_pru_intr_init(void)
 		* MAP channel 7 to SYS_EVT47 	SUART5
 		*/
 		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP11 &
+			(unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_CHANMAP11 &
 						       0xFFFF);
 		u32value = 0x07060504;
 		s16retval =
@@ -2644,7 +2636,7 @@ short arm_to_pru_intr_init(void)
 		* MAP Channel 1 to SYS_EVT50    PRU to PRU Intr
 		*/
 		u32offset =
-			(unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_CHANMAP12 &
+			(unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_CHANMAP12 &
 								0xFFFF);
 		u32value = 0x00010908;
 		s16retval =
@@ -2657,7 +2649,7 @@ short arm_to_pru_intr_init(void)
 	/* Clear required set of system events and enable them using indexed register */
 	for  (intOffset = 0; intOffset < 18; intOffset++)
 	{
-    	u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_STATIDXCLR & 0xFFFF);
+    	u32offset = (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_STATIDXCLR & 0xFFFF);
     	u32value = 32 + intOffset;
     	s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int *) &u32value, 1);
     	if (s16retval == -1) {
@@ -2668,25 +2660,25 @@ short arm_to_pru_intr_init(void)
 	/* enable only the HOST to PRU interrupts and let the PRU to Host events be
 	 * enabled by the separate API on demand basis.
 	 */
-	u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_ENIDXSET & 0xFFFF);
+	u32offset = (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_ENIDXSET & 0xFFFF);
 	u32value = 31;
 	s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int*) &u32value, 1);
 	if (s16retval == -1) {
 		return -1;
 	}
-	u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_ENIDXSET & 0xFFFF);
+	u32offset = (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_ENIDXSET & 0xFFFF);
 	u32value = 32;
 	s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int*) &u32value, 1);
 	if (s16retval == -1) {
 		return -1;
 	}
-	u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_ENIDXSET & 0xFFFF);
+	u32offset = (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_ENIDXSET & 0xFFFF);
 	u32value = 33;
 	s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int*) &u32value, 1);
 	if (s16retval == -1) {
 		return -1;
 	}
-	u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_ENIDXSET & 0xFFFF);
+	u32offset = (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_ENIDXSET & 0xFFFF);
 	u32value = 50;
 	s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int*) &u32value, 1);
 	if (s16retval == -1) {
@@ -2694,7 +2686,7 @@ short arm_to_pru_intr_init(void)
 	}
 
 	/* Enable the global interrupt */
-	u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_GLBLEN &
+	u32offset = (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_GLBLEN &
 						       0xFFFF);
 	u32value = 0x1;
 	s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
@@ -2705,7 +2697,7 @@ short arm_to_pru_intr_init(void)
 	/* Enable the Host interrupts for all host channels */
     	for (intOffset = 0; intOffset <=PRU_INTC_HOSTINTLVL_MAX; intOffset++)
 	{
-		u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_HSTINTENIDXSET &
+		u32offset = (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_HSTINTENIDXSET &
 						       0xFFFF);
 		u32value = intOffset;
 		s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int *)&u32value, 1);
@@ -2752,7 +2744,7 @@ int suart_pru_to_host_intr_enable (unsigned short uartNum,
 
 	if (s32Flag)
 	{
-		u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_ENIDXSET & 0xFFFF);
+		u32offset = (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_ENIDXSET & 0xFFFF);
 		s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int*) &u32value, 1);
 		if (s16retval == -1) {
 			return -1;
@@ -2760,7 +2752,7 @@ int suart_pru_to_host_intr_enable (unsigned short uartNum,
 	}
 	else
 	{
-		u32offset = (unsigned int)pru_arm_iomap.pru_io_addr | (PRU_INTC_ENIDXCLR & 0xFFFF);
+		u32offset = (unsigned int)pru_arm_iomap.pru_intc_io_addr | (PRU_INTC_ENIDXCLR & 0xFFFF);
 		s16retval = pru_ram_write_data_4byte(u32offset, (unsigned int*) &u32value, 1);
 		if (s16retval == -1) {
 			return -1;

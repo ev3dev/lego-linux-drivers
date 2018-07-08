@@ -45,7 +45,6 @@
 #define DRV_DESC "TI PRU SUART Controller Driver v0.1"
 #define MAX_SUART_RETRIES 100
 #define SUART_CNTX_SZ 512
-#define PLATFORM_SUART_RES_SZ 2
 #define SUART_FIFO_TIMEOUT_DFLT 10
 #define SUART_FIFO_TIMEOUT_MIN 4
 #define SUART_FIFO_TIMEOUT_MAX 500
@@ -745,7 +744,7 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct omapl_pru_suart *soft_uart;
-	struct resource *res_mem[PLATFORM_SUART_RES_SZ];
+	struct resource *res;
 	int err, i;
 
 	soft_uart = devm_kzalloc(dev, sizeof(*soft_uart), GFP_KERNEL);
@@ -754,21 +753,43 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, soft_uart);
 
-	for (i = 0; i < PLATFORM_SUART_RES_SZ; i++) {
-		res_mem[i] = platform_get_resource(pdev, IORESOURCE_MEM, i);
-		if (!res_mem[i]) {
-			dev_err(dev, "unable to get pru memory resources!\n");
-			return -ENODEV;
-		}
-	}
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pru0-dram");
+	soft_uart->pru_arm_iomap.pru_dram_io_addr[0] = devm_ioremap_resource(dev, res);
+	if (IS_ERR(soft_uart->pru_arm_iomap.pru_dram_io_addr[0]))
+		return PTR_ERR(soft_uart->pru_arm_iomap.pru_dram_io_addr[0]);
 
-	soft_uart->pru_arm_iomap.pru_io_addr = devm_ioremap_resource(dev,
-								res_mem[0]);
-	if (IS_ERR(soft_uart->pru_arm_iomap.pru_io_addr))
-		return PTR_ERR(soft_uart->pru_arm_iomap.pru_io_addr);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pru0-ctrl");
+	soft_uart->pru_arm_iomap.pru_ctrl_io_addr[0] = devm_ioremap_resource(dev, res);
+	if (IS_ERR(soft_uart->pru_arm_iomap.pru_ctrl_io_addr[0]))
+		return PTR_ERR(soft_uart->pru_arm_iomap.pru_ctrl_io_addr[0]);
 
-	soft_uart->pru_arm_iomap.mcasp_io_addr = devm_ioremap_resource(dev,
-								res_mem[1]);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pru0-iram");
+	soft_uart->pru_arm_iomap.pru_iram_io_addr[0] = devm_ioremap_resource(dev, res);
+	if (IS_ERR(soft_uart->pru_arm_iomap.pru_iram_io_addr[0]))
+		return PTR_ERR(soft_uart->pru_arm_iomap.pru_iram_io_addr[0]);
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pru1-dram");
+	soft_uart->pru_arm_iomap.pru_dram_io_addr[1] = devm_ioremap_resource(dev, res);
+	if (IS_ERR(soft_uart->pru_arm_iomap.pru_dram_io_addr[1]))
+		return PTR_ERR(soft_uart->pru_arm_iomap.pru_dram_io_addr[1]);
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pru1-ctrl");
+	soft_uart->pru_arm_iomap.pru_ctrl_io_addr[1] = devm_ioremap_resource(dev, res);
+	if (IS_ERR(soft_uart->pru_arm_iomap.pru_ctrl_io_addr[1]))
+		return PTR_ERR(soft_uart->pru_arm_iomap.pru_ctrl_io_addr[1]);
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pru1-iram");
+	soft_uart->pru_arm_iomap.pru_iram_io_addr[1] = devm_ioremap_resource(dev, res);
+	if (IS_ERR(soft_uart->pru_arm_iomap.pru_iram_io_addr[1]))
+		return PTR_ERR(soft_uart->pru_arm_iomap.pru_iram_io_addr[1]);
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pru-intc");
+	soft_uart->pru_arm_iomap.pru_intc_io_addr = devm_ioremap_resource(dev, res);
+	if (IS_ERR(soft_uart->pru_arm_iomap.pru_intc_io_addr))
+		return PTR_ERR(soft_uart->pru_arm_iomap.pru_intc_io_addr);
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mcasp");
+	soft_uart->pru_arm_iomap.mcasp_io_addr = devm_ioremap_resource(dev, res);
 	if (IS_ERR(soft_uart->pru_arm_iomap.mcasp_io_addr))
 		return PTR_ERR(soft_uart->pru_arm_iomap.mcasp_io_addr);
 
@@ -826,7 +847,7 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 		soft_uart->port[i].ops = &pru_suart_ops;
 		soft_uart->port[i].iotype = UPIO_MEM;	/* user conf parallel io */
 		soft_uart->port[i].flags = UPF_BOOT_AUTOCONF | UPF_IOREMAP;
-		soft_uart->port[i].mapbase = res_mem[1]->start;
+		soft_uart->port[i].mapbase = res->start;
 		soft_uart->port[i].membase =
 				(unsigned char *)&soft_uart->pru_arm_iomap;
 		soft_uart->port[i].type = OMAPL_PRU_SUART;
