@@ -17,6 +17,10 @@
  * GNU General Public License for more details.
  */
 
+#if defined(CONFIG_SERIAL_SUART_OMAPL_PRU) && defined(CONFIG_MAGIC_SYSRQ)
+#define SUPPORT_SYSRQ
+#endif
+
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
@@ -51,10 +55,6 @@
 
 #ifndef OMAPL_PRU_SUART
 #define OMAPL_PRU_SUART 999
-#endif
-
-#if defined(CONFIG_SERIAL_SUART_OMAPL_PRU) && defined(CONFIG_MAGIC_SYSRQ)
-#define SUPPORT_SYSRQ
 #endif
 
 /* Default timeout set to 5ms */
