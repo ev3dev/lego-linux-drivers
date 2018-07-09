@@ -1758,7 +1758,7 @@ short pru_softuart_read_data (
 	}
 	
 	/* evaluate the virtual address of the FIFO address based on the physical addr */
-	pu8SrcAddr = (u8 *) ((u32) pu8SrcAddr - (u32) pru_arm_iomap.pFifoBufferPhysBase + 
+	pu8SrcAddr = (u8 *) ((u32) pu8SrcAddr - pru_arm_iomap.pFifoBufferPhysBase + 
 							(u32) pru_arm_iomap.pFifoBufferVirtBase);
 	
 	/* Now we have both the data length and the source address. copy */

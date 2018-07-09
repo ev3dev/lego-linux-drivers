@@ -865,7 +865,7 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 		goto err_release_reserved_mem;
 	}
 
-	soft_uart->pru_arm_iomap.pFifoBufferPhysBase = (void *)soft_uart->dma_phys_addr;
+	soft_uart->pru_arm_iomap.pFifoBufferPhysBase = soft_uart->dma_phys_addr;
 	soft_uart->pru_arm_iomap.pFifoBufferVirtBase = soft_uart->dma_vaddr_buff;
 
 	err = pru_softuart_init(SUART_DEFAULT_BAUD, SUART_DEFAULT_BAUD,

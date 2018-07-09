@@ -40,7 +40,7 @@ typedef struct arm_pru_iomap {
 	void *pru_ctrl_io_addr[2];
 	void *pru_iram_io_addr[2];
 	void *mcasp_io_addr;
-	void *pFifoBufferPhysBase;
+	dma_addr_t pFifoBufferPhysBase;
 	void *pFifoBufferVirtBase;
 	int arm_to_pru_irq[2];
 } arm_pru_iomap;
