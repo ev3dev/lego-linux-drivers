@@ -85,8 +85,8 @@ struct omapl_pru_suart {
 	u32 tx_loadsz;
 	int mcasp_irq;
 	int pru_to_pru_irq;
-	int tx_irq[8];
-	int rx_irq[8];
+	int tx_irq[NR_SUART];
+	int rx_irq[NR_SUART];
 };
 
 static inline struct omapl_pru_suart *to_pru_suart(struct uart_port *port)
