@@ -955,12 +955,9 @@ static int omapl_pru_suart_remove(struct platform_device *pdev)
 	struct omapl_pru_suart *soft_uart = platform_get_drvdata(pdev);
 	int i;
 
-	if (soft_uart) {
-		for (i = 0; i < NR_SUART; i++) {
-			uart_remove_one_port(&pru_suart_reg,
-					     &soft_uart->port[i]);
-		}
-	}
+	for (i = 0; i < NR_SUART; i++) {
+		uart_remove_one_port(&pru_suart_reg, &soft_uart->port[i]);
+
 	pru_softuart_deinit();
 	pru_mcasp_deinit ();
 	dma_free_coherent(dev, SZ_8K, soft_uart->dma_vaddr_buff,
