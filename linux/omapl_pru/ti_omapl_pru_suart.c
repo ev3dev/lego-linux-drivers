@@ -929,7 +929,6 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 		uart_add_one_port(&pru_suart_reg, &soft_uart->port[i]);
 		sema_init(&soft_uart->port_sem[i], 1);
 	}
-	platform_set_drvdata(pdev, &soft_uart->port[0]);
 
 	dev_info(dev, "%s device registered (pru_clk=%d, asp_clk=%d)\n",
 		 DRV_NAME, soft_uart->clk_freq_pru, soft_uart->clk_freq_mcasp);
