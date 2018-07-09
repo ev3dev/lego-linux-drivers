@@ -37,7 +37,6 @@ static unsigned char gUartStatuTable[8];
 static arm_pru_iomap pru_arm_iomap;
 static int suart_set_pru_id (unsigned int pru_no);
 static void pru_set_rx_tx_mode(u32 pru_mode, u32 pruNum);
-static void pru_set_delay_count (u32 pru_freq);
 
 #if (PRU_ACTIVE == BOTH_PRU)
 void pru_set_ram_data (arm_pru_iomap * arm_iomap_pru)
@@ -568,8 +567,6 @@ short pru_softuart_init(unsigned int txBaudValue,
 		 (fw_size / sizeof(unsigned int)), arm_iomap_pru);
 #endif
 
-	pru_set_delay_count (pru_arm_iomap.pru_clk_freq);
-
 	suart_set_pru_id(0);
 
 #if (!(PRU1_MODE == PRU_MODE_INVALID))
@@ -630,34 +627,6 @@ void pru_set_fifo_timeout(u32 timeout)
 	pru_ram_write_data(PRU_SUART_PRU1_IDLE_TIMEOUT_OFFSET, 
 				(u8 *)&timeout, 2, &pru_arm_iomap);
 #endif
-}
-
-/* Not needed as PRU Soft Uart Firmware is implemented as Mcasp Event Based */
-static void pru_set_delay_count (u32 pru_freq)
-{
-	u32 u32delay_cnt;
-
-	if (pru_freq == 228 )
-	{
-		u32delay_cnt = 5;
-	}else  if (pru_freq == 186)
-	{
-		u32delay_cnt = 5;
-	}
-	else
-	{
-		u32delay_cnt =3;
-	}
-
-	/* PRU 0 */
-	pru_ram_write_data(PRU_SUART_PRU0_DELAY_OFFSET,
-	                   (u8 *)&u32delay_cnt, 1, &pru_arm_iomap);
-#if (!(PRU1_MODE == PRU_MODE_INVALID))
-    	/* PRU 1 */
-    	pru_ram_write_data(PRU_SUART_PRU1_DELAY_OFFSET,
-        	        (u8 *)&u32delay_cnt, 1, &pru_arm_iomap);
-#endif
-
 }
 
 void pru_mcasp_deinit (void)

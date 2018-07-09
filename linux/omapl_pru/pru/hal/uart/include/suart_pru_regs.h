@@ -67,7 +67,6 @@
 
 #define PRU_SUART_PRU0_RX_TX_MODE		(0x0085)
 
-#define PRU_SUART_PRU0_DELAY_OFFSET		(0x0086)
 #define PRU_SUART_PRU0_IDLE_TIMEOUT_OFFSET	(0x0088)
 
 /* ********* PRU 1 Macros ************* */

@@ -867,7 +867,6 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 
 	soft_uart->pru_arm_iomap.pFifoBufferPhysBase = (void *)soft_uart->dma_phys_addr;
 	soft_uart->pru_arm_iomap.pFifoBufferVirtBase = soft_uart->dma_vaddr_buff;
-	soft_uart->pru_arm_iomap.pru_clk_freq = (soft_uart->clk_freq_pru / 1000000);
 
 	err = pru_softuart_init(SUART_DEFAULT_BAUD, SUART_DEFAULT_BAUD,
 				SUART_DEFAULT_OVRSMPL, soft_uart->fw->data,

@@ -42,7 +42,6 @@ typedef struct arm_pru_iomap {
 	void *mcasp_io_addr;
 	void *pFifoBufferPhysBase;
 	void *pFifoBufferVirtBase;
-	unsigned int   pru_clk_freq;
 	int arm_to_pru_irq[2];
 } arm_pru_iomap;
 
