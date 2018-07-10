@@ -374,8 +374,8 @@ static int legoev3_motor_reset(void *context)
 	ev3_tm->position		= 0;
 	ev3_tm->speed			= 0;
 	ev3_tm->duty_cycle		= 0;
-	ev3_tm->stalled			= 0;
-	ev3_tm->stalling		= 0;
+	ev3_tm->stalled			= false;
+	ev3_tm->stalling		= false;
 
 	tm_pid_init(&ev3_tm->speed_pid, info->speed_pid_k.p,
 		    info->speed_pid_k.i, info->speed_pid_k.d);
@@ -619,27 +619,12 @@ static void calculate_speed(struct legoev3_motor_data *ev3_tm)
 		else
 			ev3_tm->speed  = -new_speed;
 
-		ev3_tm->stalled = 0;
-		ev3_tm->stalling = 0;
 		ev3_tm->got_new_sample = false;
 
 	} else if (ev3_tm->max_us_per_sample < ktime_to_us(ktime_sub(ktime_get(), ev3_tm->tacho_samples[diff_idx]))) {
 
 		ev3_tm->dir_chg_samples = 0;
 		ev3_tm->speed = 0;
-		ev3_tm->stalled = 0;
-
-                if (ev3_tm->state == STATE_RUNNING) {
-                        if (ev3_tm->stalling) {
-                                if (TACHO_MOTOR_STALLED_MS < ktime_to_ms(ktime_sub(ktime_get(), ev3_tm->stalling_since)))
-                                        ev3_tm->stalled = 1;
-                        } else {
-                                ev3_tm->stalling = 1;
-                                ev3_tm->stalling_since = ktime_get();
-                        }
-                } else {
-                        ev3_tm->stalling = 0;
-                }
 	}
 
 	else if (TACHO_MOTOR_POLL_MS < ktime_to_ms(ktime_sub(ktime_get(), ev3_tm->tacho_samples[diff_idx]))) {
@@ -655,9 +640,23 @@ static void calculate_speed(struct legoev3_motor_data *ev3_tm)
 			ev3_tm->speed  = new_speed;
 		else
 			ev3_tm->speed  = -new_speed;
+	}
+}
 
-		ev3_tm->stalled = 0;
-		ev3_tm->stalling = 0;
+static void update_stall(struct legoev3_motor_data *ev3_tm)
+{
+	/* if the motor is running, but not moving, then maybe we are stalled */
+	if (ev3_tm->state == STATE_RUNNING && ev3_tm->speed == 0) {
+		if (ev3_tm->stalling) {
+			if (TACHO_MOTOR_STALLED_MS < ktime_to_ms(ktime_sub(ktime_get(), ev3_tm->stalling_since)))
+				ev3_tm->stalled = true;
+		} else {
+			ev3_tm->stalling_since = ktime_get();
+			ev3_tm->stalling = true;
+		}
+	} else {
+		ev3_tm->stalled = false;
+		ev3_tm->stalling = false;
 	}
 }
 
@@ -719,6 +718,7 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 	hrtimer_forward_now(timer, ktime_set(0, TACHO_MOTOR_POLL_MS * NSEC_PER_MSEC));
 
 	calculate_speed(ev3_tm);
+	update_stall(ev3_tm);
 
 	if (ev3_tm->speed_pid_ena) {
 		if (ev3_tm->speed_pid.setpoint == 0) {
