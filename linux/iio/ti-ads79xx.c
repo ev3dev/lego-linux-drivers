@@ -245,7 +245,7 @@ static int ti_ads79xx_update_scan_mode(struct iio_dev *indio_dev,
 	/* build spi ring message */
 	spi_message_init(&st->ring_msg);
 
-	/* Data for the 1st channel is not retuned until the 3rd transfer */
+	/* Data for the 1st channel is not returned until the 3rd transfer */
 	len += 2;
 	for (i = 0; i < len; i++) {
 		if ((i + 2) < len)
