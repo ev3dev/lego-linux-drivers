@@ -46,7 +46,7 @@
 
 struct ti_ads79xx_state {
 	struct spi_device	*spi;
-	struct spi_transfer	ring_xfer[ADS79XX_MAX_CHAN+2];
+	struct spi_transfer	ring_xfer;
 	struct spi_transfer	scan_single_xfer[3];
 	struct spi_message	ring_msg;
 	struct spi_message	scan_single_msg;
@@ -60,8 +60,8 @@ struct ti_ads79xx_state {
 	 * DMA (thus cache coherency maintenance) requires the
 	 * transfer buffers to live in their own cache lines.
 	 */
-	u16			rx_buf[ADS79XX_MAX_CHAN] ____cacheline_aligned;
-	u16			tx_buf[ADS79XX_MAX_CHAN];
+	u16 rx_buf[ADS79XX_MAX_CHAN + 10] ____cacheline_aligned;
+	u16 tx_buf[ADS79XX_MAX_CHAN + 2];
 };
 
 struct ti_ads79xx_chip_info {
@@ -241,23 +241,18 @@ static int ti_ads79xx_update_scan_mode(struct iio_dev *indio_dev,
 		cmd = ADS79XX_CR_WRITE | ADS79XX_CR_CHAN(i) | st->settings;
 		st->tx_buf[len++] = cmd;
 	}
+	st->tx_buf[len++] = 0;
+	st->tx_buf[len++] = 0;
 
 	/* build spi ring message */
 	spi_message_init(&st->ring_msg);
 
-	/* Data for the 1st channel is not returned until the 3rd transfer */
-	len += 2;
-	for (i = 0; i < len; i++) {
-		if ((i + 2) < len)
-			st->ring_xfer[i].tx_buf = &st->tx_buf[i];
-		if (i >= 2)
-			st->ring_xfer[i].rx_buf = &st->rx_buf[i - 2];
-		st->ring_xfer[i].len = 2;
-		st->ring_xfer[i].cs_change = 1;
-		spi_message_add_tail(&st->ring_xfer[i], &st->ring_msg);
-	}
-	/* make sure last transfer cs_change is not set */
-	st->ring_xfer[len - 1].cs_change = 0;
+	st->ring_xfer.tx_buf = &st->tx_buf[0];
+	st->ring_xfer.rx_buf = &st->rx_buf[0];
+	st->ring_xfer.len = len * 2;
+	st->ring_xfer.cs_change = true;
+
+	spi_message_add_tail(&st->ring_xfer, &st->ring_msg);
 
 	return 0;
 }
@@ -279,7 +274,7 @@ static irqreturn_t ti_ads79xx_trigger_handler(int irq, void *p)
 	if (err)
 		goto done;
 
-	iio_push_to_buffers_with_timestamp(indio_dev, st->rx_buf,
+	iio_push_to_buffers_with_timestamp(indio_dev, &st->rx_buf[2],
 		iio_get_time_ns(indio_dev));
 
 done:
