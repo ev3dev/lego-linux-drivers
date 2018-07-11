@@ -40,9 +40,6 @@
 
 #define ADS79XX_MAX_CHAN	16
 
-/* val = value, dec = left shift, bits = number of bits of the mask */
-#define EXTRACT(val, dec, bits)		((val >> dec) & ((1 << bits) - 1))
-
 struct ti_ads79xx_state {
 	struct spi_device	*spi;
 	struct spi_transfer	ring_xfer;
@@ -291,12 +288,12 @@ static int ti_ads79xx_scan_direct(struct ti_ads79xx_state *st, unsigned ch)
 		goto out;
 
 	/* returned data for wrong channel for some reason? */
-	if (EXTRACT(st->single_rx, 12, 4) != ch) {
+	if (st->single_rx >> 12 != ch) {
 		ret = -EAGAIN;
 		goto out;
 	}
 
-	ret = EXTRACT(st->single_rx, 0, 12);
+	ret = st->single_rx & 0xfff;
 out:
 	mutex_unlock(&indio_dev->mlock);
 
