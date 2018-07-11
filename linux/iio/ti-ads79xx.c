@@ -279,16 +279,28 @@ done:
 
 static int ti_ads79xx_scan_direct(struct ti_ads79xx_state *st, unsigned ch)
 {
-	int ret, cmd;
+	struct iio_dev *indio_dev = spi_get_drvdata(st->spi);
+	int ret;
 
-	cmd = ADS79XX_CR_WRITE | ADS79XX_CR_CHAN(ch) | st->settings;
-	st->single_tx = cmd;
+	mutex_lock(&indio_dev->mlock);
+
+	st->single_tx = ADS79XX_CR_WRITE | ADS79XX_CR_CHAN(ch) | st->settings;
 
 	ret = spi_sync(st->spi, &st->scan_single_msg);
 	if (ret)
-		return ret;
+		goto out;
 
-	return st->single_rx;
+	/* returned data for wrong channel for some reason? */
+	if (EXTRACT(st->single_rx, 12, 4) != ch) {
+		ret = -EAGAIN;
+		goto out;
+	}
+
+	ret = EXTRACT(st->single_rx, 0, 12);
+out:
+	mutex_unlock(&indio_dev->mlock);
+
+	return ret;
 }
 
 static int ti_ads79xx_get_range(struct ti_ads79xx_state *st)
@@ -320,10 +332,7 @@ static int ti_ads79xx_read_raw(struct iio_dev *indio_dev,
 		if (ret < 0)
 			return ret;
 
-		if (chan->address == EXTRACT(ret, 12, 4))
-			*val = EXTRACT(ret, 0, 12);
-		else
-			return -EIO;
+		*val = ret;
 
 		return IIO_VAL_INT;
 	case IIO_CHAN_INFO_SCALE:
