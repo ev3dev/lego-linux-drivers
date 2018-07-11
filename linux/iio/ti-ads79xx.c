@@ -332,7 +332,7 @@ static int ti_ads79xx_read_raw(struct iio_dev *indio_dev,
 		if (ret < 0)
 			return ret;
 
-		*val = ret;
+		*val = ret >> chan->scan_type.shift;
 
 		return IIO_VAL_INT;
 	case IIO_CHAN_INFO_SCALE:
@@ -341,7 +341,7 @@ static int ti_ads79xx_read_raw(struct iio_dev *indio_dev,
 			return ret;
 
 		*val = ret;
-		*val2 = ((1 << chan->scan_type.realbits) - 1) << chan->scan_type.shift;
+		*val2 = (1 << chan->scan_type.realbits) - 1;
 
 		return IIO_VAL_FRACTIONAL;
 	}
