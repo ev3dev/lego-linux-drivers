@@ -49,6 +49,8 @@ struct ti_ads79xx_state {
 	struct spi_transfer	scan_single_xfer[3];
 	struct spi_message	ring_msg;
 	struct spi_message	scan_single_msg;
+	u16			single_tx;
+	u16			single_rx;
 
 	struct regulator	*reg;
 	struct iio_sw_trigger	*hrtimer_trigger;
@@ -279,13 +281,13 @@ static int ti_ads79xx_scan_direct(struct ti_ads79xx_state *st, unsigned ch)
 	int ret, cmd;
 
 	cmd = ADS79XX_CR_WRITE | ADS79XX_CR_CHAN(ch) | st->settings;
-	st->tx_buf[0] = cmd;
+	st->single_tx = cmd;
 
 	ret = spi_sync(st->spi, &st->scan_single_msg);
 	if (ret)
 		return ret;
 
-	return st->rx_buf[0];
+	return st->single_rx;
 }
 
 static int ti_ads79xx_get_range(struct ti_ads79xx_state *st)
@@ -313,14 +315,7 @@ static int ti_ads79xx_read_raw(struct iio_dev *indio_dev,
 
 	switch (m) {
 	case IIO_CHAN_INFO_RAW:
-		ret = iio_device_claim_direct_mode(indio_dev);
-		if (ret)
-			return ret;
-
 		ret = ti_ads79xx_scan_direct(st, chan->address);
-
-		iio_device_release_direct_mode(indio_dev);
-
 		if (ret < 0)
 			return ret;
 
@@ -398,14 +393,15 @@ static int ti_ads79xx_probe(struct spi_device *spi)
 	 * while the chip is converting the sample from first transfer.
 	 */
 
-	st->scan_single_xfer[0].tx_buf = &st->tx_buf[0];
+	st->scan_single_xfer[0].tx_buf = &st->single_tx;
 	st->scan_single_xfer[0].len = 2;
 	st->scan_single_xfer[0].cs_change = 1;
-	st->scan_single_xfer[1].tx_buf = &st->tx_buf[0];
+	st->scan_single_xfer[1].tx_buf = &st->single_tx;
 	st->scan_single_xfer[1].len = 2;
 	st->scan_single_xfer[1].cs_change = 1;
-	st->scan_single_xfer[2].rx_buf = &st->rx_buf[0];
+	st->scan_single_xfer[2].rx_buf = &st->single_rx;
 	st->scan_single_xfer[2].len = 2;
+	st->scan_single_xfer[2].cs_change = 1;
 
 	spi_message_init_with_transfers(&st->scan_single_msg,
 					&st->scan_single_xfer[0], 3);
