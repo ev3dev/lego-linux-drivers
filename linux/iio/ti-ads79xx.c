@@ -25,14 +25,13 @@
 #include <linux/module.h>
 #include <linux/interrupt.h>
 
-#include <linux/iio/iio.h>
-#include <linux/iio/sysfs.h>
 #include <linux/iio/buffer.h>
-#include <linux/iio/trigger.h>
+#include <linux/iio/iio.h>
+#include <linux/iio/sw_trigger.h>
+#include <linux/iio/sysfs.h>
 #include <linux/iio/trigger_consumer.h>
+#include <linux/iio/trigger.h>
 #include <linux/iio/triggered_buffer.h>
-
-#include "iio-trig-hrtimer.h"
 
 #define ADS79XX_CR_MANUAL	(1 << 12)
 #define ADS79XX_CR_WRITE	(1 << 11)
@@ -52,7 +51,7 @@ struct ti_ads79xx_state {
 	struct spi_message	scan_single_msg;
 
 	struct regulator	*reg;
-	struct iio_trigger	*hrtimer_trigger;
+	struct iio_sw_trigger	*hrtimer_trigger;
 
 	unsigned int		settings;
 
@@ -326,7 +325,7 @@ static int ti_ads79xx_read_raw(struct iio_dev *indio_dev,
 		if (ret)
 			return ret;
 
-			ret = ti_ads79xx_scan_direct(st, chan->address);
+		ret = ti_ads79xx_scan_direct(st, chan->address);
 
 		iio_device_release_direct_mode(indio_dev);
 
@@ -438,19 +437,14 @@ static int ti_ads79xx_probe(struct spi_device *spi)
 		goto error_cleanup_ring;
 	}
 
-	/*
-	 * Creating and assigning the trigger here is a hack until kernel 4.5
-	 * comes along and we can use the sw_trig stuff.
-	 */
-	st->hrtimer_trigger = iio_trig_hrtimer_probe(dev_name(&spi->dev));
+	/* Hack to create continuous polling mode */
+	st->hrtimer_trigger = iio_sw_trigger_create("hrtimer", dev_name(&spi->dev));
 	if (IS_ERR(st->hrtimer_trigger)) {
 		ret = PTR_ERR(st->hrtimer_trigger);
-		dev_err(&spi->dev, "Failed to create hrtimer trigger.\n");
 		goto error_unregister_iio_device;
 	}
 
-	indio_dev->trig = st->hrtimer_trigger;
-	iio_trigger_get(indio_dev->trig);
+	iio_trigger_set_immutable(indio_dev, st->hrtimer_trigger->trigger);
 
 	return 0;
 
@@ -469,12 +463,8 @@ static int ti_ads79xx_remove(struct spi_device *spi)
 	struct iio_dev *indio_dev = spi_get_drvdata(spi);
 	struct ti_ads79xx_state *st = iio_priv(indio_dev);
 
-	if (indio_dev->trig == st->hrtimer_trigger) {
-		indio_dev->trig = NULL;
-		iio_trigger_put(st->hrtimer_trigger);
-	}
-	iio_trig_hrtimer_remove(st->hrtimer_trigger);
 	iio_device_unregister(indio_dev);
+	iio_sw_trigger_destroy(st->hrtimer_trigger);
 	iio_triggered_buffer_cleanup(indio_dev);
 	regulator_disable(st->reg);
 
