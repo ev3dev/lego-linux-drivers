@@ -243,15 +243,7 @@ static int ti_ads79xx_update_scan_mode(struct iio_dev *indio_dev,
 	st->tx_buf[len++] = 0;
 	st->tx_buf[len++] = 0;
 
-	/* build spi ring message */
-	spi_message_init(&st->ring_msg);
-
-	st->ring_xfer.tx_buf = &st->tx_buf[0];
-	st->ring_xfer.rx_buf = &st->rx_buf[0];
 	st->ring_xfer.len = len * 2;
-	st->ring_xfer.cs_change = true;
-
-	spi_message_add_tail(&st->ring_xfer, &st->ring_msg);
 
 	return 0;
 }
@@ -389,6 +381,16 @@ static int ti_ads79xx_probe(struct spi_device *spi)
 	indio_dev->num_channels = info->num_channels;
 	indio_dev->info = &ti_ads79xx_info;
 
+	/* build spi ring message */
+	spi_message_init(&st->ring_msg);
+
+	st->ring_xfer.tx_buf = &st->tx_buf[0];
+	st->ring_xfer.rx_buf = &st->rx_buf[0];
+	/* len will be set later */
+	st->ring_xfer.cs_change = true;
+
+	spi_message_add_tail(&st->ring_xfer, &st->ring_msg);
+
 	/*
 	 * Setup default message. The chip takes one full cycle to convert a
 	 * sample. The conversion process is driven by the SPI clock, which
@@ -405,10 +407,8 @@ static int ti_ads79xx_probe(struct spi_device *spi)
 	st->scan_single_xfer[2].rx_buf = &st->rx_buf[0];
 	st->scan_single_xfer[2].len = 2;
 
-	spi_message_init(&st->scan_single_msg);
-	spi_message_add_tail(&st->scan_single_xfer[0], &st->scan_single_msg);
-	spi_message_add_tail(&st->scan_single_xfer[1], &st->scan_single_msg);
-	spi_message_add_tail(&st->scan_single_xfer[2], &st->scan_single_msg);
+	spi_message_init_with_transfers(&st->scan_single_msg,
+					&st->scan_single_xfer[0], 3);
 
 	st->reg = devm_regulator_get(&spi->dev, "vref");
 	if (IS_ERR(st->reg)) {
