@@ -99,6 +99,7 @@ enum ti_ads79xx_id {
 		.sign = 'u',					\
 		.realbits = (bits),				\
 		.storagebits = 16,				\
+		.shift = 12 - (bits),				\
 		.endianness = IIO_CPU,				\
 	},							\
 }
@@ -329,10 +330,13 @@ static int ti_ads79xx_read_raw(struct iio_dev *indio_dev,
 		ret = ti_ads79xx_get_range(st);
 		if (ret < 0)
 			return ret;
+
 		*val = ret;
-		*val2 = chan->scan_type.realbits;
-		return IIO_VAL_FRACTIONAL_LOG2;
+		*val2 = ((1 << chan->scan_type.realbits) - 1) << chan->scan_type.shift;
+
+		return IIO_VAL_FRACTIONAL;
 	}
+
 	return -EINVAL;
 }
 
