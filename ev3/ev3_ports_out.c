@@ -709,7 +709,7 @@ static int ev3_output_port_buf_cb(const void *buf_data, void *private)
 	 * To do this properly, we should be reading the iio_channel structs
 	 * to determine how to properly decode the data.
 	 */
-	data->pin5_mv = ((raw[0] & 0xFFF) * 5002) >> 12;
+	data->pin5_mv = ((raw[0] & 0xFFF) * 5005) >> 12;
 
 	return 0;
 }
