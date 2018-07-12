@@ -750,7 +750,8 @@ static int omapl_pru_suart_request_irq(struct platform_device *pdev,
 		return irq;
 	}
 
-	err = devm_request_irq(&pdev->dev, irq, no_action, 0, name, data);
+	err = devm_request_irq(&pdev->dev, irq, no_action, IRQF_TRIGGER_LOW,
+			       name, data);
 	if (err) {
 		dev_err(&pdev->dev, "failed to request %s irq\n", name);
 		return err;
@@ -901,7 +902,7 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 		soft_uart->port[i].type = OMAPL_PRU_SUART;
 		soft_uart->port[i].irq = soft_uart->rx_irq[i];
 		soft_uart->port[i].dev = dev;
-		soft_uart->port[i].irqflags = IRQF_SHARED;
+		soft_uart->port[i].irqflags = IRQF_TRIGGER_LOW | IRQF_SHARED;
 		soft_uart->port[i].uartclk = soft_uart->clk_freq_mcasp;	/* 24MHz */
 		soft_uart->port[i].fifosize = SUART_FIFO_LEN;
 		soft_uart->tx_loadsz = SUART_FIFO_LEN;
