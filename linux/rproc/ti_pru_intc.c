@@ -134,6 +134,23 @@ static void ti_pru_intc_irq_unmask(struct irq_data *data)
 	regmap_write(intc->regmap, TI_PRU_INTC_ENIDXSET, data->hwirq);
 }
 
+static int ti_pru_intc_irq_set_type(struct irq_data *data, unsigned int type)
+{
+	struct ti_pru_intc_data *intc = irq_data_get_irq_chip_data(data);
+	u32 reg, mask;
+
+	reg = TI_PRU_INTC_POLARITY(data->hwirq / 32);
+	mask = BIT(data->hwirq % 32);
+
+	if (type & IRQ_TYPE_LEVEL_LOW)
+		regmap_write_bits(intc->regmap, reg, mask, 0);
+
+	if (type & IRQ_TYPE_LEVEL_HIGH)
+		regmap_write_bits(intc->regmap, reg, mask, ~0);
+
+	return 0;
+}
+
 static int ti_pru_intc_irq_get_irqchip_state(struct irq_data *data,
 					     enum irqchip_irq_state which,
 					     bool *state)
@@ -328,6 +345,7 @@ static int ti_pru_intc_probe(struct platform_device *pdev)
 	intc->irqchip.irq_ack = ti_pru_intc_irq_ack;
 	intc->irqchip.irq_mask = ti_pru_intc_irq_mask;
 	intc->irqchip.irq_unmask = ti_pru_intc_irq_unmask;
+	intc->irqchip.irq_set_type = ti_pru_intc_irq_set_type;
 	intc->irqchip.irq_get_irqchip_state = ti_pru_intc_irq_get_irqchip_state;
 	intc->irqchip.irq_set_irqchip_state = ti_pru_intc_irq_set_irqchip_state;
 
