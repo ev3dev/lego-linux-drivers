@@ -313,11 +313,35 @@ static void ti_pru_intc_init_events(struct ti_pru_intc_system_event *events)
 		events[i].host = TI_PRU_INTC_HOST_NONE;
 }
 
+static bool ti_pru_intc_rw_reg(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+		case 0x0 ... 0x38:
+		case 0x80:
+		case 0x200 ... 0x204:
+		case 0x280 ... 0x284:
+		case 0x300 ... 0x304:
+		case 0x380 ... 0x384:
+		case 0x400 ... 0x440:
+		case 0x800 ... 0x808:
+		case 0x900 ... 0x928:
+		case 0xd00 ... 0xd04:
+		case 0xd80 ... 0xd84:
+		case 0x1100 ... 0x1128:
+		case 0x1500:
+			return true;
+		default:
+			return false;
+	}
+}
+
 static struct regmap_config ti_pru_intc_regmap_config = {
 	.name = "intc",
 	.reg_bits = 32,
 	.val_bits = 32,
 	.reg_stride = 4,
+	.writeable_reg = ti_pru_intc_rw_reg,
+	.readable_reg = ti_pru_intc_rw_reg,
 	.max_register = 0x1500,
 };
 
