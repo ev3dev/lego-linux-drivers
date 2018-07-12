@@ -739,7 +739,8 @@ static struct uart_driver pru_suart_reg = {
 };
 
 static int omapl_pru_suart_request_irq(struct platform_device *pdev,
-				       const char *name, void *data)
+				       unsigned int flags, const char *name,
+				       void *data)
 {
 	int irq, err;
 
@@ -750,8 +751,7 @@ static int omapl_pru_suart_request_irq(struct platform_device *pdev,
 		return irq;
 	}
 
-	err = devm_request_irq(&pdev->dev, irq, no_action, IRQF_TRIGGER_LOW,
-			       name, data);
+	err = devm_request_irq(&pdev->dev, irq, no_action, flags, name, data);
 	if (err) {
 		dev_err(&pdev->dev, "failed to request %s irq\n", name);
 		return err;
@@ -803,32 +803,31 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	if (IS_ERR(soft_uart->pru_arm_iomap.pru_iram_io_addr[1]))
 		return PTR_ERR(soft_uart->pru_arm_iomap.pru_iram_io_addr[1]);
 #endif
-
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mcasp");
 	soft_uart->pru_arm_iomap.mcasp_io_addr = devm_ioremap_resource(dev, res);
 	if (IS_ERR(soft_uart->pru_arm_iomap.mcasp_io_addr))
 		return PTR_ERR(soft_uart->pru_arm_iomap.mcasp_io_addr);
 
 	soft_uart->mcasp_irq =
-		omapl_pru_suart_request_irq(pdev, "mcasp", soft_uart);
+		omapl_pru_suart_request_irq(pdev, IRQF_TRIGGER_LOW, "mcasp", soft_uart);
 	if (soft_uart->mcasp_irq < 0)
 		return soft_uart->mcasp_irq;
 
 	soft_uart->pru_arm_iomap.arm_to_pru_irq[0] =
-		omapl_pru_suart_request_irq(pdev, "arm-to-pru0", soft_uart);
+		omapl_pru_suart_request_irq(pdev, 0, "arm-to-pru0", soft_uart);
 	if (soft_uart->pru_arm_iomap.arm_to_pru_irq[0] < 0)
 		return soft_uart->pru_arm_iomap.arm_to_pru_irq[0];
-
+#if 0
 	soft_uart->pru_arm_iomap.arm_to_pru_irq[1] =
-		omapl_pru_suart_request_irq(pdev, "arm-to-pru1", soft_uart);
+		omapl_pru_suart_request_irq(pdev, 0, "arm-to-pru1", soft_uart);
 	if (soft_uart->pru_arm_iomap.arm_to_pru_irq[1] < 0)
 		return soft_uart->pru_arm_iomap.arm_to_pru_irq[1];
 
 	soft_uart->pru_to_pru_irq =
-		omapl_pru_suart_request_irq(pdev, "pru-to-pru", soft_uart);
+		omapl_pru_suart_request_irq(pdev, 0, "pru-to-pru", soft_uart);
 	if (soft_uart->pru_to_pru_irq < 0)
 		return soft_uart->pru_to_pru_irq;
-
+#endif
 	soft_uart->clk_pru = devm_clk_get(dev, "pruss");
 	if (IS_ERR(soft_uart->clk_pru)) {
 		dev_err(dev, "no clock available: pruss\n");
@@ -902,7 +901,6 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 		soft_uart->port[i].type = OMAPL_PRU_SUART;
 		soft_uart->port[i].irq = soft_uart->rx_irq[i];
 		soft_uart->port[i].dev = dev;
-		soft_uart->port[i].irqflags = IRQF_TRIGGER_LOW | IRQF_SHARED;
 		soft_uart->port[i].uartclk = soft_uart->clk_freq_mcasp;	/* 24MHz */
 		soft_uart->port[i].fifosize = SUART_FIFO_LEN;
 		soft_uart->tx_loadsz = SUART_FIFO_LEN;
