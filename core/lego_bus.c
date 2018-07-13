@@ -58,6 +58,13 @@ struct lego_device *lego_device_register(const char *name,
 	if (!ldev)
 		return ERR_PTR(-ENOMEM);
 
+	/* 
+	 * HACK: iio callback buffers are limited to one iio device. We have
+	 * two (ADC and tacho), so we have an extra device tree node for motors
+	 * on EV3 to have something to use to look up the tacho iio channel
+	 */
+	ldev->dev.of_node = of_get_child_by_name(port->dev.parent->of_node, "motor");
+
 	strncpy(ldev->name, name, LEGO_NAME_SIZE);
 	ldev->port = port;
 	snprintf(init_name, LEGO_NAME_SIZE, "%s:%s", ldev->port->address,
