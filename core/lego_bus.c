@@ -64,7 +64,7 @@ struct lego_device *lego_device_register(const char *name,
 		 ldev->name);
 	ldev->dev.init_name = init_name;
 	ldev->dev.id = -1;
-	ldev->dev.parent = &ldev->port->dev;
+	ldev->dev.parent = &port->dev;
 	ldev->dev.type = type;
 	ldev->dev.bus = &lego_bus_type;
 	ldev->dev.release = lego_device_release;
