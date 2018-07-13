@@ -317,12 +317,19 @@ static struct rpmsg_device_id ev3_tacho_rpmsg_id_table[] = {
 };
 MODULE_DEVICE_TABLE(rpmsg, ev3_tacho_rpmsg_id_table);
 
+static struct of_device_id ev3_tacho_of_id_table[] = {
+	{ .compatible = "ev3dev,ev3-pru-tacho" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, ev3_tacho_of_id_table);
+
 static struct rpmsg_driver ev3_tacho_rpmsg_client = {
-	.drv.name	= KBUILD_MODNAME,
-	.id_table	= ev3_tacho_rpmsg_id_table,
-	.probe		= ev3_tacho_rpmsg_probe,
-	.callback	= ev3_tacho_rpmsg_cb,
-	.remove		= ev3_tacho_rpmsg_remove,
+	.drv.name		= KBUILD_MODNAME,
+	.drv.of_match_table	= ev3_tacho_of_id_table,
+	.id_table		= ev3_tacho_rpmsg_id_table,
+	.probe			= ev3_tacho_rpmsg_probe,
+	.callback		= ev3_tacho_rpmsg_cb,
+	.remove			= ev3_tacho_rpmsg_remove,
 };
 module_rpmsg_driver(ev3_tacho_rpmsg_client);
 
