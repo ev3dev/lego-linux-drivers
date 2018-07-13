@@ -23,6 +23,7 @@
 
 #include <linux/debugfs.h>
 #include <linux/device.h>
+#include <linux/iio/consumer.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/gpio.h>
@@ -65,6 +66,7 @@ enum legoev3_motor_state {
 struct legoev3_motor_data {
 	struct tacho_motor_device tm;
 	struct lego_device *ldev;
+	struct iio_cb_buffer *cb_buffers;
 
 	struct hrtimer timer;
 	struct work_struct notify_state_change_work;
@@ -709,6 +711,16 @@ static void update_position(struct legoev3_motor_data *ev3_tm)
 	}
 }
 
+static int legoev3_motor_tacho_cb(const void *data, void *p)
+{
+	struct legoev3_motor_data *ev3_tm = p;
+	const int *values = data;
+
+	printk_ratelimited("port: %s, count: %d, rate: %d\n", ev3_tm->ldev->name, values[0], values[1]);
+
+	return 0;
+}
+
 static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 {
 	struct legoev3_motor_data *ev3_tm =
@@ -934,7 +946,6 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 	.set_hold_Kd		= legoev3_motor_set_position_Kd,
 };
 
-
 static int legoev3_motor_probe(struct lego_device *ldev)
 {
 	struct legoev3_motor_data *ev3_tm;
@@ -948,9 +959,17 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 	if (WARN_ON(!ldev->entry_id))
 		return -EINVAL;
 
-	ev3_tm = kzalloc(sizeof(struct legoev3_motor_data), GFP_KERNEL);
+	ev3_tm = devm_kzalloc(&ldev->dev, sizeof(*ev3_tm), GFP_KERNEL);
 	if (!ev3_tm)
 		return -ENOMEM;
+
+	ev3_tm->cb_buffers = iio_channel_get_all_cb(&ldev->dev, legoev3_motor_tacho_cb, ev3_tm);
+	err = PTR_ERR_OR_ZERO(ev3_tm->cb_buffers);
+	if (err) {
+		if (err != -EPROBE_DEFER)
+			dev_err(&ldev->dev, "failed to get iio callback buffers (%d)\n", err);
+		return err;
+	}
 
 	ev3_tm->ldev = ldev;
 
@@ -973,7 +992,7 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 	err = register_tacho_motor(&ev3_tm->tm, &ldev->dev);
 
 	if (err)
-		goto err_register_tacho_motor;
+		goto err_free_cb_buffers;
 
 	legoev3_motor_reset(ev3_tm);
 
@@ -982,8 +1001,9 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 				dev_name(&ldev->dev), ev3_tm);
 
 	if (err)
-		goto err_request_irq;
+		goto err_unregister_motor;
 
+	iio_channel_start_all_cb(ev3_tm->cb_buffers);
 	hrtimer_start(&ev3_tm->timer, ktime_set(0, TACHO_MOTOR_POLL_MS * NSEC_PER_MSEC),
 		      HRTIMER_MODE_REL);
 
@@ -1007,11 +1027,10 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 
 	return 0;
 
-err_request_irq:
-	dev_set_drvdata(&ldev->dev, NULL);
+err_unregister_motor:
 	unregister_tacho_motor(&ev3_tm->tm);
-err_register_tacho_motor:
-	kfree(ev3_tm);
+err_free_cb_buffers:
+	iio_channel_release_all_cb(ev3_tm->cb_buffers);
 
 	return err;
 }
@@ -1023,13 +1042,13 @@ static int legoev3_motor_remove(struct lego_device *ldev)
 
 	debugfs_remove_recursive(ev3_tm->debug);
 
+	iio_channel_stop_all_cb(ev3_tm->cb_buffers);
 	hrtimer_cancel(&ev3_tm->timer);
 	cancel_work_sync(&ev3_tm->notify_state_change_work);
 	cancel_work_sync(&ev3_tm->notify_position_ramp_down_work);
 	free_irq(gpio_to_irq(pdata->tacho_int_gpio), ev3_tm);
-	dev_set_drvdata(&ldev->dev, NULL);
 	unregister_tacho_motor(&ev3_tm->tm);
-	kfree(ev3_tm);
+	iio_channel_release_all_cb(ev3_tm->cb_buffers);
 	return 0;
 }
 
