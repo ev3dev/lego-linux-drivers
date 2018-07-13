@@ -135,7 +135,7 @@ static void ti_pru_free_rproc(void *data)
 static int ti_pru_rproc_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	const char *name;
+	const char *name, *firmware = NULL;
 	struct rproc *rproc;
 	struct ti_pru_data *pru;
 	struct resource *res;
@@ -143,15 +143,17 @@ static int ti_pru_rproc_probe(struct platform_device *pdev)
 	int err;
 
 	name = dev->of_node ? dev->of_node->name : dev_name(dev);
-	rproc = rproc_alloc(dev, name, &ti_pru_rproc_ops, NULL, sizeof(*pru));
+	device_property_read_string(dev, "firmware", &firmware);
+
+	rproc = rproc_alloc(dev, name, &ti_pru_rproc_ops, firmware, sizeof(*pru));
 	if (!rproc)
 		return -ENOMEM;
 
 	devm_add_action(dev, ti_pru_free_rproc, rproc);
 	platform_set_drvdata(pdev, rproc);
 
-	/* don't auto-boot for now - bad firmware can lock up the system */
-	rproc->auto_boot = false;
+	/* auto boot only if device tree specified firmware file */
+	rproc->auto_boot = firmware != NULL;
 
 	pru = rproc->priv;
 
