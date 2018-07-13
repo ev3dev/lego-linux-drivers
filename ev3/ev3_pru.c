@@ -5,10 +5,13 @@
  * Copyright (C) 2018 David Lechner <david@lechnology.com>
  */
 
-#include <linux/dma-mapping.h>
 #include <linux/iio/buffer.h>
 #include <linux/iio/iio.h>
-#include <linux/iio/kfifo_buf.h>
+#include <linux/iio/sw_trigger.h>
+#include <linux/iio/trigger_consumer.h>
+#include <linux/iio/trigger.h>
+#include <linux/iio/triggered_buffer.h>
+#include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/math64.h>
@@ -48,21 +51,10 @@ struct ev3_pru_tacho_remote_data {
 
 /* end from PRU */
 
-enum ev3_pru_tacho_scan_indexl {
-	EV3_PRU_SCAN_INDEX_TACHO_A_COUNT,
-	EV3_PRU_SCAN_INDEX_TACHO_B_COUNT,
-	EV3_PRU_SCAN_INDEX_TACHO_C_COUNT,
-	EV3_PRU_SCAN_INDEX_TACHO_D_COUNT,
-	EV3_PRU_SCAN_INDEX_TACHO_A_COUNT_TIME,
-	EV3_PRU_SCAN_INDEX_TACHO_B_COUNT_TIME,
-	EV3_PRU_SCAN_INDEX_TACHO_C_COUNT_TIME,
-	EV3_PRU_SCAN_INDEX_TACHO_D_COUNT_TIME,
-	NUM_EV3_PRU_SCAN_INDEX
-};
-
 struct ev3_tacho_rpmsg_data {
 	__iomem void *remote_data;
 	struct iio_dev *indio_dev;
+	struct iio_sw_trigger *sw_trigger;
 	struct rpmsg_device *rpdev;
 	struct completion completion;
 	u32 last_value;
@@ -134,6 +126,40 @@ static int ev3_pru_tacho_get_freq(struct ev3_pru_tacho_remote_data *data,
 	
 }
 
+static irqreturn_t ev3_pru_tacho_trigger_handler(int irq, void *p)
+{
+	struct iio_poll_func *pf = p;
+	struct iio_dev *indio_dev = pf->indio_dev;
+	struct ev3_tacho_rpmsg_data *priv = iio_priv(indio_dev);
+	struct ev3_pru_tacho_remote_data *data = priv->remote_data;
+	s32 buffer[8];
+	unsigned long scan_mask = indio_dev->active_scan_mask ?
+				 *indio_dev->active_scan_mask : 0;
+	int i = 0;
+
+	if (scan_mask & BIT(0))
+		buffer[i++] = data->position[0][data->head[0]];
+	if (scan_mask & BIT(1))
+		buffer[i++] = ev3_pru_tacho_get_freq(data, 0);
+	if (scan_mask & BIT(2))
+		buffer[i++] = data->position[1][data->head[1]];
+	if (scan_mask & BIT(3))
+		buffer[i++] = ev3_pru_tacho_get_freq(data, 1);
+	if (scan_mask & BIT(4))
+		buffer[i++] = data->position[2][data->head[2]];
+	if (scan_mask & BIT(5))
+		buffer[i++] = ev3_pru_tacho_get_freq(data, 2);
+	if (scan_mask & BIT(6))
+		buffer[i++] = data->position[3][data->head[3]];
+	if (scan_mask & BIT(7))
+		buffer[i++] = ev3_pru_tacho_get_freq(data, 3);
+
+	iio_push_to_buffers(indio_dev, buffer);
+	iio_trigger_notify_done(indio_dev->trig);
+
+	return IRQ_HANDLED;
+}
+
 static int ev3_pru_tacho_read_raw(struct iio_dev *indio_dev,
 				  const struct iio_chan_spec *chan,
 				  int *val, int *val2, long mask)
@@ -143,19 +169,12 @@ static int ev3_pru_tacho_read_raw(struct iio_dev *indio_dev,
 
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
-		switch (chan->scan_index) {
-		case EV3_PRU_SCAN_INDEX_TACHO_A_COUNT:
-		case EV3_PRU_SCAN_INDEX_TACHO_B_COUNT:
-		case EV3_PRU_SCAN_INDEX_TACHO_C_COUNT:
-		case EV3_PRU_SCAN_INDEX_TACHO_D_COUNT:
+		switch (chan->type) {
+		case IIO_COUNT:
 			*val = data->position[chan->channel][data->head[chan->channel]];
 			return IIO_VAL_INT;
-		case EV3_PRU_SCAN_INDEX_TACHO_A_COUNT_TIME:
-		case EV3_PRU_SCAN_INDEX_TACHO_B_COUNT_TIME:
-		case EV3_PRU_SCAN_INDEX_TACHO_C_COUNT_TIME:
-		case EV3_PRU_SCAN_INDEX_TACHO_D_COUNT_TIME:
-			*val = data->timestamp[chan->channel][data->head[chan->channel]];
-			return IIO_VAL_INT;
+		default:
+			break;
 		}
 		break;
 	case IIO_CHAN_INFO_PROCESSED:
@@ -176,7 +195,7 @@ static int ev3_pru_tacho_read_raw(struct iio_dev *indio_dev,
 		.type = IIO_COUNT,					\
 		.indexed = 1,						\
 		.channel = EV3_PRU_TACHO_##n,				\
-		.scan_index = EV3_PRU_SCAN_INDEX_TACHO_##n##_COUNT,	\
+		.scan_index = EV3_PRU_TACHO_##n * 2,			\
 		.scan_type = {						\
 			.sign = 's',					\
 			.realbits = 32,					\
@@ -186,24 +205,15 @@ static int ev3_pru_tacho_read_raw(struct iio_dev *indio_dev,
 		.datasheet_name = "Motor##n",				\
 	},								\
 	{								\
-		.type = IIO_COUNT,					\
-		.indexed = 1,						\
-		.channel = EV3_PRU_TACHO_##n,				\
-		.scan_index = EV3_PRU_SCAN_INDEX_TACHO_##n##_COUNT_TIME,\
-		.scan_type = {						\
-			.sign = 'u',					\
-			.realbits = 32,					\
-			.storagebits = 32,				\
-		},							\
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),		\
-		.datasheet_name = "Motor##n",				\
-		.extend_name = "time",					\
-	},								\
-	{								\
 		.type = IIO_FREQUENCY,					\
 		.indexed = 1,						\
 		.channel = EV3_PRU_TACHO_##n,				\
-		.scan_index = -1,					\
+		.scan_index = EV3_PRU_TACHO_##n * 2 + 1,		\
+		.scan_type = {						\
+			.sign = 's',					\
+			.realbits = 32,					\
+			.storagebits = 32,				\
+		},							\
 		.info_mask_separate = BIT(IIO_CHAN_INFO_PROCESSED),	\
 		.datasheet_name = "Motor##n",				\
 	}
@@ -220,28 +230,12 @@ static const struct iio_info ev3_pru_tacho_iio_info = {
 	.read_raw = ev3_pru_tacho_read_raw,
 };
 
-static int ev3_pru_tacho_buffer_enable(struct iio_dev *indio_dev)
-{
-	return -EOPNOTSUPP;
-}
-
-static int ev3_pru_tacho_buffer_disable(struct iio_dev *indio_dev)
-{
-	return -EOPNOTSUPP;
-}
-
-static const struct iio_buffer_setup_ops ev3_pru_tacho_buffer_setup_ops = {
-	.postenable = &ev3_pru_tacho_buffer_enable,
-	.predisable = &ev3_pru_tacho_buffer_disable,
-};
-
 static int ev3_tacho_rpmsg_probe(struct rpmsg_device *rpdev)
 {
 	struct ev3_pru_tacho_msg msg = { .type = EV3_PRU_TACHO_MSG_DATA_ADDR };
 	struct device *dev = &rpdev->dev;
 	struct iio_dev *indio_dev;
 	struct ev3_tacho_rpmsg_data *priv;
-	struct iio_buffer *buffer;
 	int ret;
 
 	dev_info(dev, "new channel: 0x%x -> 0x%x!\n", rpdev->src, rpdev->dst);
@@ -260,7 +254,6 @@ static int ev3_tacho_rpmsg_probe(struct rpmsg_device *rpdev)
 	indio_dev->info = &ev3_pru_tacho_iio_info;
 	indio_dev->channels = ev3_tacho_rpmsg_channels;
 	indio_dev->num_channels = ARRAY_SIZE(ev3_tacho_rpmsg_channels);
-	indio_dev->setup_ops = &ev3_pru_tacho_buffer_setup_ops;
 
 	init_completion(&priv->completion);
 
@@ -281,16 +274,25 @@ static int ev3_tacho_rpmsg_probe(struct rpmsg_device *rpdev)
 		return -ENOMEM;
 
 	memset(priv->remote_data, 0, sizeof(struct ev3_pru_tacho_remote_data));
-
-	buffer = devm_iio_kfifo_allocate(&indio_dev->dev);
-	if (!buffer)
-		return -ENOMEM;
-
-	iio_device_attach_buffer(indio_dev, buffer);
+	
+	ret = devm_iio_triggered_buffer_setup(dev, indio_dev, NULL,
+					&ev3_pru_tacho_trigger_handler, NULL);
+	if (ret) {
+		dev_err(dev, "Failed to setup triggered buffer.\n");
+		return ret;
+	}
 
 	ret = devm_iio_device_register(dev, indio_dev);
 	if (ret < 0)
 		return ret;
+
+	/* Hack to create continuous polling mode */
+	priv->sw_trigger = iio_sw_trigger_create("hrtimer", dev_name(dev));
+	if (IS_ERR(priv->sw_trigger))
+		return PTR_ERR(priv->sw_trigger);
+
+	iio_hrtimer_set_sampling_frequency(priv->sw_trigger, 500);
+	iio_trigger_set_immutable(indio_dev, priv->sw_trigger->trigger);
 
 	return 0;
 }
