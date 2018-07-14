@@ -375,7 +375,6 @@ void ev3_output_port_register_motor(struct work_struct *work)
 	struct ev3_output_port_data *data =
 			container_of(work, struct ev3_output_port_data, work);
 	struct lego_device *motor;
-	struct ev3_motor_platform_data pdata;
 	const char *driver_name;
 
 	if (data->motor_type >= NUM_MOTOR
@@ -387,8 +386,6 @@ void ev3_output_port_register_motor(struct work_struct *work)
 		return;
 	}
 
-	pdata.tacho_int_gpio = desc_to_gpio(data->pin5_gpio);
-	pdata.tacho_dir_gpio = desc_to_gpio(data->pin6_gpio);
 	if (data->motor_type == MOTOR_TACHO)
 		driver_name = ev3_motor_defs[data->motor_id].name;
 	else
@@ -396,7 +393,7 @@ void ev3_output_port_register_motor(struct work_struct *work)
 
 	motor = lego_device_register(driver_name,
 		&ev3_motor_device_types[data->motor_type],
-		&data->out_port, &pdata, sizeof(struct ev3_motor_platform_data));
+		&data->out_port, NULL, 0);
 	if (IS_ERR(motor)) {
 		dev_err(&data->out_port.dev,
 			"Could not register motor on port %s.\n",

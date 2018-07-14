@@ -2,7 +2,7 @@
  * Motor driver for LEGO MINDSTORMS EV3
  *
  * Copyright (C) 2013-2014,2016 Ralph Hempel <rhempel@hempeldesigngroup.com>
- * Copyright (C) 2015-2016 David Lechner <david@lechnology.com>
+ * Copyright (C) 2015-2016,2018 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -26,11 +26,9 @@
 #include <linux/iio/consumer.h>
 #include <linux/module.h>
 #include <linux/slab.h>
-#include <linux/gpio.h>
-#include <linux/irq.h>
+
 #include <linux/interrupt.h>
 #include <linux/math64.h>
-#include <linux/random.h>
 
 #include <lego.h>
 #include <lego_port_class.h>
@@ -41,21 +39,7 @@
 #include "legoev3_motor.h"
 #include "../motors/ev3_motor.h"
 
-#define TACHO_MOTOR_POLL_MS	2	/* 2 msec */
-
-#define TACHO_SAMPLES		128
-
-#define MAX_SYNC_MOTORS		2
-
 #define TACHO_MOTOR_STALLED_MS  100
-
-enum legoev3_motor_command {
-	UNKNOWN,
-	FORWARD,
-	REVERSE,
-	BRAKE,
-	COAST,
-};
 
 enum legoev3_motor_state {
 	STATE_RUNNING,
@@ -68,25 +52,13 @@ struct legoev3_motor_data {
 	struct lego_device *ldev;
 	struct iio_cb_buffer *cb_buffers;
 
-	struct hrtimer timer;
 	struct work_struct notify_state_change_work;
 	struct work_struct notify_position_ramp_down_work;
 	struct tm_pid speed_pid;
 	struct tm_pid hold_pid;
 
-	ktime_t tacho_samples[TACHO_SAMPLES];
-	unsigned tacho_samples_head;
-
-	bool got_new_sample;
-
-	int num_samples;
-	int dir_chg_samples;
-
-	int max_us_per_sample;
-
 	int position_sp;
 
-	enum legoev3_motor_command run_direction;
 	ktime_t stalling_since;
 	bool stalling;
 	bool stalled;
@@ -106,171 +78,6 @@ struct legoev3_motor_data {
 };
 
 static DEFINE_SPINLOCK(lock);
-
-static void set_num_samples_for_speed(struct legoev3_motor_data *ev3_tm,
-				      int speed)
-{
-	if (speed > 1250)
-		ev3_tm->num_samples = 64;
-	else if (speed > 1000)
-		ev3_tm->num_samples = 32;
-	else if (speed > 750)
-		ev3_tm->num_samples = 16;
-	else if (speed > 500)
-		ev3_tm->num_samples = 8;
-	else if (speed > 250)
-		ev3_tm->num_samples = 4;
-	else
-		ev3_tm->num_samples = 2;
-}
-
-/*
- * Handling the Tachometer Inputs
- *
- * The tacho motor driver uses two pins on each port to determine the direction
- * of rotation of the motor.
- *
- * `pdata->tacho_int_gpio` is the pin that is set up to trigger an interrupt
- * any edge change
- *
- * `pdata->tacho_dir_gpio` is the pin that helps to determine the direction
- * of rotation
- *
- * When int == dir then the encoder is turning in the forward direction
- * When int != dir then the encoder is turning in the reverse direction
- *
- * -----     --------           --------      -----
- *     |     |      |           |      |      |
- *     |     |      |           |      |      |
- *     -------      -------------       -------          DIRx signal
- *
- *  -------     --------     --------     --------       INTx signal
- *        |     |      |     |      |     |      |
- *        |     |      |     |      |     |      |
- *        -------      -------      -------      -----
- *        \     \      \     \      \     \      \
- *         ^     ^      ^     ^      ^     ^      ^      ISR handler
- *         +1    +1     +1    -1     -1    -1     -1     TachoCount
- *
- * All this works perfectly well when there are no missed interrupts, and when
- * the transitions on these pins are clean (no bounce or noise). It is possible
- * to get noisy operation when the transitions are very slow, and we have
- * observed signals similar to this:
- *
- * -------------                       -------------
- *             |                       |
- *             |                       |
- *             -------------------------                 DIRx signal
- *
- *    ---------------   ----                             INTx signal
- *    |             |   |  |
- *    |             |   |  |
- * ----             -----  -------------------------
- *    \              \   \  \
- *     ^              ^   ^  ^                           ISR Handler
- *     +1             +1  -1 +1                          TachoCount
- *                    A   B  C
- *
- * The example above has three transitions that we are interested in
- * labeled A, B, and C - they represent a noisy signal. As long as
- * all three transitions are caught by the ISR, then the count is
- * incremented by 2 as expected. But there are other outcomes possible.
- *
- * For example, if the A transition is handled, but the INT signal
- * is not measured until after B, then the final count value is 1.
- *
- * On the other hand, if the B transition is missed, and only A and
- * C are handled, then the final count value is 3.
- *
- * Either way, we need to figure out a way to clean things up, and as
- * long as at least two of the interrupts are caught, we can "undo"
- * a reading quite easily.
- *
- * The medium motor turns at a maximum of 1200 pulses per second, the
- * large tacho motor has a maximum speed of 900 pulses per second. Taking
- * the highest value, this means that about 800 usec is the fastest time
- * between interrupts. If we see two interrupts with a delta of much less
- * than, say 400 usec, then we're probably looking at a noisy transition.
- *
- * In most cases that have been captured, the shortest delta is the A-B
- * transition, anywhere from 10 to 20 usec, which is faster than the ISR
- * response time. The B-C transition has been measured up to 150 usec.
- *
- * It is clear that the correct transition to use for changing the
- * value of `TachoCount` is C - so if the delta from A-C is less than
- * the threshold, we should "undo" whatever the A transition told us.
- */
-
-static irqreturn_t tacho_motor_isr(int irq, void *id)
-{
-	struct legoev3_motor_data *ev3_tm = id;
-	struct ev3_motor_platform_data *pdata = ev3_tm->ldev->dev.platform_data;
-	bool int_state = gpio_get_value(pdata->tacho_int_gpio);
-	bool dir_state = !gpio_get_value(pdata->tacho_dir_gpio);
-	ktime_t timer = ktime_get();
-	ktime_t prev_timer = ev3_tm->tacho_samples[ev3_tm->tacho_samples_head];
-	unsigned next_sample = (ev3_tm->tacho_samples_head + 1) % TACHO_SAMPLES;
-	enum legoev3_motor_command next_direction = ev3_tm->run_direction;
-
-	/*
-	 * If the difference in timestamps is too small, then undo the
-	 * previous increment - it's OK for a count to waver once in
-	 * a while - better than being wrong!
-	 *
-	 * Here's what we'll do when the transition is too small:
-	 *
-	 * 1) UNDO the increment to the next timer sample update
-	 *    dir_chg_samples count!
-	 * 2) UNDO the previous run_direction count update
-	 */
-	if (ktime_to_us(ktime_sub(timer, prev_timer)) < 400) {
-		ev3_tm->tacho_samples[ev3_tm->tacho_samples_head] = timer;
-
-		if (FORWARD == ev3_tm->run_direction)
-			ev3_tm->position--;
-		else
-			ev3_tm->position++;
-
-		next_sample = ev3_tm->tacho_samples_head;
-	} else {
-		/*
-		 * Update the tacho count and motor direction for low
-		 * speed, taking advantage of the fact that if state and
-		 * dir match, then the motor is turning FORWARD!
-		 */
-		if (ev3_tm->tm.info->encoder_polarity == DC_MOTOR_POLARITY_NORMAL)
-			next_direction = (int_state == dir_state) ? FORWARD : REVERSE;
-		else
-			next_direction = (int_state == dir_state) ? REVERSE : FORWARD;
-
-		/*
-		 * If the saved and next direction states
-		 * match, then update the dir_chg_sample count
-		 */
-		if (ev3_tm->run_direction == next_direction) {
-			if (ev3_tm->dir_chg_samples < (TACHO_SAMPLES-1))
-				ev3_tm->dir_chg_samples++;
-		} else {
-			ev3_tm->dir_chg_samples = 0;
-		}
-	}
-
-	ev3_tm->run_direction = next_direction;
-
-	/* Grab the next incremental sample timestamp */
-
-	ev3_tm->tacho_samples[next_sample] = timer;
-	ev3_tm->tacho_samples_head = next_sample;
-
-	if (FORWARD == ev3_tm->run_direction)
-		ev3_tm->position++;
-	else
-		ev3_tm->position--;
-
-	ev3_tm->got_new_sample = true;
-
-	return IRQ_HANDLED;
-}
 
 static void set_duty_cycle(struct legoev3_motor_data *ev3_tm, int duty_cycle)
 {
@@ -362,16 +169,6 @@ static int legoev3_motor_reset(void *context)
 
 	spin_lock_irqsave(&lock, flags);
 
-	memset(ev3_tm->tacho_samples, 0, sizeof(unsigned) * TACHO_SAMPLES);
-
-	ev3_tm->tacho_samples_head	= 0;
-	ev3_tm->got_new_sample		= false;
-	ev3_tm->num_samples		= 2;
-	ev3_tm->dir_chg_samples		= 0;
-	ev3_tm->max_us_per_sample	= info->max_us_per_sample;
-
-	ev3_tm->run_direction		= UNKNOWN;
-
 	ev3_tm->position_sp		= 0;
 	ev3_tm->position		= 0;
 	ev3_tm->speed			= 0;
@@ -388,262 +185,6 @@ static int legoev3_motor_reset(void *context)
 
 	return 0;
 };
-
-/*
- * NOTE: The comments are from the original LEGO source code, but the code
- *       has been changed to reflect the per-motor data structures.
- *
- * NOTE: The original LEGO code used the 24 most significant bits of the
- *       free-running P3 timer by dividing the values captured at every
- *       interrupt edge by 256. Unfortunately, this results in having to
- *       mask off the 24 least significant bits in all subsequent calculations
- *       that involve the captured values.
- *
- *       The reason is probably to keep most of the calculations within the
- *       16 bit value size. This driver avoids that problem by simply scaling
- *       the results when needed. The code and comments are updated to
- *       reflect the change.
- *
- *  - Calculates the actual speed for a motor
- *
- *  - Returns true when a new speed has been calculated, false if otherwise
- *
- *  - Time is sampled every edge on the tacho
- *
- *  - Tacho counter is updated on every edge of the tacho INTx pin signal
- *  - Time capture is updated on every edge of the tacho INTx pin signal
- *
- *  - Speed is calculated from the following parameters
- *
- *  - Time is measured edge to edge of the tacho interrupt pin. Average of
- *    time is always minimum 2 pulses:
- *
- *      (1 high + 1 low period or 1 low + 1 high period)
- *
- *    because the duty of the high and low period of the tacho pulses is
- *    are not always 50%.
- *
- *        - Average of the large motor
- *          - Above speed 80 it is:          64 samples
- *          - Between speed 60 - 80 it is:   32 samples
- *          - Between speed 40 - 60 it is:   16 samples
- *          - below speed 40 it is:           4 samples
- *
- *        - Average of the medium motor
- *          - Above speed 80 it is:          16 samples
- *          - Between speed 60 - 80 it is:    8 samples
- *          - Between speed 40 - 60 it is:    4 samples
- *          - below speed 40 it is:           2 sample
- *
- *      - Number of samples is always determined based on 1 sample meaning
- *        1 low period or 1 high period, this is to enable fast adoption to
- *        changes in speed. Medium motor has the critical timing because
- *        it can change speed and direction very fast.
- *
- *      - Large Motor
- *        - Maximum speed of the Large motor is approximately 2ms per tacho
- *          pulse (low + high period)
- *        - Minimum speed of the large motor is a factor of 100 less than
- *          max. speed
- *          Because 1 sample is based on only half a period minimum speed
- *          is 2ms / 2 => 1000000us
- *
- *      - Medium Motor
- *        - Maximum speed of the medium motor is approximately 1.25ms per
- *          tacho pulse (low + high period)
- *        - Minimum speed of the medium motor is a factor of 100 less than
- *          max. speed
- *          Because 1 sample is based on only half a period minimum speed
- *          is 1.25ms / 2 => 750000us
- *
- *  - Tacho pulse examples:
- *
- *
- *    - Normal
- *
- *      ----       ------       ------       ------
- *          |     |      |     |      |     |      |
- *          |     |      |     |      |     |      |
- *          -------      -------      -------      --- DIRx signal
- *
- *
- *         ----       ------       ------       ------ INTx signal
- *             |     |      |     |      |     |
- *             |     |      |     |      |     |
- *             -------      -------      -------
- *
- *             ^     ^      ^     ^      ^     ^
- *             |     |      |     |      |     |
- *             |   Timer    |   Timer    |   Timer
- *             |     +      |     +      |     +
- *             |  Counter   |  Counter   |  Counter
- *             |            |            |
- *           Timer        Timer        Timer
- *             +            +            +
- *          Counter      Counter      Counter
- *
- *
- *
- *    - Direction change
- *
- *      DirChgPtr variable is used to indicate how many timer samples have
- *      been sampled since direction has been changed. DirChgPtr is set
- *      to 0 when tacho interrupt detects direction change and then it is
- *      counted up for every timer sample. So when DirChgPtr has the value
- *      of 2 then there must be 2 timer samples in the the same direction
- *      available.
- *
- *      ----       ------       ------       ------       ---
- *          |     |      |     |      |     |      |     |
- *          |     |      |     |      |     |      |     |
- *          -------      -------      -------      -------   DIRx signal
- *
- *
- *       ------       -------------       ------       ------INTx signal
- *             |     |             |     |      |     |
- *             |     |             |     |      |     |
- *             -------             -------      -------
- *
- *             ^     ^             ^     ^      ^     ^
- *             |     |             |     |      |     |
- *           Timer   |           Timer   |    Timer   |
- *             +     |             +     |      +     |
- *          Counter  |          Counter  |   Counter  |
- *             +     |             +     |      +     |
- *       DirChgPtr++ |       DirChgPtr=0 |DirChgPtr++ |
- *                 Timer               Timer        Timer
- *                   +                   +            +
- *                Counter             Counter      Counter
- *                   +                   +            +
- *               DirChgPtr++         DirChgPtr++  DirChgPtr++
- *
- *
- *
- *
- *      ----       ------             ------        ----
- *          |     |      |           |      |      |
- *          |     |      |           |      |      |
- *          -------      -------------       -------          DIRx signal
- *
- *
- *       ------       ------       ------       ------        INTx signal
- *             |     |      |     |      |     |      |
- *             |     |      |     |      |     |      |
- *             -------      -------      -------       ----
- *
- *             ^     ^      ^     ^      ^     ^      ^
- *             |     |      |     |      |     |      |
- *           Timer   |    Timer   |    Timer   |    Timer
- *             +     |      +     |      +     |      +
- *          Counter  |   Counter  |   Counter  |   Counter
- *             +     |      +     |      +     |      +
- *        DirChgPtr++| DirChgPtr++| DirChgPtr++| DirChgPtr++
- *                 Timer        Timer        Timer
- *                   +            +            +
- *                Counter      Counter      Counter
- *                   +            +            +
- *               DirChgPtr++  DirChgPtr=0  DirChgPtr++
- *
- */
-
-static void calculate_speed(struct legoev3_motor_data *ev3_tm)
-{
-	unsigned diff_idx;
-	ktime_t diff;
-
-	/* TODO - Don't run this if we're updating the ev3_tm in the isr! */
-
-	/*
-	 * Determine the approximate speed of the motor using the difference
-	 * in time between this tacho pulse and the previous pulse.
-	 *
-	 * The old code had a conditional that forced the difference to be at
-	 * least 1 by checking for the special case of a zero difference, which
-	 * would be almost impossible to achieve in practice.
-	 *
-	 * This version simply ORs a 1 into the LSB of the difference - now
-	 * that we're using the full 32 bit free running counter, the impact
-	 * on an actual speed calculation is insignificant, and it avoids the
-	 * issue with simply adding 1 in the obscure case that the difference
-	 * is 0xFFFFFFFF!
-	 *
-	 * Only do this estimated speed calculation if we've accumulated at
-	 * least two tacho pulses where the motor is turning in the same
-	 * direction!
-	 */
-
-	diff_idx = ev3_tm->tacho_samples_head;
-
-	/* TODO - This should really be a boolean value that gets set at the ISR level */
-	/* TODO - Can/Should we change this to not set_samples_per_speed every time we're called? */
-
-	if (ev3_tm->dir_chg_samples >= 1) {
-		diff = ktime_sub(ev3_tm->tacho_samples[diff_idx],
-			ev3_tm->tacho_samples[(diff_idx + TACHO_SAMPLES - 1) % TACHO_SAMPLES]);
-
-		if (unlikely(!diff))
-			diff = ktime_set(0, 1);
-
-		set_num_samples_for_speed(ev3_tm, USEC_PER_SEC / (int)ktime_to_us(diff));
-	}
-
-	/*
-	 * Now get a better estimate of the motor speed by using the total
-	 * time used to accumulate the last n samples, where n is determined
-	 * by the first approximation to the speed.
-	 *
-	 * The new speed can only be updated if we have accumulated at least
-	 * as many samples as are required depending on the estimated speed
-	 * of the motor.
-	 *
-	 * If the speed cannot be updated, then we need to check if the speed
-	 * is 0!
-	 *
-	 * The last case is for updating the speed when the last time we got
-	 * a new sample was longer than the tacho update cycle. Instead of
-	 * using the last captured sample as the start point for the difference
-	 * we use the current time.
-	 */
-	if (ev3_tm->got_new_sample && (ev3_tm->dir_chg_samples >= ev3_tm->num_samples)) {
-		s64 new_speed;
-
-		diff = ktime_sub(ev3_tm->tacho_samples[diff_idx],
-			ev3_tm->tacho_samples[(diff_idx + TACHO_SAMPLES - ev3_tm->num_samples) % TACHO_SAMPLES]);
-
-		if (unlikely(!diff))
-			diff = ktime_set(0, 1);
-
-		new_speed = USEC_PER_SEC * ev3_tm->num_samples;
-		new_speed = div64_s64(new_speed, ktime_to_us(diff));
-
-		if (ev3_tm->run_direction == FORWARD)
-			ev3_tm->speed  = new_speed;
-		else
-			ev3_tm->speed  = -new_speed;
-
-		ev3_tm->got_new_sample = false;
-
-	} else if (ev3_tm->max_us_per_sample < ktime_to_us(ktime_sub(ktime_get(), ev3_tm->tacho_samples[diff_idx]))) {
-
-		ev3_tm->dir_chg_samples = 0;
-		ev3_tm->speed = 0;
-	}
-
-	else if (TACHO_MOTOR_POLL_MS < ktime_to_ms(ktime_sub(ktime_get(), ev3_tm->tacho_samples[diff_idx]))) {
-		s64 new_speed;
-
-		diff = ktime_sub(ktime_get(),
-			ev3_tm->tacho_samples[(diff_idx + TACHO_SAMPLES - ev3_tm->num_samples) % TACHO_SAMPLES]);
-
-		new_speed = USEC_PER_SEC * ev3_tm->num_samples;
-		new_speed = div64_s64(new_speed, ktime_to_us(diff));
-
-		if (ev3_tm->run_direction == FORWARD)
-			ev3_tm->speed  = new_speed;
-		else
-			ev3_tm->speed  = -new_speed;
-	}
-}
 
 static void update_stall(struct legoev3_motor_data *ev3_tm)
 {
@@ -715,21 +256,12 @@ static int legoev3_motor_tacho_cb(const void *data, void *p)
 {
 	struct legoev3_motor_data *ev3_tm = p;
 	const int *values = data;
-
-	printk_ratelimited("port: %s, count: %d, rate: %d\n", ev3_tm->ldev->name, values[0], values[1]);
-
-	return 0;
-}
-
-static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
-{
-	struct legoev3_motor_data *ev3_tm =
-			container_of(timer, struct legoev3_motor_data, timer);
 	int duty_cycle = ev3_tm->duty_cycle;
 
-	hrtimer_forward_now(timer, ktime_set(0, TACHO_MOTOR_POLL_MS * NSEC_PER_MSEC));
+	/* new tacho driver counts in 4x mode, but this driver expects 2x */
+	ev3_tm->position = values[0] / 2;
+	ev3_tm->speed = values[1] / 2;
 
-	calculate_speed(ev3_tm);
 	update_stall(ev3_tm);
 
 	if (ev3_tm->speed_pid_ena) {
@@ -749,7 +281,7 @@ static enum hrtimer_restart legoev3_motor_timer_callback(struct hrtimer *timer)
 
 	schedule_work(&ev3_tm->notify_state_change_work);
 
-	return HRTIMER_RESTART;
+	return 0;
 }
 
 static void legoev3_motor_notify_position_ramp_down_work(struct work_struct *work)
@@ -949,11 +481,8 @@ static const struct tacho_motor_ops legoev3_motor_ops = {
 static int legoev3_motor_probe(struct lego_device *ldev)
 {
 	struct legoev3_motor_data *ev3_tm;
-	struct ev3_motor_platform_data *pdata = ldev->dev.platform_data;
 	int err;
 
-	if (WARN_ON(!pdata))
-		return -EINVAL;
 	if (WARN_ON(!ldev->port->dc_motor_ops))
 		return -EINVAL;
 	if (WARN_ON(!ldev->entry_id))
@@ -981,9 +510,6 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 
 	dev_set_drvdata(&ldev->dev, ev3_tm);
 
-	hrtimer_init(&ev3_tm->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	ev3_tm->timer.function = legoev3_motor_timer_callback;
-
 	INIT_WORK(&ev3_tm->notify_state_change_work,
 		  legoev3_motor_notify_state_change_work);
 	INIT_WORK(&ev3_tm->notify_position_ramp_down_work,
@@ -996,24 +522,10 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 
 	legoev3_motor_reset(ev3_tm);
 
-	err = request_irq(gpio_to_irq(pdata->tacho_int_gpio), tacho_motor_isr,
-				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
-				dev_name(&ldev->dev), ev3_tm);
-
-	if (err)
-		goto err_unregister_motor;
-
 	iio_channel_start_all_cb(ev3_tm->cb_buffers);
-	hrtimer_start(&ev3_tm->timer, ktime_set(0, TACHO_MOTOR_POLL_MS * NSEC_PER_MSEC),
-		      HRTIMER_MODE_REL);
 
 	ev3_tm->debug = debugfs_create_dir(ev3_tm->tm.address, NULL);
-	debugfs_create_bool("got_new_sample", 0444, ev3_tm->debug, &ev3_tm->got_new_sample);
-	debugfs_create_u32("num_samples", 0444, ev3_tm->debug, &ev3_tm->num_samples);
-	debugfs_create_u32("dir_chg_samples", 0444, ev3_tm->debug, &ev3_tm->dir_chg_samples);
-	debugfs_create_u32("max_us_per_sample", 0444, ev3_tm->debug, &ev3_tm->max_us_per_sample);
 	debugfs_create_u32("position_sp", 0444, ev3_tm->debug, &ev3_tm->position_sp);
-	debugfs_create_u32("run_direction", 0444, ev3_tm->debug, &ev3_tm->run_direction);
 	debugfs_create_bool("stalled", 0444, ev3_tm->debug, &ev3_tm->stalled);
 	debugfs_create_bool("ramping", 0444, ev3_tm->debug, &ev3_tm->ramping);
 	debugfs_create_u32("position", 0444, ev3_tm->debug, &ev3_tm->position);
@@ -1027,8 +539,6 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 
 	return 0;
 
-err_unregister_motor:
-	unregister_tacho_motor(&ev3_tm->tm);
 err_free_cb_buffers:
 	iio_channel_release_all_cb(ev3_tm->cb_buffers);
 
@@ -1037,16 +547,13 @@ err_free_cb_buffers:
 
 static int legoev3_motor_remove(struct lego_device *ldev)
 {
-	struct ev3_motor_platform_data *pdata = ldev->dev.platform_data;
 	struct legoev3_motor_data *ev3_tm = dev_get_drvdata(&ldev->dev);
 
 	debugfs_remove_recursive(ev3_tm->debug);
 
 	iio_channel_stop_all_cb(ev3_tm->cb_buffers);
-	hrtimer_cancel(&ev3_tm->timer);
 	cancel_work_sync(&ev3_tm->notify_state_change_work);
 	cancel_work_sync(&ev3_tm->notify_position_ramp_down_work);
-	free_irq(gpio_to_irq(pdata->tacho_int_gpio), ev3_tm);
 	unregister_tacho_motor(&ev3_tm->tm);
 	iio_channel_release_all_cb(ev3_tm->cb_buffers);
 	return 0;
@@ -1101,4 +608,3 @@ MODULE_DESCRIPTION("Motor driver for LEGO MINDSTORMS EV3");
 MODULE_AUTHOR("Ralph Hempel <rhempel@hempeldesigngroup.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("lego:legoev3-motor");
-
