@@ -47,8 +47,8 @@ config LEGOEV3_PORTS
 config LEGOEV3_PRU
 	tristate "EV3 PRU support"
 	default y
-	depends on MACH_DAVINCI_LEGOEV3
 	select RPMSG_VIRTIO
+	select IIO_HRTIMER_TRIGGER
 	help
 		Select Y to enable for PRU support on the EV3.
 
