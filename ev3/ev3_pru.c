@@ -23,7 +23,7 @@
 
 /* from PRU */
 
-#define EV3_PRU_TACHO_RING_BUF_SIZE 1024 /* must be power of 2! */
+#define EV3_PRU_TACHO_RING_BUF_SIZE 256 /* must be power of 2! */
 
 enum ev3_pru_tacho_msg_type {
 	/* Host >< PRU: request memory map address of ring buffer data */
