@@ -52,7 +52,6 @@ struct legoev3_motor_data {
 	struct lego_device *ldev;
 	struct iio_cb_buffer *cb_buffers;
 
-	struct work_struct notify_state_change_work;
 	struct work_struct notify_position_ramp_down_work;
 	struct tm_pid speed_pid;
 	struct tm_pid hold_pid;
@@ -279,7 +278,7 @@ static int legoev3_motor_tacho_cb(const void *data, void *p)
 	if (ev3_tm->run_to_pos_active)
 		update_position(ev3_tm);
 
-	schedule_work(&ev3_tm->notify_state_change_work);
+	tacho_motor_notify_state_change(&ev3_tm->tm);
 
 	return 0;
 }
@@ -290,14 +289,6 @@ static void legoev3_motor_notify_position_ramp_down_work(struct work_struct *wor
 		container_of(work, struct legoev3_motor_data, notify_position_ramp_down_work);
 
 	tacho_motor_notify_position_ramp_down(&ev3_tm->tm);
-}
-
-static void legoev3_motor_notify_state_change_work(struct work_struct *work)
-{
-	struct legoev3_motor_data *ev3_tm =
-		container_of(work, struct legoev3_motor_data, notify_state_change_work);
-
-	tacho_motor_notify_state_change(&ev3_tm->tm);
 }
 
 static int legoev3_motor_get_position(void *context, int *position)
@@ -510,8 +501,6 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 
 	dev_set_drvdata(&ldev->dev, ev3_tm);
 
-	INIT_WORK(&ev3_tm->notify_state_change_work,
-		  legoev3_motor_notify_state_change_work);
 	INIT_WORK(&ev3_tm->notify_position_ramp_down_work,
 		  legoev3_motor_notify_position_ramp_down_work);
 
@@ -552,7 +541,6 @@ static int legoev3_motor_remove(struct lego_device *ldev)
 	debugfs_remove_recursive(ev3_tm->debug);
 
 	iio_channel_stop_all_cb(ev3_tm->cb_buffers);
-	cancel_work_sync(&ev3_tm->notify_state_change_work);
 	cancel_work_sync(&ev3_tm->notify_position_ramp_down_work);
 	unregister_tacho_motor(&ev3_tm->tm);
 	iio_channel_release_all_cb(ev3_tm->cb_buffers);
