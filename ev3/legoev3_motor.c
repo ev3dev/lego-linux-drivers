@@ -57,6 +57,7 @@ struct legoev3_motor_data {
 	struct tm_pid hold_pid;
 
 	int position_sp;
+	int position_offset;
 
 	ktime_t stalling_since;
 	bool stalling;
@@ -139,7 +140,7 @@ static int legoev3_motor_stop(void *context, enum tm_stop_action action)
 		if (use_pos_sp_for_hold)
 			ev3_tm->hold_pid.setpoint = ev3_tm->position_sp;
 		else
-			ev3_tm->hold_pid.setpoint = ev3_tm->position;
+			ev3_tm->hold_pid.setpoint = ev3_tm->position + ev3_tm->position_offset;
 		ev3_tm->hold_pid_ena = true;
 		break;
 	default:
@@ -169,7 +170,7 @@ static int legoev3_motor_reset(void *context)
 	spin_lock_irqsave(&lock, flags);
 
 	ev3_tm->position_sp		= 0;
-	ev3_tm->position		= 0;
+	ev3_tm->position_offset		= -ev3_tm->position;
 	ev3_tm->speed			= 0;
 	ev3_tm->duty_cycle		= 0;
 	ev3_tm->stalled			= false;
@@ -216,11 +217,11 @@ static void update_position(struct legoev3_motor_data *ev3_tm)
 	rampdown_time = (abs(ev3_tm->speed) * ev3_tm->tm.active_params.ramp_down_sp)
 				/ (1 + ev3_tm->tm.info->max_speed);
 
-	rampdown_endpoint = ev3_tm->position
+	rampdown_endpoint = ev3_tm->position + ev3_tm->position_offset
 			  + ((ev3_tm->speed * rampdown_time) / (2*MSEC_PER_SEC));
 
-	new_speed_sp = (2*MSEC_PER_SEC * (ev3_tm->position_sp - ev3_tm->position))
-				/ (1 + rampdown_time);
+	new_speed_sp = 2 * MSEC_PER_SEC * (ev3_tm->position_sp -
+		(ev3_tm->position + ev3_tm->position_offset)) / (1 + rampdown_time);
 
 	if (ev3_tm->speed_pid.setpoint > 0) {
 		if (rampdown_endpoint > ev3_tm->position_sp) {
@@ -228,7 +229,7 @@ static void update_position(struct legoev3_motor_data *ev3_tm)
 			ev3_tm->ramping = true;
 		}
 
-		if (ev3_tm->position >= ev3_tm->position_sp) {
+		if (ev3_tm->position + ev3_tm->position_offset >= ev3_tm->position_sp) {
 			schedule_work(&ev3_tm->notify_position_ramp_down_work);
 			ev3_tm->hold_pos_sp = true;
 			legoev3_motor_stop(ev3_tm,
@@ -241,7 +242,7 @@ static void update_position(struct legoev3_motor_data *ev3_tm)
 			ev3_tm->ramping = true;
 		}
 
-		if (ev3_tm->position <= ev3_tm->position_sp) {
+		if (ev3_tm->position + ev3_tm->position_offset <= ev3_tm->position_sp) {
 			schedule_work(&ev3_tm->notify_position_ramp_down_work);
 			ev3_tm->hold_pos_sp = true;
 			legoev3_motor_stop(ev3_tm,
@@ -271,7 +272,8 @@ static int legoev3_motor_tacho_cb(const void *data, void *p)
 			duty_cycle = tm_pid_update(&ev3_tm->speed_pid,
 						   ev3_tm->speed);
 	} else if (ev3_tm->hold_pid_ena)
-		duty_cycle = tm_pid_update(&ev3_tm->hold_pid, ev3_tm->position);
+		duty_cycle = tm_pid_update(&ev3_tm->hold_pid,
+				 ev3_tm->position + ev3_tm->position_offset);
 
 	set_duty_cycle(ev3_tm, duty_cycle);
 
@@ -295,7 +297,7 @@ static int legoev3_motor_get_position(void *context, int *position)
 {
 	struct legoev3_motor_data *ev3_tm = context;
 
-	*position = ev3_tm->position;
+	*position = ev3_tm->position + ev3_tm->position_offset;
 
 	return 0;
 }
@@ -309,7 +311,7 @@ static int legoev3_motor_set_position(void *context, int position)
 	if (legoev3_motor_get_state(ev3_tm) & TM_STATE_RUNNING)
 		return -EBUSY;
 
-	ev3_tm->position    = position;
+	ev3_tm->position_offset = position - ev3_tm->position;
 	ev3_tm->position_sp = position;
 
 	return 0;
@@ -403,7 +405,7 @@ static int legoev3_motor_run_to_pos(void *context, int pos, int speed,
 	spin_lock_irqsave(&lock, flags);
 
 	speed = abs(speed);
-	if (ev3_tm->position > pos)
+	if (ev3_tm->position + ev3_tm->position_offset > pos)
 		speed *= -1;
 
 	ev3_tm->run_to_pos_active = true;
@@ -515,6 +517,7 @@ static int legoev3_motor_probe(struct lego_device *ldev)
 
 	ev3_tm->debug = debugfs_create_dir(ev3_tm->tm.address, NULL);
 	debugfs_create_u32("position_sp", 0444, ev3_tm->debug, &ev3_tm->position_sp);
+	debugfs_create_u32("position_offset", 0444, ev3_tm->debug, &ev3_tm->position_offset);
 	debugfs_create_bool("stalled", 0444, ev3_tm->debug, &ev3_tm->stalled);
 	debugfs_create_bool("ramping", 0444, ev3_tm->debug, &ev3_tm->ramping);
 	debugfs_create_u32("position", 0444, ev3_tm->debug, &ev3_tm->position);
