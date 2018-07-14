@@ -280,8 +280,6 @@ static int legoev3_motor_tacho_cb(const void *data, void *p)
 	if (ev3_tm->run_to_pos_active)
 		update_position(ev3_tm);
 
-	tacho_motor_notify_state_change(&ev3_tm->tm);
-
 	return 0;
 }
 

@@ -125,6 +125,7 @@ struct tacho_motor_device {
 	struct device dev;
 	struct delayed_work run_timed_work;
 	struct delayed_work ramp_work;
+	struct delayed_work poll_state_work;
 };
 
 /**
@@ -196,7 +197,6 @@ struct tacho_motor_ops {
 	int (*set_hold_Kd)(void *context, int k);
 };
 
-extern void tacho_motor_notify_state_change(struct tacho_motor_device *);
 extern void tacho_motor_notify_position_ramp_down(struct tacho_motor_device *);
 
 extern int register_tacho_motor(struct tacho_motor_device *, struct device *);

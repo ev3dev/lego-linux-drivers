@@ -259,6 +259,7 @@
 #include "ev3_motor.h"
 
 #define RAMP_PERIOD	msecs_to_jiffies(100)
+#define POLL_PERIOD	msecs_to_jiffies(50)
 
 struct tacho_motor_value_names {
 	const char *name;
@@ -1256,9 +1257,13 @@ void tacho_motor_notify_position_ramp_down(struct tacho_motor_device *tm)
 }
 EXPORT_SYMBOL_GPL(tacho_motor_notify_position_ramp_down);
 
-void tacho_motor_notify_state_change(struct tacho_motor_device *tm)
+static void tacho_motor_class_poll_state_work(struct work_struct *work)
 {
+	struct tacho_motor_device *tm = container_of(to_delayed_work(work),
+		struct tacho_motor_device, poll_state_work);
 	int newstate;
+
+	schedule_delayed_work(&tm->poll_state_work, POLL_PERIOD);
 
 	newstate = tacho_motor_get_state(tm);
 	if (newstate != tm->oldstate) {
@@ -1266,7 +1271,6 @@ void tacho_motor_notify_state_change(struct tacho_motor_device *tm)
 		tm->oldstate = newstate;
 	}
 }
-EXPORT_SYMBOL_GPL(tacho_motor_notify_state_change);
 
 static unsigned tacho_motor_class_id = 0;
 
@@ -1300,14 +1304,16 @@ int register_tacho_motor(struct tacho_motor_device *tm, struct device *parent)
 
 	INIT_DELAYED_WORK(&tm->ramp_work, tacho_motor_class_ramp_work);
 	INIT_DELAYED_WORK(&tm->run_timed_work, tacho_motor_class_run_timed_work);
+	INIT_DELAYED_WORK(&tm->poll_state_work, tacho_motor_class_poll_state_work);
 
 	err = device_register(&tm->dev);
-
 	if (err)
 		return err;
 
 	dev_info(&tm->dev, "Registered '%s' on '%s'.\n", tm->driver_name,
 		 tm->address);
+
+	schedule_delayed_work(&tm->poll_state_work, POLL_PERIOD);
 
 	return 0;
 }
@@ -1317,6 +1323,7 @@ void unregister_tacho_motor(struct tacho_motor_device *tm)
 {
 	dev_info(&tm->dev, "Unregistered '%s' on '%s'.\n", tm->driver_name,
 		 tm->address);
+	cancel_delayed_work_sync(&tm->poll_state_work);
 	cancel_delayed_work_sync(&tm->run_timed_work);
 	cancel_delayed_work_sync(&tm->ramp_work);
 	device_unregister(&tm->dev);
