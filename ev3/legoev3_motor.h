@@ -40,15 +40,10 @@ struct legoev3_motor_pid_k {
  *	driver implementation
  *
  * @speed_pid_k: PID constants for speed regulation.
- * @max_us_per_sample: Maximum duration of a single sample in microseconds.
- *	This number should be 50 * the tacho period at full speed.
- *	Used for motor stall and direction calculations.
  */
 struct legoev3_motor_info {
 	struct legoev3_motor_pid_k position_pid_k;
 	struct legoev3_motor_pid_k speed_pid_k;
-	/* TODO: clock_ticks_per_sample needs to be converted to usec */
-	int max_us_per_sample;
 };
 
 #endif /* __LEGOEV3_MOTOR_H */

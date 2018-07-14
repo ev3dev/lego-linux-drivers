@@ -51,7 +51,6 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		.legoev3_info		= {
 			.speed_pid_k		= { .p = 1000, .i = 60, .d = 0 },
 			.position_pid_k		= { .p = 80000, .i = 0, .d = 0 },
-			.max_us_per_sample	= 100000,
 		},
 	},
 	[LEGO_EV3_LARGE_MOTOR] = {
@@ -68,7 +67,6 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		.legoev3_info		= {
 			.speed_pid_k		= { .p = 1000, .i = 60, .d = 0 },
 			.position_pid_k		= { .p = 80000, .i = 0, .d = 0 },
-			.max_us_per_sample	= 100000,
 		},
 	},
 	[LEGO_EV3_MEDIUM_MOTOR] = {
@@ -85,7 +83,6 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		.legoev3_info		= {
 			.speed_pid_k		= { .p = 1000, .i = 60, .d = 0 },
 			.position_pid_k		= { .p = 160000, .i = 0, .d = 0 },
-			.max_us_per_sample	= 75000,
 		},
 	},
 	[ACT_L12_EV3_50] = {
@@ -104,8 +101,6 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		.legoev3_info		= {
 			.speed_pid_k		= { .p = 1000, .i = 60, .d = 0 },
 			.position_pid_k		= { .p = 40000, .i = 0, .d = 0 },
-			/* TODO: need to put a scope on this and get correct values */
-			.max_us_per_sample	= 100000,
 		},
 	},
 	[ACT_L12_EV3_100] = {
@@ -124,8 +119,6 @@ const struct ev3_motor_info ev3_motor_defs[] = {
 		.legoev3_info		= {
 			.speed_pid_k		= { .p = 1000, .i = 60, .d = 0 },
 			.position_pid_k		= { .p = 40000, .i = 0, .d = 0 },
-			/* TODO: need to put a scope on this and get correct values */
-			.max_us_per_sample	= 100000,
 		},
 	},
 };
