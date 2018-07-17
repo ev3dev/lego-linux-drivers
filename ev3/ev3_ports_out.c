@@ -58,7 +58,7 @@
 #define PIN5_MINITACHO_LOW1  1600 /* [mV] a mini tacho motor is pulling high when pin5 is pulling low */
 
 #define PIN5_BALANCE_HIGH    2600 /* [mV] values in between these limits means that */
-#define PIN5_BALANCE_LOW     2350 /* [mV] connection 5 is floating */
+#define PIN5_BALANCE_LOW     2400 /* [mV] connection 5 is floating */
 
 #define PIN5_LIGHT_HIGH       850 /* [mV] values in between these limits means that */
 #define PIN5_LIGHT_LOW        650 /* [mV] an old light sensor is connected */
