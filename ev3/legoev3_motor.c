@@ -88,9 +88,6 @@ static void set_duty_cycle(struct legoev3_motor_data *ev3_tm, int duty_cycle)
 	duty_cycle = min(duty_cycle, DC_MOTOR_MAX_DUTY_CYCLE);
 	duty_cycle = max(duty_cycle, -DC_MOTOR_MAX_DUTY_CYCLE);
 
-	if (duty_cycle == ev3_tm->duty_cycle)
-		return;
-
 	if (duty_cycle > 0)
 		motor_ops->set_command(context,
 				       DC_MOTOR_INTERNAL_COMMAND_RUN_FORWARD);
@@ -273,7 +270,8 @@ static int legoev3_motor_tacho_cb(const void *data, void *p)
 		duty_cycle = tm_pid_update(&ev3_tm->hold_pid,
 				 ev3_tm->position + ev3_tm->position_offset);
 
-	set_duty_cycle(ev3_tm, duty_cycle);
+	if (duty_cycle != ev3_tm->duty_cycle)
+		set_duty_cycle(ev3_tm, duty_cycle);
 
 	if (ev3_tm->run_to_pos_active)
 		update_position(ev3_tm);
