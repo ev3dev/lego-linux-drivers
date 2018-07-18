@@ -252,6 +252,9 @@ static int legoev3_motor_tacho_cb(const void *data, void *p)
 	struct legoev3_motor_data *ev3_tm = p;
 	const int *values = data;
 	int duty_cycle = ev3_tm->duty_cycle;
+	unsigned long flags;
+
+	spin_lock_irqsave(&lock, flags);
 
 	/* new tacho driver counts in 4x mode, but this driver expects 2x */
 	ev3_tm->position = values[0] / 2;
@@ -275,6 +278,8 @@ static int legoev3_motor_tacho_cb(const void *data, void *p)
 
 	if (ev3_tm->run_to_pos_active)
 		update_position(ev3_tm);
+
+	spin_unlock_irqrestore(&lock, flags);
 
 	return 0;
 }
