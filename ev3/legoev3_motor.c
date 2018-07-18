@@ -171,8 +171,6 @@ static int legoev3_motor_reset(void *context)
 
 	ev3_tm->position_sp		= 0;
 	ev3_tm->position_offset		= -ev3_tm->position;
-	ev3_tm->speed			= 0;
-	ev3_tm->duty_cycle		= 0;
 	ev3_tm->stalled			= false;
 	ev3_tm->stalling		= false;
 
