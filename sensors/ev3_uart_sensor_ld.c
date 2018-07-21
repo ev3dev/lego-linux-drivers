@@ -171,7 +171,6 @@ enum ev3_uart_info_flags {
  * @tty: Pointer to the tty device that the sensor is connected to
  * @in_port: The input port device associated with this tty.
  * @sensor: The lego-sensor class structure for the sensor.
- * @rx_data_work: Workqueue item for handling received data.
  * @send_ack_work: Used to send ACK after a delay.
  * @change_bitrate_work: Used to change the baud rate after a delay.
  * @keep_alive_timer: Sends a NACK every 100usec when a sensor is connected.
@@ -211,7 +210,6 @@ struct ev3_uart_port_data {
 	struct tty_struct *tty;
 	struct lego_port_device *in_port;
 	struct lego_sensor_device sensor;
-	struct work_struct rx_data_work;
 	struct delayed_work send_ack_work;
 	struct work_struct change_bitrate_work;
 	struct hrtimer keep_alive_timer;
@@ -463,10 +461,8 @@ enum hrtimer_restart ev3_uart_keep_alive_timer_callback(struct hrtimer *timer)
 	return HRTIMER_RESTART;
 }
 
-static void ev3_uart_handle_rx_data(struct work_struct *work)
+static void ev3_uart_handle_rx_data(struct ev3_uart_port_data *port)
 {
-	struct ev3_uart_port_data *port =
-		container_of(work, struct ev3_uart_port_data, rx_data_work);
 	struct circ_buf *cb = &port->circ_buf;
 	u8 message[EV3_UART_MAX_MESSAGE_SIZE];
 	int count = CIRC_CNT(cb->head, cb->tail, EV3_UART_BUFFER_SIZE);
@@ -937,7 +933,6 @@ static int ev3_uart_open(struct tty_struct *tty)
 	port->sensor.set_mode = ev3_uart_set_mode;
 	port->sensor.direct_write = ev3_uart_direct_write;
 	port->circ_buf.buf = port->buffer;
-	INIT_WORK(&port->rx_data_work, ev3_uart_handle_rx_data);
 	INIT_DELAYED_WORK(&port->send_ack_work, ev3_uart_send_ack);
 	INIT_WORK(&port->change_bitrate_work, ev3_uart_change_bitrate);
 	hrtimer_init(&port->keep_alive_timer, HRTIMER_BASE_MONOTONIC,
@@ -996,7 +991,6 @@ static void ev3_uart_close(struct tty_struct *tty)
 	port->closing = true;
 	if (!completion_done(&port->set_mode_completion))
 		complete(&port->set_mode_completion);
-	cancel_work_sync(&port->rx_data_work);
 	cancel_delayed_work_sync(&port->send_ack_work);
 	cancel_work_sync(&port->change_bitrate_work);
 	hrtimer_cancel(&port->keep_alive_timer);
@@ -1028,7 +1022,7 @@ static void ev3_uart_receive_buf(struct tty_struct *tty,
 	if (count > CIRC_SPACE(cb->head, cb->tail, EV3_UART_BUFFER_SIZE)) {
 		printk_ratelimited(KERN_ERR
 				   "%s: buffer overrun\n", dev_name(tty->dev));
-		schedule_work(&port->rx_data_work);
+		ev3_uart_handle_rx_data(port);
 		return;
 	}
 
@@ -1042,7 +1036,7 @@ static void ev3_uart_receive_buf(struct tty_struct *tty,
 		cb->head += count;
 	}
 
-	schedule_work(&port->rx_data_work);
+	ev3_uart_handle_rx_data(port);
 }
 
 static void ev3_uart_write_wakeup(struct tty_struct *tty)
