@@ -1,7 +1,7 @@
 /*
  * LEGO MINDSTORMS EV3 UART Sensor tty line discipline
  *
- * Copyright (C) 2014-2016 David Lechner <david@lechnology.com>
+ * Copyright (C) 2014-2016,2018 David Lechner <david@lechnology.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -41,7 +41,6 @@
  */
 
 #include <linux/bitops.h>
-#include <linux/circ_buf.h>
 #include <linux/delay.h>
 #include <linux/hrtimer.h>
 #include <linux/interrupt.h>
@@ -66,8 +65,6 @@
 #define N_LEGOEV3 29
 #endif
 
-/* EV3_UART_BUFFER_SIZE must be power of 2 for circ_buf macros */
-#define EV3_UART_BUFFER_SIZE		1024
 #define EV3_UART_MAX_DATA_SIZE		32
 #define EV3_UART_MAX_MESSAGE_SIZE	(EV3_UART_MAX_DATA_SIZE + 2)
 
@@ -193,8 +190,8 @@ enum ev3_uart_info_flags {
  * @new_baud_rate: New baud rate that will be set with ev3_uart_change_bitrate
  * @info_flags: Flags indicating what information has already been read
  * 	from the sensor.
- * @buffer: Byte array to store received data in between receive_buf interrupts.
- * @circ_buf: Circular buffer struct that points to buffer (above).
+ * @msg: partial message from previous receive callback
+ * @partial_msg_size: the size of the partial message
  * @last_err: Message to be printed in case of an error.
  * @num_data_err: Number of bad reads when receiving DATA messages.
  * @synced: Flag indicating communications are synchronized with the sensor.
@@ -227,8 +224,8 @@ struct ev3_uart_port_data {
 	u32 si_max;
 	speed_t new_baud_rate;
 	long unsigned info_flags;
-	u8 buffer[EV3_UART_BUFFER_SIZE];
-	struct circ_buf circ_buf;
+	u8 msg[EV3_UART_MAX_MESSAGE_SIZE];
+	u8 partial_msg_size;
 	char *last_err;
 	unsigned num_data_err;
 	unsigned synced:1;
@@ -461,53 +458,71 @@ enum hrtimer_restart ev3_uart_keep_alive_timer_callback(struct hrtimer *timer)
 	return HRTIMER_RESTART;
 }
 
-static void ev3_uart_handle_rx_data(struct ev3_uart_port_data *port)
+static int ev3_uart_receive_buf2(struct tty_struct *tty,
+				 const unsigned char *cp, char *fp, int count)
 {
-	struct circ_buf *cb = &port->circ_buf;
+	struct ev3_uart_port_data *port = tty->disc_data;
 	u8 message[EV3_UART_MAX_MESSAGE_SIZE];
-	int count = CIRC_CNT(cb->head, cb->tail, EV3_UART_BUFFER_SIZE);
-	int i, speed, size_to_end;
+	int i, speed, pos;
 	u8 cmd, cmd2, type, mode, msg_type, msg_size, chksum;
 
-#ifdef DEBUG
-	printk("received: ");
-	for (i = 0; i < count; i++) {
-		cmd = cb->buf[(cb->tail + i) % EV3_UART_BUFFER_SIZE];
-		if (cmd >= 32 && cmd < 127)
-			printk("%c ", cmd);
-		else
-			printk("0x%02x ", cmd);
+	if (fp) {
+		switch (*fp) {
+		case TTY_NORMAL:
+			break;
+		case TTY_BREAK:
+			port->last_err = "received break";
+			goto err_invalid_state;
+		case TTY_PARITY:
+			port->last_err = "parity error";
+			goto err_invalid_state;
+		case TTY_FRAME:
+			port->last_err = "frame error";
+			goto err_invalid_state;
+		case TTY_OVERRUN:
+			port->last_err = "frame overrun";
+			goto err_invalid_state;
+		default:
+			port->last_err = "receive_error - unknown flag";
+			goto err_invalid_state;
+		}
 	}
-	printk("(%d)\n", count);
-#endif
+
+	/* current position in *cp */
+	pos = 0;
 
 	/*
 	 * To get in sync with the data stream from the sensor, we look
 	 * for a valid TYPE command.
 	 */
 	while (!port->synced) {
-		if (count < 3)
-			return;
-		cmd = cb->buf[cb->tail];
-		cb->tail++;
-		if (cb->tail >= EV3_UART_BUFFER_SIZE)
-			cb->tail = 0;
-		count--;
+		if (pos + 3 > count)
+			return count;
+
+		cmd = cp[pos++];
 		if (cmd != (EV3_UART_MSG_TYPE_CMD | EV3_UART_CMD_TYPE))
 			continue;
-		type = cb->buf[cb->tail];
+
+		type = cp[pos];
 		if (!type || type > EV3_UART_TYPE_MAX)
 			continue;
+
 		chksum = 0xFF ^ cmd ^ type;
-		if ((u8)cb->buf[(cb->tail + 1) % EV3_UART_BUFFER_SIZE] != chksum)
+		if (cp[pos + 1] != chksum)
 			continue;
+
+		pos += 2;
+
 		port->sensor.num_modes = 1;
 		port->sensor.num_view_modes = 1;
+
 		for (i = 0; i <= EV3_UART_MODE_MAX; i++)
 			port->mode_info[i] = ev3_uart_default_mode_info;
+
 		port->type_id = type;
-		/* look up well-known driver names */
 		port->device_name[0] = 0;
+
+		/* look up well-known driver names */
 		for (i = 0; i < NUM_LEGO_EV3_SENSOR_TYPES; i++) {
 			if (type == ev3_uart_sensor_defs[i].type_id) {
 				snprintf(port->device_name, LEGO_SENSOR_NAME_SIZE,
@@ -515,72 +530,78 @@ static void ev3_uart_handle_rx_data(struct ev3_uart_port_data *port)
 				break;
 			}
 		}
+
 		/* or use generic name if well-known name is not found */
 		if (!port->device_name[0])
 			snprintf(port->device_name, LEGO_SENSOR_NAME_SIZE,
 				 EV3_UART_SENSOR_NAME("%u"), type);
+
+		port->partial_msg_size = 0;
 		port->info_flags = EV3_UART_INFO_FLAG_CMD_TYPE;
-		port->synced = 1;
 		port->info_done = 0;
 		port->data_rec = 0;
 		port->num_data_err = 0;
-		cb->tail = (cb->tail + 2) % EV3_UART_BUFFER_SIZE;
-		count -= 2;
+		port->synced = 1;
 	}
-	if (!port->synced)
-		return;
 
-	while (count > 0)
-	{
-		/*
-		 * Sometimes we get 0xFF after switching baud rates, so just
-		 * ignore it.
-		 */
-		if ((u8)cb->buf[cb->tail] == 0xFF) {
-
-			cb->tail++;
-			if (cb->tail >= EV3_UART_BUFFER_SIZE)
-				cb->tail = 0;
-			count--;
+	while (pos + port->partial_msg_size < count) {
+		if (cp[pos] == 0xFF) {
+			/*
+			* Sometimes we get 0xFF after switching baud rates, so
+			* just ignore it.
+			*/
+			pos++;
 			continue;
 		}
-		msg_size = ev3_uart_msg_size((u8)cb->buf[cb->tail]);
-		debug_pr("msg_size: %u\n", msg_size);
+
+		if (port->partial_msg_size)
+			msg_size = ev3_uart_msg_size(port->msg[0]);
+		else
+			msg_size = ev3_uart_msg_size(cp[pos]);
+
 		if (msg_size > EV3_UART_MAX_MESSAGE_SIZE) {
-			debug_pr("header: 0x%02x\n", (u8)cb->buf[cb->tail]);
+			debug_pr("header: 0x%02x\n", cp[pos]);
 			port->last_err = "Bad message size";
 			goto err_invalid_state;
 		}
-		if (msg_size > count)
-			break;
-		size_to_end = CIRC_CNT_TO_END(cb->head, cb->tail, EV3_UART_BUFFER_SIZE);
-		if (msg_size > size_to_end) {
-			memcpy(message, cb->buf + cb->tail, size_to_end);
-			memcpy(message + size_to_end, cb->buf, msg_size - size_to_end);
-			cb->tail = msg_size - size_to_end;
-		} else {
-			memcpy(message, cb->buf + cb->tail, msg_size);
-			cb->tail += msg_size;
-			if (cb->tail >= EV3_UART_BUFFER_SIZE)
-				cb->tail = 0;
+
+		if (pos + msg_size - port->partial_msg_size > count) {
+			/*
+			 * Don't have a full message. Need to read drain the
+			 * tty buffer so that we can get the next buffer.
+			 */
+			memcpy(port->msg + port->partial_msg_size, cp + pos, count - pos);
+			port->partial_msg_size += count - pos;
+			return count;
 		}
-		count -= msg_size;
-#ifdef DEBUG
-		printk("processing: ");
-		for (i = 0; i < msg_size; i++)
-			printk("0x%02x ", message[i]);
-		printk(" (%d)\n", msg_size);
-#endif
+
+		if (port->partial_msg_size) {
+			/*
+			 * If we had a parital message, concat the partial
+			 * message and the remainder of the message we just
+			 * received.
+			 */
+			memcpy(message, port->msg, port->partial_msg_size);
+			memcpy(message + port->partial_msg_size, cp + pos,
+			       msg_size - port->partial_msg_size);
+			pos += msg_size - port->partial_msg_size;
+			port->partial_msg_size = 0;
+		} else {
+			memcpy(message, cp + pos, msg_size);
+			pos += msg_size;
+		}
+
 		msg_type = message[0] & EV3_UART_MSG_TYPE_MASK;
 		cmd = message[0] & EV3_UART_MSG_CMD_MASK;
 		mode = cmd;
 		cmd2 = message[1];
+
 		if (msg_size > 1) {
 			chksum = 0xFF;
 			for (i = 0; i < msg_size - 1; i++)
 				chksum ^= message[i];
 			debug_pr("chksum:%d, actual:%d\n",
-			         chksum, message[msg_size - 1]);
+				 chksum, message[msg_size - 1]);
 			/*
 			 * The LEGO EV3 color sensor sends bad checksums
 			 * for RGB-RAW data (mode 4). The check here could be
@@ -593,11 +614,13 @@ static void ev3_uart_handle_rx_data(struct ev3_uart_port_data *port)
 				port->last_err = "Bad checksum.";
 				if (port->info_done) {
 					port->num_data_err++;
-					goto err_bad_data_msg_checksum;
-				} else
+					continue;
+				} else {
 					goto err_invalid_state;
+				}
 			}
 		}
+
 		switch (msg_type) {
 		case EV3_UART_MSG_TYPE_SYS:
 			debug_pr("SYS:%d\n", message[0] & EV3_UART_MSG_CMD_MASK);
@@ -621,7 +644,7 @@ static void ev3_uart_handle_rx_data(struct ev3_uart_port_data *port)
 				schedule_delayed_work(&port->send_ack_work,
 						      msecs_to_jiffies(EV3_UART_SEND_ACK_DELAY));
 				port->info_done = 1;
-				return;
+				return count;
 			}
 			break;
 		case EV3_UART_MSG_TYPE_CMD:
@@ -889,16 +912,17 @@ static void ev3_uart_handle_rx_data(struct ev3_uart_port_data *port)
 				port->num_data_err--;
 			break;
 		}
-err_bad_data_msg_checksum:
-		count = CIRC_CNT(cb->head, cb->tail, EV3_UART_BUFFER_SIZE);
 	}
-	return;
+
+	return pos;
 
 err_invalid_state:
 	debug_pr("invalid state: %s\n", port->last_err);
 	port->synced = 0;
 	port->new_baud_rate = EV3_UART_SPEED_MIN;
 	schedule_work(&port->change_bitrate_work);
+
+	return count;
 }
 
 static int ev3_uart_open(struct tty_struct *tty)
@@ -932,7 +956,6 @@ static int ev3_uart_open(struct tty_struct *tty)
 	port->sensor.mode_info = port->mode_info;
 	port->sensor.set_mode = ev3_uart_set_mode;
 	port->sensor.direct_write = ev3_uart_direct_write;
-	port->circ_buf.buf = port->buffer;
 	INIT_DELAYED_WORK(&port->send_ack_work, ev3_uart_send_ack);
 	INIT_WORK(&port->change_bitrate_work, ev3_uart_change_bitrate);
 	hrtimer_init(&port->keep_alive_timer, HRTIMER_BASE_MONOTONIC,
@@ -1009,36 +1032,6 @@ static int ev3_uart_ioctl(struct tty_struct *tty, struct file *file,
 	return tty_mode_ioctl(tty, file, cmd, arg);
 }
 
-static void ev3_uart_receive_buf(struct tty_struct *tty,
-				 const unsigned char *cp, char *fp, int count)
-{
-	struct ev3_uart_port_data *port = tty->disc_data;
-	struct circ_buf *cb = &port->circ_buf;
-	int size;
-
-	if (port->closing)
-		return;
-
-	if (count > CIRC_SPACE(cb->head, cb->tail, EV3_UART_BUFFER_SIZE)) {
-		printk_ratelimited(KERN_ERR
-				   "%s: buffer overrun\n", dev_name(tty->dev));
-		ev3_uart_handle_rx_data(port);
-		return;
-	}
-
-	size = CIRC_SPACE_TO_END(cb->head, cb->tail, EV3_UART_BUFFER_SIZE);
-	if (count > size) {
-		memcpy(cb->buf + cb->head, cp, size);
-		memcpy(cb->buf, cp + size, count - size);
-		cb->head = count - size;
-	} else {
-		memcpy(cb->buf + cb->head, cp, count);
-		cb->head += count;
-	}
-
-	ev3_uart_handle_rx_data(port);
-}
-
 static void ev3_uart_write_wakeup(struct tty_struct *tty)
 {
 	debug_pr("%s\n", __func__);
@@ -1050,7 +1043,7 @@ static struct tty_ldisc_ops ev3_uart_ldisc = {
 	.open			= ev3_uart_open,
 	.close			= ev3_uart_close,
 	.ioctl			= ev3_uart_ioctl,
-	.receive_buf		= ev3_uart_receive_buf,
+	.receive_buf2		= ev3_uart_receive_buf2,
 	.write_wakeup		= ev3_uart_write_wakeup,
 	.owner			= THIS_MODULE,
 };
