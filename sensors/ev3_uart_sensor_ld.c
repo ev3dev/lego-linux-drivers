@@ -81,7 +81,6 @@
 #define EV3_UART_MODE_MAX		7
 #define EV3_UART_MODE_NAME_SIZE		11
 
-#define EV3_UART_SEND_ACK_DELAY			10 /* msec */
 #define EV3_UART_DATA_KEEP_ALIVE_TIMEOUT	100 /* msec */
 
 #define EV3_UART_DEVICE_TYPE_NAME_SIZE		30
@@ -168,7 +167,6 @@ enum ev3_uart_info_flags {
  * @tty: Pointer to the tty device that the sensor is connected to
  * @in_port: The input port device associated with this tty.
  * @sensor: The lego-sensor class structure for the sensor.
- * @send_ack_work: Used to send ACK after a delay.
  * @change_bitrate_work: Used to change the baud rate after a delay.
  * @keep_alive_timer: Sends a NACK every 100usec when a sensor is connected.
  * @keep_alive_tasklet: Does the actual sending of the NACK.
@@ -207,7 +205,6 @@ struct ev3_uart_port_data {
 	struct tty_struct *tty;
 	struct lego_port_device *in_port;
 	struct lego_sensor_device sensor;
-	struct delayed_work send_ack_work;
 	struct work_struct change_bitrate_work;
 	struct hrtimer keep_alive_timer;
 	struct tasklet_struct keep_alive_tasklet;
@@ -370,14 +367,28 @@ int ev3_uart_match_input_port(struct device *dev, const void *data)
 	return !strcmp(pdev->port_alias, tty_name);
 }
 
-static void ev3_uart_send_ack(struct work_struct *work)
+static void ev3_uart_change_bitrate(struct ev3_uart_port_data *port)
 {
-	struct ev3_uart_port_data *port = container_of(to_delayed_work(work),
-				struct ev3_uart_port_data, send_ack_work);
-	int err;
+	struct ktermios old_termios = port->tty->termios;
 
-	if (port->closing)
-		return;
+	tty_wait_until_sent(port->tty, 0);
+	down_write(&port->tty->termios_rwsem);
+	tty_encode_baud_rate(port->tty, port->new_baud_rate, port->new_baud_rate);
+	if (port->tty->ops->set_termios)
+		port->tty->ops->set_termios(port->tty, &old_termios);
+	up_write(&port->tty->termios_rwsem);
+	if (port->info_done) {
+		hrtimer_start(&port->keep_alive_timer, ktime_set(0, 1000000),
+			      HRTIMER_MODE_REL);
+		/* restore the previous user-selected mode */
+		if (port->sensor.mode != port->requested_mode)
+			ev3_uart_set_mode(port->tty, port->requested_mode);
+	}
+}
+
+static void ev3_uart_send_ack(struct ev3_uart_port_data *port)
+{
+	int err;
 
 	ev3_uart_write_byte(port->tty, EV3_UART_SYS_ACK);
 	if (!port->sensor.context && port->type_id <= EV3_UART_TYPE_MAX) {
@@ -394,33 +405,21 @@ static void ev3_uart_send_ack(struct work_struct *work)
 				port->tty->name);
 			return;
 		}
-	} else
+	} else {
 		dev_err(port->tty->dev, "Reconnected due to: %s\n",
 			port->last_err);
+	}
 
 	mdelay(4);
-	schedule_work(&port->change_bitrate_work);
+	ev3_uart_change_bitrate(port);
 }
 
-static void ev3_uart_change_bitrate(struct work_struct *work)
+static void ev3_uart_change_bitrate_work(struct work_struct *work)
 {
 	struct ev3_uart_port_data *port = container_of(work,
 				struct ev3_uart_port_data, change_bitrate_work);
-	struct ktermios old_termios = port->tty->termios;
 
-	tty_wait_until_sent(port->tty, 0);
-	down_write(&port->tty->termios_rwsem);
-	tty_encode_baud_rate(port->tty, port->new_baud_rate, port->new_baud_rate);
-	if (port->tty->ops->set_termios)
-		port->tty->ops->set_termios(port->tty, &old_termios);
-	up_write(&port->tty->termios_rwsem);
-	if (port->info_done) {
-		hrtimer_start(&port->keep_alive_timer, ktime_set(0, 1000000),
-			      HRTIMER_MODE_REL);
-		/* restore the previous user-selected mode */
-		if (port->sensor.mode != port->requested_mode)
-			ev3_uart_set_mode(port->tty, port->requested_mode);
-	}
+	ev3_uart_change_bitrate(port);
 }
 
 static void ev3_uart_send_keep_alive(unsigned long data)
@@ -641,9 +640,12 @@ static int ev3_uart_receive_buf2(struct tty_struct *tty,
 					port->last_err = "Did not receive all required INFO.";
 					goto err_invalid_state;
 				}
-				schedule_delayed_work(&port->send_ack_work,
-						      msecs_to_jiffies(EV3_UART_SEND_ACK_DELAY));
+
 				port->info_done = 1;
+
+				mdelay(10);
+				ev3_uart_send_ack(port);
+
 				return count;
 			}
 			break;
@@ -956,8 +958,7 @@ static int ev3_uart_open(struct tty_struct *tty)
 	port->sensor.mode_info = port->mode_info;
 	port->sensor.set_mode = ev3_uart_set_mode;
 	port->sensor.direct_write = ev3_uart_direct_write;
-	INIT_DELAYED_WORK(&port->send_ack_work, ev3_uart_send_ack);
-	INIT_WORK(&port->change_bitrate_work, ev3_uart_change_bitrate);
+	INIT_WORK(&port->change_bitrate_work, ev3_uart_change_bitrate_work);
 	hrtimer_init(&port->keep_alive_timer, HRTIMER_BASE_MONOTONIC,
 		     HRTIMER_MODE_REL);
 	port->keep_alive_timer.function = ev3_uart_keep_alive_timer_callback;
@@ -1014,7 +1015,7 @@ static void ev3_uart_close(struct tty_struct *tty)
 	port->closing = true;
 	if (!completion_done(&port->set_mode_completion))
 		complete(&port->set_mode_completion);
-	cancel_delayed_work_sync(&port->send_ack_work);
+
 	cancel_work_sync(&port->change_bitrate_work);
 	hrtimer_cancel(&port->keep_alive_timer);
 	tasklet_kill(&port->keep_alive_tasklet);
