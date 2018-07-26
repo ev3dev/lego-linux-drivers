@@ -445,6 +445,7 @@ enum hrtimer_restart ev3_uart_keep_alive_timer_callback(struct hrtimer *timer)
 		port->num_data_err++;
 		if (port->num_data_err > EV3_UART_MAX_DATA_ERR) {
 			port->synced = 0;
+			port->partial_msg_size = 0;
 			port->new_baud_rate = EV3_UART_SPEED_MIN;
 			schedule_work(&port->change_bitrate_work);
 			return HRTIMER_NORESTART;
@@ -495,22 +496,44 @@ static int ev3_uart_receive_buf2(struct tty_struct *tty,
 	 * for a valid TYPE command.
 	 */
 	while (!port->synced) {
-		if (pos + 3 > count)
-			return count;
+		int num = min(count - pos, 3 - port->partial_msg_size);
 
-		cmd = cp[pos++];
-		if (cmd != (EV3_UART_MSG_TYPE_CMD | EV3_UART_CMD_TYPE))
-			continue;
+		/* we are out of new data */
+		if (num <= 0)
+			return pos ? pos : count;
 
-		type = cp[pos];
-		if (!type || type > EV3_UART_TYPE_MAX)
+		/* collect up to 3 bytes in port->msg */
+		memcpy(port->msg + port->partial_msg_size, cp + pos, num);
+		port->partial_msg_size += num;
+		pos += num;
+
+		/* return early if we don't have 3 bytes yet */
+		if (port->partial_msg_size < 3)
+			return pos;
+
+		cmd = port->msg[0];
+		if (cmd != (EV3_UART_MSG_TYPE_CMD | EV3_UART_CMD_TYPE)) {
+			port->msg[0] = port->msg[1];
+			port->msg[1] = port->msg[2];
+			port->partial_msg_size--;
 			continue;
+		}
+
+		type = port->msg[1];
+		if (!type || type > EV3_UART_TYPE_MAX) {
+			port->msg[0] = port->msg[1];
+			port->msg[1] = port->msg[2];
+			port->partial_msg_size--;
+			continue;
+		}
 
 		chksum = 0xFF ^ cmd ^ type;
-		if (cp[pos + 1] != chksum)
+		if (port->msg[2] != chksum) {
+			port->msg[0] = port->msg[1];
+			port->msg[1] = port->msg[2];
+			port->partial_msg_size--;
 			continue;
-
-		pos += 2;
+		}
 
 		port->sensor.num_modes = 1;
 		port->sensor.num_view_modes = 1;
@@ -543,20 +566,19 @@ static int ev3_uart_receive_buf2(struct tty_struct *tty,
 		port->synced = 1;
 	}
 
-	while (pos + port->partial_msg_size < count) {
-		if (cp[pos] == 0xFF) {
+	while (pos < count) {
+		if (port->partial_msg_size) {
+			msg_size = ev3_uart_msg_size(port->msg[0]);
+		} else if (cp[pos] == 0xFF) {
 			/*
 			* Sometimes we get 0xFF after switching baud rates, so
 			* just ignore it.
 			*/
 			pos++;
 			continue;
-		}
-
-		if (port->partial_msg_size)
-			msg_size = ev3_uart_msg_size(port->msg[0]);
-		else
+		} else {
 			msg_size = ev3_uart_msg_size(cp[pos]);
+		}
 
 		if (msg_size > EV3_UART_MAX_MESSAGE_SIZE) {
 			debug_pr("header: 0x%02x\n", cp[pos]);
@@ -921,6 +943,7 @@ static int ev3_uart_receive_buf2(struct tty_struct *tty,
 err_invalid_state:
 	debug_pr("invalid state: %s\n", port->last_err);
 	port->synced = 0;
+	port->partial_msg_size = 0;
 	port->new_baud_rate = EV3_UART_SPEED_MIN;
 	schedule_work(&port->change_bitrate_work);
 
