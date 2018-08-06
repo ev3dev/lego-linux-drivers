@@ -102,14 +102,13 @@ static void set_duty_cycle(struct legoev3_motor_data *ev3_tm, int duty_cycle)
 
 }
 
-static int legoev3_motor_stop(void *context, enum tm_stop_action action)
+/* note: must be called with ev3_tm->lock held for writing */
+static int __legoev3_motor_stop(struct legoev3_motor_data *ev3_tm,
+				enum tm_stop_action action)
 {
-	struct legoev3_motor_data *ev3_tm = context;
 	const struct dc_motor_ops *motor_ops = ev3_tm->ldev->port->dc_motor_ops;
 	void *dc_ctx = ev3_tm->ldev->port->context;
 	bool use_pos_sp_for_hold = ev3_tm->hold_pos_sp;
-
-	down_write(&ev3_tm->lock);
 
 	ev3_tm->run_to_pos_active = false;
 	ev3_tm->hold_pos_sp = false;
@@ -145,9 +144,21 @@ static int legoev3_motor_stop(void *context, enum tm_stop_action action)
 
 	ev3_tm->state = STATE_STOPPED;
 
+	return 0;
+}
+
+static int legoev3_motor_stop(void *context, enum tm_stop_action action)
+{
+	struct legoev3_motor_data *ev3_tm = context;
+	int ret;
+
+	down_write(&ev3_tm->lock);
+
+	ret = __legoev3_motor_stop(ev3_tm, action);
+
 	up_write(&ev3_tm->lock);
 
-	return 0;
+	return ret;
 }
 
 /**
@@ -160,9 +171,9 @@ static int legoev3_motor_reset(void *context)
 	struct legoev3_motor_data *ev3_tm = context;
 	const struct legoev3_motor_info *info = &ev3_tm->tm.info->legoev3_info;
 
-	legoev3_motor_stop(ev3_tm, TM_STOP_ACTION_COAST);
-
 	down_write(&ev3_tm->lock);
+
+	__legoev3_motor_stop(ev3_tm, TM_STOP_ACTION_COAST);
 
 	ev3_tm->position_sp		= 0;
 	ev3_tm->position_offset		= -ev3_tm->position;
@@ -227,8 +238,8 @@ static void update_position(struct legoev3_motor_data *ev3_tm)
 		if (ev3_tm->position + ev3_tm->position_offset >= ev3_tm->position_sp) {
 			schedule_work(&ev3_tm->notify_position_ramp_down_work);
 			ev3_tm->hold_pos_sp = true;
-			legoev3_motor_stop(ev3_tm,
-					   ev3_tm->run_to_pos_stop_action);
+			__legoev3_motor_stop(ev3_tm,
+					     ev3_tm->run_to_pos_stop_action);
 			ev3_tm->ramping = false;
 		}
 	} else if (ev3_tm->speed_pid.setpoint < 0) {
@@ -240,8 +251,8 @@ static void update_position(struct legoev3_motor_data *ev3_tm)
 		if (ev3_tm->position + ev3_tm->position_offset <= ev3_tm->position_sp) {
 			schedule_work(&ev3_tm->notify_position_ramp_down_work);
 			ev3_tm->hold_pos_sp = true;
-			legoev3_motor_stop(ev3_tm,
-					   ev3_tm->run_to_pos_stop_action);
+			__legoev3_motor_stop(ev3_tm,
+					     ev3_tm->run_to_pos_stop_action);
 			ev3_tm->ramping = false;
 		}
 	}
