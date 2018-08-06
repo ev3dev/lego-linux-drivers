@@ -464,13 +464,10 @@ static void brickpi3_run_to_pos_work(struct work_struct *work)
 	ret = brickpi3_read_motor(data->bp, data->address, data->index, NULL,
 				  NULL, &position, &speed);
 
-	if (ret == -EAGAIN) {
-		/* do what it says, try again */
+	if (ret < 0) {
+		/* let's try again */
 		schedule_delayed_work(&data->run_to_pos_work,
 				      msecs_to_jiffies(20));
-		return;
-	} else if (ret < 0) {
-		/* Giving up for now. Might be better if we did a retry. */
 		return;
 	}
 
