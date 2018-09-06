@@ -2048,7 +2048,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		/**
 		 * @vendor_name: mindsensors.com
 		 * @vendor_part_number: IRThermometer
-		 * @vendor_part_name: IRThermometer
+		 * @vendor_part_name: IR Temperature Sensor for EV3 or NXT
 		 * @vendor_website: http://www.mindsensors.com/products/170-ir-temperature-sensor-for-ev3-or-nxt
 		 * @default_address: 0x15
 		 */
