@@ -184,6 +184,7 @@ enum nxt_i2c_sensor_type {
 #define MS_ABSOLUTE_IMU_NAME			"ms-absolute-imu"
 #define MS_ANGLE_SENSOR_NAME			"ms-angle"
 #define MS_EV3_SENSOR_MUX_NAME			"ms-ev3-smux"
+#define MS_IR_THERMOMETER_NAME			"ms-ir-thermometer"
 #define MS_LIGHT_SENSOR_ARRAY_NAME		"ms-light-array"
 #define MS_LINE_LEADER_NAME			"ms-line-leader"
 #define MS_NXTMMX_NAME				"ms-nxtmmx"
