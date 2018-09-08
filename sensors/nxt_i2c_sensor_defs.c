@@ -2044,6 +2044,83 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		}
 	},
+	[MS_IR_THERMOMETER] = {
+		/**
+		 * @vendor_name: mindsensors.com
+		 * @vendor_part_number: IRThermometer
+		 * @vendor_part_name: IR Temperature Sensor for EV3 or NXT
+		 * @vendor_website: http://www.mindsensors.com/products/170-ir-temperature-sensor-for-ev3-or-nxt
+		 * @default_address: 0x15
+		 */
+		.name		= MS_IR_THERMOMETER_NAME,
+		.vendor_id	= "mndsnsrs",
+		.product_id	= "IRThermometer",
+		.num_modes	= 4,
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
+			[0] = {
+				/**
+				 * @description: Ambient C
+				 * @value0: Temperature
+				 * @units_description: degrees C
+				 */
+				.name		= "AMBIENT-C",
+				.data_sets	= 1,
+				.decimals	= 2,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "C",
+			},
+			[1] = {
+				/**
+				 * @description: Ambient F
+				 * @value0: Temperature
+				 * @units_description: degrees F
+				 */
+				.name		= "AMBIENT-F",
+				.data_sets	= 1,
+				.decimals	= 2,
+				.data_type	= LEGO_SENSOR_DATA_S16,
+				.units		= "F",
+			},
+			[2] = {
+				/**
+				 * @description: Target C
+				 * @value0: Temperature
+				 * @units_description: degrees C
+				 */
+				.name		= "TARGET-C",
+				.data_sets	= 1,
+				.decimals 	= 2,
+				.units		= "C",
+				.data_type	= LEGO_SENSOR_DATA_S16,
+			},
+			[3] = {
+				/**
+				 * @description: Target F
+				 * @value0: Temperature
+				 * @units_description: degrees F
+				 */
+				.name		= "TARGET-F",
+				.data_sets	= 1,
+				.decimals 	= 2,
+				.units		= "F",
+				.data_type	= LEGO_SENSOR_DATA_S16,
+			},
+		},
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
+			[0] = {
+				.read_data_reg	= 0x42,
+			},
+			[1] = {
+				.read_data_reg	= 0x46,
+			},
+			[2] = {
+				.read_data_reg	= 0x44,
+			},
+			[3] = {
+				.read_data_reg	= 0x48,
+			},
+		},
+	},
 	[MS_EV3_SENSOR_MUX] = {
 		/**
 		 * .. [#ms-ev3-smux-addresses] This sensor appears as three
