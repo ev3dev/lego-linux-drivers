@@ -20,12 +20,13 @@ static int ti_pruss_probe(struct platform_device *pdev)
 
 	pm_runtime_enable(dev);
 
-	return devm_of_platform_populate(dev);
+	err = devm_of_platform_populate(dev);
+	if (err) {
+		pm_runtime_disable(dev);
+		return err;
+	}
 
-err_pm_runtime_disable:
-	pm_runtime_disable(dev);
-
-	return err;
+	return 0;
 }
 
 static int ti_pruss_remove(struct platform_device *pdev)
