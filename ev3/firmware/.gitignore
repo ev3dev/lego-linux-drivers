@@ -1,0 +1,2 @@
+# work around *.bin ignored at higher level
+!PRU_SUART.bin
