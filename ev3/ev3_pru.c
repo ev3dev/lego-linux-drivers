@@ -5,6 +5,7 @@
  * Copyright (C) 2018 David Lechner <david@lechnology.com>
  */
 
+#include <linux/gpio/consumer.h>
 #include <linux/iio/buffer.h>
 #include <linux/iio/iio.h>
 #include <linux/iio/sw_trigger.h>
@@ -14,6 +15,7 @@
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
+#include <linux/leds.h>
 #include <linux/math64.h>
 #include <linux/module.h>
 #include <linux/of_reserved_mem.h>
@@ -43,18 +45,34 @@ enum ev3_pru_tacho {
 	NUM_EV3_PRU_TACHO
 };
 
+enum ev3_pru_pwm {
+	EV3_PRU_PWM_0,
+	EV3_PRU_PWM_1,
+	EV3_PRU_PWM_2,
+	EV3_PRU_PWM_3,
+	NUM_EV3_PRU_PWM
+};
+
 struct ev3_pru_tacho_remote_data {
 	uint32_t position[NUM_EV3_PRU_TACHO][EV3_PRU_TACHO_RING_BUF_SIZE];
 	uint32_t timestamp[NUM_EV3_PRU_TACHO][EV3_PRU_TACHO_RING_BUF_SIZE];
 	uint32_t head[NUM_EV3_PRU_TACHO];
+	uint8_t pwm[NUM_EV3_PRU_PWM];
 };
 
 /* end from PRU */
+
+struct ev3_pru_led {
+	struct led_classdev cdev;
+	char name[30];
+	u8 idx;
+};
 
 struct ev3_tacho_rpmsg_data {
 	__iomem void *remote_data;
 	struct iio_dev *indio_dev;
 	struct iio_sw_trigger *sw_trigger;
+	struct ev3_pru_led led[NUM_EV3_PRU_PWM];
 	struct rpmsg_device *rpdev;
 	struct completion completion;
 	u32 last_value;
@@ -79,6 +97,38 @@ static int ev3_tacho_rpmsg_cb(struct rpmsg_device *rpdev, void *data, int len,
 	}
 
 	return 0;
+}
+
+static void ev3_pru_led_brightness_set(struct led_classdev *led_cdev,
+				       enum led_brightness value)
+{
+	struct ev3_pru_led *led =
+		container_of(led_cdev, struct ev3_pru_led, cdev);
+	struct ev3_tacho_rpmsg_data *priv =
+		container_of(led, struct ev3_tacho_rpmsg_data, led[led->idx]);
+	struct ev3_pru_tacho_remote_data *data = priv->remote_data;
+
+	data->pwm[led->idx] = value;
+}
+
+static void ev3_pru_led_init_one(struct ev3_tacho_rpmsg_data *priv,
+				 enum ev3_pru_pwm pwm)
+{
+	struct device *dev = &priv->rpdev->dev;
+	int ret;
+
+	snprintf(priv->led[pwm].name, 30, "led%d:%s:brick-status",
+		 pwm < 2 ? 0 : 1,
+		 ((pwm & 0x1) ^ ((pwm & 0x2) >> 1)) ? "green" : "red");
+	priv->led[pwm].idx = pwm;
+	priv->led[pwm].cdev.name = priv->led[pwm].name;
+	priv->led[pwm].cdev.default_trigger = "mmc0";
+	priv->led[pwm].cdev.brightness_set = ev3_pru_led_brightness_set;
+
+	ret = led_classdev_register(dev, &priv->led[pwm].cdev);
+	if (ret < 0) {
+		dev_warn(dev, "Failed to register led %d (%d)\n", pwm, ret);
+	}
 }
 
 static int ev3_pru_tacho_get_freq(struct ev3_pru_tacho_remote_data *data,
@@ -236,7 +286,7 @@ static int ev3_tacho_rpmsg_probe(struct rpmsg_device *rpdev)
 	struct device *dev = &rpdev->dev;
 	struct iio_dev *indio_dev;
 	struct ev3_tacho_rpmsg_data *priv;
-	int ret;
+	int i, ret;
 
 	dev_info(dev, "new channel: 0x%x -> 0x%x!\n", rpdev->src, rpdev->dst);
 
@@ -293,6 +343,13 @@ static int ev3_tacho_rpmsg_probe(struct rpmsg_device *rpdev)
 
 	iio_hrtimer_set_sampling_frequency(priv->sw_trigger, 500);
 	iio_trigger_set_immutable(indio_dev, priv->sw_trigger->trigger);
+
+	ret = PTR_ERR_OR_ZERO(gpiod_get_array(dev, "pwm", GPIOD_OUT_LOW));
+	if (ret)
+		dev_warn(dev, "Failed to get pwm gpios (%d)\n", ret);
+	else
+		for (i = 0; i < NUM_EV3_PRU_PWM; i++)
+			ev3_pru_led_init_one(priv, i);
 
 	return 0;
 }
