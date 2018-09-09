@@ -2054,7 +2054,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		 */
 		.name		= MS_IR_THERMOMETER_NAME,
 		.vendor_id	= "mndsnsrs",
-		.product_id	= "IRThermometer",
+		.product_id	= "IRThermo",
 		.num_modes	= 4,
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
