@@ -34,9 +34,12 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/pinctrl/consumer.h>
-#include <linux/platform_data/legoev3_i2c.h>
 #include <linux/platform_device.h>
 #include <linux/workqueue.h>
+
+#ifdef CONFIG_LEGOEV3_I2C
+#include <linux/platform_data/legoev3_i2c.h>
+#endif
 
 #include <lego.h>
 #include <lego_port_class.h>
@@ -1056,7 +1059,9 @@ static int ev3_input_port_probe(struct platform_device *pdev)
 {
 	struct ev3_input_port_data *data;
 	struct iio_channel *cb_chans;
+#ifdef CONFIG_LEGOEV3_I2C
 	struct i2c_legoev3_platform_data *i2c_pdata;
+#endif
 	int err, i;
 	int pin1_channel = -1;
 	int pin6_channel = -1;
@@ -1192,10 +1197,12 @@ static int ev3_input_port_probe(struct platform_device *pdev)
 		err = -EPROBE_DEFER;
 		goto err_stop_iio_cb;
 	}
-	
+
+#ifdef CONFIG_LEGOEV3_I2C
 	/* ugly hack to fix regression with I2C lego-sensor address prefix */
 	i2c_pdata = data->i2c_adap->dev.platform_data;
 	i2c_pdata->sensor_platform_data.in_port = &data->port;
+#endif
 
 	data->port.name = ev3_input_port_type.name;
 	snprintf(data->port.address, LEGO_NAME_SIZE, "%s", dev_name(&pdev->dev));
