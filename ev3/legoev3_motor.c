@@ -255,6 +255,12 @@ static void update_position(struct legoev3_motor_data *ev3_tm)
 					     ev3_tm->run_to_pos_stop_action);
 			ev3_tm->ramping = false;
 		}
+	} else if (ev3_tm->position + ev3_tm->position_offset == ev3_tm->position_sp) {
+		/* speed setpoint is 0 and we are already at target position */
+		schedule_work(&ev3_tm->notify_position_ramp_down_work);
+		ev3_tm->hold_pos_sp = true;
+		__legoev3_motor_stop(ev3_tm, ev3_tm->run_to_pos_stop_action);
+		ev3_tm->ramping = false;
 	}
 }
 
