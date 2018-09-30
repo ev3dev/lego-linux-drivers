@@ -676,7 +676,8 @@ static int tm_send_command(struct tacho_motor_device *tm,
 			 * try to run, just stop.
 			 */
 			cmd = TM_COMMAND_STOP;
-		} else if (tm->params.command == TM_COMMAND_RUN_TO_REL_POS) {
+		}
+		if (tm->params.command == TM_COMMAND_RUN_TO_REL_POS) {
 			/*
 			* To check the previous command, we MUST be looking at
 			* tm->params.command because that's the previous command
