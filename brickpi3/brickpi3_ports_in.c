@@ -196,12 +196,12 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 	case BRICKPI3_SENSOR_TYPE_EV3_COLOR_COLOR:
 	case BRICKPI3_SENSOR_TYPE_EV3_ULTRASONIC_LISTEN:
 	case BRICKPI3_SENSOR_TYPE_EV3_INFRARED_PROXIMITY:
-	case BRICKPI3_SENSOR_TYPE_EV3_INFRARED_REMOTE:
 		ret = brickpi3_read_sensor(data->bp, data->address, data->index,
 					   data->sensor_type, msg, 1);
 		if (ret < 0)
 			return;
 
+		// 1 8-bit value
 		if (raw_data)
 			raw_data[0] = msg[0];
 		break;
@@ -214,6 +214,7 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 		if (ret < 0)
 			return;
 
+		// 1 16-bit value
 		if (raw_data) {
 			raw_data[0] = msg[1];
 			raw_data[1] = msg[0];
@@ -226,19 +227,31 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 		if (ret < 0)
 			return;
 
+		// 2 16-bit values
 		if (raw_data) {
-			raw_data[0] = msg[3];
-			raw_data[1] = msg[2];
-			raw_data[2] = msg[1];
-			raw_data[0] = msg[0];
+			raw_data[0] = msg[1];
+			raw_data[1] = msg[0];
+			raw_data[2] = msg[3];
+			raw_data[3] = msg[2];
 		}
 		break;
-	case BRICKPI3_SENSOR_TYPE_EV3_COLOR_COLOR_COMPONENTS:
+	case BRICKPI3_SENSOR_TYPE_EV3_INFRARED_REMOTE:
 		ret = brickpi3_read_sensor(data->bp, data->address, data->index,
-					   data->sensor_type, msg, 8);
+					   data->sensor_type, msg, 4);
 		if (ret < 0)
 			return;
 
+		// 4 8-bit values
+		if (raw_data)
+			memcpy(raw_data, msg, 4);
+		break;
+	case BRICKPI3_SENSOR_TYPE_EV3_COLOR_COLOR_COMPONENTS:
+		ret = brickpi3_read_sensor(data->bp, data->address, data->index,
+					   data->sensor_type, msg, 6);
+		if (ret < 0)
+			return;
+
+		// 3 16-bit values
 		if (raw_data) {
 			raw_data[0] = msg[1];
 			raw_data[1] = msg[0];
@@ -246,8 +259,6 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 			raw_data[3] = msg[2];
 			raw_data[4] = msg[5];
 			raw_data[5] = msg[4];
-			raw_data[6] = msg[7];
-			raw_data[7] = msg[6];
 		}
 		break;
 	case BRICKPI3_SENSOR_TYPE_EV3_INFRARED_SEEK:
@@ -256,6 +267,7 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 		if (ret < 0)
 			return;
 
+		// 8 8-bit values
 		if (raw_data)
 			memcpy(raw_data, msg, 8);
 		break;
