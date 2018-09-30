@@ -434,10 +434,9 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				 * @units_description: percent
 				 */
 				.name		= "IR-SEEK",
-				.data_sets	= 1,
+				.data_sets	= 8,
 				.data_type	= LEGO_SENSOR_DATA_S8,
 				.units		= "pct",
-				.data_sets	= 8,
 			},
 			[2] = {
 				/**
@@ -479,10 +478,9 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				 * @units_description: button
 				 */
 				.name		= "IR-REMOTE",
-				.data_sets	= 1,
+				.data_sets	= 4,
 				.data_type	= LEGO_SENSOR_DATA_S8,
 				.units		= "btn",
-				.data_sets	= 4,
 			},
 			[3] = {
 				/**
