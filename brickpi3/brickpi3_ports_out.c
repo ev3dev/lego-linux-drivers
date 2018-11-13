@@ -371,7 +371,7 @@ static int brickpi3_out_port_stop(void *context, enum tm_stop_action stop_action
 	if (ret < 0)
 		return ret;
 
-	data->running = holding;
+	data->running = false;
 	data->holding = holding;
 	data->positioning = false;
 
