@@ -57,10 +57,10 @@ are mapped to Linux key codes as shown in the table below.
       - ``KEY_UP`` (103)
 
     * - Left
-      - ``KEY_ENTER`` (105)
+      - ``KEY_LEFT`` (105)
 
     * - Right
-      - ``KEY_ENTER`` (106)
+      - ``KEY_RIGHT`` (106)
 
     * - Down
       - ``KEY_DOWN`` (108)
