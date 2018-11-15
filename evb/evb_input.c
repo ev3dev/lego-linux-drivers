@@ -39,10 +39,10 @@
  *       - ``KEY_UP`` (103)
  *
  *     * - Joystick left
- *       - ``KEY_ENTER`` (105)
+ *       - ``KEY_LEFT`` (105)
  *
  *     * - Joystick right
- *       - ``KEY_ENTER`` (106)
+ *       - ``KEY_RIGHT`` (106)
  *
  *     * - Joystick down
  *       - ``KEY_DOWN`` (108)
