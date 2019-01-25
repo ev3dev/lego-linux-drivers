@@ -91,6 +91,7 @@ static int ht_nxt_smux_i2c_sensor_probe(struct lego_device *ldev)
 		return -ENOMEM;
 
 	mode_info_size = sizeof(struct nxt_i2c_sensor_info) * sensor_info->num_modes;
+	data->sensor.mode_info = kmalloc(mode_info_size, GFP_KERNEL);
 	if (!data->sensor.mode_info) {
 		err = -ENOMEM;
 		goto err_kalloc_mode_info;
