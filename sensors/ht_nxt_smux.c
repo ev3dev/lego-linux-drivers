@@ -153,8 +153,8 @@ static inline bool ht_nxt_smux_is_running(struct nxt_i2c_sensor_data *data)
 		& HT_NXT_SMUX_STATUS_BUSY;
 }
 
-int ht_nxt_smux_port_set_config_bit(struct ht_nxt_smux_port_data * data, u8 bit,
-				    bool value)
+static int ht_nxt_smux_port_set_config_bit(struct ht_nxt_smux_port_data *data,
+					   u8 bit, bool value)
 {
 	int offset = ht_nxt_smux_config_reg[data->channel];
 	int old, new;
@@ -232,8 +232,8 @@ void ht_nxt_smux_port_set_i2c_data_reg(struct lego_port_device *port, u8 reg,
 }
 EXPORT_SYMBOL_GPL(ht_nxt_smux_port_set_i2c_data_reg);
 
-int ht_nxt_smux_register_analog_sensor(struct ht_nxt_smux_port_data *data,
-					 const char *name)
+static int ht_nxt_smux_register_analog_sensor(struct ht_nxt_smux_port_data *data,
+					      const char *name)
 {
 	struct lego_device *new_sensor;
 
@@ -247,8 +247,8 @@ int ht_nxt_smux_register_analog_sensor(struct ht_nxt_smux_port_data *data,
 	return 0;
 }
 
-int ht_nxt_smux_register_i2c_sensor(struct ht_nxt_smux_port_data *data,
-				    const char *name, u8 address)
+static int ht_nxt_smux_register_i2c_sensor(struct ht_nxt_smux_port_data *data,
+					   const char *name, u8 address)
 {
 	struct ht_nxt_smux_i2c_sensor_platform_data pdata;
 	struct lego_device *new_sensor;
@@ -265,7 +265,7 @@ int ht_nxt_smux_register_i2c_sensor(struct ht_nxt_smux_port_data *data,
 	return 0;
 }
 
-void ht_nxt_smux_unregister_sensor(struct ht_nxt_smux_port_data *data)
+static void ht_nxt_smux_unregister_sensor(struct ht_nxt_smux_port_data *data)
 {
 	if (data->sensor) {
 		lego_device_unregister(data->sensor);
@@ -273,7 +273,7 @@ void ht_nxt_smux_unregister_sensor(struct ht_nxt_smux_port_data *data)
 	}
 }
 
-void ht_nxt_smux_port_detect_sensor(struct ht_nxt_smux_port_data *data)
+static void ht_nxt_smux_port_detect_sensor(struct ht_nxt_smux_port_data *data)
 {
 	int config_reg = ht_nxt_smux_config_reg[data->channel];
 	int ret;
