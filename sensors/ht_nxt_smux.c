@@ -283,15 +283,19 @@ static void ht_nxt_smux_port_detect_sensor(struct ht_nxt_smux_port_data *data)
 
 	if (data->port.mode == HT_NXT_SMUX_PORT_MODE_ANALOG) {
 		ret = ht_nxt_smux_register_analog_sensor(data, GENERIC_NXT_ANALOG_SENSOR_NAME);
-		if (ret < 0)
+		if (ret < 0) {
 			dev_err(&data->port.dev,
 				"Failed to register analog sensor (%d)\n", ret);
+			return;
+		}
 	} else {
 		ret = i2c_smbus_read_byte_data(data->i2c->client,
 			config_reg + HT_NXT_SMUX_CFG_TYPE);
-		if (ret < 0)
+		if (ret < 0) {
 			dev_err(&data->port.dev,
 				"Failed to read I2C sensor type (%d)\n", ret);
+			return;
+		}
 		if (ret < NUM_HT_NXT_SMUX_SENSOR_TYPE)
 			name = ht_nxt_smux_supported_i2c_sensor_names[ret];
 		if (name) {
@@ -303,10 +307,12 @@ static void ht_nxt_smux_port_detect_sensor(struct ht_nxt_smux_port_data *data)
 				return;
 			}
 			ret = ht_nxt_smux_register_i2c_sensor(data, name, ret);
-			if (ret < 0)
+			if (ret < 0) {
 				dev_err(&data->port.dev,
 					"Failed to register I2C sensor (%d)\n",
 					ret);
+				return;
+			}
 		}
 	}
 }
