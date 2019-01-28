@@ -296,9 +296,23 @@ static void ht_nxt_smux_port_detect_sensor(struct ht_nxt_smux_port_data *data)
 				"Failed to read I2C sensor type (%d)\n", ret);
 			return;
 		}
+
 		if (ret < NUM_HT_NXT_SMUX_SENSOR_TYPE)
 			name = ht_nxt_smux_supported_i2c_sensor_names[ret];
-		if (name) {
+
+		if (!name) {
+			dev_err(&data->port.dev, "Unknown sensor type\n");
+			return;
+		}
+
+		if (ret == HT_NXT_SMUX_SENSOR_LEGO_ULTRASONIC) {
+			/*
+			 * The automatic detection seems to give this sensor the
+			 * wrong address (8). It has only one possible address,
+			 * so assign it manually.
+			 */
+			ret = 1;
+		} else {
 			ret = i2c_smbus_read_byte_data(data->i2c->client,
 				config_reg + HT_NXT_SMUX_CFG_I2C_ADDR);
 			if (ret < 0) {
@@ -306,13 +320,15 @@ static void ht_nxt_smux_port_detect_sensor(struct ht_nxt_smux_port_data *data)
 					"Failed to read I2C address (%d)\n", ret);
 				return;
 			}
-			ret = ht_nxt_smux_register_i2c_sensor(data, name, ret);
-			if (ret < 0) {
-				dev_err(&data->port.dev,
-					"Failed to register I2C sensor (%d)\n",
-					ret);
-				return;
-			}
+			/* convert to Linux-style 7-bit I2C address */
+			ret >>= 1;
+		}
+
+		ret = ht_nxt_smux_register_i2c_sensor(data, name, ret);
+		if (ret < 0) {
+			dev_err(&data->port.dev,
+				"Failed to register I2C sensor (%d)\n", ret);
+			return;
 		}
 	}
 }
