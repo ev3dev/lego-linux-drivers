@@ -223,7 +223,7 @@ static int brickpi3_out_port_set_position(void *context, int position)
 	if (ret < 0)
 		return ret;
 
-	position += current_pos;
+	position = current_pos - position;
 
 	return brickpi3_set_motor_offset(data->bp, data->address, data->index,
 					 position);
