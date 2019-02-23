@@ -31,13 +31,6 @@ config LEGOEV3_I2C
 	  This is a GPIO bit-banging driver for connecting to LEGO Mindstorms
 	  I2C sensors. It is not quite standard I2C.
 
-config LEGOEV3_BLUETOOTH
-	tristate "On-board Bluetooth"
-	default y
-	depends on PWM_TIECAP && GPIOLIB
-	help
-	  Select Y to enable on-board bluetooth on the LEGO MINDSTORMS EV3.
-
 config LEGOEV3_PORTS
 	tristate "EV3 input and output port support"
 	default y

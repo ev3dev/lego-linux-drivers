@@ -2,7 +2,6 @@
 
 obj-$(CONFIG_LEGOEV3_BOARD)			+= ev3_board.o
 obj-$(CONFIG_LEGOEV3_I2C)			+= legoev3_i2c.o
-obj-$(CONFIG_LEGOEV3_BLUETOOTH)		+= legoev3_bluetooth.o
 obj-$(CONFIG_LEGOEV3_MOTORS)		+= legoev3_motor.o
 obj-$(CONFIG_LEGOEV3_PORTS)			+= ev3_ports_core.o
 obj-$(CONFIG_LEGOEV3_PORTS)			+= ev3_ports_in.o
