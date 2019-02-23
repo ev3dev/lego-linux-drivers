@@ -16,21 +16,6 @@ config RPI_BOARD_INFO
   help
     This enables board info driver for Raspberry Pi.
 
-config TI_ADS79XX_EV3DEV
-    tristate "Texas Instruments ADS795X/ADS796X ADC driver"
-    depends on SPI
-    select IIO_BUFFER
-    select IIO_TRIGGERED_BUFFER
-    select IIO_SW_TRIGGER
-    select IIO_HRTIMER_TRIGGER
-    help
-      Say yes here to build support for Texas Instruments ADS7950, ADS7951,
-      ADS7952, ADS7953, ADS7954, ADS7955, ADS7956, ADS7957, ADS7958, ADS7959.
-      ADS7960, ADS7961.
-
-      To compile this driver as a module, choose M here: the
-      module will be called ti-ads79xx.
-
 source "drivers/lego/linux/omapl_pru/Kconfig"
 
 config TI_PRU_RPROC_EV3DEV
