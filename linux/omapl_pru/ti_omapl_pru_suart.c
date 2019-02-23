@@ -843,8 +843,8 @@ static int omapl_pru_suart_probe(struct platform_device *pdev)
 	}
 	soft_uart->clk_freq_mcasp = clk_get_rate(soft_uart->clk_mcasp);
 
-	clk_enable(soft_uart->clk_mcasp);
-	clk_enable(soft_uart->clk_pru);
+	clk_prepare_enable(soft_uart->clk_mcasp);
+	clk_prepare_enable(soft_uart->clk_pru);
 
 	err = request_firmware(&soft_uart->fw, "PRU_SUART.bin", dev);
 	if (err) {
@@ -943,8 +943,8 @@ err_release_reserved_mem:
 err_release_fw:
 	release_firmware(soft_uart->fw);
 err_clk_disable:
-	clk_disable(soft_uart->clk_mcasp);
-	clk_disable(soft_uart->clk_pru);
+	clk_disable_unprepare(soft_uart->clk_mcasp);
+	clk_disable_unprepare(soft_uart->clk_pru);
 
 	return err;
 }
@@ -964,8 +964,8 @@ static int omapl_pru_suart_remove(struct platform_device *pdev)
 			  soft_uart->dma_phys_addr);
 	of_reserved_mem_device_release(dev);
 	release_firmware(soft_uart->fw);
-	clk_disable(soft_uart->clk_mcasp);
-	clk_disable(soft_uart->clk_pru);
+	clk_disable_unprepare(soft_uart->clk_mcasp);
+	clk_disable_unprepare(soft_uart->clk_pru);
 
 	return 0;
 }
