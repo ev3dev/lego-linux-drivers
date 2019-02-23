@@ -276,7 +276,6 @@ static const struct iio_chan_spec ev3_tacho_rpmsg_channels[] = {
 };
 
 static const struct iio_info ev3_pru_tacho_iio_info = {
-	.driver_module = THIS_MODULE,
 	.read_raw = ev3_pru_tacho_read_raw,
 };
 
