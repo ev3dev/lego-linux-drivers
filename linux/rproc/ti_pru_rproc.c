@@ -211,7 +211,7 @@ static int ti_pru_rproc_probe(struct platform_device *pdev)
 		return err;
 	}
 
-	return rproc_add(rproc);;
+	return rproc_add(rproc);
 }
 
 static int ti_pru_rproc_remove(struct platform_device *pdev)
