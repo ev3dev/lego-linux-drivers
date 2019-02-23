@@ -112,7 +112,8 @@ static int i2c_legoev3_probe(struct platform_device *pdev)
 	ret = legoev3_fiq_request_port(pdata->port_id, pdata->sda_pin,
 				       pdata->scl_pin);
 	if (ret) {
-		dev_err(&pdev->dev, "Requesting FIQ port failed.\n");
+		if (ret != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Requesting FIQ port failed\n");
 		goto err_legoev3_fiq_request_port;
 	}
 
