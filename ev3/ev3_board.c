@@ -124,7 +124,7 @@ static int ev3_board_probe(struct platform_device *pdev)
 	hw_id_gpios = devm_gpiod_get_array(dev, "hw-id", GPIOD_IN);
 	err = PTR_ERR_OR_ZERO(hw_id_gpios);
 	if (err) {
-		if (err != EPROBE_DEFER)
+		if (err != -EPROBE_DEFER)
 			dev_err(dev, "Failed to get hw-id gpios\n");
 		return err;
 	}
@@ -146,7 +146,7 @@ static int ev3_board_probe(struct platform_device *pdev)
 	hw_id_cell = devm_nvmem_cell_get(dev, "hw-id");
 	err = PTR_ERR_OR_ZERO(hw_id_cell);
 	if (err) {
-		if (err != EPROBE_DEFER)
+		if (err != -EPROBE_DEFER)
 			dev_err(dev, "Failed to get hw-id nvmem %d\n", err);
 		return err;
 	}
