@@ -90,7 +90,6 @@ static const struct iio_chan_spec brickpi3_iio_channels[] = {
 };
 
 static const struct iio_info brickpi3_iio_info = {
-	.driver_module = THIS_MODULE,
 	.read_raw = &brickpi3_iio_read_raw,
 };
 
