@@ -14,4 +14,4 @@ You can also browse the online [documentation].
 [ev3dev project]: http://www.ev3dev.org
 [ev3dev kernel]: https://github.com/ev3dev/ev3dev-kernel
 [dkms package]: https://github.com/ev3dev/lego-linux-drivers-dkms
-[documentation]: http://docs.ev3dev.org/projects/lego-linux-drivers/en/ev3dev-stretch/
+[documentation]: http://docs.ev3dev.org/projects/lego-linux-drivers/en/ev3dev-buster/
