@@ -345,9 +345,12 @@ static ssize_t ev3_uart_direct_write(void *context, char *data, loff_t off,
 		size = 32;
 	uart_data[0] = ev3_uart_set_msg_hdr(EV3_UART_MSG_TYPE_CMD, size,
 					    EV3_UART_CMD_WRITE);
-	data[size + 1] = 0xFF;
+
+	/* compute checksum */
+	uart_data[size + 1] = 0xFF;
 	for (i = 0; i <= size; i++)
 		uart_data[size + 1] ^= uart_data[i];
+
 	set_bit(TTY_DO_WRITE_WAKEUP, &tty->flags);
 	err = tty->ops->write(tty, uart_data, size + 2);
 	if (err < 0)
