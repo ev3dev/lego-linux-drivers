@@ -16,7 +16,7 @@
 /**
  * DOC: userspace
  *
- * BrickPi3 has four output ports labeled M1, M2, M3 and M4. These ports are
+ * BrickPi(+) has four output ports labeled M1, M2, M3 and M4. These ports are
  * very similar to EV3 output ports with a motor controller and quadrature
  * encoder feedback. However, they cannot automatically detected when a motor
  * is attached or removed. By default, the NXT motor driver is already loaded
