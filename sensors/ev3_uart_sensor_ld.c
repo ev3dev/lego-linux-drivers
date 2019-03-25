@@ -739,11 +739,6 @@ static int ev3_uart_receive_buf2(struct tty_struct *tty,
 				snprintf(port->mode_info[mode].name,
 				         EV3_UART_MODE_NAME_SIZE + 1, "%s",
 				         message + 2);
-				if (port->sensor.mode != mode) {
-					port->sensor.mode = mode;
-					kobject_uevent(&port->sensor.dev.kobj,
-						       KOBJ_CHANGE);
-				}
 				port->info_flags |= EV3_UART_INFO_FLAG_INFO_NAME;
 				debug_pr("mode %d name:%s\n",
 				       mode, port->sensor.address);
