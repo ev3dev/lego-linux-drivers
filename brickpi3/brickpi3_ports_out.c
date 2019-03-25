@@ -473,11 +473,13 @@ static void brickpi3_run_to_pos_work(struct work_struct *work)
 
 	if (abs(data->position_sp - position) < 10 && speed == 0) {
 		/* we have reached the target position */
-		if (data->run_to_pos_stop_action == TM_STOP_ACTION_HOLD)
+		if (data->run_to_pos_stop_action == TM_STOP_ACTION_HOLD) {
+			data->running = false;
 			data->holding = true;
-		else
+		} else {
 			brickpi3_out_port_stop(data,
 					       data->run_to_pos_stop_action);
+		}
 	} else  {
 		/* keep polling... */
 		schedule_delayed_work(&data->run_to_pos_work,
