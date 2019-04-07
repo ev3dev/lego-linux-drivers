@@ -131,26 +131,26 @@
 
 #include <servo_motor_class.h>
 
-const char *servo_motor_command_values[] = {
+static const char * const servo_motor_command_values[] = {
 	[SERVO_MOTOR_COMMAND_RUN]	= "run",
 	[SERVO_MOTOR_COMMAND_FLOAT]	= "float",
 };
 
-const char *servo_motor_polarity_values[] = {
+static const char * const servo_motor_polarity_values[] = {
 	[SERVO_MOTOR_POLARITY_NORMAL]	= "normal",
 	[SERVO_MOTOR_POLARITY_INVERSED]	= "inversed",
 };
 
-inline bool has_fixed_pulse_ms(struct servo_motor_device *sd)
+static inline bool has_fixed_pulse_ms(struct servo_motor_device *sd)
 {
 	return (   (0 != sd->fixed_min_pulse_sp)
 		|| (0 != sd->fixed_mid_pulse_sp)
 		|| (0 != sd->fixed_max_pulse_sp) );
 }
 
-inline int servo_motor_class_scale(int in_min, int in_max,
-				   int out_min, int out_max,
-				   int value)
+static inline int servo_motor_class_scale(int in_min, int in_max,
+					  int out_min, int out_max,
+					  int value)
 {
 	long scaled = value - in_min;
 	scaled *= out_max - out_min;
@@ -159,7 +159,7 @@ inline int servo_motor_class_scale(int in_min, int in_max,
 	return scaled;
 }
 
-int servo_motor_class_get_command(struct servo_motor_device *motor)
+static int servo_motor_class_get_command(struct servo_motor_device *motor)
 {
 	int ret;
 
@@ -170,9 +170,9 @@ int servo_motor_class_get_command(struct servo_motor_device *motor)
 	return ret ? SERVO_MOTOR_COMMAND_RUN : SERVO_MOTOR_COMMAND_FLOAT;
 }
 
-int servo_motor_class_set_position(struct servo_motor_device *motor,
-				   int new_position,
-				   enum servo_motor_polarity new_polarity)
+static int servo_motor_class_set_position(struct servo_motor_device *motor,
+					  int new_position,
+					  enum servo_motor_polarity new_polarity)
 {
 	int scaled_position;
 
