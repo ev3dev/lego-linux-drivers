@@ -56,12 +56,13 @@ static int ms_8ch_servo_get_rate(void *context)
 	struct i2c_client *client = servo->sensor->client;
 	int ret;
 
-	ret = i2c_smbus_read_word_data(client, 0x52 + servo->id);
+	ret = i2c_smbus_read_byte_data(client, 0x52 + servo->id);
 	if (ret < 0)
 		return ret;
 
 	if (ret == 0)
 		return 0;
+
 	return 24000 / ret;
 }
 
@@ -71,6 +72,13 @@ static int ms_8ch_servo_set_rate(void *context, unsigned value)
 	struct i2c_client *client = servo->sensor->client;
 	int scaled;
 
+	/*
+	 * The incoming value is in counts/sec. The scaled value is counts/
+	 * 24 msec. So, for example, a value of 10 gives 1000 counts every 2.4
+	 * seconds. 0 is a special value that means as fast as possible. 1 means
+	 * as slow as possible. The cutoff below 94 ensures that the scaled
+	 * value does not go over 255 and also prevents divide by 0.
+	 */
 	if (value >= 24000)
 		scaled = 1;
 	else if (value < 94)
@@ -78,7 +86,7 @@ static int ms_8ch_servo_set_rate(void *context, unsigned value)
 	else
 		scaled = 24000 / value;
 
-	return i2c_smbus_write_word_data(client, 0x52 + servo->id * 2, scaled);
+	return i2c_smbus_write_byte_data(client, 0x52 + servo->id, scaled);
 }
 
 const struct servo_motor_ops ms_8ch_servo_servo_ops = {
