@@ -67,7 +67,7 @@
  *      - read/write
  *      - Used to set the pulse size in milliseconds for the signal that tells
  *        the servo to drive to the maximum (clockwise) ``position_sp``. Default
- *        value is 2400. Valid values are 2300 to 2700. You must write to the
+ *        value is 2500. Valid values are 2300 to 2700. You must write to the
  *        ``position_sp`` attribute for changes to this attribute to take
  *        effect. Values must not be negative.
  *
@@ -85,7 +85,7 @@
  *      - read/write
  *      - Used to set the pulse size in milliseconds for the signal that tells
  *        the servo to drive to the minimum (counter-clockwise) position.
- *        Default value is 600. Valid values are 300 to 700. You must write to
+ *        Default value is 500. Valid values are 300 to 700. You must write to
  *        the ``position_sp`` attribute for changes to this attribute to take
  *        effect. Values must not be negative.
  *
@@ -478,9 +478,9 @@ int register_servo_motor(struct servo_motor_device *servo, struct device *parent
 		servo->mid_pulse_sp = servo->fixed_mid_pulse_sp;
 		servo->max_pulse_sp = servo->fixed_max_pulse_sp;
 	} else {
-		servo->min_pulse_sp = 600;
+		servo->min_pulse_sp = 500;
 		servo->mid_pulse_sp = 1500;
-		servo->max_pulse_sp = 2400;
+		servo->max_pulse_sp = 2500;
 	}
 
 	ret = servo_motor_class_get_command(servo);
