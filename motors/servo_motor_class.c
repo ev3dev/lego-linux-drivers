@@ -368,12 +368,9 @@ static ssize_t position_sp_store(struct device *dev,
 
 	if (sscanf(buf, "%d", &value) != 1 || value > 100 || value < -100)
 		return -EINVAL;
-	if (motor->position_sp != value) {
-		err = servo_motor_class_set_position(motor, value,
-						     motor->polarity);
-		if (err)
-			return err;
-	}
+	err = servo_motor_class_set_position(motor, value, motor->polarity);
+	if (err)
+		return err;
 
 	return count;
 }
