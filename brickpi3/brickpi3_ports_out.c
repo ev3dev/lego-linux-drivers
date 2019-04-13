@@ -287,7 +287,7 @@ static int brickpi3_out_port_run_to_pos(void *context, int pos, int speed,
 	data->holding = false;
 	data->positioning = true;
 
-	schedule_delayed_work(&data->run_to_pos_work, 0);
+	schedule_delayed_work(&data->run_to_pos_work, msecs_to_jiffies(20));
 
 	return 0;
 }
