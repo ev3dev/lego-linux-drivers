@@ -3089,6 +3089,36 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			},
 		},
 	},
+	[MS_TOF_SENSOR] = {
+		/**
+		 * @vendor_name: mindsensors.com
+		 * @vendor_part_number: DIST-ToF
+		 * @vendor_part_name: High Precision Time-of-Flight distance sensor
+		 * @vendor_website: http://www.mindsensors.com/ev3-and-nxt/210-high-precision-time-of-flight-tof-distance-sensor-for-nxt-or-ev3
+		 * @default_address: 0x01
+		 */
+		.name			= MS_TOF_SENSOR_NAME,
+		.vendor_id		= "mndsnsrs",
+		.product_id		= "DIST-ToF",
+		.num_modes		= 1,
+		.mode_info	= (const struct lego_sensor_mode_info[]) {
+			[0] = {
+				/**
+				 * @description: Distance measurement
+				 * @value0: Distance (3 to 2000 mm)
+				 * @unit_description: millimeters
+				 */
+				.name = "DIST",
+				.data_type = LEGO_SENSOR_DATA_S16,
+				.units = "mm",
+			},
+		},
+		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
+			[0] = {
+				.read_data_reg	= 0x42,
+			},
+		},
+	},
 	[MI_CRUIZCORE_XG1300L] = {
 		/**
 		 * .. [#mi-xg1300l-vid] CruizCore XG1300L doesn't follow LEGO
