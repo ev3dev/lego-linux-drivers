@@ -486,26 +486,26 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				/**
 				 * .. [#lego-ev3-ir-mode3-value0] Button values:
 				 *
-				 *    =========  ===========  =========  ==========  ========
-				 *     Value      Blue Down    Blue Up    Red Down    Red Up
-				 *    =========  ===========  =========  ==========  ========
-				 *     262/384
-				 *     287                                            X
-				 *     300                                X
-				 *     309                                X           X
-				 *     330                     X
-				 *     339                     X                      X
-				 *     352                     X          X
-				 *     377                     X          X           X
-				 *     390        X
-				 *     415        X                                   X
-				 *     428        X                       X
-				 *     437        X                       X           X
-				 *     458        X            X
-				 *     467        X            X                      X
-				 *     480        X            X          X
-				 *     505        X            X          X           X
-				 *    =========  ===========  =========  ==========  ========
+				 *    =============  ===========  =========  =========  =======
+				 *     Value          Blue Down    Blue Up   Red Down   Red Up
+				 *    =============  ===========  =========  =========  =======
+				 *     262/270/384
+				 *     287/279                                          X
+				 *     300/292                                X
+				 *     309/317                                X         X
+				 *     330/322                     X
+				 *     339/347                     X                    X
+				 *     352/360                     X          X
+				 *     377/369                     X          X         X
+				 *     390/398        X
+				 *     415/407        X                                 X
+				 *     428/420        X                       X
+				 *     437/445        X                       X         X
+				 *     458/450        X            X
+				 *     467/475        X            X                    X
+				 *     480/488        X            X          X
+				 *     505/497        X            X          X         X
+				 *    =============  ===========  =========  =========  =======
 				 *
 				 *    X = button pressed
 				 *
@@ -516,12 +516,11 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				 *    blue up button, bit 5 is the red down button,
 				 *    bit 4 is the red up button. Beware that when
 				 *    no buttons are pressed, bit 7 is set (value
-				 *    == 384). You can test that bits 0-3 are all
-				 *    0 to check this.
+				 *    == 384).
 				 *
 				 *    Example::
 				 *
-				 *        if ((value & 0x0F) == 0) {
+				 *        if (value == 384) {
 				 *            // no buttons are pressed
 				 *        } else {
 				 *            if (value & 0x80)
@@ -541,7 +540,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				 *
 				 *    Also, when the beacon mode is active or for
 				 *    about 1 second after any button is released
-				 *    the value is 262.
+				 *    the value is 262/270.
 				 *
 				 *    This mode only works with the remote on
 				 *    channel 1.
