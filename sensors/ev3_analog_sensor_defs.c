@@ -88,7 +88,7 @@ const struct ev3_analog_sensor_info ev3_analog_sensor_defs[] = {
 				 *     1        Pressed
 				 *    =======  =============
 				 *
-				 *    This value supports the ``poll` syscall
+				 *    This value supports the ``poll`` syscall
 				 *    using ``POLLPRI``.
 				 *
 				 * @description: Button state
