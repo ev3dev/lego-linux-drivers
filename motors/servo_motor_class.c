@@ -67,7 +67,7 @@
  *      - read/write
  *      - Used to set the pulse size in milliseconds for the signal that tells
  *        the servo to drive to the maximum (clockwise) ``position_sp``. Default
- *        value is 2500. Valid values are 2300 to 2700. You must write to the
+ *        value is 2500. Valid values are 2000 to 3000. You must write to the
  *        ``position_sp`` attribute for changes to this attribute to take
  *        effect. Values must not be negative.
  *
@@ -75,7 +75,7 @@
  *      - read/write
  *      - Used to set the pulse size in milliseconds for the signal that tells
  *        the servo to drive to the mid position_sp. Default value is 1500.
- *        Valid values are 1300 to 1700. For example, on a 180 degree servo,
+ *        Valid values are 1000 to 2000. For example, on a 180 degree servo,
  *        this would be 90 degrees. On continuous rotation servo, this is the
  *        "neutral" position where the motor does not turn. You must write to
  *        the ``position_sp`` attribute for changes to this attribute to take
@@ -85,7 +85,7 @@
  *      - read/write
  *      - Used to set the pulse size in milliseconds for the signal that tells
  *        the servo to drive to the minimum (counter-clockwise) position.
- *        Default value is 500. Valid values are 300 to 700. You must write to
+ *        Default value is 500. Valid values are 0 to 1000. You must write to
  *        the ``position_sp`` attribute for changes to this attribute to take
  *        effect. Values must not be negative.
  *
@@ -229,7 +229,7 @@ static ssize_t min_pulse_sp_store(struct device *dev,
 	if (has_fixed_pulse_ms (motor))
 		return -ENOSYS;
 
-	if (sscanf(buf, "%d", &value) != 1 || value > 700 || value < 300)
+	if (sscanf(buf, "%d", &value) != 1 || value > 1000 || value < 0)
 		return -EINVAL;
 	motor->min_pulse_sp = value;
 
@@ -254,7 +254,7 @@ static ssize_t mid_pulse_sp_store(struct device *dev,
 	if (has_fixed_pulse_ms (motor))
 		return -ENOSYS;
 
-	if (sscanf(buf, "%d", &value) != 1 || value > 1700 || value < 1300)
+	if (sscanf(buf, "%d", &value) != 1 || value > 2000 || value < 1000)
 		return -EINVAL;
 	motor->mid_pulse_sp = value;
 
@@ -279,7 +279,7 @@ static ssize_t max_pulse_sp_store(struct device *dev,
 	if (has_fixed_pulse_ms (motor))
 		return -ENOSYS;
 
-	if (sscanf(buf, "%d", &value) != 1 || value > 2700 || value < 2300)
+	if (sscanf(buf, "%d", &value) != 1 || value > 3000 || value < 2000)
 		return -EINVAL;
 	motor->max_pulse_sp = value;
 
