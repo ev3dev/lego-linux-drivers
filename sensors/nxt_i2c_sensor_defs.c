@@ -1399,7 +1399,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.vendor_id	= "HiTechnc",
 		.product_id	= "SuperPro",
 		.pin1_state	= LEGO_PORT_GPIO_HIGH,
-		.num_modes	= 5,
+		.num_modes	= 8,
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
