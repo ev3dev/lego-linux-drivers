@@ -155,7 +155,6 @@ static int i2c_legoev3_remove(struct platform_device *pdev)
 static struct platform_driver i2c_legoev3_driver = {
 	.driver		= {
 		.name	= "i2c-legoev3",
-		.owner	= THIS_MODULE,
 	},
 	.probe		= i2c_legoev3_probe,
 	.remove		= i2c_legoev3_remove,
