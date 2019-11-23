@@ -11,8 +11,6 @@
 #ifndef _LINUX_I2C_LEGOEV3_H
 #define _LINUX_I2C_LEGOEV3_H
 
-#include <mach/legoev3.h>
-
 #ifdef LEGOEV3_DT
 /* Hack for including this file from /arch/arm/mach-davinci/legoev3-dt.c */
 struct nxt_i2c_sensor_platform_data {
@@ -21,6 +19,14 @@ struct nxt_i2c_sensor_platform_data {
 #else
 #include "../sensors/nxt_i2c_sensor.h"
 #endif
+
+enum legoev3_input_port_id {
+	EV3_PORT_IN1,
+	EV3_PORT_IN2,
+	EV3_PORT_IN3,
+	EV3_PORT_IN4,
+	NUM_EV3_PORT_IN,
+};
 
 /**
  * struct i2c_legoev3_platform_data - Platform-dependent data for i2c-legoev3
