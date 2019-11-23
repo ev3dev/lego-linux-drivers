@@ -3100,7 +3100,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.name			= MS_TOF_SENSOR_NAME,
 		.vendor_id		= "mndsnsrs",
 		.product_id		= "DIST-ToF",
-		.num_modes		= 1,
+		.num_modes		= 2,
 		.mode_info	= (const struct lego_sensor_mode_info[]) {
 			[0] = {
 				/**
@@ -3112,10 +3112,39 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.data_type = LEGO_SENSOR_DATA_S16,
 				.units = "mm",
 			},
+			[1] = {
+				/**
+				 * @description: Raw voltage
+				 * @value0: Voltage (unknown range)
+				 * @unit_description: millivolts
+				 */
+				.name = "VOLT",
+				.data_type = LEGO_SENSOR_DATA_S16,
+				.units = "mV",
+			},
 		},
 		.i2c_mode_info	= (const struct nxt_i2c_sensor_mode_info[]) {
 			[0] = {
 				.read_data_reg	= 0x42,
+			},
+			[1] = {
+				.read_data_reg	= 0x44,
+			},
+		},
+
+		.num_commands	= 1,
+		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
+			[0] = {
+				/**
+				 * @description: Power off the sensor
+				 */
+				.name = "OFF",
+			},
+		},
+		.i2c_cmd_info	= (const struct nxt_i2c_sensor_cmd_info[]) {
+			[0] = {
+				.cmd_reg	= 0x41,
+				.cmd_data	= 'D',
 			},
 		},
 	},
