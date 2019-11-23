@@ -3113,7 +3113,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[0] = {
 				/**
 				 * @description: Distance measurement
-				 * @value0: Distance (3 to 2000 mm)
+				 * @value0: Distance (30 to 2000 mm)
 				 * @unit_description: millimeters
 				 */
 				.name = "DIST",
