@@ -38,7 +38,7 @@
 #include <linux/workqueue.h>
 
 #ifdef CONFIG_LEGOEV3_I2C
-#include <linux/platform_data/legoev3_i2c.h>
+#include "legoev3_i2c.h"
 #endif
 
 #include <lego.h>

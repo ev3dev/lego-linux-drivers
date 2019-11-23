@@ -13,7 +13,14 @@
 
 #include <mach/legoev3.h>
 
+#ifdef LEGOEV3_DT
+/* Hack for including this file from /arch/arm/mach-davinci/legoev3-dt.c */
+struct nxt_i2c_sensor_platform_data {
+	void *in_port;
+};
+#else
 #include "../sensors/nxt_i2c_sensor.h"
+#endif
 
 /**
  * struct i2c_legoev3_platform_data - Platform-dependent data for i2c-legoev3
