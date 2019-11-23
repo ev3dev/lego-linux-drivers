@@ -429,12 +429,12 @@ static struct device_type ev3_input_port_type = {
  * struct ev3_input_port_data - Driver data for an input port on the EV3 brick
  * @port: Pointer to the ev3_port that is bound to this instance.
  * @iio_cb: IIO callback buffer for analog inputs.
+ * @sensor_cb: Optional function that is called when new data is available.
  * @pin1_gpio: Controls 9V supply on Pin 1.
  * @pin2_gpio: Attached to pin 2. Discriminates EV3 sensors from NXT sensors.
  * @pin5_gpio: Sensor I/O on pin 5.
  * @pin6_gpio: Sensor I/O on pin 6.
  * @buf_ena_gpio: Enables buffer for UART.
- * @i2c_data: Platform data for i2c-gpio platform device.
  * @change_uevent_work: Needed when change is triggered in atomic context.
  * @work: Worker for registering and unregistering sensors when they are
  *	connected and disconnected.
@@ -473,7 +473,7 @@ struct ev3_input_port_data {
 	struct hrtimer timer;
 	unsigned timer_loop_cnt;
 	enum connection_state con_state;
-	unsigned pin_state_flags:NUM_PIN_STATE_FLAG;
+	unsigned pin_state_flags;
 	unsigned pin1_index;
 	unsigned pin1_mv;
 	unsigned pin6_index;
@@ -487,8 +487,8 @@ struct ev3_input_port_data {
 	struct pinctrl_state *pinctrl_default;
 	struct pinctrl_state *pinctrl_i2c;
 	struct pinctrl_state *pinctrl_uart;
-	unsigned i2c_enabled:1;
-	unsigned uart_enabled:1;
+	bool i2c_enabled;
+	bool uart_enabled;
 };
 
 static inline int ev3_input_port_set_gpio(struct gpio_desc *gpio,
