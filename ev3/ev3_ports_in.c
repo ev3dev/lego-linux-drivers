@@ -461,7 +461,6 @@ static struct device_type ev3_input_port_type = {
  */
 struct ev3_input_port_data {
 	struct lego_port_device port;
-	struct ev3_analog_device *analog;
 	struct iio_cb_buffer *iio_cb;
 	void (*sensor_cb)(struct ev3_input_port_data *data);
 	struct gpio_desc *pin1_gpio;
