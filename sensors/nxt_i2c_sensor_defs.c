@@ -3139,7 +3139,6 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.read_data_reg	= 0x44,
 			},
 		},
-
 		.num_commands	= 1,
 		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
 			[0] = {
