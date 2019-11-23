@@ -212,7 +212,6 @@ static const char * const ev3_output_port_status_names[] = {
 
 /**
  * struct ev3_output_port_data - Driver data for an output port on the EV3 brick
- * @id: Unique identifier for the port.
  * @out_port: lego-port class device that represents this port.
  * @iio_cb: IIO callback buffer for analog inputs.
  * @pwm: Pointer to the pwm device that is bound to this port
@@ -233,7 +232,7 @@ static const char * const ev3_output_port_status_names[] = {
  * @pin5_float_mv: Used in the polling loop to track pin 5 voltage.
  * @pin5_low_mv: Used in the polling loop to track pin 5 voltage.
  * @motor_type: The type of motor that was detected or manually set by the mode.
- * @tacho_motor_type: The type of tacho motor that was detected.
+ * @motor_id: Motor IDs for motors that can be detected on EV3 output ports.
  * @motor: Pointer to the motor device that is connected to the output port.
  * @command: The current command for the motor driver of the output port.
  * @debug: Handle to debugfs entry.
@@ -252,7 +251,7 @@ struct ev3_output_port_data {
 	struct hrtimer timer;
 	unsigned timer_loop_cnt;
 	enum connection_state con_state;
-	unsigned pin_state_flags:NUM_PIN_STATE_FLAG;
+	unsigned pin_state_flags;
 	unsigned pin5_mv;
 	unsigned pin5_float_mv;
 	unsigned pin5_low_mv;
