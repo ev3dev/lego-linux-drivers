@@ -316,9 +316,9 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 			{
 				if (IicPortReceive(Port, TmpBuffer) != BUSY) {
 					if (TmpBuffer[0] == 0x60) {
-						memcpy(IicStrings[Port].Manufacturer, "LEGO", IIC_NAME_LENGTH);
+						memcpy(IicStrings[Port].Manufacturer, "LEGO\0\0\0\0", IIC_NAME_LENGTH);
 						IicStrings[Port].Manufacturer[IIC_NAME_LENGTH] = 0;
-						memcpy(IicStrings[Port].SensorType, "Temp.", IIC_NAME_LENGTH);
+						memcpy(IicStrings[Port].SensorType, "Temp.\0\0\0", IIC_NAME_LENGTH);
 						IicStrings[Port].SensorType[IIC_NAME_LENGTH] = 0;
 
 						pIic->Changed[Port] = 1;
@@ -386,7 +386,7 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 						}
 					} else {
 						if (TmpBuffer[0] == 0) {
-							memcpy(IicStrings[Port].Manufacturer, "LEGO", IIC_NAME_LENGTH);
+							memcpy(IicStrings[Port].Manufacturer, "LEGO\0\0\0\0", IIC_NAME_LENGTH);
 							IicStrings[Port].Manufacturer[IIC_NAME_LENGTH] = 0;
 						}
 						IicPort[Port].Initialised = 1;
@@ -429,11 +429,11 @@ static enum hrtimer_restart Device1TimerInterrupt1(struct hrtimer *pTimer)
 			case IIC_TYPE_READ:
 			{
 				if (IicPortReceive(Port, TmpBuffer) != BUSY) {
-					memcpy((void*)IicStrings[Port].SensorType, (void*)TmpBuffer, IIC_NAME_LENGTH);
+					memcpy(IicStrings[Port].SensorType, TmpBuffer, IIC_NAME_LENGTH);
 					IicStrings[Port].SensorType[IIC_NAME_LENGTH] = 0;
 
 					if (TmpBuffer[0] == 0) {
-						memcpy((void*)IicStrings[Port].SensorType, (void*)"Store", IIC_NAME_LENGTH);
+						memcpy(IicStrings[Port].SensorType, "Store\0\0\0", IIC_NAME_LENGTH);
 						IicStrings[Port].Manufacturer[IIC_NAME_LENGTH] = 0;
 					}
 

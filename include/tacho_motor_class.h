@@ -106,8 +106,8 @@ struct tacho_motor_params {
 struct tacho_motor_device {
 	const char *driver_name;
 	const char *address;
-	const struct tacho_motor_ops const *ops;
-	const struct ev3_motor_info const *info;
+	const struct tacho_motor_ops *ops;
+	const struct ev3_motor_info *info;
 	void *context;
 	struct tacho_motor_params params;
 	struct tacho_motor_params active_params;
