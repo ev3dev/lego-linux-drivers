@@ -155,7 +155,7 @@ static void ms_8ch_servo_remove_cb(struct nxt_i2c_sensor_data *data)
  * the value is 90 degrees, when the axis is pointing down, the value is -90
  * degrees, when the arrow is horizontal, the value is 0 degrees.
  */
-static const u8 ms_imu_tilt2deg[] = {
+static const s8 ms_imu_tilt2deg[] = {
 	90, 83, 80, 78, 76, 74, 72, 71, 70, 68, 67, 66, 65, 64, 63, 62, 61, 60,
 	59, 58, 57, 57, 56, 55, 54, 54, 53, 52, 51, 51, 50, 49, 49, 48, 47, 47,
 	46, 45, 45, 44, 43, 43, 42, 42, 41, 40, 40, 39, 39, 38, 37, 37, 36, 36,
@@ -1762,7 +1762,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				.name		= "TILT",
 				.scale		= ms_imu_scale,
 				.data_sets	= 3,
-				.data_type	= LEGO_SENSOR_DATA_U8,
+				.data_type	= LEGO_SENSOR_DATA_S8,
 				.units		= "deg",
 			},
 			[1] = {
