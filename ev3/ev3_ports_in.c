@@ -929,7 +929,8 @@ static int ev3_input_port_set_mode(void *context, u8 mode)
 	 */
 
 	hrtimer_cancel(&data->timer);
-	cancel_work_sync(&data->work);
+	if (data->work.func)
+		cancel_work_sync(&data->work);
 
 	switch (data->port.mode) {
 	case EV3_INPUT_PORT_MODE_OTHER_I2C:
@@ -1259,7 +1260,8 @@ static int ev3_input_port_remove(struct platform_device *pdev)
 
 	hrtimer_cancel(&data->timer);
 	cancel_work_sync(&data->change_uevent_work);
-	cancel_work_sync(&data->work);
+	if (data->work.func)
+		cancel_work_sync(&data->work);
 	if (data->port.mode == EV3_INPUT_PORT_MODE_OTHER_UART)
 		ev3_input_port_disable_uart(data);
 	if (data->port.mode == EV3_INPUT_PORT_MODE_RAW)
