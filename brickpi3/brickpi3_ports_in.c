@@ -247,11 +247,11 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 		break;
 	case BRICKPI3_SENSOR_TYPE_EV3_COLOR_COLOR_COMPONENTS:
 		ret = brickpi3_read_sensor(data->bp, data->address, data->index,
-					   data->sensor_type, msg, 6);
+					   data->sensor_type, msg, 8);
 		if (ret < 0)
 			return;
 
-		// 3 16-bit values
+		// 4 16-bit values
 		if (raw_data) {
 			raw_data[0] = msg[1];
 			raw_data[1] = msg[0];
@@ -259,6 +259,8 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 			raw_data[3] = msg[2];
 			raw_data[4] = msg[5];
 			raw_data[5] = msg[4];
+			raw_data[6] = msg[7];
+			raw_data[7] = msg[6];
 		}
 		break;
 	case BRICKPI3_SENSOR_TYPE_EV3_INFRARED_SEEK:

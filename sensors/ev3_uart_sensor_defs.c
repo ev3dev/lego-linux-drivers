@@ -100,10 +100,10 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				 * @value0: Red (0 to 1020???)
 				 * @value1: Green (0 to 1020???)
 				 * @value2: Blue (0 to 1020???)
-				 * @units_description: color
+				 * @value3: Ambient? (0 to 1020???)
 				 */
 				.name		= "RGB-RAW",
-				.data_sets	= 3,
+				.data_sets	= 4,
 				.data_type	= LEGO_SENSOR_DATA_S16,
 			},
 			[5] = {

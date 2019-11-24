@@ -834,7 +834,11 @@ static int ev3_uart_receive_buf2(struct tty_struct *tty,
 					port->last_err = "Received duplicate format INFO.";
 					goto err_invalid_state;
 				}
-				port->mode_info[mode].data_sets = message[2];
+				/* LEGO EV3 Color sensor reports wrong value for RGB-RAW mode */
+				if (port->type_id == EV3_UART_TYPE_ID_COLOR && mode == 4)
+					port->mode_info[mode].data_sets = 4;
+				else
+					port->mode_info[mode].data_sets = message[2];
 				if (!port->mode_info[mode].data_sets) {
 					port->last_err = "Invalid number of data sets.";
 					goto err_invalid_state;
