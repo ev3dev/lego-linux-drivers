@@ -156,18 +156,37 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 			},
 			[5] = {
 				/**
-				 * .. [#lego-ev3-color-mode5] This mode is not
-				 *    usable. When in ``COL-CAL`` mode, the color
+				 * .. [#lego-ev3-color-mode5] This is a factory
+				 *    calibration mode. Writing
+				 *    ``LEGO-FAC-CAL-1`` directly to the sensor
+				 *    shortly after switching to this mode will
+				 *    trigger hardware recalibration. Then,
+				 *    after circa 500 ms, the new calibration
+				 *    parameters can be read from the sensor.
+				 *    Proceed only at your own risk, this will
+				 *    permanently overwrite the accurate
+				 *    factory-provided calibration data!
+				 *    If you do not write the unlock string
+				 *    quickly enough, the sensor will time out
+				 *    and reset. This happens because the
 				 *    sensor does not respond to the keep-alive
-				 *    sent from the EV3 brick. As a result, the
-				 *    sensor will time out and reset.
+				 *    packets sent from the EV3 brick while
+				 *    in this mode.
+				 *
+				 * .. [#lego-ev3-color-mode5-values] The
+				 *    physical meaning of these values is not
+				 *    known. They are most probably used
+				 *    internally by the sensor firmware to
+				 *    correctly scale its measurements.
 				 *
 				 * @name_footnote: [#lego-ev3-color-mode5]_
-				 * @description: Calibration ??? - sets LED color to red, flashing every 4 seconds, then goes continuous
-				 * @value0: ???
-				 * @value1: ???
-				 * @value2: ???
-				 * @value3: ???
+				 * @description: Factory Calibration - turns off all LEDs, then flashes all LEDs briefly when recalibrating
+				 * @value0: Red color calibration multiplier??? (0 to 65535)
+				 * @value0_footnote: [#lego-ev3-color-mode5-values]_
+				 * @value1: Green color calibration multiplier??? (0 to 65535)
+				 * @value1_footnote: [#lego-ev3-color-mode5-values]_
+				 * @value2: Blue color calibration multiplier??? (0 to 65535)
+				 * @value2_footnote: [#lego-ev3-color-mode5-values]_
 				 */
 				.name		= "COL-CAL",
 				.data_sets	= 4,
