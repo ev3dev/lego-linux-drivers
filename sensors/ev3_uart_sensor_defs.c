@@ -191,7 +191,7 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 				.name		= "COL-CAL",
 				.data_sets	= 4,
 				.num_values	= 3,
-				.data_type	= LEGO_SENSOR_DATA_S32,
+				.data_type	= LEGO_SENSOR_DATA_U16,
 			},
 		},
 	},
