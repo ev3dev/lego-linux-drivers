@@ -86,9 +86,35 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 			},
 			[3] = {
 				/**
-				 * @description: Raw Reflected - sets LED color to red
-				 * @value0: ??? (0 to 1020???)
-				 * @value1: ??? (0 to 1020???)
+				 * .. [#lego-ev3-color-mode3-values] This mode
+				 *    provides direct access to the measurements
+				 *    done by the ADC inside the sensor. It
+				 *    works by continuously flashing the red LED
+				 *    on and off and measuring the current
+				 *    flowing through a bypass capacitor. It is
+				 *    not possible to measure true ambient light
+				 *    this way, but the LED off measurement
+				 *    works as a reference for the LED on
+				 *    measurement. Higher photodiode
+				 *    illumination will cause lower ADC
+				 *    measurements, so to obtain reflected light
+				 *    intensity similar to ``COL-REFLECT``, it
+				 *    is necessary to do
+				 *    ``reflect = value1 - value0``.
+				 *
+				 * .. [#lego-ev3-color-mode3-value1] While
+				 *    this value cannot be used to measure
+				 *    still ambient light, it can be used to
+				 *    measure *changes* in external
+				 *    illumination. When it increases, the
+				 *    this value goes below its baseline and
+				 *    vice versa.
+				 *
+				 * @description: Raw Reflected Light - sets LED color to red
+				 * @value0: ADC reading for LED on (reflection) (0 to 1023)
+				 * @value0_footnote: [#lego-ev3-color-mode3-values]_
+				 * @value1: ADC reading for LED off (reference) (0 to 1023)
+				 * @value1_footnote: [#lego-ev3-color-mode3-values]_ [#lego-ev3-color-mode3-value1]_
 				 */
 				.name		= "REF-RAW",
 				.data_sets	= 2,
