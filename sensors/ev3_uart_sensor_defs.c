@@ -122,11 +122,33 @@ const struct ev3_uart_sensor_info ev3_uart_sensor_defs[] = {
 			},
 			[4] = {
 				/**
+				 * .. [#lego-ev3-color-mode4-value012] These
+				 *    values represent the difference between
+				 *    the raw sensor ADC measurements when the
+				 *    LEDs are off and when they are on. They
+				 *    work similar to the ``COL-REFLECT`` values
+				 *    but they are not precalibrated.
+				 *
+				 * .. [#lego-ev3-color-mode4-value3] This value
+				 *    is similar to the ``REF-RAW`` ambient
+				 *    ``value1``. It is the value measured by
+				 *    the ADC inside the sensor when all LEDs
+				 *    are off, so it works as a reference point
+				 *    for the first three values. However here
+				 *    the ``value0``, ``value1`` and ``value2``
+				 *    are sent as relative to this value by the
+				 *    sensor automatically, so it is not
+				 *    necessary to use this value at all.
+				 *
 				 * @description: Raw Color Components - sets LED color to white (all LEDs rapidly cycling)
-				 * @value0: Red (0 to 1020???)
-				 * @value1: Green (0 to 1020???)
-				 * @value2: Blue (0 to 1020???)
-				 * @value3: Ambient? (0 to 1020???)
+				 * @value0: Reflected red light intensity (0 to 1023)
+				 * @value0_footnote: [#lego-ev3-color-mode4-value012]_
+				 * @value1: Reflected green light intensity (0 to 1023)
+				 * @value1_footnote: [#lego-ev3-color-mode4-value012]_
+				 * @value2: Reflected blue light intensity (0 to 1023)
+				 * @value2_footnote: [#lego-ev3-color-mode4-value012]_
+				 * @value3: ADC reading for LEDs off (reference) (0 to 1023)
+				 * @value3_footnote: [#lego-ev3-color-mode4-value3]_
 				 */
 				.name		= "RGB-RAW",
 				.data_sets	= 4,
