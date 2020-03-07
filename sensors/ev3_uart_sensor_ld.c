@@ -571,6 +571,7 @@ static int ev3_uart_receive_buf2(struct tty_struct *tty,
 
 	while (pos < count) {
 		if (port->partial_msg_size) {
+			msg_type = port->msg[0] & EV3_UART_MSG_TYPE_MASK;
 			msg_size = ev3_uart_msg_size(port->msg[0]);
 		} else if (cp[pos] == 0xFF) {
 			/*
@@ -580,7 +581,27 @@ static int ev3_uart_receive_buf2(struct tty_struct *tty,
 			pos++;
 			continue;
 		} else {
+			msg_type = cp[pos] & EV3_UART_MSG_TYPE_MASK;
 			msg_size = ev3_uart_msg_size(cp[pos]);
+		}
+
+		if (port->info_done && (msg_type != EV3_UART_MSG_TYPE_DATA ||
+					msg_size < 3 ||
+					msg_size > EV3_UART_MAX_MESSAGE_SIZE)) {
+			/**
+			 * If we are receiving data, sometimes there can
+			 * be a hardware buffer overflow and we get out
+			 * of sync. So keep trying to get back in sync.
+			 */
+			if (port->partial_msg_size) {
+				port->partial_msg_size--;
+				for (i = 0; i < port->partial_msg_size; i++) {
+					port->msg[i] = port->msg[i + 1];
+				}
+			} else {
+				pos++;
+			}
+			continue;
 		}
 
 		if (msg_size > EV3_UART_MAX_MESSAGE_SIZE) {
@@ -615,7 +636,6 @@ static int ev3_uart_receive_buf2(struct tty_struct *tty,
 			pos += msg_size;
 		}
 
-		msg_type = message[0] & EV3_UART_MSG_TYPE_MASK;
 		cmd = message[0] & EV3_UART_MSG_CMD_MASK;
 		mode = cmd;
 		cmd2 = message[1];
