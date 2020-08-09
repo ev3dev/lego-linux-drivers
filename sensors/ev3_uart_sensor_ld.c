@@ -953,7 +953,16 @@ static int ev3_uart_receive_buf2(struct tty_struct *tty,
 			if (!completion_done(&port->set_mode_completion)
 			    && mode == port->new_mode)
 				complete(&port->set_mode_completion);
-			memcpy(port->mode_info[mode].raw_data, message + 1, msg_size - 2);
+
+			if (memcmp(port->mode_info[mode].raw_data, message + 1,
+				   msg_size - 2) != 0) {
+				port->mode_info[mode].last_changed_time =
+					ktime_get();
+				memcpy(port->mode_info[mode].raw_data,
+				       message + 1,
+				       msg_size - 2);
+			}
+
 			port->data_rec = 1;
 			if (port->num_data_err)
 				port->num_data_err--;

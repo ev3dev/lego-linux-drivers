@@ -187,12 +187,27 @@ static int ms_ev3_smux_set_mode(void *context, u8 mode)
 void ms_ev3_smux_poll_cb(struct nxt_i2c_sensor_data *data)
 {
 	struct ms_ev3_smux_data *smux = data->callback_data;
+	u8 *raw_data = smux->port.raw_data;
+	unsigned int raw_data_size = smux->port.raw_data_size;
+	u8 old_data[32];
+	int check_size = 0;
 
-	if (!smux->sensor || !smux->port.raw_data)
+	if (!smux->sensor || !raw_data)
 		return;
 
+	if (smux->port.last_changed_time)
+		check_size = raw_data_size <= 32 ? raw_data_size : 32;
+
+	if (check_size)
+		memcpy(old_data, smux->port.raw_data, check_size);
+
 	i2c_smbus_read_i2c_block_data(data->client, MS_EV3_SMUX_DATA_REG,
-		smux->port.raw_data_size, smux->port.raw_data);
+		raw_data_size, raw_data);
+
+	if (check_size) {
+		if (memcmp(old_data, raw_data, check_size) != 0)
+			*smux->port.last_changed_time = ktime_get();
+	}
 	lego_port_call_raw_data_func(&smux->port);
 }
 

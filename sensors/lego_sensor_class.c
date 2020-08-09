@@ -63,6 +63,11 @@
  *        attributes. Use ``bin_data_format``, ``num_values`` and the individual
  *        sensor documentation to determine how to interpret the data.
  *
+ *    * - ``bin_data_age``
+ *      - read-only
+ *      - Returns the number of milliseconds elapsed since the last change
+ *        of ``bin_data``.
+ *
  *    * - ``bin_data_format``
  *      - read-only
  *      - Returns the format of the values in ``bin_data`` for the current
@@ -298,13 +303,18 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 			  const char *buf, size_t count)
 {
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
+	struct lego_sensor_mode_info *mode_info;
 	int i, err;
 
 	for (i = 0; i < sensor->num_modes; i++) {
-		if (sysfs_streq(buf, sensor->mode_info[i].name)) {
+		mode_info = &sensor->mode_info[i];
+		if (sysfs_streq(buf, mode_info->name)) {
 			err = sensor->set_mode(sensor->context, i);
 			if (err)
 				return err;
+			if (mode_info->last_changed_time == 0) {
+				mode_info->last_changed_time = ktime_get();
+			}
 			if (sensor->mode != i) {
 				sensor->mode = i;
 				kobject_uevent(&dev->kobj, KOBJ_CHANGE);
@@ -503,6 +513,24 @@ static ssize_t bin_data_format_show(struct device *dev,
 	return sprintf(buf, "%s\n", value);
 }
 
+static ssize_t bin_data_age_show(struct device *dev,
+				 struct device_attribute *attr,
+				 char *buf)
+{
+	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
+	ktime_t last_change = sensor->mode_info[sensor->mode].last_changed_time;
+	struct timespec64 elapsed;
+	s64 msec;
+
+	if (last_change == 0)
+		return sprintf(buf, "0\n");
+
+	elapsed = ktime_to_timespec64(ktime_sub(ktime_get(), last_change));
+	msec = elapsed.tv_sec * 1000 + elapsed.tv_nsec / 1000000;
+
+	return sprintf(buf, "%lld\n", msec);
+}
+
 static ssize_t poll_ms_show(struct device *dev, struct device_attribute *attr,
 			    char *buf)
 {
@@ -553,10 +581,10 @@ static ssize_t text_value_show(struct device *dev, struct device_attribute *attr
 {
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
 	const char *value;
- 
+
 	if (!sensor->get_text_value)
 		return -EOPNOTSUPP;
- 
+
 	value = sensor->get_text_value(sensor->context);
 
 	if(IS_ERR(value))
@@ -622,6 +650,7 @@ static DEVICE_ATTR_RO(units);
 static DEVICE_ATTR_RO(decimals);
 static DEVICE_ATTR_RO(num_values);
 static DEVICE_ATTR_RO(bin_data_format);
+static DEVICE_ATTR_RO(bin_data_age);
 static DEVICE_ATTR_RO(text_value);
 /*
  * Technically, it is possible to have 32 8-bit values from UART sensors
@@ -652,6 +681,7 @@ static struct attribute *lego_sensor_class_attrs[] = {
 	&dev_attr_decimals.attr,
 	&dev_attr_num_values.attr,
 	&dev_attr_bin_data_format.attr,
+	&dev_attr_bin_data_age.attr,
 	&dev_attr_text_value.attr,
 	&dev_attr_value0.attr,
 	&dev_attr_value1.attr,
