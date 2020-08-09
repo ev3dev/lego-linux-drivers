@@ -177,6 +177,8 @@ enum ev3_uart_info_flags {
  * 	mode in case of a reconnect.
  * @type_id: Type id returned by the sensor
  * @new_mode: The mode requested by set_mode.
+ * @last_byte_10: Last received value of 10th byte in any large enough message.
+ * 	This is used for calculating checksum byte for RGB-RAW DATA messages.
  * @raw_min: Min/max values are sent as float data types. This holds the value
  * 	until we read the number of decimal places needed to convert this
  * 	value to an integer.
@@ -213,6 +215,7 @@ struct ev3_uart_port_data {
 	u8 requested_mode;
 	u8 type_id;
 	u8 new_mode;
+	u8 last_byte_10;
 	u32 raw_min;
 	u32 raw_max;
 	u32 pct_min;
@@ -562,6 +565,7 @@ static int ev3_uart_receive_buf2(struct tty_struct *tty,
 				 EV3_UART_SENSOR_NAME("%u"), type);
 
 		port->partial_msg_size = 0;
+		port->last_byte_10 = 0x00;
 		port->info_flags = EV3_UART_INFO_FLAG_CMD_TYPE;
 		port->info_done = 0;
 		port->data_rec = 0;
@@ -648,13 +652,24 @@ static int ev3_uart_receive_buf2(struct tty_struct *tty,
 				 chksum, message[msg_size - 1]);
 			/*
 			 * The LEGO EV3 color sensor sends bad checksums
-			 * for RGB-RAW data (mode 4). The check here could be
-			 * improved if someone can find a pattern.
+			 * for RGB-RAW data (mode 4). The previous checksum byte
+			 * (10th position) is XORed to the real checksum. XORing
+			 * it in here should produce the same final checksum value.
 			 */
-			if (chksum != message[msg_size - 1]
-			    && port->type_id != EV3_UART_TYPE_ID_COLOR
-			    && message[0] != 0xDC)
+			if (port->type_id == EV3_UART_TYPE_ID_COLOR
+			    && message[0] == 0xDC)
 			{
+				chksum ^= port->last_byte_10;
+			}
+
+			/*
+			 * Record last byte at position 10 for RGB-RAW checksum
+			 * correction.
+			 */
+			if (msg_size >= 10)
+				port->last_byte_10 = message[9];
+
+			if (chksum != message[msg_size - 1]) {
 				port->last_err = "Bad checksum.";
 				if (port->info_done) {
 					port->num_data_err++;
