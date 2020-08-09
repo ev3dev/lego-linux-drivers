@@ -66,7 +66,8 @@
 #endif
 
 #define EV3_UART_MAX_DATA_SIZE		32
-#define EV3_UART_MAX_MESSAGE_SIZE	(EV3_UART_MAX_DATA_SIZE + 2)
+/* extra bytes for: main command byte, INFO command byte, final checksum */
+#define EV3_UART_MAX_MESSAGE_SIZE	(EV3_UART_MAX_DATA_SIZE + 3)
 
 #define EV3_UART_MSG_TYPE_MASK		0xC0
 #define EV3_UART_CMD_SIZE(byte)		(1 << (((byte) >> 3) & 0x7))
