@@ -652,8 +652,8 @@ static int ev3_uart_receive_buf2(struct tty_struct *tty,
 			 * improved if someone can find a pattern.
 			 */
 			if (chksum != message[msg_size - 1]
-			    && port->type_id != EV3_UART_TYPE_ID_COLOR
-			    && message[0] != 0xDC)
+			    && !(port->type_id == EV3_UART_TYPE_ID_COLOR
+				 && message[0] == 0xDC))
 			{
 				port->last_err = "Bad checksum.";
 				if (port->info_done) {
