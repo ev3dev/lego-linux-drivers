@@ -160,6 +160,7 @@ enum ev3_uart_info_flags {
 #define EV3_UART_TYPE_ID_ULTRASONIC	30
 #define EV3_UART_TYPE_ID_GYRO		32
 #define EV3_UART_TYPE_ID_INFRARED	33
+#define EV3_UART_MODE_ID_COL_AMBIENT	1
 
 /**
  * struct ev3_uart_data - Discipline data for EV3 UART Sensor communication
@@ -280,6 +281,7 @@ int ev3_uart_set_mode(void *context, const u8 mode)
 	const int data_size = 3;
 	u8 data[data_size];
 	int retries = 10;
+	int sleep = 0;
 	int ret;
 
 	if (!tty)
@@ -292,6 +294,17 @@ int ev3_uart_set_mode(void *context, const u8 mode)
 		return -EINVAL;
 	if (!completion_done(&port->set_mode_completion))
 		return -EBUSY;
+
+	if (port->type_id == EV3_UART_TYPE_ID_COLOR) {
+		// switching between color and ambient modes produces
+		// invalid measurements for first few samples
+		bool ambient_prev = port->sensor.mode
+				    == EV3_UART_MODE_ID_COL_AMBIENT;
+		bool ambient_next = mode == EV3_UART_MODE_ID_COL_AMBIENT;
+
+		if (ambient_prev != ambient_next)
+			sleep = 10;
+	}
 
 	data[0] = ev3_uart_set_msg_hdr(EV3_UART_MSG_TYPE_CMD, data_size - 2,
 				       EV3_UART_CMD_SELECT);
@@ -316,6 +329,9 @@ int ev3_uart_set_mode(void *context, const u8 mode)
 		return -ETIMEDOUT;
 
 	port->requested_mode = mode;
+
+	if (sleep > 0)
+		msleep(sleep);
 
 	return 0;
 }
