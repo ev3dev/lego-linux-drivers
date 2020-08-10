@@ -59,7 +59,8 @@ static int ev3_uart_sensor_set_mode(void *context, u8 mode)
 		return -EOPNOTSUPP;
 
 	lego_port_set_raw_data_ptr_and_func(data->ldev->port, mode_info->raw_data,
-		lego_sensor_get_raw_data_size(mode_info), NULL, NULL);
+		lego_sensor_get_raw_data_size(mode_info),
+		&mode_info->last_changed_time, NULL, NULL);
 
 	return 0;
 }
@@ -112,7 +113,8 @@ static int ev3_uart_sensor_remove(struct lego_device *ldev)
 {
 	struct ev3_uart_sensor_data *data = dev_get_drvdata(&ldev->dev);
 
-	lego_port_set_raw_data_ptr_and_func(ldev->port, NULL, 0, NULL, NULL);
+	lego_port_set_raw_data_ptr_and_func(ldev->port, NULL, 0, NULL,
+					    NULL, NULL);
 	unregister_lego_sensor(&data->sensor);
 	dev_set_drvdata(&ldev->dev, NULL);
 	kfree(data);

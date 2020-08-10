@@ -63,7 +63,8 @@ static int nxt_analog_sensor_set_mode(void *context, u8 mode)
 	else
 		context = NULL;
 	lego_port_set_raw_data_ptr_and_func(data->ldev->port, mode_info->raw_data,
-		lego_sensor_get_raw_data_size(mode_info), func, context);
+		lego_sensor_get_raw_data_size(mode_info),
+		&mode_info->last_changed_time, func, context);
 	data->ldev->port->nxt_analog_ops->set_pin5_gpio(data->ldev->port->context,
 		data->info.analog_mode_info[mode].pin5_state);
 
@@ -116,7 +117,8 @@ static int nxt_analog_sensor_remove(struct lego_device *ldev)
 
 	ldev->port->nxt_analog_ops->set_pin5_gpio(ldev->port->context,
 		LEGO_PORT_GPIO_FLOAT);
-	lego_port_set_raw_data_ptr_and_func(ldev->port, NULL, 0, NULL, NULL);
+	lego_port_set_raw_data_ptr_and_func(ldev->port, NULL, 0, NULL,
+					    NULL, NULL);
 	unregister_lego_sensor(&data->sensor);
 	dev_set_drvdata(&ldev->dev, NULL);
 	kfree(data);

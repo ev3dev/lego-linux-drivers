@@ -57,6 +57,7 @@ static int ht_nxt_smux_i2c_sensor_set_mode(void *context, u8 mode)
 	ht_nxt_smux_port_set_i2c_data_reg(port, i2c_mode_info[mode].read_data_reg,
 					  size);
 	lego_port_set_raw_data_ptr_and_func(port, mode_info->raw_data, size,
+					    &mode_info->last_changed_time,
 					    NULL, NULL);
 
 	return 0;
@@ -155,7 +156,8 @@ static int ht_nxt_smux_i2c_sensor_remove(struct lego_device *ldev)
 {
 	struct ht_nxt_smux_i2c_sensor_data *data = dev_get_drvdata(&ldev->dev);
 
-	lego_port_set_raw_data_ptr_and_func(ldev->port, NULL, 0, NULL, NULL);
+	lego_port_set_raw_data_ptr_and_func(ldev->port, NULL, 0, NULL,
+					    NULL, NULL);
 	ldev->port->nxt_i2c_ops->set_pin1_gpio(ldev->port->context,
 					       LEGO_PORT_GPIO_FLOAT);
 	unregister_lego_sensor(&data->sensor);

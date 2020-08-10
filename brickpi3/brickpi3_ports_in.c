@@ -165,8 +165,19 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 	struct brickpi3_in_port *data =
 		container_of(work, struct brickpi3_in_port, poll_work);
 	u8 *raw_data = data->port.raw_data;
+	ktime_t *last_changed_ptr = data->port.last_changed_time;
+	u8 old_data[32];
+	int check_size = 0;
 	u8 msg[16];
 	int ret;
+
+	if (raw_data && last_changed_ptr) {
+		check_size = data->port.raw_data_size <= 32
+				? data->port.raw_data_size : 32;
+	}
+
+	if (check_size)
+		memcpy(old_data, raw_data, check_size);
 
 	switch (data->sensor_type) {
 	case BRICKPI3_SENSOR_TYPE_CUSTOM:
@@ -275,6 +286,11 @@ static void brickpi3_in_port_poll_work(struct work_struct *work)
 		break;
 	default:
 		return;
+	}
+
+	if (check_size) {
+		if (memcmp(old_data, raw_data, check_size) != 0)
+			*last_changed_ptr = ktime_get();
 	}
 
 	if (raw_data) {

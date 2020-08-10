@@ -401,11 +401,25 @@ int brickpi_get_values(struct brickpi_channel_data *ch_data)
 
 		if (port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C
 		   || port->sensor_type == BRICKPI_SENSOR_TYPE_NXT_I2C_9V) {
-			memcpy(raw_data, port->i2c_msg[0].read_data,
-				port->i2c_msg[0].read_size);
+
+			if (port->port.last_changed_time
+			   && memcmp(raw_data, port->i2c_msg[0].read_data,
+				     port->i2c_msg[0].read_size) != 0) {
+				*port->port.last_changed_time = ktime_get();
+				memcpy(raw_data, port->i2c_msg[0].read_data,
+				       port->i2c_msg[0].read_size);
+			}
+
+
 		} else {
-			memcpy(raw_data, sensor_values,
-			       sizeof(s32) * NUM_BRICKPI_SENSOR_VALUES);
+			int bytes = sizeof(s32) * NUM_BRICKPI_SENSOR_VALUES;
+
+			if (port->port.last_changed_time
+			   && memcmp(raw_data, sensor_values, bytes) != 0) {
+				*port->port.last_changed_time = ktime_get();
+				memcpy(raw_data, sensor_values, bytes);
+			}
+
 		}
 		lego_port_call_raw_data_func(&port->port);
 	}

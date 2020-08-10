@@ -84,6 +84,7 @@ struct lego_port_ev3_uart_ops {
  * @dev: The device data structure.
  * @raw_data: Pointer to raw data storage.
  * @raw_data_size: Size of raw_data in bytes.
+ * @last_changed_time: Time at which the raw_data last changed its contents.
  * @notify_raw_data_func: Registered by sensor drivers to be notified of new
  * 	raw data.
  * @notify_raw_data_context: Send to notify_raw_data_func as parameter.
@@ -112,6 +113,7 @@ struct lego_port_device {
 	struct device dev;
 	u8 *raw_data;
 	unsigned raw_data_size;
+	ktime_t *last_changed_time;
 	lego_port_notify_raw_data_func_t notify_raw_data_func;
 	void *notify_raw_data_context;
 };
@@ -126,11 +128,13 @@ extern void lego_port_unregister(struct lego_port_device *lego_port);
 static inline void
 lego_port_set_raw_data_ptr_and_func(struct lego_port_device *port,
 				    u8 *raw_data, unsigned raw_data_size,
+				    ktime_t *last_changed_time,
 				    lego_port_notify_raw_data_func_t func,
 				    void *context)
 {
 	port->raw_data = raw_data;
 	port->raw_data_size = raw_data_size;
+	port->last_changed_time = last_changed_time;
 	port->notify_raw_data_func = func;
 	port->notify_raw_data_context = context;
 }

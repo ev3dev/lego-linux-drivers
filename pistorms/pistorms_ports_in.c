@@ -230,9 +230,20 @@ static void pistorms_poll_work(struct work_struct *work)
 		container_of(work, struct pistorms_in_port_data, poll_work);
 	u8 *raw_data = in_port->port.raw_data;
 	int ret;
+	u32 old_data[32];
+	int check_size = 0;
 
 	if (!raw_data)
 		return;
+
+	if (in_port->port.last_changed_time) {
+		check_size = in_port->port.raw_data_size <= 32
+				 ? in_port->port.raw_data_size : 32;
+	}
+
+	if (check_size) {
+		memcpy(old_data, raw_data, check_size);
+	}
 
 	switch (in_port->port.mode) {
 	case PS_IN_PORT_MODE_NXT_ANALOG:
@@ -274,6 +285,11 @@ static void pistorms_poll_work(struct work_struct *work)
 		if (ret < 0)
 			return;
 		break;
+	}
+
+	if (check_size) {
+		if (memcmp(old_data, raw_data, check_size) != 0)
+			*in_port->port.last_changed_time = ktime_get();
 	}
 
 	lego_port_call_raw_data_func(&in_port->port);
