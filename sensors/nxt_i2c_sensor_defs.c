@@ -815,15 +815,15 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @description: All values (modulated)
 				 * @value0: Direction (0 to 9)
 				 * @value0_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
-				 * @value1: Sensor 1 signal strength (0 to 9)
+				 * @value1: Sensor 1 (far left direction) signal strength (0 to ~130) (upper limit dependent on IR source strength).
 				 * @value1_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
-				 * @value2: Sensor 2 signal strength (0 to 9)
+				 * @value2: Sensor 2 (left-forward direction) signal strength (0 to ~130) (upper limit dependent on IR source strength)
 				 * @value2_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
-				 * @value3: Sensor 3 signal strength (0 to 9)
+				 * @value3: Sensor 3 (forward direction) signal strength (0 to ~130) (upper limit dependent on IR source strength)
 				 * @value3_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
-				 * @value4: Sensor 4 signal strength (0 to 9)
+				 * @value4: Sensor 4 (right-forward direction) signal strength (0 to ~130) (upper limit dependent on IR source strength)
 				 * @value4_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
-				 * @value5: Sensor 5 signal strength (0 to 9)
+				 * @value5: Sensor 5 (far right direction) signal strength (0 to ~130) (upper limit dependent on IR source strength)
 				 * @value5_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 */
 				.name = "AC-ALL",
