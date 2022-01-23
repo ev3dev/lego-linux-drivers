@@ -772,7 +772,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 *    =======  =============
 				 *
 				 * @description: Direction (unmodulated)
-				 * @value0: Direction (0 to 9)
+				 * @value0: Direction (0 to 9) These directions do not directly corresponds to the DC-ALL mode's 5 sensor values. the even number directions are calculated in the sensor (may have interference from sunlight)
 				 * @value0_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 */
 				.name = "DC",
@@ -782,7 +782,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[1] = {
 				/**
 				 * @description: Direction (modulated)
-				 * @value0: Direction (0 to 9)
+				 * @value0: Direction (0 to 9) These directions do not directly corresponds to the AC-ALL mode's 5 sensor values. the even number directions are calculated in the sensor
 				 * @value0_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 */
 				.name = "AC",
@@ -794,17 +794,17 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @description: All values (unmodulated)
 				 * @value0: Direction (0 to 9)
 				 * @value0_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
-				 * @value1: Sensor 1 signal strength (0 to 9)
+				 * @value1: Sensor 1 (far left direction) signal strength (0 to ~130) (upper limit dependent on IR source strength).
 				 * @value1_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
-				 * @value2: Sensor 2 signal strength (0 to 9)
+				 * @value2: Sensor 2 (left-forward direction) signal strength (0 to ~130) (upper limit dependent on IR source strength)
 				 * @value2_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
-				 * @value3: Sensor 3 signal strength (0 to 9)
+				 * @value3: Sensor 3 (forward direction) signal strength (0 to ~130) (upper limit dependent on IR source strength)
 				 * @value3_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
-				 * @value4: Sensor 4 signal strength (0 to 9)
+				 * @value4: Sensor 4 (right-forward direction) signal strength (0 to ~130) (upper limit dependent on IR source strength)
 				 * @value4_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
-				 * @value5: Sensor 5 signal strength (0 to 9)
+				 * @value5: Sensor 5 (far right direction) signal strength (0 to ~130) (upper limit dependent on IR source strength)
 				 * @value5_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
-				 * @value6: Sensor mean (0 to 9)
+				 * @value6: Sensor mean (0 to ~ 130) (upper limit dependent on IR source strength) (may be affected by sunlight)
 				 * @value6_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 */
 				.name = "DC-ALL",
