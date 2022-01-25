@@ -786,7 +786,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 			[1] = {
 				/**
 				 * @description: Direction (modulated)
-				 * @value0: Direction (0 to 9) These directions do not directly corresponds to the AC-ALL mode's 5 sensor values. the even number directions are calculated in the sensor
+				 * @value0: Direction (0 to 9)
 				 * @value0_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
 				 */
 				.name = "AC",
