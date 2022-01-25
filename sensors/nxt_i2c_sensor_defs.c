@@ -770,6 +770,9 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 *     ...
 				 *     9        Far right
 				 *    =======  =============
+				 *    AC mode runs the Sensor in modulated mode, aimed at detecting modulated IR signals such as from HiTechnic IRBall or
+				 *    some types of IR remote controls.
+				 *    DC mode runs the Sensor in unmodulated mode, detecting both modulated and unmodulated IR signals such as sunlight.
 				 *    These directions do not directly corresponds to the DC-ALL or AC-ALL mode's 5 sensor values. 
 				 *    the even number directions are calculated in the sensor, while the odd number directions
 				 *    are measured actually measured by sensors 1-5 inside the HiTechnic NXT IRSeeker V2
