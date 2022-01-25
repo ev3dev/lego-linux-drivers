@@ -815,7 +815,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 * @value5: Sensor 5 (far right direction) signal strength (0-255)
 				 * @value5_footnote: [#ht-nxt-ir-seek-v2-mode2-value1]_
 				 * @value6: Sensor mean (0-255)
-				 * @value6_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
+				 * @value6_footnote: [#ht-nxt-ir-seek-v2-mode2-value1]_
 				 */
 				.name = "DC-ALL",
 				.data_sets = 7,
