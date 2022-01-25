@@ -770,7 +770,7 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 *     ...
 				 *     9        Far right
 				 *    =======  =============
-				 *	  These directions do not directly corresponds to the DC-ALL mode's 5 sensor values. 
+				 *    These directions do not directly corresponds to the DC-ALL mode's 5 sensor values. 
 				 *    the even number directions are calculated in the sensor, while the odd number directions
 				 *    are measured actually measured by sensors 1-5 inside the HiTechnic NXT IRSeeker V2
 				 * 
@@ -827,22 +827,22 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				/**
 				 * @description: All values (modulated)
 				 * @value0: Direction (0 to 9)
-				 * @value0_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
+				 * @value0_footnote: [#ht-nxt-ir-seek-v2-mode2-value1]_
 				 * @value1: Sensor 1 (far left direction) signal strength 
 				 * (0 to 255)
-				 * @value1_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
+				 * @value1_footnote: [#ht-nxt-ir-seek-v2-mode2-value1]_
 				 * @value2: Sensor 2 (left-forward direction) signal strength 
 				 * (0 to 255)
-				 * @value2_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
+				 * @value2_footnote: [#ht-nxt-ir-seek-v2-mode2-value1]_
 				 * @value3: Sensor 3 (forward direction) signal strength 
 				 * (0 to 255)
-				 * @value3_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
+				 * @value3_footnote: [#ht-nxt-ir-seek-v2-mode2-value1]_
 				 * @value4: Sensor 4 (right-forward direction) signal strength 
 				 * (0 to 255)
-				 * @value4_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
+				 * @value4_footnote: [#ht-nxt-ir-seek-v2-mode2-value1]_
 				 * @value5: Sensor 5 (far right direction) signal strength 
 				 * (0 to 255)
-				 * @value5_footnote: [#ht-nxt-ir-seek-v2-mode0-value0]_
+				 * @value5_footnote: [#ht-nxt-ir-seek-v2-mode2-value1]_
 				 */
 				.name = "AC-ALL",
 				.data_sets = 6,
