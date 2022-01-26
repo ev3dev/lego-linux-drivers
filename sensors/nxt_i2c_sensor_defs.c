@@ -1229,13 +1229,22 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 		.cmd_info	= (const struct lego_sensor_cmd_info[]) {
 			[0]= {
 				/**
+				 * 
+				 * 
+				 * .. [#ht-nxt-compass-cmd1] to calibrate a sensor,
+				 *    Call the BEGIN-CAL command, then
+				 *    rotate the robot around 540-720 degrees at a speed of 1 full turn per 20 seconds, then
+				 *    call the END-CAL command. Now your robot is calibrated and ready to go. 
+				 * 
 				 * @description: Begin calibration
+				 * @name_footnote: [#ht-nxt-compass-cmd1]_
 				 */
 				.name = "BEGIN-CAL",
 			},
 			[1]= {
 				/**
 				 * @description: End calibration
+				 * @name_footnote: [#ht-nxt-compass-cmd1]_
 				 */
 				.name = "END-CAL",
 			},
