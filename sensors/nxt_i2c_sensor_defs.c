@@ -1237,14 +1237,14 @@ const struct nxt_i2c_sensor_info nxt_i2c_sensor_defs[] = {
 				 *    Call the END-CAL command.
 				 * 
 				 * @description: Begin calibration
-				 * @description_footnote: [#ht-nxt-compass-cmd1]_
+				 * @name_footnote: [#ht-nxt-compass-cmd1]_
 				 */
 				.name = "BEGIN-CAL",
 			},
 			[1]= {
 				/**
 				 * @description: End calibration
-				 * @description_footnote: [#ht-nxt-compass-cmd1]_
+				 * @name_footnote: [#ht-nxt-compass-cmd1]_
 				 */
 				.name = "END-CAL",
 			},
