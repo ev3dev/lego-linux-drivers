@@ -469,16 +469,36 @@ void ht_nxt_smux_poll_cb(struct nxt_i2c_sensor_data *data)
 	struct ht_nxt_smux_port_data *ports = data->callback_data;
 	int i;
 	u8 raw_analog[2];
+	u8 old_data[32];
+	int raw_data_size;
+	int check_size;
+
+	raw_data_size = lego_sensor_get_raw_data_size(mode_info);
+	check_size = raw_data_size <= 32 ? raw_data_size : 32;
+	memcpy(old_data, mode_info->raw_data, raw_data_size);
 
 	i2c_smbus_read_i2c_block_data(data->client, i2c_info->read_data_reg,
-		lego_sensor_get_raw_data_size(mode_info), mode_info->raw_data);
+		raw_data_size, mode_info->raw_data);
+
+	if (memcmp(old_data, mode_info->raw_data, check_size) != 0)
+		mode_info->last_changed_time = ktime_get();
 
 	for (i = 0; i < NUM_HT_NXT_SMUX_CH; i++) {
+		ktime_t *last_change_ptr = ports[i].port.last_changed_time;
 		u8 *raw_data = ports[i].port.raw_data;
-		int raw_data_size = ports[i].port.raw_data_size;
+		raw_data_size = ports[i].port.raw_data_size;
 
 		if (!raw_data)
 			continue;
+
+		if (last_change_ptr)
+			check_size = raw_data_size <= 32 ? raw_data_size : 32;
+		else
+			check_size = 0;
+
+		if (check_size)
+			memcpy(old_data, raw_data, check_size);
+
 		if (ports[i].port.mode == HT_NXT_SMUX_PORT_MODE_ANALOG) {
 			i2c_smbus_read_i2c_block_data(data->client,
 				ht_nxt_smux_analog_data_reg[i], 2, raw_analog);
@@ -490,6 +510,12 @@ void ht_nxt_smux_poll_cb(struct nxt_i2c_sensor_data *data)
 				ht_nxt_smux_i2c_data_reg[i],
 				raw_data_size, raw_data);
 		}
+
+		if (check_size) {
+			if (memcmp(old_data, raw_data, check_size) != 0)
+				*last_change_ptr = ktime_get();
+		}
+
 		lego_port_call_raw_data_func(&ports[i].port);
 	}
 }

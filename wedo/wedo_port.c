@@ -538,6 +538,7 @@ void wedo_port_update_status(struct wedo_port_data *wpd)
 	struct wedo_sensor_data *wsd = NULL;
 	struct wedo_motor_data *wmd = NULL;
 	struct wedo_servo_data *wvd = NULL;
+	struct lego_sensor_mode_info *mode_info;
 
 	switch (wpd->type_id) {
 
@@ -545,7 +546,11 @@ void wedo_port_update_status(struct wedo_port_data *wpd)
 	case WEDO_TYPE_MOTION:
 		wsd = wpd->sensor_data;
 		if (wsd) {
-			wsd->info.mode_info[wsd->sensor.mode].raw_data[0] = wpd->input;
+			mode_info = &wsd->info.mode_info[wsd->sensor.mode];
+
+			if (mode_info->raw_data[0] != wpd->input)
+				mode_info->last_changed_time = ktime_get();
+			mode_info->raw_data[0] = wpd->input;
 		}
 		break;
 	case WEDO_TYPE_SERVO:

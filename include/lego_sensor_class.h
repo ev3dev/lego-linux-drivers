@@ -19,6 +19,7 @@
 
 #include <linux/device.h>
 #include <linux/types.h>
+#include <linux/ktime.h>
 
 #define LEGO_SENSOR_NAME_SIZE		30
 #define LEGO_SENSOR_FW_VERSION_SIZE	8
@@ -62,6 +63,7 @@ extern size_t lego_sensor_data_size[];
  * @figures: Number of digits that should be displayed, including decimal point.
  * @decimals: Decimal point position.
  * @raw_data: Raw data read from the sensor.
+ * @last_changed_time: Time at which the raw_data last changed its contents.
  */
 struct lego_sensor_mode_info {
 	char name[LEGO_SENSOR_MODE_NAME_SIZE + 1];
@@ -80,6 +82,7 @@ struct lego_sensor_mode_info {
 	u8 figures;
 	u8 decimals;
 	u8 raw_data[LEGO_SENSOR_RAW_DATA_SIZE];
+	ktime_t last_changed_time;
 };
 
 /**

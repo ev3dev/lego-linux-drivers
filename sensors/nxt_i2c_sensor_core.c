@@ -198,13 +198,26 @@ void nxt_i2c_sensor_poll_work(struct work_struct *work)
 	struct lego_sensor_mode_info *mode_info =
 			&data->sensor.mode_info[data->sensor.mode];
 
-	if (data->info->ops && data->info->ops->poll_cb)
+	u8 old_data[32];
+	int raw_data_size = lego_sensor_get_raw_data_size(mode_info);
+	int check_size = raw_data_size <= 32 ? raw_data_size : 32;
+
+
+	if (data->info->ops && data->info->ops->poll_cb) {
 		data->info->ops->poll_cb(data);
-	else
+	} else {
+
+		memcpy(old_data, mode_info->raw_data, check_size);
+
 		i2c_smbus_read_i2c_block_data(data->client,
 			i2c_mode_info->read_data_reg,
-			lego_sensor_get_raw_data_size(mode_info),
+			raw_data_size,
 			mode_info->raw_data);
+
+		if (memcmp(old_data, mode_info->raw_data, check_size) != 0) {
+			mode_info->last_changed_time = ktime_get();
+		}
+	}
 }
 
 static int nxt_i2c_sensor_probe(struct i2c_client *client,

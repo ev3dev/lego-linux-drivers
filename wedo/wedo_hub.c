@@ -224,7 +224,9 @@ static void wedo_in_callback(struct urb *urb)
 	struct lego_sensor_device *hub = &wedo->wedo_hub;
 	struct wedo_port_data *wpd1 = wedo->wedo_ports[WEDO_PORT_1];
 	struct wedo_port_data *wpd2 = wedo->wedo_ports[WEDO_PORT_2];
-	u16 *hub_raw_data = (u16 *)hub->mode_info[hub->mode].raw_data;
+	struct lego_sensor_mode_info *mode_info = &hub->mode_info[hub->mode];
+	u16 *hub_raw_data = (u16 *)mode_info->raw_data;
+	ktime_t *hub_last_changed = &mode_info->last_changed_time;
 	unsigned long flags;
 
 	if (status) {
@@ -238,14 +240,22 @@ static void wedo_in_callback(struct urb *urb)
 	 * is the only reader, and each byte of data is atomic.
 	 */
 	if (urb->actual_length == 8) {
+		u16 new_data[2];
+
 		if (wedo->in_buf[0] & WEDO_HUB_CTL_BIT_ECHO)
 			wedo->output_bits &= ~WEDO_HUB_CTL_BIT_ECHO;
 		else
 			wedo->output_bits |= WEDO_HUB_CTL_BIT_ECHO;
 
-		hub_raw_data[0] = wedo->in_buf[0];
+		new_data[0] = wedo->in_buf[0];
 		/* multiplying by 49 scales the raw value to millivolts */
-		hub_raw_data[1] = wedo->in_buf[1] * 49;
+		new_data[1] = wedo->in_buf[1] * 49;
+
+		if (memcmp(hub_raw_data, new_data, 4) != 0) {
+			*hub_last_changed = ktime_get();
+			memcpy(hub_raw_data, new_data, 4);
+		}
+
 		wpd1->input	= wedo->in_buf[2];
 		wpd1->id	= wedo->in_buf[3];
 		/* WEDO_HUB_CTL_BIT_ERROR indicates that outputs are turned off */

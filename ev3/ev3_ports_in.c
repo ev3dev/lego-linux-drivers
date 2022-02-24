@@ -526,16 +526,30 @@ static struct lego_port_nxt_analog_ops ev3_input_port_nxt_analog_ops = {
 
 static void ev3_input_port_nxt_analog_cb(struct ev3_input_port_data *data)
 {
-	if (data->port.raw_data)
-		*(s32 *)data->port.raw_data = data->pin1_mv;
+	s32 new_value = data->pin1_mv;
+	s32 *raw_data = (s32 *)data->port.raw_data;
+
+	if (raw_data) {
+		if (*raw_data != new_value && data->port.last_changed_time)
+			*data->port.last_changed_time = ktime_get();
+
+		*raw_data = new_value;
+	}
 	if (data->port.notify_raw_data_func)
 		data->port.notify_raw_data_func(data->port.notify_raw_data_context);
 }
 
 static void ev3_input_port_ev3_analog_cb(struct ev3_input_port_data *data)
 {
-	if (data->port.raw_data)
-		*(s32 *)data->port.raw_data = data->pin6_mv;
+	s32 new_value = data->pin6_mv;
+	s32 *raw_data = (s32 *)data->port.raw_data;
+
+	if (raw_data) {
+		if (*raw_data != new_value && data->port.last_changed_time)
+			*data->port.last_changed_time = ktime_get();
+
+		*raw_data = new_value;
+	}
 	if (data->port.notify_raw_data_func)
 		data->port.notify_raw_data_func(data->port.notify_raw_data_context);
 }
