@@ -286,8 +286,7 @@ static int nxt_i2c_sensor_probe(struct i2c_client *client)
 	}
 
 	INIT_WORK(&data->poll_work, nxt_i2c_sensor_poll_work);
-	hrtimer_init(&data->poll_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	data->poll_timer.function = nxt_i2c_sensor_poll_timer;
+	hrtimer_setup(&data->poll_timer, nxt_i2c_sensor_poll_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	data->poll_ms = default_poll_ms;
 	i2c_set_clientdata(client, data);
 

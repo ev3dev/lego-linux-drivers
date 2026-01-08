@@ -567,8 +567,8 @@ static ssize_t text_value_show(struct device *dev, struct device_attribute *attr
 
 
 static ssize_t bin_data_read(struct file *file, struct kobject *kobj,
-			     struct bin_attribute *attr,
-			     char *buf, loff_t off, size_t count)
+                 const struct bin_attribute *attr,
+                 char *buf, loff_t off, size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
@@ -585,8 +585,8 @@ static ssize_t bin_data_read(struct file *file, struct kobject *kobj,
 }
 
 static ssize_t direct_read(struct file *file, struct kobject *kobj,
-			   struct bin_attribute *attr,
-			   char *buf, loff_t off, size_t count)
+               const struct bin_attribute *attr,
+               char *buf, loff_t off, size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
@@ -598,8 +598,8 @@ static ssize_t direct_read(struct file *file, struct kobject *kobj,
 }
 
 static ssize_t direct_write(struct file *file, struct kobject *kobj,
-			    struct bin_attribute *attr,
-			    char *buf, loff_t off, size_t count)
+                const struct bin_attribute *attr,
+                char *buf, loff_t off, size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct lego_sensor_device *sensor = to_lego_sensor_device(dev);
@@ -667,10 +667,10 @@ static struct attribute *lego_sensor_class_attrs[] = {
 static BIN_ATTR_RO(bin_data, LEGO_SENSOR_RAW_DATA_SIZE);
 static BIN_ATTR_RW(direct, 255);
 
-static struct bin_attribute *lego_sensor_class_bin_attrs[] = {
-	&bin_attr_bin_data,
-	&bin_attr_direct,
-	NULL
+static const struct bin_attribute *const lego_sensor_class_bin_attrs[] = {
+    &bin_attr_bin_data,
+    &bin_attr_direct,
+    NULL
 };
 
 static const struct attribute_group lego_sensor_class_group = {

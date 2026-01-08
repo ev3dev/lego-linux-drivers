@@ -613,8 +613,7 @@ static int snd_legoev3_create(struct snd_card *card, struct pwm_device *pwm,
 	chip->pwm = pwm;
 	chip->ena_gpio = gpio;
 	INIT_WORK(&chip->disable_work, snd_legoev3_disable_work);
-	hrtimer_init(&chip->pcm_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	chip->pcm_timer.function = &snd_legoev3_pcm_timer_callback;
+	hrtimer_setup(&chip->pcm_timer, snd_legoev3_pcm_timer_callback, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 
 	err = snd_device_new(card, SNDRV_DEV_LOWLEVEL, chip, &ops);
 	if (err < 0)
@@ -664,7 +663,7 @@ static int snd_legoev3_probe(struct platform_device *pdev)
 	pwm_apply_args(pwm);
 
 	/* This lets us set the pwm duty cycle in an atomic context */
-	pm_runtime_irq_safe(pwm->chip->dev);
+	pm_runtime_irq_safe(&pwm->chip->dev);
 
 	err = pwm_enable(pwm);
 	if (err < 0) {
@@ -696,7 +695,7 @@ static int snd_legoev3_probe(struct platform_device *pdev)
 		goto err_snd_card_new;
 
 	sprintf(card->longname, "%s connected to %s", card->shortname,
-		dev_name(pwm->chip->dev));
+		dev_name(&pwm->chip->dev));
 
 	err = snd_legoev3_create(card, pwm, ena_gpio);
 	if (err < 0) {
@@ -729,7 +728,7 @@ err_snd_card_new:
 	return err;
 }
 
-static int snd_legoev3_remove(struct platform_device *pdev)
+static void snd_legoev3_remove(struct platform_device *pdev)
 {
 	struct snd_card *card = dev_get_drvdata(&pdev->dev);
 	struct snd_legoev3 *chip =  card->private_data;
@@ -744,7 +743,6 @@ static int snd_legoev3_remove(struct platform_device *pdev)
 	cancel_work_sync(&chip->disable_work);
 	pwm_disable(chip->pwm);
 
-	return 0;
 }
 
 static const struct of_device_id of_snd_legoev3_match[] = {

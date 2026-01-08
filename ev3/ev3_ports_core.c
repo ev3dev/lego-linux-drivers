@@ -92,11 +92,10 @@ static int ev3_ports_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int ev3_ports_remove(struct platform_device *pdev)
+static void ev3_ports_remove(struct platform_device *pdev)
 {
 	of_platform_depopulate(&pdev->dev);
 
-	return 0;
 }
 
 static const struct of_device_id ev3_ports_dt_ids[] = {

@@ -173,7 +173,7 @@ static struct attribute *lego_bus_dev_attrs[] = {
 };
 ATTRIBUTE_GROUPS(lego_bus_dev);
 
-static int lego_bus_match(struct device *dev, struct device_driver *drv)
+static int lego_bus_match(struct device *dev, const struct device_driver *drv)
 {
 	struct lego_device *ldev = to_lego_device(dev);
 	struct lego_device_driver *ldrv = to_lego_device_driver(drv);

@@ -136,7 +136,7 @@ err_alloc_adap:
 	return ret;
 }
 
-static int i2c_legoev3_remove(struct platform_device *pdev)
+static void i2c_legoev3_remove(struct platform_device *pdev)
 {
 	struct i2c_adapter *adap = platform_get_drvdata(pdev);
 	struct i2c_legoev3_algo_data *adata = adap->algo_data;
@@ -148,7 +148,6 @@ static int i2c_legoev3_remove(struct platform_device *pdev)
 	kfree(adata);
 	kfree(adap);
 
-	return 0;
 }
 
 static struct platform_driver i2c_legoev3_driver = {

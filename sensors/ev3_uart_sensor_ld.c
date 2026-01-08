@@ -1002,9 +1002,7 @@ static int ev3_uart_open(struct tty_struct *tty)
 	port->sensor.set_mode = ev3_uart_set_mode;
 	port->sensor.direct_write = ev3_uart_direct_write;
 	INIT_WORK(&port->change_bitrate_work, ev3_uart_change_bitrate_work);
-	hrtimer_init(&port->keep_alive_timer, HRTIMER_BASE_MONOTONIC,
-		     HRTIMER_MODE_REL);
-	port->keep_alive_timer.function = ev3_uart_keep_alive_timer_callback;
+	hrtimer_setup(&port->keep_alive_timer, ev3_uart_keep_alive_timer_callback, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	tasklet_init(&port->keep_alive_tasklet, ev3_uart_send_keep_alive,
 		     (unsigned long)tty);
 	init_completion(&port->set_mode_completion);

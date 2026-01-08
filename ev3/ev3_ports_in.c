@@ -1230,8 +1230,7 @@ static int ev3_input_port_probe(struct platform_device *pdev)
 
 	INIT_WORK(&data->change_uevent_work, ev3_input_port_change_uevent_work);
 	INIT_WORK(&data->work, NULL);
-	hrtimer_init(&data->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	data->timer.function = ev3_input_port_timer_callback;
+	hrtimer_setup(&data->timer, ev3_input_port_timer_callback, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 
 	data->con_state = CON_STATE_INIT;
 	hrtimer_start(&data->timer, ktime_set(0, INPUT_PORT_POLL_NS),
@@ -1254,7 +1253,7 @@ err_release_iio_cb:
 	return err;
 }
 
-static int ev3_input_port_remove(struct platform_device *pdev)
+static void ev3_input_port_remove(struct platform_device *pdev)
 {
 	struct ev3_input_port_data *data = dev_get_drvdata(&pdev->dev);
 
@@ -1273,7 +1272,6 @@ static int ev3_input_port_remove(struct platform_device *pdev)
 	iio_channel_release_all_cb(data->iio_cb);
 	ev3_input_port_float(data);
 
-	return 0;
 }
 
 static const struct of_device_id ev3_input_port_dt_ids[] = {
